@@ -383,11 +383,7 @@ app.registerExtension({
                 const styleKey = item.dataset.style;
                 let selections = getSelectedArray();
 
-                if (e.ctrlKey) {
-                    selections = selections.includes(styleKey) ? selections.filter(v => v !== styleKey) : [...selections, styleKey];
-                } else {
-                    selections = [styleKey];
-                }
+                selections = selections.includes(styleKey) ? selections.filter(v => v !== styleKey) : [...selections, styleKey];
 
                 widget.value = selections.join(", ");
                 widget.callback(widget.value);
@@ -449,7 +445,7 @@ app.registerExtension({
                 const fd = new FormData();
                 fd.append("preset_name", name);
                 fd.append("subfolder", folder);
-                fd.append("preset_text", inpPreset.value.trim());
+                fd.append("preset_text", inpPreset.value.trim().replace(/[\r\n]/g, "\n"));
                 fd.append("overwrite", "true");
 
                 if (inpFile.files[0]) {

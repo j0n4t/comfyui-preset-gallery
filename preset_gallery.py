@@ -140,7 +140,7 @@ async def api_save_item(request):
     os.makedirs(target_dir, exist_ok=True)
     
     with open(target_txt_path, "w", encoding="utf-8") as f:
-        f.write(data.get("preset_text", "").strip())
+        f.write(data.get("preset_text", "").strip().replace('\r\n', '\n'))
         
     img = data.get("image_file")
     if img and img.file:
