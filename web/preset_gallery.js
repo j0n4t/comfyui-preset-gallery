@@ -415,6 +415,20 @@ app.registerExtension({
                 editor.classList.replace("has-image", "no-image");
             });
 
+            const handleEnterKeySave = (e) => {
+                if (e.key === "Enter") {
+                    if (e.target.tagName === "TEXTAREA" && e.shiftKey) {
+                        return; // Allow Shift+Enter for newlines in textarea
+                    }
+                    e.preventDefault();
+                    btnSave.click();
+                }
+            };
+
+            inpName.addEventListener("keydown", handleEnterKeySave);
+            inpFolder.addEventListener("keydown", handleEnterKeySave);
+            inpPreset.addEventListener("keydown", handleEnterKeySave);
+
             btnSave.addEventListener("click", async () => {
                 const name = inpName.value.trim().toLowerCase().replace(/ /g, "_");
                 if (!name) return alert("Preset Name required.");
@@ -424,8 +438,8 @@ app.registerExtension({
 
                 let shouldDeleteOriginal = false;
 
-                if (currentMode === "edit" && lastSelectedKey && lastSelectedKey !== uniqueKey) {
-                    if (confirm(`You modified the preset path from:\n"${lastSelectedKey}" ➡️ "${uniqueKey}"\nDo you want to overwrite/delete the original file?`)) {
+                if (currentMode === "edit") {
+                    if (lastSelectedKey && lastSelectedKey !== uniqueKey) {
                         shouldDeleteOriginal = true;
                     }
                 } else if (cache[uniqueKey] && !confirm(`"${uniqueKey}" already exists. Overwrite?`)) {
