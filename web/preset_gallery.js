@@ -8,10 +8,11 @@ styles.textContent = `
     .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #222; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; }
     
     /* Basket Styling */
-    .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #151515; border: 1px dashed #444; border-radius: 4px; padding: 6px; box-sizing: border-box; width: 100%; flex-shrink: 0; }
-    .j0n4t-pg-basket-title { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; margin-bottom: 2px; }
+    .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #151515; border: 1px dashed #444; border-radius: 4px; padding: 6px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; }
+    .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242d; }
+    .j0n4t-pg-basket-title { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; margin-bottom: 2px; pointer-events: none; }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
-    .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; }
+    .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
     
     .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 4px; background: #2a2a2a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; }
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
@@ -39,17 +40,19 @@ styles.textContent = `
     .j0n4t-pg-group-header::after { content: ""; flex-grow: 1; height: 1px; background: #3d3d3d; }
     .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header { display: none !important; }
     
-    .j0n4t-pg-item { cursor: pointer; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 4px; background: #1a1a1a; transition: 0.1s; height: fit-content; box-sizing: border-box; user-select: none; position: relative; }
+    .j0n4t-pg-item { cursor: grab; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 4px; background: #1a1a1a; transition: 0.1s; height: fit-content; box-sizing: border-box; user-select: none; position: relative; }
+    .j0n4t-pg-item:active { cursor: grabbing; }
     .j0n4t-pg-item:hover { background: #2a2a2a; border-color: #444; }
     .j0n4t-pg-item.selected { border-color: #007acc; background: #252525; }
+    .j0n4t-pg-item.dragging { opacity: 0.4; }
     .j0n4t-pg-hidden { display: none !important; }
     
-    .j0n4t-pg-thumb-box { width: 100%; height: 100px; border-radius: 2px; display: flex; align-items: center; justify-content: center; background: #111; color: #666; position: relative; overflow: hidden; }
+    .j0n4t-pg-thumb-box { width: 100%; height: 100px; border-radius: 2px; display: flex; align-items: center; justify-content: center; background: #111; color: #666; position: relative; overflow: hidden; pointer-events: none; }
     .j0n4t-pg-grid.view-small .j0n4t-pg-thumb-box { height: 50px; }
     .j0n4t-pg-img { width: 100%; height: 100%; object-fit: cover; }
     .j0n4t-pg-icon { width: 20px; height: 20px; fill: currentColor; }
     .j0n4t-pg-initials { position: absolute; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 0px 1px 2px rgba(0,0,0,0.9), 0px 0px 4px rgba(0,0,0,0.7); text-transform: uppercase; bottom: 4px; z-index: 2; pointer-events: none; letter-spacing: 0.5px; }
-    .j0n4t-pg-label { font-size: 10px; color: #ccc; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .j0n4t-pg-label { font-size: 10px; color: #ccc; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
     .j0n4t-pg-tag-badge { position: absolute; top: 6px; right: 6px; background: rgba(0,122,204,0.85); color: #fff; font-size: 7.5px; font-weight: bold; padding: 1px 4px; border-radius: 2px; text-transform: uppercase; pointer-events: none; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; z-index: 3; }
     
     .view-list .j0n4t-pg-item { display: flex; align-items: center; gap: 8px; text-align: left; padding: 4px 6px; }
@@ -173,6 +176,7 @@ app.registerExtension({
                 </div>
             `;
 
+            const basketContainer = wrap.querySelector(".j0n4t-pg-basket-container");
             const basketPool = wrap.querySelector(".j0n4t-pg-basket-pool");
             const grid = wrap.querySelector(".j0n4t-pg-grid");
             const search = wrap.querySelector(".j0n4t-pg-search");
@@ -304,7 +308,7 @@ app.registerExtension({
                     }
 
                     chip.innerHTML = `
-                        <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials}</div>
+                        <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
                         <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
                         <div class="j0n4t-pg-basket-chip-del" title="Deselect Preset">
                             <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -323,6 +327,7 @@ app.registerExtension({
                         chip.classList.add("dragging");
                         e.dataTransfer.effectAllowed = "move";
                         e.dataTransfer.setData("text/plain", styleKey);
+                        e.dataTransfer.setData("source/basket", "true");
                     });
 
                     chip.addEventListener("dragend", () => {
@@ -334,18 +339,65 @@ app.registerExtension({
                 });
             };
 
-            basketPool.addEventListener("dragover", (e) => {
-                e.preventDefault();
-                const draggingChip = basketPool.querySelector(".j0n4t-pg-basket-chip.dragging");
-                if (!draggingChip) return;
-
-                const siblings = [...basketPool.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)")];
-                const nextSibling = siblings.find(sibling => {
+            const getDropNextSibling = (container, clientX) => {
+                const siblings = [...container.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)")];
+                return siblings.find(sibling => {
                     const box = sibling.getBoundingClientRect();
-                    return e.clientX <= box.left + box.width / 2;
+                    return clientX <= box.left + box.width / 2;
                 });
+            };
 
-                basketPool.insertBefore(draggingChip, nextSibling);
+            basketContainer.addEventListener("dragenter", (e) => {
+                e.preventDefault();
+                basketContainer.classList.add("drag-over");
+            });
+
+            basketContainer.addEventListener("dragover", (e) => {
+                e.preventDefault();
+
+                const draggingChip = basketPool.querySelector(".j0n4t-pg-basket-chip.dragging");
+                if (draggingChip) {
+                    const nextSibling = getDropNextSibling(basketPool, e.clientX);
+                    basketPool.insertBefore(draggingChip, nextSibling);
+                }
+            });
+
+            basketContainer.addEventListener("dragleave", (e) => {
+                if (e.relatedTarget && basketContainer.contains(e.relatedTarget)) return;
+                basketContainer.classList.remove("drag-over");
+            });
+
+            basketContainer.addEventListener("drop", (e) => {
+                e.preventDefault();
+                basketContainer.classList.remove("drag-over");
+                
+                const styleKey = e.dataTransfer.getData("text/plain");
+                if (!styleKey) return;
+
+                const isFromBasket = e.dataTransfer.getData("source/basket");
+                if (isFromBasket) {
+                    reorderSelectionsFromDOM();
+                } else {
+                    let currentSelections = getSelectedArray();
+                    currentSelections = currentSelections.filter(v => v !== styleKey);
+
+                    const nextSibling = getDropNextSibling(basketPool, e.clientX);
+                    if (nextSibling) {
+                        const targetId = nextSibling.dataset.id;
+                        const insertionIndex = currentSelections.indexOf(targetId);
+                        if (insertionIndex !== -1) {
+                            currentSelections.splice(insertionIndex, 0, styleKey);
+                        } else {
+                            currentSelections.push(styleKey);
+                        }
+                    } else {
+                        currentSelections.push(styleKey);
+                    }
+
+                    widget.value = currentSelections.join(", ");
+                    if (widget.callback) widget.callback(widget.value);
+                    if (node.graph) node.graph._version++;
+                }
             });
 
             const reorderSelectionsFromDOM = () => {
@@ -405,7 +457,7 @@ app.registerExtension({
                         : '';
 
                     htmlBuffer += `
-                        <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}">
+                        <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true">
                             ${badge}
                             ${thumbnailHtml}
                             <div class="j0n4t-pg-label">${cleanLabel}</div>
@@ -414,6 +466,19 @@ app.registerExtension({
                 });
 
                 grid.innerHTML = htmlBuffer || `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
+                
+                grid.querySelectorAll(".j0n4t-pg-item").forEach(item => {
+                    item.addEventListener("dragstart", (e) => {
+                        item.classList.add("dragging");
+                        e.dataTransfer.effectAllowed = "copyMove";
+                        e.dataTransfer.setData("text/plain", item.dataset.style);
+                        e.dataTransfer.setData("source/grid", "true");
+                    });
+                    item.addEventListener("dragend", () => {
+                        item.classList.remove("dragging");
+                    });
+                });
+
                 switchView(localStorage.getItem("comfy_preset_gallery_view") || "big");
                 executeFilterPipeline();
             };
@@ -575,10 +640,8 @@ app.registerExtension({
                         body: JSON.stringify({ unique_key: lastSelectedKey })
                     });
                     
-                    // Replace old key with new key in the current selection array to preserve order
                     currentSelections = currentSelections.map(item => item === lastSelectedKey ? uniqueKey : item);
                 } else if (res.success && currentMode === "new") {
-                    // Append new item to selections if it's not already tracked
                     if (!currentSelections.includes(uniqueKey)) {
                         currentSelections.push(uniqueKey);
                     }
@@ -592,7 +655,6 @@ app.registerExtension({
                     setMode("edit");
                 }
 
-                // Update widget using our managed selections array to maintain selection integrity
                 widget.value = currentSelections.join(", ");
                 if (widget.callback) widget.callback(widget.value);
             });
@@ -610,10 +672,9 @@ app.registerExtension({
 
                 await loadGallery();
                 
-                // Clear out only the deleted preset from current choices
                 const nextSelections = selections.filter(v => v !== uniqueKey);
                 widget.value = nextSelections.join(", ");
-                if (widget.callback) widget.callback(widget.value);
+                if (widget.callback) widget.callback(nextSelections.join(", "));
             });
 
             btnExport.addEventListener("click", () => window.open('/custom_node/export_presets_zip', '_blank'));
