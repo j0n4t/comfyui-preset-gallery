@@ -1,6 +1,6 @@
 import { app } from "../../../scripts/app.js";
 
-const MIN_NODE_HEIGHT = 640; // Increased slightly to comfortably accommodate the basket row
+const MIN_NODE_HEIGHT = 640; 
 const MIN_NODE_WIDTH = 400;
 
 const styles = document.createElement("style");
@@ -115,7 +115,7 @@ app.registerExtension({
                         <span class="j0n4t-pg-basket-empty">No presets selected</span>
                     </div>
                 </div>
-                <div class="j0n4t-pg-grid"></div>
+
                 <div class="j0n4t-pg-top-bar">
                     <input type="text" class="j0n4t-pg-search" placeholder="Filter presets or folders..." />
                     <div class="j0n4t-pg-views">
@@ -124,6 +124,7 @@ app.registerExtension({
                         <div class="j0n4t-pg-view-btn" data-view="list" title="List View"><svg viewBox="0 0 16 16"><rect x="1" y="2" width="3" height="2"/><rect x="6" y="2" width="9" height="2"/><rect x="1" y="7" width="3" height="2"/><rect x="6" y="7" width="9" height="2"/><rect x="1" y="12" width="3" height="2"/><rect x="6" y="12" width="9" height="2"/></svg></div>
                     </div>
                 </div>
+                <div class="j0n4t-pg-grid"></div>
                 <div class="j0n4t-pg-control-bar">
                     <div class="j0n4t-pg-toggle" id="j0n4t-pg-toggle">⚙️ Management Panel</div>
                     <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group Folders</label>
@@ -279,7 +280,6 @@ app.registerExtension({
                 });
             };
 
-            /* Renders and setups listeners for the prompt basket chips */
             const renderBasket = (activeList) => {
                 if (activeList.length === 0) {
                     basketPool.innerHTML = `<span class="j0n4t-pg-basket-empty">No presets selected</span>`;
@@ -304,14 +304,13 @@ app.registerExtension({
                     }
 
                     chip.innerHTML = `
-                        <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
+                        <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials}</div>
                         <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
                         <div class="j0n4t-pg-basket-chip-del" title="Deselect Preset">
                             <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                         </div>
                     `;
 
-                    // Remove item handler
                     chip.querySelector(".j0n4t-pg-basket-chip-del").addEventListener("click", (e) => {
                         e.stopPropagation();
                         let currentSelections = getSelectedArray().filter(v => v !== styleKey);
@@ -320,7 +319,6 @@ app.registerExtension({
                         if (node.graph) node.graph._version++;
                     });
 
-                    // HTML5 Native Drag & Drop Listeners
                     chip.addEventListener("dragstart", (e) => {
                         chip.classList.add("dragging");
                         e.dataTransfer.effectAllowed = "move";
@@ -336,7 +334,6 @@ app.registerExtension({
                 });
             };
 
-            // Dragover matching for container layout swaps
             basketPool.addEventListener("dragover", (e) => {
                 e.preventDefault();
                 const draggingChip = basketPool.querySelector(".j0n4t-pg-basket-chip.dragging");
@@ -353,10 +350,9 @@ app.registerExtension({
 
             const reorderSelectionsFromDOM = () => {
                 const currentOrder = [...basketPool.querySelectorAll(".j0n4t-pg-basket-chip")].map(chip => chip.dataset.id);
-                const uniqueOrder = [...new Set(currentOrder)]; // Sanity check array
+                const uniqueOrder = [...new Set(currentOrder)];
                 
                 widget.value = uniqueOrder.join(", ");
-                // Soft execution update without fully rebuilding the editor state unless needed
                 grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
                     el.classList.toggle("selected", uniqueOrder.includes(el.dataset.style));
                 });
@@ -431,12 +427,10 @@ app.registerExtension({
             const syncUI = async (delimitedValue) => {
                 const activeList = delimitedValue ? delimitedValue.split(",").map(v => v.trim()).filter(Boolean) : [];
                 
-                // Update grid state selections
                 grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
                     el.classList.toggle("selected", activeList.includes(el.dataset.style));
                 });
 
-                // Re-render the top prompt basket array
                 renderBasket(activeList);
 
                 const primaryKey = activeList[activeList.length - 1];
@@ -499,7 +493,6 @@ app.registerExtension({
                 const styleKey = item.dataset.style;
                 let selections = getSelectedArray();
 
-                // Multiselect behavior is default via the Basket ecosystem
                 selections = selections.includes(styleKey) ? selections.filter(v => v !== styleKey) : [...selections, styleKey];
 
                 widget.value = selections.join(", ");
@@ -531,7 +524,7 @@ app.registerExtension({
             const handleEnterKeySave = (e) => {
                 if (e.key === "Enter") {
                     if (e.target.tagName === "TEXTAREA" && e.shiftKey) {
-                        return; // Allow Shift+Enter for newlines in textarea
+                        return; 
                     }
                     e.preventDefault();
                     btnSave.click();
@@ -550,6 +543,7 @@ app.registerExtension({
                 const uniqueKey = folder ? `${folder}/${name}` : name;
 
                 let shouldDeleteOriginal = false;
+                let currentSelections = getSelectedArray();
 
                 if (currentMode === "edit") {
                     if (lastSelectedKey && lastSelectedKey !== uniqueKey) {
@@ -580,6 +574,14 @@ app.registerExtension({
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ unique_key: lastSelectedKey })
                     });
+                    
+                    // Replace old key with new key in the current selection array to preserve order
+                    currentSelections = currentSelections.map(item => item === lastSelectedKey ? uniqueKey : item);
+                } else if (res.success && currentMode === "new") {
+                    // Append new item to selections if it's not already tracked
+                    if (!currentSelections.includes(uniqueKey)) {
+                        currentSelections.push(uniqueKey);
+                    }
                 }
 
                 if (!res.success) return alert(`Save failed: ${res.error}`);
@@ -590,8 +592,9 @@ app.registerExtension({
                     setMode("edit");
                 }
 
-                widget.value = uniqueKey;
-                if (widget.callback) widget.callback(uniqueKey);
+                // Update widget using our managed selections array to maintain selection integrity
+                widget.value = currentSelections.join(", ");
+                if (widget.callback) widget.callback(widget.value);
             });
 
             btnDel.addEventListener("click", async () => {
@@ -606,8 +609,11 @@ app.registerExtension({
                 });
 
                 await loadGallery();
-                widget.value = "";
-                if (widget.callback) widget.callback("");
+                
+                // Clear out only the deleted preset from current choices
+                const nextSelections = selections.filter(v => v !== uniqueKey);
+                widget.value = nextSelections.join(", ");
+                if (widget.callback) widget.callback(widget.value);
             });
 
             btnExport.addEventListener("click", () => window.open('/custom_node/export_presets_zip', '_blank'));
