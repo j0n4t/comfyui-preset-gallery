@@ -18,7 +18,7 @@ styles.textContent = `
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
     .j0n4t-pg-basket-chip-thumb { width: 16px; height: 16px; border-radius: 2px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000; flex-shrink: 0; }
-    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #ddd; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #ddd; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
     .j0n4t-pg-basket-chip-del { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #888; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 2px; }
     .j0n4t-pg-basket-chip-del:hover { background: #b23b3b; color: #fff; }
     .j0n4t-pg-basket-chip-del svg { width: 10px; height: 10px; fill: currentColor; }
@@ -259,6 +259,33 @@ app.registerExtension({
                 }
             };
 
+            const openEditorForPreset = async (styleKey) => {
+                setPanelCollapseState(false);
+                setMode("edit");
+                
+                lastSelectedKey = styleKey;
+                if (styleKey && cache[styleKey]) {
+                    const parts = styleKey.split("/");
+                    inpName.value = parts.pop() || "";
+                    inpFolder.value = parts.join("/");
+                    inpPreset.value = cache[styleKey].preset || "";
+
+                    if (cache[styleKey].filename) {
+                        editor.classList.replace("no-image", "has-image");
+                        try {
+                            const imgUrl = `/custom_node/get_preset_image?filename=${encodeURIComponent(cache[styleKey].filename)}`;
+                            const res = await fetch(imgUrl);
+                            if (res.ok) fetchedBlobImage = await res.blob();
+                        } catch (err) {
+                            console.error("Failed to sync asset image stream", err);
+                        }
+                    } else {
+                        editor.classList.replace("has-image", "no-image");
+                    }
+                    inpFile.value = "";
+                }
+            };
+
             const executeFilterPipeline = () => {
                 const query = search.value.toLowerCase().trim();
                 const items = grid.querySelectorAll(".j0n4t-pg-item");
@@ -335,6 +362,11 @@ app.registerExtension({
                         reorderSelectionsFromDOM();
                     });
 
+                    chip.addEventListener("dblclick", (e) => {
+                        e.stopPropagation();
+                        openEditorForPreset(styleKey);
+                    });
+
                     basketPool.appendChild(chip);
                 });
             };
@@ -354,7 +386,7 @@ app.registerExtension({
 
             basketContainer.addEventListener("dragover", (e) => {
                 e.preventDefault();
-
+                
                 const draggingChip = basketPool.querySelector(".j0n4t-pg-basket-chip.dragging");
                 if (draggingChip) {
                     const nextSibling = getDropNextSibling(basketPool, e.clientX);
@@ -378,9 +410,7 @@ app.registerExtension({
                 if (isFromBasket) {
                     reorderSelectionsFromDOM();
                 } else {
-                    let currentSelections = getSelectedArray();
-                    currentSelections = currentSelections.filter(v => v !== styleKey);
-
+                    let currentSelections = getSelectedArray().filter(v => v !== styleKey);
                     const nextSibling = getDropNextSibling(basketPool, e.clientX);
                     if (nextSibling) {
                         const targetId = nextSibling.dataset.id;
@@ -567,6 +597,14 @@ app.registerExtension({
                     setMode("edit");
                 }
                 if (node.graph) node.graph._version++;
+            });
+
+            grid.addEventListener("dblclick", (e) => {
+                const item = e.target.closest(".j0n4t-pg-item");
+                if (!item) return;
+                
+                e.stopPropagation();
+                openEditorForPreset(item.dataset.style);
             });
 
             btnPick.addEventListener("click", () => inpFile.click());
