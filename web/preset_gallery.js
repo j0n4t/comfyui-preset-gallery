@@ -1,11 +1,27 @@
 import { app } from "../../../scripts/app.js";
 
-const MIN_NODE_HEIGHT = 580;
+const MIN_NODE_HEIGHT = 640; // Increased slightly to comfortably accommodate the basket row
 const MIN_NODE_WIDTH = 400;
 
 const styles = document.createElement("style");
 styles.textContent = `
     .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #222; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; }
+    
+    /* Basket Styling */
+    .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #151515; border: 1px dashed #444; border-radius: 4px; padding: 6px; box-sizing: border-box; width: 100%; flex-shrink: 0; }
+    .j0n4t-pg-basket-title { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; margin-bottom: 2px; }
+    .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
+    .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; }
+    
+    .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 4px; background: #2a2a2a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; }
+    .j0n4t-pg-basket-chip:active { cursor: grabbing; }
+    .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
+    .j0n4t-pg-basket-chip-thumb { width: 16px; height: 16px; border-radius: 2px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000; flex-shrink: 0; }
+    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #ddd; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+    .j0n4t-pg-basket-chip-del { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #888; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 2px; }
+    .j0n4t-pg-basket-chip-del:hover { background: #b23b3b; color: #fff; }
+    .j0n4t-pg-basket-chip-del svg { width: 10px; height: 10px; fill: currentColor; }
+
     .j0n4t-pg-top-bar { display: flex; gap: 6px; align-items: center; width: 100%; flex-shrink: 0; }
     .j0n4t-pg-search { flex-grow: 1; padding: 6px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; min-width: 0; }
     .j0n4t-pg-views { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a; padding: 2px; border-radius: 4px; border: 1px solid #444; }
@@ -93,15 +109,21 @@ app.registerExtension({
             const wrap = Object.assign(document.createElement("div"), { className: "j0n4t-pg-wrap" });
 
             wrap.innerHTML = `
+                <div class="j0n4t-pg-basket-container">
+                    <div class="j0n4t-pg-basket-title">🧺 Presets Basket (Drag to reorder)</div>
+                    <div class="j0n4t-pg-basket-pool">
+                        <span class="j0n4t-pg-basket-empty">No presets selected</span>
+                    </div>
+                </div>
+                <div class="j0n4t-pg-grid"></div>
                 <div class="j0n4t-pg-top-bar">
-                    <input type="text" class="j0n4t-pg-search" placeholder="Filter presets or folders... (Ctrl+Click to multi-select)" />
+                    <input type="text" class="j0n4t-pg-search" placeholder="Filter presets or folders..." />
                     <div class="j0n4t-pg-views">
                         <div class="j0n4t-pg-view-btn" data-view="small" title="Small Grid"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="3" height="3"/><rect x="6" y="1" width="3" height="3"/><rect x="11" y="1" width="3" height="3"/><rect x="1" y="6" width="3" height="3"/><rect x="6" y="6" width="3" height="3"/><rect x="11" y="6" width="3" height="3"/><rect x="1" y="11" width="3" height="3"/><rect x="6" y="11" width="3" height="3"/><rect x="11" y="11" width="3" height="3"/></svg></div>
                         <div class="j0n4t-pg-view-btn" data-view="big" title="Big Grid"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg></div>
                         <div class="j0n4t-pg-view-btn" data-view="list" title="List View"><svg viewBox="0 0 16 16"><rect x="1" y="2" width="3" height="2"/><rect x="6" y="2" width="9" height="2"/><rect x="1" y="7" width="3" height="2"/><rect x="6" y="7" width="9" height="2"/><rect x="1" y="12" width="3" height="2"/><rect x="6" y="12" width="9" height="2"/></svg></div>
                     </div>
                 </div>
-                <div class="j0n4t-pg-grid"></div>
                 <div class="j0n4t-pg-control-bar">
                     <div class="j0n4t-pg-toggle" id="j0n4t-pg-toggle">⚙️ Management Panel</div>
                     <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group Folders</label>
@@ -150,6 +172,7 @@ app.registerExtension({
                 </div>
             `;
 
+            const basketPool = wrap.querySelector(".j0n4t-pg-basket-pool");
             const grid = wrap.querySelector(".j0n4t-pg-grid");
             const search = wrap.querySelector(".j0n4t-pg-search");
             const editor = wrap.querySelector(".j0n4t-pg-editor");
@@ -201,6 +224,14 @@ app.registerExtension({
             const getSelectedArray = () => widget.value ? widget.value.split(",").map(v => v.trim()).filter(Boolean) : [];
             const toTitleCase = (str) => str.replace(/_/g, " ").replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
 
+            const getInitials = (uniqueKey) => {
+                const rawLabel = uniqueKey.includes("/") ? uniqueKey.split("/").pop() : uniqueKey;
+                return toTitleCase(rawLabel).split(/\s+/)
+                    .map(w => w.slice(0, 2))
+                    .join('')
+                    .substring(0, 6);
+            };
+
             const clearEditorFields = () => {
                 fetchedBlobImage = null;
                 inpName.value = "";
@@ -248,6 +279,90 @@ app.registerExtension({
                 });
             };
 
+            /* Renders and setups listeners for the prompt basket chips */
+            const renderBasket = (activeList) => {
+                if (activeList.length === 0) {
+                    basketPool.innerHTML = `<span class="j0n4t-pg-basket-empty">No presets selected</span>`;
+                    return;
+                }
+
+                basketPool.innerHTML = "";
+                activeList.forEach((styleKey) => {
+                    const item = cache[styleKey];
+                    const initials = getInitials(styleKey);
+                    const cleanLabel = toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey);
+
+                    const chip = Object.assign(document.createElement("div"), {
+                        className: "j0n4t-pg-basket-chip",
+                        draggable: true
+                    });
+                    chip.dataset.id = styleKey;
+
+                    let thumbStyle = `background-color: ${getHashColor(styleKey)};`;
+                    if (item?.filename) {
+                        thumbStyle = `background-image: url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}');`;
+                    }
+
+                    chip.innerHTML = `
+                        <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
+                        <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
+                        <div class="j0n4t-pg-basket-chip-del" title="Deselect Preset">
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </div>
+                    `;
+
+                    // Remove item handler
+                    chip.querySelector(".j0n4t-pg-basket-chip-del").addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        let currentSelections = getSelectedArray().filter(v => v !== styleKey);
+                        widget.value = currentSelections.join(", ");
+                        if (widget.callback) widget.callback(widget.value);
+                        if (node.graph) node.graph._version++;
+                    });
+
+                    // HTML5 Native Drag & Drop Listeners
+                    chip.addEventListener("dragstart", (e) => {
+                        chip.classList.add("dragging");
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", styleKey);
+                    });
+
+                    chip.addEventListener("dragend", () => {
+                        chip.classList.remove("dragging");
+                        reorderSelectionsFromDOM();
+                    });
+
+                    basketPool.appendChild(chip);
+                });
+            };
+
+            // Dragover matching for container layout swaps
+            basketPool.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                const draggingChip = basketPool.querySelector(".j0n4t-pg-basket-chip.dragging");
+                if (!draggingChip) return;
+
+                const siblings = [...basketPool.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)")];
+                const nextSibling = siblings.find(sibling => {
+                    const box = sibling.getBoundingClientRect();
+                    return e.clientX <= box.left + box.width / 2;
+                });
+
+                basketPool.insertBefore(draggingChip, nextSibling);
+            });
+
+            const reorderSelectionsFromDOM = () => {
+                const currentOrder = [...basketPool.querySelectorAll(".j0n4t-pg-basket-chip")].map(chip => chip.dataset.id);
+                const uniqueOrder = [...new Set(currentOrder)]; // Sanity check array
+                
+                widget.value = uniqueOrder.join(", ");
+                // Soft execution update without fully rebuilding the editor state unless needed
+                grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
+                    el.classList.toggle("selected", uniqueOrder.includes(el.dataset.style));
+                });
+                if (node.graph) node.graph._version++;
+            };
+
             const compileStaticDOMStructure = () => {
                 let htmlBuffer = "";
                 let lastGroup = null;
@@ -264,11 +379,7 @@ app.registerExtension({
                     const item = cache[uniqueKey];
                     const rawLabel = uniqueKey.includes("/") ? uniqueKey.split("/").pop() : uniqueKey;
                     const cleanLabel = toTitleCase(rawLabel);
-
-                    const initials = cleanLabel.split(/\s+/)
-                        .map(w => w.slice(0, 2))
-                        .join('')
-                        .substring(0, 6);
+                    const initials = getInitials(uniqueKey);
 
                     const searchBlob = `${uniqueKey} ${initials} ${item.preset} ${(item.tags || []).join(' ')}`.toLowerCase();
                     const uiGroupTitle = item.tags?.length ? item.tags.map(toTitleCase).join(" › ") : "Root Presets";
@@ -319,9 +430,14 @@ app.registerExtension({
 
             const syncUI = async (delimitedValue) => {
                 const activeList = delimitedValue ? delimitedValue.split(",").map(v => v.trim()).filter(Boolean) : [];
+                
+                // Update grid state selections
                 grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
                     el.classList.toggle("selected", activeList.includes(el.dataset.style));
                 });
+
+                // Re-render the top prompt basket array
+                renderBasket(activeList);
 
                 const primaryKey = activeList[activeList.length - 1];
                 fetchedBlobImage = null;
@@ -383,6 +499,7 @@ app.registerExtension({
                 const styleKey = item.dataset.style;
                 let selections = getSelectedArray();
 
+                // Multiselect behavior is default via the Basket ecosystem
                 selections = selections.includes(styleKey) ? selections.filter(v => v !== styleKey) : [...selections, styleKey];
 
                 widget.value = selections.join(", ");
@@ -445,7 +562,7 @@ app.registerExtension({
                 const fd = new FormData();
                 fd.append("preset_name", name);
                 fd.append("subfolder", folder);
-                fd.append("preset_text", inpPreset.value.trim().replace(/[\r\n]/g, "\n"));
+                fd.append("preset_text", inpPreset.value.trim());
                 fd.append("overwrite", "true");
 
                 if (inpFile.files[0]) {
