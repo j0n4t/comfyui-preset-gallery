@@ -14,7 +14,7 @@ class PresetGalleryStyles {
         styles.id = "j0n4t-pg-global-styles";
         styles.textContent = `
             .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; }
-            .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580 ; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; }
+            .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; }
             .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
             .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
             .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
@@ -48,9 +48,18 @@ class PresetGalleryStyles {
             .j0n4t-pg-grid.view-small { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
             .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
             .j0n4t-pg-grid.view-list { grid-template-columns: 1fr; gap: 4px; }
-            .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; }
-            .j0n4t-pg-group-header::after { content: ""; flex-grow: 1; height: 1px; background: #bdbdbd80; }
-            .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header { display: none !important; }
+            
+            .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; cursor: pointer; padding: 4px 0; position: relative; }
+            .j0n4t-pg-group-header::before { content: "▼"; font-size: 8px; color: #888; transition: transform 0.15s ease; }
+            .j0n4t-pg-group-header.collapsed::before { transform: rotate(-90deg); }
+            .j0n4t-pg-group-line { flex-grow: 1; height: 1px; background: #bdbdbd40; margin-right: 8px; }
+            .j0n4t-pg-group-header .j0n4t-pg-group-rename-tip { display:none }
+            .j0n4t-pg-group-header:hover .j0n4t-pg-group-rename-tip { display:block; font-size: 8px; color: #666; font-weight: normal; text-transform: none; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; padding-right: 4px; }
+            .j0n4t-pg-group-header:hover .j0n4t-pg-group-rename-tip { opacity: 1; }
+            .j0n4t-pg-group-header[data-group-raw="root_presets"]:hover .j0n4t-pg-group-rename-tip { display: none; }
+            .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header,
+            .j0n4t-pg-grid.hide-folders .j0n4t-pg-global-collapse-btn { display: none !important; }
+            
             .j0n4t-pg-item { cursor: pointer; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 4px; background: #1a1a1a80; transition: 0.1s; height: fit-content; box-sizing: border-box; user-select: none; position: relative; }
             .j0n4t-pg-item:hover { background: #2a2a2a; border-color: #444; }
             .j0n4t-pg-item.selected { border-color: #007acc; background: #252525; }
@@ -121,6 +130,15 @@ class PresetGalleryAPI {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ unique_key: uniqueKey })
         });
+    }
+
+    static async renameFolder(oldFolder, newFolder) {
+        const res = await fetch('/custom_node/rename_preset_folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_folder: oldFolder, new_folder: newFolder })
+        });
+        return res.json();
     }
 
     static async importZip(formData) {
@@ -306,7 +324,7 @@ class PresetGalleryView {
         this.cache = {};
         this.fetchedBlobImage = null;
         this.lastSelectedKey = "";
-        this.currentMode = "new"; // Clear state lifecycle tracker
+        this.currentMode = "new"; 
 
         this.helpers = {
             getHashColor: (str) => {
@@ -334,6 +352,18 @@ class PresetGalleryView {
         );
 
         this.bindEvents();
+    }
+
+    getCollapsedFolders() {
+        try {
+            return JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    setCollapsedFolders(folderArray) {
+        localStorage.setItem("pg_collapsed_folders_list", JSON.stringify(folderArray));
     }
 
     buildDOMStructure() {
@@ -368,6 +398,7 @@ class PresetGalleryView {
             <div class="j0n4t-pg-grid"></div>
             <div class="j0n4t-pg-control-bar">
                 <div class="j0n4t-pg-toggle" id="j0n4t-pg-toggle">⚙️ Management Panel</div>
+                <button type="button" class="j0n4t-pg-global-collapse-btn" id="j0n4t-pg-global-collapse" style="background: #2a2a2a80; border: 1px solid #444; color: #ccc; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; user-select: none; white-space: nowrap;">↕️ Collapse All</button>
                 <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group Folders</label>
             </div>
             <div class="j0n4t-pg-editor no-image">
@@ -407,6 +438,7 @@ class PresetGalleryView {
             toggle: wrap.querySelector("#j0n4t-pg-toggle"),
             viewsContainer: wrap.querySelector(".j0n4t-pg-views"),
             chkGroup: wrap.querySelector("#j0n4t-pg-group-toggle"),
+            btnGlobalCollapse: wrap.querySelector("#j0n4t-pg-global-collapse"),
             inpName: wrap.querySelector("#j0n4t-pg-name"),
             inpFolder: wrap.querySelector("#j0n4t-pg-folder"),
             inpPreset: wrap.querySelector("#j0n4t-pg-preset"),
@@ -458,23 +490,20 @@ class PresetGalleryView {
 
     updateBannerText() {
         if (this.currentMode === "new") {
-            this.dom.banner.innerText = "✨ Creating New Preset File";
+            this.dom.banner.innerText = "✨ Creating New Preset";
             this.dom.banner.style.color = "#228b22";
             this.dom.banner.style.background = "#228b2220";
         } else if (this.lastSelectedKey) {
-            this.dom.banner.innerText = `📝 Editing Target: ${this.lastSelectedKey}`;
+            this.dom.banner.innerText = `📝 Editing: ${this.lastSelectedKey}`;
             this.dom.banner.style.color = "#d1a119";
             this.dom.banner.style.background = "#d1a11920";
         } else {
-            this.dom.banner.innerText = "📝 Edit Panel (Select Edit ✏️ on an Item)";
+            this.dom.banner.innerText = "📝 Edit Panel (Select Edit ✏️ on an Preset)";
             this.dom.banner.style.color = "#888";
             this.dom.banner.style.background = "#33333330";
         }
     }
 
-    /**
-     * Centralized utility to reset image state securely and prevent shared mutation leakages
-     */
     resetImageState() {
         this.fetchedBlobImage = null;
         this.dom.inpFile.value = "";
@@ -502,14 +531,11 @@ class PresetGalleryView {
     async openEditorForPreset(styleKey) {
         if (!this.cache[styleKey]) return;
         this.setPanelCollapseState(false);
-        
-        // Terminate old image context records before entering a new preset scope
         this.resetImageState();
 
         this.lastSelectedKey = styleKey;
         this.currentMode = "edit";
 
-        // Read directly from a split copy to avoid mapping reference addresses directly
         const parts = styleKey.split("/");
         this.dom.inpName.value = parts.pop() || "";
         this.dom.inpFolder.value = parts.join("/");
@@ -519,7 +545,6 @@ class PresetGalleryView {
             this.dom.editor.classList.replace("no-image", "has-image");
             try {
                 const blob = await PresetGalleryAPI.fetchPresetImage(this.cache[styleKey].filename);
-                // Confirm selection match didn't change while waiting for asynchronous download response threads
                 if (this.lastSelectedKey === styleKey && this.currentMode === "edit") {
                     this.fetchedBlobImage = blob;
                 }
@@ -547,12 +572,20 @@ class PresetGalleryView {
         });
 
         this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").forEach(header => {
+            const isCollapsed = header.classList.contains("collapsed");
+
             let next = header.nextElementSibling;
             let hasVisibleChildren = false;
+
             while (next && !next.classList.contains("j0n4t-pg-group-header")) {
-                if (!next.classList.contains("j0n4t-pg-hidden")) {
+                const searchBlob = next.dataset.searchBlob || "";
+                const matchesSearch = queryWords.length === 0 || queryWords.every(word => searchBlob.includes(word));
+                
+                if (matchesSearch) {
                     hasVisibleChildren = true;
-                    break;
+                    next.classList.toggle("j0n4t-pg-hidden", isCollapsed);
+                } else {
+                    next.classList.add("j0n4t-pg-hidden");
                 }
                 next = next.nextElementSibling;
             }
@@ -563,6 +596,8 @@ class PresetGalleryView {
     compileStaticDOMStructure() {
         let htmlBuffer = "";
         let lastGroup = null;
+
+        const masterCollapsedList = this.getCollapsedFolders();
 
         const sortedKeys = Object.keys(this.cache).sort((a, b) => {
             const groupA = this.cache[a].tags?.length ? this.cache[a].tags.join(" > ") : "root_presets";
@@ -580,10 +615,20 @@ class PresetGalleryView {
 
             const searchBlob = `${uniqueKey} ${initials} ${item.preset} ${(item.tags || []).join(' ')}`.toLowerCase();
             const uiGroupTitle = item.tags?.length ? item.tags.map(this.helpers.toTitleCase).join(" › ") : "Root Presets";
+            const groupRawName = item.tags?.length ? item.tags.join("/") : "root_presets";
 
             if (uiGroupTitle !== lastGroup) {
                 lastGroup = uiGroupTitle;
-                htmlBuffer += `<div class="j0n4t-pg-group-header" data-group="${uiGroupTitle}">${uiGroupTitle}</div>`;
+                const isCurrentlyCollapsed = masterCollapsedList.includes(groupRawName);
+                const memoryCollapseState = isCurrentlyCollapsed ? " collapsed" : "";
+                
+                htmlBuffer += `
+                    <div class="j0n4t-pg-group-header${memoryCollapseState}" data-group="${uiGroupTitle}" data-group-raw="${groupRawName}">
+                        <span>${uiGroupTitle}</span>
+                        <span class="j0n4t-pg-group-rename-tip">Right-click to rename folder</span>
+                        <div class="j0n4t-pg-group-line"></div>
+                    </div>
+                `;
             }
 
             let thumbnailHtml = "";
@@ -606,9 +651,9 @@ class PresetGalleryView {
                 : '';
 
             htmlBuffer += `
-                <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel} (Click to toggle assembly basket)">
+                <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel}">
                     ${badge}
-                    <div class="j0n4t-pg-corner-edit" title="Configure Profile">
+                    <div class="j0n4t-pg-corner-edit" title="Edit ${cleanLabel}">
                         <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </div>
                     ${thumbnailHtml}
@@ -618,6 +663,62 @@ class PresetGalleryView {
         });
 
         this.dom.grid.innerHTML = htmlBuffer || `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
+
+        const totalHeadersCount = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length;
+        this.dom.btnGlobalCollapse.innerText = masterCollapsedList.length > (totalHeadersCount / 2) ? "↕️ Expand All" : "↕️ Collapse All";
+
+        this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").forEach(header => {
+            const rawFolder = header.dataset.groupRaw;
+
+            header.addEventListener("click", () => {
+                const isCollapsedNow = header.classList.toggle("collapsed");
+                let list = this.getCollapsedFolders();
+
+                if (isCollapsedNow) {
+                    if (!list.includes(rawFolder)) list.push(rawFolder);
+                } else {
+                    list = list.filter(item => item !== rawFolder);
+                }
+
+                this.setCollapsedFolders(list);
+
+                const total = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length;
+                this.dom.btnGlobalCollapse.innerText = list.length > (total / 2) ? "↕️ Expand All" : "↕️ Collapse All";
+
+                this.executeFilterPipeline();
+            });
+
+            header.addEventListener("contextmenu", async (e) => {
+                if (rawFolder === "root_presets") return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                const newFolderName = prompt(`Rename folder category "${rawFolder.replace(/_/g, " ")}" to:`, rawFolder.replace(/_/g, " "));
+                if (newFolderName === null) return;
+                
+                const cleanNewName = newFolderName.trim().toLowerCase().replace(/ /g, "_");
+                if (!cleanNewName || cleanNewName === rawFolder) return;
+
+                const res = await PresetGalleryAPI.renameFolder(rawFolder, cleanNewName);
+                if (res.success) {
+                    let currentSelections = this.getSelectedArray();
+                    currentSelections = currentSelections.map(item => {
+                        if (item.startsWith(`${rawFolder}/`)) {
+                            return item.replace(`${rawFolder}/`, `${cleanNewName}/`);
+                        }
+                        return item;
+                    });
+
+                    let list = this.getCollapsedFolders().filter(item => item !== rawFolder);
+                    this.setCollapsedFolders(list);
+                    
+                    await this.loadGallery();
+                    this.updateWidgetValue(currentSelections);
+                } else {
+                    alert(`Failed to rename folder structure: ${res.error}`);
+                }
+            });
+        });
 
         this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach(item => {
             item.addEventListener("dragstart", (e) => {
@@ -656,7 +757,10 @@ class PresetGalleryView {
     }
 
     bindEvents() {
-        this.dom.toggle.addEventListener("click", () => this.setPanelCollapseState(!this.dom.editor.classList.contains("collapsed")));
+        this.dom.toggle.addEventListener("click", () => {
+            this.clearEditorFields();
+            this.setPanelCollapseState(!this.dom.editor.classList.contains("collapsed"))
+        });
         
         this.dom.viewsContainer.addEventListener("click", (e) => {
             const btn = e.target.closest(".j0n4t-pg-view-btn");
@@ -665,10 +769,36 @@ class PresetGalleryView {
 
         this.dom.chkGroup.checked = localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
         if (!this.dom.chkGroup.checked) this.dom.grid.classList.add("hide-folders");
+        this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked ? "block" : "none";
 
         this.dom.chkGroup.addEventListener("change", () => {
             localStorage.setItem("comfy_preset_gallery_grouped", String(this.dom.chkGroup.checked));
             this.dom.grid.classList.toggle("hide-folders", !this.dom.chkGroup.checked);
+            this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked ? "block" : "none";
+            this.executeFilterPipeline();
+        });
+
+        this.dom.btnGlobalCollapse.addEventListener("click", () => {
+            const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
+            if (headers.length === 0) return;
+
+            let collapsedList = this.getCollapsedFolders();
+            const turningToCollapsedState = !this.dom.btnGlobalCollapse.innerText.includes("Expand");
+
+            if (turningToCollapsedState) {
+                collapsedList = [...headers].map(h => h.dataset.groupRaw);
+                this.dom.btnGlobalCollapse.innerText = "↕️ Expand All";
+            } else {
+                collapsedList = []; // Empties memory list entirely
+                this.dom.btnGlobalCollapse.innerText = "↕️ Collapse All";
+            }
+
+            this.setCollapsedFolders(collapsedList);
+
+            headers.forEach(header => {
+                header.classList.toggle("collapsed", turningToCollapsedState);
+            });
+
             this.executeFilterPipeline();
         });
 
@@ -680,7 +810,7 @@ class PresetGalleryView {
         });
 
         this.dom.grid.addEventListener("click", (e) => {
-            if (e.target.closest(".j0n4t-pg-corner-edit")) return;
+            if (e.target.closest(".j0n4t-pg-corner-edit") || e.target.closest(".j0n4t-pg-group-header")) return;
             
             const item = e.target.closest(".j0n4t-pg-item");
             if (!item || !this.widget.callback) return;
@@ -696,7 +826,7 @@ class PresetGalleryView {
         this.dom.btnChange.addEventListener("click", () => this.dom.inpFile.click());
         this.dom.inpFile.addEventListener("change", () => {
             if (this.dom.inpFile.files[0]) {
-                this.fetchedBlobImage = null; // Sever cached pointers when a manually loaded file stream takes over
+                this.fetchedBlobImage = null; 
                 this.dom.editor.classList.replace("no-image", "has-image");
             }
         });
@@ -717,7 +847,6 @@ class PresetGalleryView {
         this.dom.inpFolder.addEventListener("keydown", handleEnterKeySave);
         this.dom.inpPreset.addEventListener("keydown", handleEnterKeySave);
 
-        // Workflow Trigger Actions
         this.dom.btnClearFields.addEventListener("click", () => this.clearEditorFields());
         this.dom.btnSaveNew.addEventListener("click", () => this.handleSave(true));
         this.dom.btnSave.addEventListener("click", () => this.handleSave(false));
@@ -766,7 +895,6 @@ class PresetGalleryView {
         let shouldDeleteOriginal = false;
         let currentSelections = this.getSelectedArray();
 
-        // Mutate the UI operational tracking mode securely based on trigger flags
         if (forceAsNew) {
             this.currentMode = "new";
         }
@@ -775,7 +903,6 @@ class PresetGalleryView {
             if (this.cache[uniqueKey] && !confirm(`"${uniqueKey}" already exists. Overwrite?`)) {
                 return;
             }
-            // Defensive State Cleanup: Force clear historical references if user cleared the image view prior to saving as new
             if (this.dom.editor.classList.contains("no-image")) {
                 this.fetchedBlobImage = null;
                 this.dom.inpFile.value = "";
@@ -793,7 +920,6 @@ class PresetGalleryView {
         fd.append("preset_text", this.dom.inpPreset.value.trim());
         fd.append("overwrite", "true");
 
-        // Transactional State Append Check
         if (this.dom.inpFile.files[0]) {
             fd.append("image_file", this.dom.inpFile.files[0]);
         } else if (this.fetchedBlobImage && !this.dom.editor.classList.contains("no-image")) {
@@ -825,7 +951,6 @@ class PresetGalleryView {
         if (!confirm(`Permanently delete "${this.lastSelectedKey}" from disk?`)) return;
         
         await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
-        
         const selections = this.getSelectedArray().filter(v => v !== this.lastSelectedKey);
         
         await this.loadGallery();
