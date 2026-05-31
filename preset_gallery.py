@@ -243,55 +243,35 @@ async def api_rename_folder(request):
     try:
         body = await request.json()
         
-        # Coleta e limpa as strings de entrada
         old_folder_str = body.get("old_folder", "").strip().lower().replace(" ", "_")
         new_folder_str = body.get("new_folder", "").strip().lower().replace(" ", "_")
-
         if not old_folder_str:
             return web.json_response({"success": False, "error": "Missing old folder name"})
-
-        # Define a raiz do pool usando Path (Garante caminhos absolutos e normalizados)
         pool_root = Path(POOL_DIR).resolve()
-
-        # Resolve o caminho de origem
         old_path = (pool_root / old_folder_str).resolve()
-
-        # CASO ESPECIAL: Se o destino for '/' ou vazio, mapeia diretamente para a raiz do pool
         if new_folder_str in ["", "/", "\\", ".", "./"]:
             new_path = pool_root
         else:
             new_path = (pool_root / new_folder_str).resolve()
 
-        # VALIDAÇÃO DE SEGURANÇA COMPLETA (Usando herança hierárquica do pathlib)
-        # Verifica se old_path e new_path estão estritamente dentro de pool_root (ou se new_path é o próprio pool_root)
         if pool_root not in old_path.parents and old_path != pool_root:
             return web.json_response({"success": False, "error": "Invalid directory path escape"})
         if pool_root not in new_path.parents and new_path != pool_root:
             return web.json_response({"success": False, "error": "Invalid directory path escape"})
-
-        # Verifica se a pasta antiga realmente existe
         if not old_path.exists():
             return web.json_response({"success": False, "error": f"Source folder '{old_folder_str}' does not exist"})
-
-        # Se os caminhos finais resolvidos forem idênticos, não faz nada
         if old_path == new_path:
             return web.json_response({"success": True, "message": "No change needed"})
 
-        # CASO ESPECIAL: Movendo a pasta para dentro de si mesma (ex: 'clay' -> 'clay/jon')
         if old_path in new_path.parents:
-            # Pasta temporária criada fora da árvore de colisão
             temp_dir = pool_root / f"_temp_rename_{os.urandom(4).hex()}"
-            
             shutil.move(str(old_path), str(temp_dir))
             new_path.mkdir(parents=True, exist_ok=True)
-            
             for item in temp_dir.iterdir():
                 shutil.move(str(item), str(new_path / item.name))
-                
             if temp_dir.exists() and not any(temp_dir.iterdir()):
                 temp_dir.rmdir()
         else:
-            # Caso padrão ou mesclagem com diretório existente (incluindo a própria raiz)
             if new_path.exists():
                 for item in old_path.iterdir():
                     target_item = new_path / item.name
@@ -304,16 +284,12 @@ async def api_rename_folder(request):
                             shutil.move(str(item), str(target_item))
                     else:
                         shutil.move(str(item), str(target_item))
-                
-                # Remove a pasta antiga se ela ficou vazia e não for a raiz
                 if old_path != pool_root and old_path.exists() and not any(old_path.iterdir()):
                     old_path.rmdir()
             else:
-                # Cria as pastas pais necessárias e renomeia diretamente
                 new_path.parent.mkdir(parents=True, exist_ok=True)
                 os.rename(str(old_path), str(new_path))
 
-        # Limpa possíveis subpastas órfãs que ficaram vazias na origem antiga
         _prune_empty_directories(str(old_path))
 
         return web.json_response({"success": True})
