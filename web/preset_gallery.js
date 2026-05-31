@@ -22,6 +22,12 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-custom-btn:hover { background: #1e7b1e; }
             .j0n4t-pg-basket-clear-btn:hover { background: #912e2e; }
             .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
+            
+            /* Raw Basket Input Styling Rules */
+            .j0n4t-pg-basket-raw-textarea { width: 100%; min-height: 36px; max-height: 120px; background: #111111e0; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; display: none; }
+            .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
+            .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
+            
             .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
             .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
             .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 2px; background: #3a3a3a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; position: relative; }
@@ -151,21 +157,25 @@ class PresetGalleryAPI {
  * Manages calculations, behaviors, and layout ordering inside the Basket component.
  */
 class PresetBasket {
-    constructor(container, pool, viewContext) {
+    constructor(container, pool, textarea, viewContext) {
         this.container = container;
         this.pool = pool;
+        this.textarea = textarea;
         this.context = viewContext;
         this.dropIndicator = null;
         this.initDragAndDrop();
+        this.initRawInputSync();
     }
 
     initDragAndDrop() {
         this.container.addEventListener("dragenter", (e) => {
+            if (this.container.classList.contains("raw-mode")) return;
             e.preventDefault();
             this.container.classList.add("drag-over");
         });
 
         this.container.addEventListener("dragover", (e) => {
+            if (this.container.classList.contains("raw-mode")) return;
             e.preventDefault();
             if (!this.dropIndicator) {
                 this.dropIndicator = document.createElement("div");
@@ -194,6 +204,7 @@ class PresetBasket {
         });
 
         this.container.addEventListener("drop", (e) => {
+            if (this.container.classList.contains("raw-mode")) return;
             e.preventDefault();
             this.container.classList.remove("drag-over");
             this.removeDropIndicator();
@@ -229,6 +240,18 @@ class PresetBasket {
         });
     }
 
+    initRawInputSync() {
+        this.textarea.addEventListener("change", () => {
+            const parsedArray = this.textarea.value.split(",")
+                .map(item => item.trim())
+                .filter(Boolean);
+            this.context.updateWidgetValue(parsedArray);
+        });
+
+        // Retain standard text selection inside raw mode text field instead of breaking node graph drags
+        this.textarea.addEventListener("mousedown", (e) => e.stopPropagation());
+    }
+
     getClosestChip(clientX, clientY) {
         const siblings = [...this.pool.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)")];
         return siblings.reduce((closest, sibling) => {
@@ -252,6 +275,9 @@ class PresetBasket {
     }
 
     render(activeList, cache, helpers) {
+        // Sync raw mode text area content value seamlessly
+        this.textarea.value = activeList.join(", ");
+
         if (activeList.length === 0) {
             this.pool.innerHTML = `<span class="j0n4t-pg-basket-empty">No presets selected</span>`;
             return;
@@ -348,6 +374,7 @@ class PresetGalleryView {
         this.basket = new PresetBasket(
             this.dom.wrap.querySelector(".j0n4t-pg-basket-container"),
             this.dom.wrap.querySelector(".j0n4t-pg-basket-pool"),
+            this.dom.wrap.querySelector(".j0n4t-pg-basket-raw-textarea"),
             this
         );
 
@@ -372,8 +399,9 @@ class PresetGalleryView {
         wrap.innerHTML = `
             <div class="j0n4t-pg-basket-container">
                 <div class="j0n4t-pg-basket-header">
-                    <div class="j0n4t-pg-basket-title">🧺 Presets Basket (Drag to reorder)</div>
-                    <div style="display: flex; gap: 4px;">
+                    <div class="j0n4t-pg-basket-title">🧺 Presets Basket</div>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw Mode</label>
                         <button type="button" class="j0n4t-pg-basket-custom-btn" title="Add temporary prompt chip">+ Custom</button>
                         <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear all presets from basket" style="font-size: 9px; color: #fff; background: #b23b3b; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; transition: background 0.15s;">🗑️ Clear</button>
                     </div>
@@ -381,6 +409,7 @@ class PresetGalleryView {
                 <div class="j0n4t-pg-basket-pool">
                     <span class="j0n4t-pg-basket-empty">No presets selected</span>
                 </div>
+                <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Enter comma separated tokens..."></textarea>
             </div>
             <div class="j0n4t-pg-top-bar">
                 <div class="j0n4t-pg-search-wrapper">
@@ -401,7 +430,7 @@ class PresetGalleryView {
                 <button type="button" class="j0n4t-pg-global-collapse-btn" id="j0n4t-pg-global-collapse" style="background: #2a2a2a80; border: 1px solid #444; color: #ccc; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; user-select: none; white-space: nowrap;">↕️ Collapse All</button>
                 <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group Folders</label>
             </div>
-            <div class="j0n4t-pg-editor no-image">
+            <div class="j0n4t-pg-editor collapsed">
                 <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
                 <div class="j0n4t-pg-row">
                     <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
@@ -454,7 +483,10 @@ class PresetGalleryView {
             btnImport: wrap.querySelector("#j0n4t-pg-import-btn"),
             btnExport: wrap.querySelector("#j0n4t-pg-export-btn"),
             btnCustomChip: wrap.querySelector(".j0n4t-pg-basket-custom-btn"),
-            btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn")
+            btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn"),
+            chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
+            basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
+            rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input")
         };
     }
 
@@ -627,6 +659,7 @@ class PresetGalleryView {
                         <span>${uiGroupTitle}</span>
                         <span class="j0n4t-pg-group-rename-tip">Right-click to rename folder</span>
                         <div class="j0n4t-pg-group-line"></div>
+                        <span class="j0n4t-pg-group-rename-tip">Right-click to rename folder</span>
                     </div>
                 `;
             }
@@ -778,6 +811,14 @@ class PresetGalleryView {
             this.executeFilterPipeline();
         });
 
+        this.dom.chkBasketRaw.checked = localStorage.getItem("comfy_preset_gallery_raw_basket") === "true";
+        this.dom.basketContainer.classList.toggle("raw-mode", this.dom.chkBasketRaw.checked);
+        
+        this.dom.chkBasketRaw.addEventListener("change", () => {
+            localStorage.setItem("comfy_preset_gallery_raw_basket", String(this.dom.chkBasketRaw.checked));
+            this.dom.basketContainer.classList.toggle("raw-mode", this.dom.chkBasketRaw.checked);
+        });
+
         this.dom.btnGlobalCollapse.addEventListener("click", () => {
             const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
             if (headers.length === 0) return;
@@ -789,7 +830,7 @@ class PresetGalleryView {
                 collapsedList = [...headers].map(h => h.dataset.groupRaw);
                 this.dom.btnGlobalCollapse.innerText = "↕️ Expand All";
             } else {
-                collapsedList = []; // Empties memory list entirely
+                collapsedList = [];
                 this.dom.btnGlobalCollapse.innerText = "↕️ Collapse All";
             }
 
