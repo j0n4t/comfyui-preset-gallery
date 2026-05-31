@@ -13,6 +13,7 @@ styles.textContent = `
     .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
     .j0n4t-pg-basket-custom-btn { font-size: 9px; color: #fff; background: #228b22; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; transition: background 0.15s; }
     .j0n4t-pg-basket-custom-btn:hover { background: #1e7b1e; }
+    .j0n4t-pg-basket-clear-btn:hover { background: #912e2e; }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
     .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
     .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
@@ -121,7 +122,10 @@ app.registerExtension({
                 <div class="j0n4t-pg-basket-container">
                     <div class="j0n4t-pg-basket-header">
                         <div class="j0n4t-pg-basket-title">🧺 Presets Basket (Drag to reorder)</div>
-                        <button type="button" class="j0n4t-pg-basket-custom-btn" title="Add temporary prompt chip">+ Custom</button>
+                        <div style="display: flex; gap: 4px;">
+                            <button type="button" class="j0n4t-pg-basket-custom-btn" title="Add temporary prompt chip">+ Custom</button>
+                            <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear all presets from basket" style="font-size: 9px; color: #fff; background: #b23b3b; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; transition: background 0.15s;">🗑️ Clear</button>
+                        </div>
                     </div>
                     <div class="j0n4t-pg-basket-pool">
                         <span class="j0n4t-pg-basket-empty">No presets selected</span>
@@ -192,6 +196,7 @@ app.registerExtension({
 
             const basketContainer = wrap.querySelector(".j0n4t-pg-basket-container");
             const btnCustomChip = wrap.querySelector(".j0n4t-pg-basket-custom-btn");
+            const btnClearBasket = wrap.querySelector(".j0n4t-pg-basket-clear-btn");
             const basketPool = wrap.querySelector(".j0n4t-pg-basket-pool");
             const grid = wrap.querySelector(".j0n4t-pg-grid");
             const search = wrap.querySelector(".j0n4t-pg-search");
@@ -542,6 +547,16 @@ app.registerExtension({
                 widget.value = currentSelections.join(", ");
                 if (widget.callback) widget.callback(widget.value);
                 if (node.graph) node.graph._version++;
+            });
+
+            btnClearBasket.addEventListener("click", () => {
+                if (getSelectedArray().length === 0) return;
+
+                if (confirm("Are you sure you want to empty the basket?")) {
+                    widget.value = "";
+                    if (widget.callback) widget.callback("");
+                    if (node.graph) node.graph._version++;
+                }
             });
 
             const compileStaticDOMStructure = () => {
