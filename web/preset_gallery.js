@@ -9,7 +9,10 @@ styles.textContent = `
     
     .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580 ; border: 1px dashed #777; border-radius: 4px; padding: 6px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; }
     .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
-    .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; margin-bottom: 2px; pointer-events: none; }
+    .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+    .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
+    .j0n4t-pg-basket-custom-btn { font-size: 9px; color: #fff; background: #228b22; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; transition: background 0.15s; }
+    .j0n4t-pg-basket-custom-btn:hover { background: #1e7b1e; }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
     .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
     
@@ -115,7 +118,10 @@ app.registerExtension({
 
             wrap.innerHTML = `
                 <div class="j0n4t-pg-basket-container">
-                    <div class="j0n4t-pg-basket-title">🧺 Presets Basket (Drag to reorder)</div>
+                    <div class="j0n4t-pg-basket-header">
+                        <div class="j0n4t-pg-basket-title">🧺 Presets Basket (Drag to reorder)</div>
+                        <button type="button" class="j0n4t-pg-basket-custom-btn" title="Add temporary prompt chip">+ Custom</button>
+                    </div>
                     <div class="j0n4t-pg-basket-pool">
                         <span class="j0n4t-pg-basket-empty">No presets selected</span>
                     </div>
@@ -184,6 +190,7 @@ app.registerExtension({
             `;
 
             const basketContainer = wrap.querySelector(".j0n4t-pg-basket-container");
+            const btnCustomChip = wrap.querySelector(".j0n4t-pg-basket-custom-btn");
             const basketPool = wrap.querySelector(".j0n4t-pg-basket-pool");
             const grid = wrap.querySelector(".j0n4t-pg-grid");
             const search = wrap.querySelector(".j0n4t-pg-search");
@@ -268,6 +275,7 @@ app.registerExtension({
             };
 
             const openEditorForPreset = async (styleKey) => {
+                if (!cache[styleKey]) return; 
                 setPanelCollapseState(false);
                 setMode("edit");
                 
@@ -331,7 +339,7 @@ app.registerExtension({
                 activeList.forEach((styleKey) => {
                     const item = cache[styleKey];
                     const initials = getInitials(styleKey);
-                    const cleanLabel = toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey);
+                    const cleanLabel = item ? toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey) : styleKey;
 
                     const chip = Object.assign(document.createElement("div"), {
                         className: "j0n4t-pg-basket-chip",
@@ -375,7 +383,25 @@ app.registerExtension({
 
                     chip.addEventListener("dblclick", (e) => {
                         e.stopPropagation();
-                        openEditorForPreset(styleKey);
+                        if (cache[styleKey]) {
+                            openEditorForPreset(styleKey);
+                        } else {
+                            const updatedVal = prompt("Edit one-time custom prompt terms/keywords:", styleKey);
+                            if (updatedVal === null) return; 
+                            
+                            let currentSelections = getSelectedArray();
+                            const idx = currentSelections.indexOf(styleKey);
+                            if (idx !== -1) {
+                                if (updatedVal.trim()) {
+                                    currentSelections[idx] = updatedVal.trim();
+                                } else {
+                                    currentSelections.splice(idx, 1);
+                                }
+                                widget.value = currentSelections.join(", ");
+                                if (widget.callback) widget.callback(widget.value);
+                                if (node.graph) node.graph._version++;
+                            }
+                        }
                     });
 
                     basketPool.appendChild(chip);
@@ -451,6 +477,18 @@ app.registerExtension({
                 });
                 if (node.graph) node.graph._version++;
             };
+
+            btnCustomChip.addEventListener("click", () => {
+                const promptVal = prompt("Enter one-time custom prompt terms/keywords:");
+                if (!promptVal || !promptVal.trim()) return;
+
+                let currentSelections = getSelectedArray();
+                currentSelections.push(promptVal.trim());
+
+                widget.value = currentSelections.join(", ");
+                if (widget.callback) widget.callback(widget.value);
+                if (node.graph) node.graph._version++;
+            });
 
             const compileStaticDOMStructure = () => {
                 let htmlBuffer = "";
@@ -545,22 +583,29 @@ app.registerExtension({
 
                 if (currentMode === "new") return;
 
-                if (primaryKey && cache[primaryKey]) {
-                    const parts = primaryKey.split("/");
-                    inpName.value = parts.pop() || "";
-                    inpFolder.value = parts.join("/");
-                    inpPreset.value = cache[primaryKey].preset || "";
+                if (primaryKey) {
+                    if (cache[primaryKey]) {
+                        const parts = primaryKey.split("/");
+                        inpName.value = parts.pop() || "";
+                        inpFolder.value = parts.join("/");
+                        inpPreset.value = cache[primaryKey].preset || "";
 
-                    if (cache[primaryKey].filename) {
-                        editor.classList.replace("no-image", "has-image");
-                        try {
-                            const imgUrl = `/custom_node/get_preset_image?filename=${encodeURIComponent(cache[primaryKey].filename)}`;
-                            const res = await fetch(imgUrl);
-                            if (res.ok) fetchedBlobImage = await res.blob();
-                        } catch (err) {
-                            console.error("Failed to sync asset image stream", err);
+                        if (cache[primaryKey].filename) {
+                            editor.classList.replace("no-image", "has-image");
+                            try {
+                                const imgUrl = `/custom_node/get_preset_image?filename=${encodeURIComponent(cache[primaryKey].filename)}`;
+                                const res = await fetch(imgUrl);
+                                if (res.ok) fetchedBlobImage = await res.blob();
+                            } catch (err) {
+                                console.error("Failed to sync asset image stream", err);
+                            }
+                        } else {
+                            editor.classList.replace("has-image", "no-image");
                         }
                     } else {
+                        inpName.value = "Custom Chip";
+                        inpFolder.value = "";
+                        inpPreset.value = primaryKey;
                         editor.classList.replace("has-image", "no-image");
                     }
                     inpFile.value = "";
@@ -690,11 +735,12 @@ app.registerExtension({
                 const res = await (await fetch('/custom_node/save_preset_item', { method: 'POST', body: fd })).json();
 
                 if (res.success && shouldDeleteOriginal) {
-                    await fetch('/custom_node/delete_preset_item', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ unique_key: lastSelectedKey })
-                    });
-                    
+                    if (cache[lastSelectedKey]) {
+                        await fetch('/custom_node/delete_preset_item', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ unique_key: lastSelectedKey })
+                        });
+                    }
                     currentSelections = currentSelections.map(item => item === lastSelectedKey ? uniqueKey : item);
                 } else if (res.success && currentMode === "new") {
                     if (!currentSelections.includes(uniqueKey)) {
@@ -717,16 +763,17 @@ app.registerExtension({
             btnDel.addEventListener("click", async () => {
                 const selections = getSelectedArray();
                 const uniqueKey = selections[selections.length - 1];
-                if (!uniqueKey || !cache[uniqueKey]) return alert("Select an item to delete.");
-                if (!confirm(`Permanently delete "${uniqueKey}"?`)) return;
-
-                await fetch('/custom_node/delete_preset_item', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ unique_key: uniqueKey })
-                });
-
-                await loadGallery();
+                if (!uniqueKey) return alert("Select an item to delete.");
                 
+                if (cache[uniqueKey]) {
+                    if (!confirm(`Permanently delete "${uniqueKey}"?`)) return;
+                    await fetch('/custom_node/delete_preset_item', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ unique_key: uniqueKey })
+                    });
+                    await loadGallery();
+                }
+
                 const nextSelections = selections.filter(v => v !== uniqueKey);
                 widget.value = nextSelections.join(", ");
                 if (widget.callback) widget.callback(nextSelections.join(", "));

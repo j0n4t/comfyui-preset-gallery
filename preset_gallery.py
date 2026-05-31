@@ -92,8 +92,22 @@ class PresetGalleryNode:
     
     def get_preset(self, preset_selection, base_preset=""):
         live_pool = get_live_presets()
-        selected_keys = [k.strip().lower().replace(" ", "_") for k in preset_selection.split(",") if k.strip()]
-        collected = [live_pool[k]["preset"].strip() for k in selected_keys if k in live_pool]
+        
+        # Split original selection items without mutating them into strict snake_case keys immediately
+        raw_keys = [k.strip() for k in preset_selection.split(",") if k.strip()]
+        collected = []
+        
+        for k in raw_keys:
+            # Generate the lookup key version to check the pool cache
+            lookup_key = k.lower().replace(" ", "_")
+            
+            if lookup_key in live_pool:
+                # It's a saved preset entry, pull its content
+                collected.append(live_pool[lookup_key]["preset"].strip())
+            else:
+                # It's a temporary custom chip phrase, preserve it as-is
+                collected.append(k)
+        
         gallery_text = ", ".join(collected)
         
         if base_preset and base_preset.strip():
