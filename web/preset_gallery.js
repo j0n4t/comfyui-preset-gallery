@@ -9,12 +9,12 @@ const MIN_NODE_WIDTH = 400;
 class PresetGalleryStyles {
     static inject() {
         if (document.getElementById("j0n4t-pg-global-styles")) return;
-        
+
         const styles = document.createElement("style");
         styles.id = "j0n4t-pg-global-styles";
         styles.textContent = `
-            .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; }
-            .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; }
+            .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; }
+            .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; }
             .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
             .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
             .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
@@ -23,11 +23,22 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-clear-btn:hover { background: #912e2e; }
             .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
             
-            /* Raw Basket Input Styling Rules */
-            .j0n4t-pg-basket-raw-textarea { width: 100%; min-height: 36px; max-height: 120px; background: #111111e0; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; display: none; }
+            .j0n4t-pg-raw-wrapper { position: relative; width: 100%; min-height: 36px; max-height: 200px; display: none; }
+            .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block !important; }
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
+
+            .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 60px; max-height: 200px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; position: relative; z-index: 2; caret-color: #fff; }
+            .j0n4t-pg-basket-ghost-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; font-family: monospace; font-size: 11px; padding: 5px 4px 4px 5px; box-sizing: border-box; color: transparent; white-space: pre-wrap; word-wrap: break-word; pointer-events: none; z-index: 1; overflow: hidden; }
+            .j0n4t-pg-ghost-shaded { color: #ffffff45; }
             
+            .j0n4t-pg-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 9999; display: flex; flex-direction: column; width: max-content; max-width: 280px; overflow: hidden; font-family: sans-serif; box-sizing: border-box; }
+            .j0n4t-pg-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 6px; }
+            .j0n4t-pg-autocomplete-item:last-child { border-bottom: none; }
+            .j0n4t-pg-autocomplete-item.active { background: #007acc; color: #fff; }
+            .j0n4t-pg-autocomplete-meta { font-size: 9px; color: #888; margin-left: auto; font-style: italic; }
+            .j0n4t-pg-autocomplete-item.active .j0n4t-pg-autocomplete-meta { color: #bee3ff; }
+
             .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
             .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
             .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 2px; background: #3a3a3a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; position: relative; }
@@ -162,9 +173,17 @@ class PresetBasket {
         this.pool = pool;
         this.textarea = textarea;
         this.context = viewContext;
+        this.ghostPreview = viewContext.dom.ghostPreview;
         this.dropIndicator = null;
+
+        this.popupEl = null;
+        this.currentMatches = [];
+        this.activeIndex = 0;
+        this.pendingGhostText = "";
+
         this.initDragAndDrop();
         this.initRawInputSync();
+        this.initAutocomplete();
     }
 
     initDragAndDrop() {
@@ -248,8 +267,209 @@ class PresetBasket {
             this.context.updateWidgetValue(parsedArray);
         });
 
-        // Retain standard text selection inside raw mode text field instead of breaking node graph drags
         this.textarea.addEventListener("mousedown", (e) => e.stopPropagation());
+
+        this.textarea.addEventListener("scroll", () => {
+            if (this.ghostPreview) {
+                this.ghostPreview.scrollTop = this.textarea.scrollTop;
+                this.ghostPreview.scrollLeft = this.textarea.scrollLeft;
+            }
+        });
+    }
+
+    initAutocomplete() {
+        this.textarea.addEventListener("input", () => {
+            if (!this.container.classList.contains("raw-mode")) return;
+            this.evaluateAutocomplete();
+        });
+
+        this.textarea.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight" && this.pendingGhostText) {
+                if (this.textarea.selectionStart === this.textarea.value.length) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.selectMatch(this.currentMatches[this.activeIndex]);
+                    return;
+                }
+            }
+
+            if (!this.popupEl || this.currentMatches.length === 0) return;
+
+            if (e.key === "Tab" || e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                this.selectMatch(this.currentMatches[this.activeIndex]);
+            } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                this.activeIndex = (this.activeIndex + 1) % this.currentMatches.length;
+                this.renderActiveItemHighlight();
+                this.updateGhostOverlay();
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                this.activeIndex = (this.activeIndex - 1 + this.currentMatches.length) % this.currentMatches.length;
+                this.renderActiveItemHighlight();
+                this.updateGhostOverlay();
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closePopup();
+            }
+        });
+
+        this.textarea.addEventListener("blur", () => setTimeout(() => this.closePopup(), 180));
+    }
+
+    evaluateAutocomplete() {
+        const text = this.textarea.value;
+        const caretPos = this.textarea.selectionStart;
+
+        const leftText = text.slice(0, caretPos);
+        const lastCommaIndex = leftText.lastIndexOf(",");
+        const currentToken = (lastCommaIndex === -1 ? leftText : leftText.slice(lastCommaIndex + 1)).trimStart();
+
+        if (!currentToken || currentToken.length < 1) {
+            this.closePopup();
+            return;
+        }
+
+        const query = currentToken.toLowerCase();
+        const keys = Object.keys(this.context.cache);
+
+        function getTopMatches(list, query) {
+            const cleanQuery = query.toLowerCase();
+            const buckets = list.reduce((acc, item) => {
+                const lowerItem = item.toLowerCase();
+                const idx = lowerItem.indexOf(cleanQuery);
+                if (idx === -1) return acc;
+                if (idx === 0) {
+                    if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx });
+                } else {
+                    if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx });
+                }
+                return acc;
+            }, { startsWith: [], fuzzy: [] });
+            const sortBucket = (arr) => arr
+                .sort((a, b) => a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item))
+                .map(entry => entry.item);
+            const finalStarts = sortBucket(buckets.startsWith);
+            const finalFuzzy = sortBucket(buckets.fuzzy);
+            return Array.from(new Set([...finalStarts, ...finalFuzzy]));
+        }
+
+        this.currentMatches = getTopMatches(keys, query);
+
+        if (this.currentMatches.length === 0) {
+            this.closePopup();
+            return;
+        }
+
+        this.activeIndex = 0;
+        this.showPopup(lastCommaIndex + 1, currentToken);
+        this.updateGhostOverlay();
+    }
+
+    updateGhostOverlay() {
+        if (!this.ghostPreview) return;
+
+        const text = this.textarea.value;
+        const caretPos = this.textarea.selectionStart;
+
+        if (this.currentMatches.length > 0 && caretPos === text.length) {
+            const bestMatch = this.currentMatches[this.activeIndex];
+
+            const leftText = text.slice(0, caretPos);
+            const lastCommaIndex = leftText.lastIndexOf(",");
+            const currentToken = (lastCommaIndex === -1 ? leftText : leftText.slice(lastCommaIndex + 1)).trimStart();
+
+            const suffixToComplete = bestMatch.slice(currentToken.length);
+            this.pendingGhostText = suffixToComplete;
+
+            this.ghostPreview.innerHTML = `${escapeHTML(text)}<span class="j0n4t-pg-ghost-shaded">${escapeHTML(suffixToComplete)}</span>`;
+        } else {
+            this.clearGhostOverlay();
+        }
+    }
+
+    clearGhostOverlay() {
+        this.pendingGhostText = "";
+        if (this.ghostPreview) {
+            this.ghostPreview.innerHTML = "";
+        }
+    }
+
+    showPopup(tokenStartIndex, currentToken) {
+        if (!this.popupEl) {
+            this.popupEl = document.createElement("div");
+            this.popupEl.className = "j0n4t-pg-autocomplete-popup";
+            this.popupEl.addEventListener("mousedown", (e) => e.stopPropagation());
+            this.container.appendChild(this.popupEl);
+        }
+
+        const textBound = this.textarea.getBoundingClientRect();
+        const containerBound = this.container.getBoundingClientRect();
+        const zoomFactor = containerBound.width / this.container.offsetWidth || 1;
+        this.popupEl.style.top = `${(textBound.bottom - containerBound.top) / zoomFactor + 2}px`;
+        this.popupEl.style.left = `${(textBound.left - containerBound.left) / zoomFactor}px`;
+        this.popupEl.style.width = `${textBound.width / zoomFactor}px`;
+        this.popupEl.innerHTML = "";
+
+        this.currentMatches.forEach((match, index) => {
+            const cleanLabel = this.context.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match);
+            
+            const row = document.createElement("div");
+            row.className = `j0n4t-pg-autocomplete-item${index === this.activeIndex ? ' active' : ''}`;
+            row.innerHTML = `
+                <span>${cleanLabel}</span>
+                <span class="j0n4t-pg-autocomplete-meta">${match}</span>
+            `;
+            
+            row.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.selectMatch(match);
+            });
+            this.popupEl.appendChild(row);
+        });
+    }
+
+    renderActiveItemHighlight() {
+        if (!this.popupEl) return;
+        const items = this.popupEl.querySelectorAll(".j0n4t-pg-autocomplete-item");
+        items.forEach((item, index) => {
+            item.classList.toggle("active", index === this.activeIndex);
+        });
+    }
+
+    selectMatch(matchedKey) {
+        const text = this.textarea.value;
+        const caretPos = this.textarea.selectionStart;
+
+        const leftText = text.slice(0, caretPos);
+        const rightText = text.slice(caretPos);
+        const lastCommaIndex = leftText.lastIndexOf(",");
+
+        const prefix = lastCommaIndex === -1 ? "" : leftText.slice(0, lastCommaIndex + 1) + " ";
+        const nextCommaIndex = rightText.indexOf(",");
+        const suffix = nextCommaIndex === -1 ? "" : rightText.slice(nextCommaIndex);
+
+        this.textarea.value = prefix + matchedKey + (suffix.startsWith(",") ? suffix : (suffix ? ", " + suffix : ""));
+        this.closePopup();
+
+        const parsedArray = this.textarea.value.split(",")
+            .map(item => item.trim())
+            .filter(Boolean);
+        this.context.updateWidgetValue(parsedArray);
+        this.textarea.focus();
+        this.textarea.selectionStart = this.textarea.selectionEnd = prefix.length + matchedKey.length;
+    }
+
+    closePopup() {
+        if (this.popupEl && this.popupEl.parentNode) {
+            this.popupEl.remove();
+        }
+        this.popupEl = null;
+        this.currentMatches = [];
+        this.clearGhostOverlay();
     }
 
     getClosestChip(clientX, clientY) {
@@ -275,8 +495,8 @@ class PresetBasket {
     }
 
     render(activeList, cache, helpers) {
-        // Sync raw mode text area content value seamlessly
         this.textarea.value = activeList.join(", ");
+        this.clearGhostOverlay();
 
         if (activeList.length === 0) {
             this.pool.innerHTML = `<span class="j0n4t-pg-basket-empty">No presets selected</span>`;
@@ -350,7 +570,7 @@ class PresetGalleryView {
         this.cache = {};
         this.fetchedBlobImage = null;
         this.lastSelectedKey = "";
-        this.currentMode = "new"; 
+        this.currentMode = "new";
 
         this.helpers = {
             getHashColor: (str) => {
@@ -409,7 +629,10 @@ class PresetGalleryView {
                 <div class="j0n4t-pg-basket-pool">
                     <span class="j0n4t-pg-basket-empty">No presets selected</span>
                 </div>
-                <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Enter comma separated tokens..."></textarea>
+                <div class="j0n4t-pg-raw-wrapper">
+                    <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Enter comma separated tokens..."></textarea>
+                    <div class="j0n4t-pg-basket-ghost-preview" id="j0n4t-pg-ghost-view"></div>
+                </div>
             </div>
             <div class="j0n4t-pg-top-bar">
                 <div class="j0n4t-pg-search-wrapper">
@@ -486,7 +709,8 @@ class PresetGalleryView {
             btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn"),
             chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
             basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
-            rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input")
+            rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input"),
+            ghostPreview: wrap.querySelector("#j0n4t-pg-ghost-view")
         };
     }
 
@@ -585,7 +809,7 @@ class PresetGalleryView {
                 this.resetImageState();
             }
         }
-        
+
         this.updateBannerText();
         this.syncEditorHighlight();
     }
@@ -612,7 +836,7 @@ class PresetGalleryView {
             while (next && !next.classList.contains("j0n4t-pg-group-header")) {
                 const searchBlob = next.dataset.searchBlob || "";
                 const matchesSearch = queryWords.length === 0 || queryWords.every(word => searchBlob.includes(word));
-                
+
                 if (matchesSearch) {
                     hasVisibleChildren = true;
                     next.classList.toggle("j0n4t-pg-hidden", isCollapsed);
@@ -653,7 +877,7 @@ class PresetGalleryView {
                 lastGroup = uiGroupTitle;
                 const isCurrentlyCollapsed = masterCollapsedList.includes(groupRawName);
                 const memoryCollapseState = isCurrentlyCollapsed ? " collapsed" : "";
-                
+
                 htmlBuffer += `
                     <div class="j0n4t-pg-group-header${memoryCollapseState}" data-group="${uiGroupTitle}" data-group-raw="${groupRawName}">
                         <span>${uiGroupTitle}</span>
@@ -728,7 +952,7 @@ class PresetGalleryView {
 
                 const newFolderName = prompt(`Rename folder category "${rawFolder.replace(/_/g, " ")}" to:`, rawFolder.replace(/_/g, " "));
                 if (newFolderName === null) return;
-                
+
                 const cleanNewName = newFolderName.trim().toLowerCase().replace(/ /g, "_");
                 if (!cleanNewName || cleanNewName === rawFolder) return;
 
@@ -744,7 +968,7 @@ class PresetGalleryView {
 
                     let list = this.getCollapsedFolders().filter(item => item !== rawFolder);
                     this.setCollapsedFolders(list);
-                    
+
                     await this.loadGallery();
                     this.updateWidgetValue(currentSelections);
                 } else {
@@ -761,7 +985,7 @@ class PresetGalleryView {
                 e.dataTransfer.setData("source/grid", "true");
             });
             item.addEventListener("dragend", () => item.classList.remove("dragging"));
-            
+
             item.querySelector(".j0n4t-pg-corner-edit").addEventListener("click", (e) => {
                 e.stopPropagation();
                 this.openEditorForPreset(item.dataset.style);
@@ -794,7 +1018,7 @@ class PresetGalleryView {
             this.clearEditorFields();
             this.setPanelCollapseState(!this.dom.editor.classList.contains("collapsed"))
         });
-        
+
         this.dom.viewsContainer.addEventListener("click", (e) => {
             const btn = e.target.closest(".j0n4t-pg-view-btn");
             if (btn) this.switchView(btn.dataset.view);
@@ -813,7 +1037,7 @@ class PresetGalleryView {
 
         this.dom.chkBasketRaw.checked = localStorage.getItem("comfy_preset_gallery_raw_basket") === "true";
         this.dom.basketContainer.classList.toggle("raw-mode", this.dom.chkBasketRaw.checked);
-        
+
         this.dom.chkBasketRaw.addEventListener("change", () => {
             localStorage.setItem("comfy_preset_gallery_raw_basket", String(this.dom.chkBasketRaw.checked));
             this.dom.basketContainer.classList.toggle("raw-mode", this.dom.chkBasketRaw.checked);
@@ -852,7 +1076,7 @@ class PresetGalleryView {
 
         this.dom.grid.addEventListener("click", (e) => {
             if (e.target.closest(".j0n4t-pg-corner-edit") || e.target.closest(".j0n4t-pg-group-header")) return;
-            
+
             const item = e.target.closest(".j0n4t-pg-item");
             if (!item || !this.widget.callback) return;
 
@@ -867,7 +1091,7 @@ class PresetGalleryView {
         this.dom.btnChange.addEventListener("click", () => this.dom.inpFile.click());
         this.dom.inpFile.addEventListener("change", () => {
             if (this.dom.inpFile.files[0]) {
-                this.fetchedBlobImage = null; 
+                this.fetchedBlobImage = null;
                 this.dom.editor.classList.replace("no-image", "has-image");
             }
         });
@@ -892,10 +1116,10 @@ class PresetGalleryView {
         this.dom.btnSaveNew.addEventListener("click", () => this.handleSave(true));
         this.dom.btnSave.addEventListener("click", () => this.handleSave(false));
         this.dom.btnDel.addEventListener("click", () => this.handleDelete());
-        
+
         this.dom.btnExport.addEventListener("click", () => window.open('/custom_node/export_presets_zip', '_blank'));
         this.dom.btnImport.addEventListener("click", () => this.dom.inpZipFile.click());
-        
+
         this.dom.inpZipFile.addEventListener("change", async () => {
             if (!this.dom.inpZipFile.files[0]) return;
             const fd = new FormData();
@@ -990,10 +1214,10 @@ class PresetGalleryView {
         if (!this.cache[this.lastSelectedKey]) return alert("Cannot remote delete a non-saved item.");
 
         if (!confirm(`Permanently delete "${this.lastSelectedKey}" from disk?`)) return;
-        
+
         await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
         const selections = this.getSelectedArray().filter(v => v !== this.lastSelectedKey);
-        
+
         await this.loadGallery();
         this.clearEditorFields();
         this.updateWidgetValue(selections);
@@ -1011,6 +1235,10 @@ class PresetGalleryView {
 
 PresetGalleryStyles.inject();
 
+function escapeHTML(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 app.registerExtension({
     name: "Comfy.PresetGallery",
     async beforeRegisterNodeDef(nodeType, nodeData) {
@@ -1026,7 +1254,7 @@ app.registerExtension({
             widget.hidden = true;
 
             const galleryView = new PresetGalleryView(this, widget);
-            
+
             const baseCallback = widget.callback;
             widget.callback = function (value) {
                 galleryView.syncUI(value);
