@@ -100,9 +100,7 @@ app.registerExtension({
             if (!widget) return;
 
             const MAX_HEIGHT = 60;
-            widget.computeSize = function (width) {
-                return [width || 220, MAX_HEIGHT];
-            };
+            widget.hidden = true;
 
             let cache = {};
             let fetchedBlobImage = null;
