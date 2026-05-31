@@ -89,10 +89,6 @@ class PresetGalleryStyles {
             .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
             .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; text-align: center; box-sizing: border-box; height: 28px; }
             .j0n4t-pg-btn:hover { background: #0062a3; }
-            .j0n4t-pg-mode-toggle { display: flex; width: 100%; background: #1a1a1a80; border: 1px solid #444; border-radius: 4px; overflow: hidden; padding: 2px; box-sizing: border-box; }
-            .j0n4t-pg-mode-btn { flex: 1; border: none; background: transparent; color: #888; font-size: 10px; font-weight: bold; padding: 4px 0; cursor: pointer; text-transform: uppercase; text-align: center; border-radius: 3px; transition: 0.15s; }
-            .j0n4t-pg-mode-btn.active { background: #007acc; color: #fff; }
-            .j0n4t-pg-mode-btn.mode-new.active { background: #228b22; }
             .has-image .no-img-state, .no-image .has-img-state { display: none !important; }
         `;
         document.head.appendChild(styles);
@@ -310,7 +306,7 @@ class PresetGalleryView {
         this.cache = {};
         this.fetchedBlobImage = null;
         this.lastSelectedKey = "";
-        this.currentMode = "edit";
+        this.currentMode = "edit"; // "edit" represents targeting an existing item, "new" represents a blank canvas
 
         this.helpers = {
             getHashColor: (str) => {
@@ -374,13 +370,7 @@ class PresetGalleryView {
                 <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group Folders</label>
             </div>
             <div class="j0n4t-pg-editor no-image">
-                <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 MODE: EDIT PRESET</div>
-                <div class="j0n4t-pg-row">
-                    <div class="j0n4t-pg-mode-toggle">
-                        <button type="button" class="j0n4t-pg-mode-btn mode-new" data-mode="new">✨ Create New</button>
-                        <button type="button" class="j0n4t-pg-mode-btn mode-edit active" data-mode="edit">📝 Edit Preset</button>
-                    </div>
-                </div>
+                <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
                 <div class="j0n4t-pg-row">
                     <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
                     <input type="text" id="j0n4t-pg-folder" placeholder="Sub-folder (Optional)" style="flex:1;" />
@@ -391,13 +381,17 @@ class PresetGalleryView {
                     <button type="button" id="j0n4t-pg-pick-btn" class="j0n4t-pg-btn no-img-state" style="background:#444;" title="Pick Image">Pick Image</button>
                     <button type="button" id="j0n4t-pg-change-btn" class="j0n4t-pg-btn has-img-state" style="background:#2b5e3b;" title="Change Image">Change Img</button>
                     <button type="button" id="j0n4t-pg-rm-img-btn" class="j0n4t-pg-btn has-img-state" style="background:#b23b3b;" title="Delete Image Asset Only">Clear Img</button>
-                    <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" title="Save Preset Profile">Save</button>
+                </div>
+                <div class="j0n4t-pg-row">
+                    <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;" title="Clear form to write a completely blank new preset">Clear / New</button>
+                    <button type="button" id="j0n4t-pg-save-new-btn" class="j0n4t-pg-btn" style="background:#228b22;" title="Save current parameters as a new separate preset file">Save as New</button>
+                    <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;" title="Save changes or overwrite current active file">Save Changes</button>
                     <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;" title="Permanently Delete Preset Entirely">Delete</button>
                 </div>
                 <div class="j0n4t-pg-row" style="border-top: 1px dashed #444; padding-top: 6px; margin-top: 2px;">
                     <input type="file" id="j0n4t-pg-zip-file" accept=".zip" style="display:none;" />
-                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#555;" title="Import ZIP Pool Package">Import</button>
-                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#555;" title="Export Current Pool Package to ZIP Archive">Export</button>
+                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import ZIP Pool Package">Import ZIP</button>
+                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Current Pool Package to ZIP Archive">Export ZIP</button>
                 </div>
             </div>
         `;
@@ -412,7 +406,6 @@ class PresetGalleryView {
             toggle: wrap.querySelector("#j0n4t-pg-toggle"),
             viewsContainer: wrap.querySelector(".j0n4t-pg-views"),
             chkGroup: wrap.querySelector("#j0n4t-pg-group-toggle"),
-            modeToggle: wrap.querySelector(".j0n4t-pg-mode-toggle"),
             inpName: wrap.querySelector("#j0n4t-pg-name"),
             inpFolder: wrap.querySelector("#j0n4t-pg-folder"),
             inpPreset: wrap.querySelector("#j0n4t-pg-preset"),
@@ -420,6 +413,8 @@ class PresetGalleryView {
             btnPick: wrap.querySelector("#j0n4t-pg-pick-btn"),
             btnChange: wrap.querySelector("#j0n4t-pg-change-btn"),
             btnRmImg: wrap.querySelector("#j0n4t-pg-rm-img-btn"),
+            btnClearFields: wrap.querySelector("#j0n4t-pg-clear-fields-btn"),
+            btnSaveNew: wrap.querySelector("#j0n4t-pg-save-new-btn"),
             btnSave: wrap.querySelector("#j0n4t-pg-save-btn"),
             btnDel: wrap.querySelector("#j0n4t-pg-del-btn"),
             inpZipFile: wrap.querySelector("#j0n4t-pg-zip-file"),
@@ -460,22 +455,13 @@ class PresetGalleryView {
         localStorage.setItem("comfy_preset_gallery_view", viewName);
     }
 
-    setMode(mode) {
-        this.currentMode = mode;
-        this.dom.modeToggle.querySelectorAll(".j0n4t-pg-mode-btn").forEach(btn => {
-            btn.classList.toggle("active", btn.dataset.mode === mode);
-        });
-        this.updateBannerText();
-        if (mode === "new") this.clearEditorFields();
-    }
-
     updateBannerText() {
         if (this.currentMode === "new") {
             this.dom.banner.innerText = "✨ Creating New Preset File";
             this.dom.banner.style.color = "#228b22";
             this.dom.banner.style.background = "#228b2220";
         } else if (this.lastSelectedKey) {
-            this.dom.banner.innerText = `📝 Inspecting: ${this.lastSelectedKey}`;
+            this.dom.banner.innerText = `📝 Editing Target: ${this.lastSelectedKey}`;
             this.dom.banner.style.color = "#d1a119";
             this.dom.banner.style.background = "#d1a11920";
         } else {
@@ -486,12 +472,15 @@ class PresetGalleryView {
     }
 
     clearEditorFields() {
+        this.currentMode = "new";
+        this.lastSelectedKey = "";
         this.fetchedBlobImage = null;
         this.dom.inpName.value = "";
         this.dom.inpFolder.value = "";
         this.dom.inpPreset.value = "";
         this.dom.inpFile.value = "";
         this.dom.editor.classList.replace("has-image", "no-image");
+        this.updateBannerText();
         this.syncEditorHighlight();
     }
 
@@ -506,7 +495,7 @@ class PresetGalleryView {
         if (!this.cache[styleKey]) return;
         this.setPanelCollapseState(false);
         this.lastSelectedKey = styleKey;
-        this.setMode("edit");
+        this.currentMode = "edit";
 
         const parts = styleKey.split("/");
         this.dom.inpName.value = parts.pop() || "";
@@ -524,6 +513,7 @@ class PresetGalleryView {
             this.dom.editor.classList.replace("has-image", "no-image");
         }
         this.dom.inpFile.value = "";
+        this.updateBannerText();
         this.syncEditorHighlight();
     }
 
@@ -622,7 +612,6 @@ class PresetGalleryView {
             });
             item.addEventListener("dragend", () => item.classList.remove("dragging"));
             
-            // Corner edit click mapping hook override
             item.querySelector(".j0n4t-pg-corner-edit").addEventListener("click", (e) => {
                 e.stopPropagation();
                 this.openEditorForPreset(item.dataset.style);
@@ -674,13 +663,7 @@ class PresetGalleryView {
             this.dom.search.focus();
         });
 
-        this.dom.modeToggle.addEventListener("click", (e) => {
-            const btn = e.target.closest(".j0n4t-pg-mode-btn");
-            if (btn) this.setMode(btn.dataset.mode);
-        });
-
         this.dom.grid.addEventListener("click", (e) => {
-            // Protect explicit click targeted on the sub corner edit button asset element
             if (e.target.closest(".j0n4t-pg-corner-edit")) return;
             
             const item = e.target.closest(".j0n4t-pg-item");
@@ -720,8 +703,12 @@ class PresetGalleryView {
         this.dom.inpFolder.addEventListener("keydown", handleEnterKeySave);
         this.dom.inpPreset.addEventListener("keydown", handleEnterKeySave);
 
-        this.dom.btnSave.addEventListener("click", () => this.handleSave());
+        // Workflow Trigger Actions
+        this.dom.btnClearFields.addEventListener("click", () => this.clearEditorFields());
+        this.dom.btnSaveNew.addEventListener("click", () => this.handleSave(true));
+        this.dom.btnSave.addEventListener("click", () => this.handleSave(false));
         this.dom.btnDel.addEventListener("click", () => this.handleDelete());
+        
         this.dom.btnExport.addEventListener("click", () => window.open('/custom_node/export_presets_zip', '_blank'));
         this.dom.btnImport.addEventListener("click", () => this.dom.inpZipFile.click());
         
@@ -755,7 +742,7 @@ class PresetGalleryView {
         });
     }
 
-    async handleSave() {
+    async handleSave(forceAsNew = false) {
         const name = this.dom.inpName.value.trim().toLowerCase().replace(/ /g, "_");
         if (!name) return alert("Preset Name required.");
 
@@ -765,12 +752,18 @@ class PresetGalleryView {
         let shouldDeleteOriginal = false;
         let currentSelections = this.getSelectedArray();
 
-        if (this.currentMode === "edit") {
+        // If explicitly hitting 'Save As New' or working from a wiped/blank state canvas
+        if (forceAsNew || this.currentMode === "new") {
+            if (this.cache[uniqueKey] && !confirm(`"${uniqueKey}" already exists. Overwrite?`)) {
+                return;
+            }
+        } else {
+            // Regular inline save modifications: user edited an item and wants to update it
             if (this.lastSelectedKey && this.lastSelectedKey !== uniqueKey) {
+                // Name or subfolder path changed during edit mode! Treat as file rename action.
+                if (!confirm(`Rename preset location from "${this.lastSelectedKey}" to "${uniqueKey}"?`)) return;
                 shouldDeleteOriginal = true;
             }
-        } else if (this.cache[uniqueKey] && !confirm(`"${uniqueKey}" already exists. Overwrite?`)) {
-            return;
         }
 
         const fd = new FormData();
@@ -788,22 +781,20 @@ class PresetGalleryView {
         }
 
         const res = await PresetGalleryAPI.savePreset(fd);
-
-        if (res.success && shouldDeleteOriginal) {
-            if (this.cache[this.lastSelectedKey]) {
-                await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
-            }
-            currentSelections = currentSelections.map(item => item === this.lastSelectedKey ? uniqueKey : item);
-            this.lastSelectedKey = uniqueKey;
-        } else if (res.success && this.currentMode === "new") {
-            this.lastSelectedKey = uniqueKey;
-        }
-
         if (!res.success) return alert(`Save failed: ${res.error}`);
 
+        // Clean up structural tracking if a rename occurred
+        if (shouldDeleteOriginal && this.cache[this.lastSelectedKey]) {
+            await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
+            currentSelections = currentSelections.map(item => item === this.lastSelectedKey ? uniqueKey : item);
+        }
+
+        this.lastSelectedKey = uniqueKey;
+        this.currentMode = "edit";
+
         await this.loadGallery();
-        if (this.currentMode === "new") this.setMode("edit");
         this.updateWidgetValue(currentSelections);
+        this.updateBannerText();
     }
 
     async handleDelete() {
@@ -815,7 +806,6 @@ class PresetGalleryView {
         await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
         
         const selections = this.getSelectedArray().filter(v => v !== this.lastSelectedKey);
-        this.lastSelectedKey = "";
         
         await this.loadGallery();
         this.clearEditorFields();
@@ -832,7 +822,6 @@ class PresetGalleryView {
     }
 }
 
-// Global initialization logic register
 PresetGalleryStyles.inject();
 
 app.registerExtension({
@@ -849,10 +838,8 @@ app.registerExtension({
 
             widget.hidden = true;
 
-            // Instantiate Orchestration View Class
             const galleryView = new PresetGalleryView(this, widget);
             
-            // Intercept widget updates inside Comfy system 
             const baseCallback = widget.callback;
             widget.callback = function (value) {
                 galleryView.syncUI(value);
