@@ -24,14 +24,15 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
             .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
             .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
-            .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 4px; background: #3a3a3a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; }
+            .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 2px; background: #3a3a3a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; position: relative; }
             .j0n4t-pg-basket-chip:active { cursor: grabbing; }
             .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
             .j0n4t-pg-basket-chip-thumb { width: 16px; height: 16px; border-radius: 2px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000; flex-shrink: 0; }
-            .j0n4t-pg-basket-chip-label { font-size: 10px; color: #ddd; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-            .j0n4t-pg-basket-chip-del { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #888; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 2px; }
-            .j0n4t-pg-basket-chip-del:hover { background: #b23b3b; color: #fff; }
-            .j0n4t-pg-basket-chip-del svg { width: 10px; height: 10px; fill: currentColor; }
+            .j0n4t-pg-basket-chip-label { font-size: 10px; color: #ddd; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; margin-left: 2px; }
+            .j0n4t-pg-action-btn { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #aaa; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 1px; }
+            .j0n4t-pg-action-btn:hover { background: #555; color: #fff; }
+            .j0n4t-pg-action-btn.del-btn:hover { background: #b23b3b; color: #fff; }
+            .j0n4t-pg-action-btn svg { width: 10px; height: 10px; fill: currentColor; }
             .j0n4t-pg-top-bar { display: flex; gap: 6px; align-items: center; width: 100%; flex-shrink: 0; }
             .j0n4t-pg-search-wrapper { position: relative; flex-grow: 1; display: flex; align-items: center; }
             .j0n4t-pg-search { width: 100%; padding: 6px 24px 6px 6px; background: #1a1a1ab0; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; min-width: 0; }
@@ -50,10 +51,10 @@ class PresetGalleryStyles {
             .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; }
             .j0n4t-pg-group-header::after { content: ""; flex-grow: 1; height: 1px; background: #bdbdbd80; }
             .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header { display: none !important; }
-            .j0n4t-pg-item { cursor: grab; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 4px; background: #1a1a1a80; transition: 0.1s; height: fit-content; box-sizing: border-box; user-select: none; position: relative; }
-            .j0n4t-pg-item:active { cursor: grabbing; }
+            .j0n4t-pg-item { cursor: pointer; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 4px; background: #1a1a1a80; transition: 0.1s; height: fit-content; box-sizing: border-box; user-select: none; position: relative; }
             .j0n4t-pg-item:hover { background: #2a2a2a; border-color: #444; }
             .j0n4t-pg-item.selected { border-color: #007acc; background: #252525; }
+            .j0n4t-pg-item.editing { border-color: #d1a119 !important; background: #2b271d !important; }
             .j0n4t-pg-item.dragging { opacity: 0.4; }
             .j0n4t-pg-hidden { display: none !important; }
             .j0n4t-pg-thumb-box { width: 100%; height: 100px; border-radius: 2px; display: flex; align-items: center; justify-content: center; background: #111; color: #666; position: relative; overflow: hidden; pointer-events: none; }
@@ -62,13 +63,18 @@ class PresetGalleryStyles {
             .j0n4t-pg-icon { width: 20px; height: 20px; fill: currentColor; }
             .j0n4t-pg-initials { position: absolute; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 0px 1px 2px rgba(0,0,0,0.9), 0px 0px 4px rgba(0,0,0,0.7); text-transform: uppercase; bottom: 4px; z-index: 2; pointer-events: none; letter-spacing: 0.5px; }
             .j0n4t-pg-label { font-size: 10px; color: #ccc; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-            .j0n4t-pg-tag-badge { position: absolute; top: 6px; right: 6px; background: rgba(0,122,204,0.85); color: #fff; font-size: 7.5px; font-weight: bold; padding: 1px 4px; border-radius: 2px; text-transform: uppercase; pointer-events: none; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; z-index: 3; }
+            .j0n4t-pg-tag-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,122,204,0.85); color: #fff; font-size: 7.5px; font-weight: bold; padding: 1px 4px; border-radius: 2px; text-transform: uppercase; pointer-events: none; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; z-index: 3; }
+            .j0n4t-pg-corner-edit { position: absolute; top: 6px; right: 6px; background: #2a2a2a; color: #bbb; border-radius: 3px; width: 18px; height: 18px; display: none; align-items: center; justify-content: center; z-index: 4; border: 1px solid #444; transition: 0.15s; cursor: pointer; }
+            .j0n4t-pg-corner-edit:hover { background: #d1a119; color: #fff; border-color: #d1a119; }
+            .j0n4t-pg-corner-edit svg { width: 11px; height: 11px; fill: currentColor; }
+            .j0n4t-pg-item:hover .j0n4t-pg-corner-edit { display: flex; }
             .view-list .j0n4t-pg-item { display: flex; align-items: center; gap: 8px; text-align: left; padding: 4px 6px; }
             .view-list .j0n4t-pg-thumb-box { width: 32px; height: 32px; flex-shrink: 0; }
             .view-list .j0n4t-pg-icon { width: 14px; height: 14px; }
             .view-list .j0n4t-pg-initials { display: none; }
             .view-list .j0n4t-pg-label { margin-top: 0; font-size: 11px; flex-grow: 1; }
-            .view-list .j0n4t-pg-tag-badge { position: relative; top: auto; right: auto; background: #444; color: #bbb; max-width: none; font-size: 9px; }
+            .view-list .j0n4t-pg-tag-badge { position: relative; top: auto; left: auto; background: #444; color: #bbb; max-width: none; font-size: 9px; }
+            .view-list .j0n4t-pg-corner-edit { position: relative; top: auto; right: auto; display: flex !important; margin-left: auto; flex-shrink: 0; }
             .j0n4t-pg-grid.hide-folders .j0n4t-pg-tag-badge { display: block !important; }
             .j0n4t-pg-control-bar { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-shrink: 0; width: 100%; }
             .j0n4t-pg-toggle { flex-grow: 1; background: #333; border: 1px solid #444; color: #bbb; padding: 4px; border-radius: 3px; cursor: pointer; font-size: 10px; text-align: center; user-select: none; white-space: nowrap; }
@@ -77,7 +83,8 @@ class PresetGalleryStyles {
             .j0n4t-pg-checkbox-wrap input { width: auto; margin: 0; cursor: pointer; }
             .j0n4t-pg-editor { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #3d3d3d; padding-top: 8px; margin-top: 2px; box-sizing: border-box; flex-shrink: 0; }
             .j0n4t-pg-editor.collapsed { display: none !important; }
-            .j0n4t-pg-editor input, .j0n4t-pg-editor textarea { background: #1a1a1a80; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
+            .j0n4t-pg-editor-banner { font-size: 10px; font-weight: bold; padding: 4px 6px; border-radius: 3px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; }
+            .j0n4t-pg-editor input, .j0n4t-pg-editor textarea { background: #1a1a1ab0; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
             .j0n4t-pg-editor textarea { resize: vertical; min-height: 65px; }
             .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
             .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; text-align: center; box-sizing: border-box; height: 28px; }
@@ -257,16 +264,27 @@ class PresetBasket {
             chip.innerHTML = `
                 <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
                 <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
-                <div class="j0n4t-pg-basket-chip-del" title="Deselect Preset">
+                ${cache[styleKey] ? `
+                <div class="j0n4t-pg-action-btn edit-btn" title="Edit Profile Configuration">
+                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                </div>` : ''}
+                <div class="j0n4t-pg-action-btn del-btn" title="Deselect Preset from Queue">
                     <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                 </div>
             `;
 
-            chip.querySelector(".j0n4t-pg-basket-chip-del").addEventListener("click", (e) => {
+            chip.querySelector(".del-btn").addEventListener("click", (e) => {
                 e.stopPropagation();
                 const filtered = this.context.getSelectedArray().filter(v => v !== styleKey);
                 this.context.updateWidgetValue(filtered);
             });
+
+            if (cache[styleKey]) {
+                chip.querySelector(".edit-btn").addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    this.context.openEditorForPreset(styleKey);
+                });
+            }
 
             chip.addEventListener("dragstart", (e) => {
                 chip.classList.add("dragging");
@@ -276,24 +294,6 @@ class PresetBasket {
             });
 
             chip.addEventListener("dragend", () => chip.classList.remove("dragging"));
-
-            chip.addEventListener("dblclick", async (e) => {
-                e.stopPropagation();
-                if (cache[styleKey]) {
-                    this.context.openEditorForPreset(styleKey);
-                } else {
-                    const updatedVal = prompt("Edit one-time custom prompt terms/keywords:", styleKey);
-                    if (updatedVal === null) return;
-
-                    const selections = this.context.getSelectedArray();
-                    const idx = selections.indexOf(styleKey);
-                    if (idx !== -1) {
-                        if (updatedVal.trim()) selections[idx] = updatedVal.trim();
-                        else selections.splice(idx, 1);
-                        this.context.updateWidgetValue(selections);
-                    }
-                }
-            });
 
             this.pool.appendChild(chip);
         });
@@ -374,6 +374,7 @@ class PresetGalleryView {
                 <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group Folders</label>
             </div>
             <div class="j0n4t-pg-editor no-image">
+                <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 MODE: EDIT PRESET</div>
                 <div class="j0n4t-pg-row">
                     <div class="j0n4t-pg-mode-toggle">
                         <button type="button" class="j0n4t-pg-mode-btn mode-new" data-mode="new">✨ Create New</button>
@@ -407,6 +408,7 @@ class PresetGalleryView {
             search: wrap.querySelector(".j0n4t-pg-search"),
             searchClear: wrap.querySelector(".j0n4t-pg-search-clear"),
             editor: wrap.querySelector(".j0n4t-pg-editor"),
+            banner: wrap.querySelector("#j0n4t-pg-banner"),
             toggle: wrap.querySelector("#j0n4t-pg-toggle"),
             viewsContainer: wrap.querySelector(".j0n4t-pg-views"),
             chkGroup: wrap.querySelector("#j0n4t-pg-group-toggle"),
@@ -463,8 +465,24 @@ class PresetGalleryView {
         this.dom.modeToggle.querySelectorAll(".j0n4t-pg-mode-btn").forEach(btn => {
             btn.classList.toggle("active", btn.dataset.mode === mode);
         });
+        this.updateBannerText();
         if (mode === "new") this.clearEditorFields();
-        else this.syncUI(this.widget.value);
+    }
+
+    updateBannerText() {
+        if (this.currentMode === "new") {
+            this.dom.banner.innerText = "✨ Creating New Preset File";
+            this.dom.banner.style.color = "#228b22";
+            this.dom.banner.style.background = "#228b2220";
+        } else if (this.lastSelectedKey) {
+            this.dom.banner.innerText = `📝 Inspecting: ${this.lastSelectedKey}`;
+            this.dom.banner.style.color = "#d1a119";
+            this.dom.banner.style.background = "#d1a11920";
+        } else {
+            this.dom.banner.innerText = "📝 Edit Panel (Select Edit ✏️ on an Item)";
+            this.dom.banner.style.color = "#888";
+            this.dom.banner.style.background = "#33333330";
+        }
     }
 
     clearEditorFields() {
@@ -474,13 +492,21 @@ class PresetGalleryView {
         this.dom.inpPreset.value = "";
         this.dom.inpFile.value = "";
         this.dom.editor.classList.replace("has-image", "no-image");
+        this.syncEditorHighlight();
+    }
+
+    syncEditorHighlight() {
+        this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
+            const isEditingTarget = (this.currentMode === "edit" && el.dataset.style === this.lastSelectedKey);
+            el.classList.toggle("editing", isEditingTarget);
+        });
     }
 
     async openEditorForPreset(styleKey) {
         if (!this.cache[styleKey]) return;
         this.setPanelCollapseState(false);
-        this.setMode("edit");
         this.lastSelectedKey = styleKey;
+        this.setMode("edit");
 
         const parts = styleKey.split("/");
         this.dom.inpName.value = parts.pop() || "";
@@ -498,6 +524,7 @@ class PresetGalleryView {
             this.dom.editor.classList.replace("has-image", "no-image");
         }
         this.dom.inpFile.value = "";
+        this.syncEditorHighlight();
     }
 
     executeFilterPipeline() {
@@ -573,8 +600,11 @@ class PresetGalleryView {
                 : '';
 
             htmlBuffer += `
-                <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel}">
+                <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel} (Click to toggle assembly basket)">
                     ${badge}
+                    <div class="j0n4t-pg-corner-edit" title="Configure Profile">
+                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    </div>
                     ${thumbnailHtml}
                     <div class="j0n4t-pg-label">${cleanLabel}</div>
                 </div>
@@ -591,10 +621,17 @@ class PresetGalleryView {
                 e.dataTransfer.setData("source/grid", "true");
             });
             item.addEventListener("dragend", () => item.classList.remove("dragging"));
+            
+            // Corner edit click mapping hook override
+            item.querySelector(".j0n4t-pg-corner-edit").addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.openEditorForPreset(item.dataset.style);
+            });
         });
 
         this.switchView(localStorage.getItem("comfy_preset_gallery_view") || "big");
         this.executeFilterPipeline();
+        this.syncEditorHighlight();
     }
 
     async loadGallery() {
@@ -610,43 +647,7 @@ class PresetGalleryView {
         });
 
         this.basket.render(activeList, this.cache, this.helpers);
-
-        const primaryKey = activeList[activeList.length - 1];
-        this.fetchedBlobImage = null;
-        this.lastSelectedKey = primaryKey || "";
-
-        if (this.currentMode === "new") return;
-
-        if (primaryKey) {
-            if (this.cache[primaryKey]) {
-                const parts = primaryKey.split("/");
-                this.dom.inpName.value = parts.pop() || "";
-                this.dom.inpFolder.value = parts.join("/");
-                this.dom.inpPreset.value = this.cache[primaryKey].preset || "";
-
-                if (this.cache[primaryKey].filename) {
-                    this.dom.editor.classList.replace("no-image", "has-image");
-                    try {
-                        this.fetchedBlobImage = await PresetGalleryAPI.fetchPresetImage(this.cache[primaryKey].filename);
-                    } catch (err) {
-                        console.error("Failed to sync asset image stream", err);
-                    }
-                } else {
-                    this.dom.editor.classList.replace("has-image", "no-image");
-                }
-            } else {
-                this.dom.inpName.value = "Custom Chip";
-                this.dom.inpFolder.value = "";
-                this.dom.inpPreset.value = primaryKey;
-                this.dom.editor.classList.replace("has-image", "no-image");
-            }
-            this.dom.inpFile.value = "";
-        } else {
-            this.dom.inpName.value = ""; 
-            this.dom.inpFolder.value = ""; 
-            this.dom.inpPreset.value = "";
-            this.dom.editor.classList.replace("has-image", "no-image");
-        }
+        this.syncEditorHighlight();
     }
 
     bindEvents() {
@@ -679,6 +680,9 @@ class PresetGalleryView {
         });
 
         this.dom.grid.addEventListener("click", (e) => {
+            // Protect explicit click targeted on the sub corner edit button asset element
+            if (e.target.closest(".j0n4t-pg-corner-edit")) return;
+            
             const item = e.target.closest(".j0n4t-pg-item");
             if (!item || !this.widget.callback) return;
 
@@ -687,14 +691,6 @@ class PresetGalleryView {
             selections = selections.includes(styleKey) ? selections.filter(v => v !== styleKey) : [...selections, styleKey];
 
             this.updateWidgetValue(selections);
-            if (this.currentMode === "new") this.setMode("edit");
-        });
-
-        this.dom.grid.addEventListener("dblclick", (e) => {
-            const item = e.target.closest(".j0n4t-pg-item");
-            if (!item) return;
-            e.stopPropagation();
-            this.openEditorForPreset(item.dataset.style);
         });
 
         this.dom.btnPick.addEventListener("click", () => this.dom.inpFile.click());
@@ -798,8 +794,9 @@ class PresetGalleryView {
                 await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
             }
             currentSelections = currentSelections.map(item => item === this.lastSelectedKey ? uniqueKey : item);
+            this.lastSelectedKey = uniqueKey;
         } else if (res.success && this.currentMode === "new") {
-            if (!currentSelections.includes(uniqueKey)) currentSelections.push(uniqueKey);
+            this.lastSelectedKey = uniqueKey;
         }
 
         if (!res.success) return alert(`Save failed: ${res.error}`);
@@ -810,18 +807,19 @@ class PresetGalleryView {
     }
 
     async handleDelete() {
-        const selections = this.getSelectedArray();
-        const uniqueKey = selections[selections.length - 1];
-        if (!uniqueKey) return alert("Select an item to delete.");
+        if (!this.lastSelectedKey) return alert("No active target loaded into edit panel.");
+        if (!this.cache[this.lastSelectedKey]) return alert("Cannot remote delete a non-saved item.");
 
-        if (this.cache[uniqueKey]) {
-            if (!confirm(`Permanently delete "${uniqueKey}"?`)) return;
-            await PresetGalleryAPI.deletePreset(uniqueKey);
-            await this.loadGallery();
-        }
-
-        const nextSelections = selections.filter(v => v !== uniqueKey);
-        this.updateWidgetValue(nextSelections);
+        if (!confirm(`Permanently delete "${this.lastSelectedKey}" from disk?`)) return;
+        
+        await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
+        
+        const selections = this.getSelectedArray().filter(v => v !== this.lastSelectedKey);
+        this.lastSelectedKey = "";
+        
+        await this.loadGallery();
+        this.clearEditorFields();
+        this.updateWidgetValue(selections);
     }
 
     async init() {
