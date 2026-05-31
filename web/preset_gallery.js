@@ -306,7 +306,7 @@ class PresetGalleryView {
         this.cache = {};
         this.fetchedBlobImage = null;
         this.lastSelectedKey = "";
-        this.currentMode = "edit"; // "edit" represents targeting an existing item, "new" represents a blank canvas
+        this.currentMode = "edit"; 
 
         this.helpers = {
             getHashColor: (str) => {
@@ -337,7 +337,8 @@ class PresetGalleryView {
     }
 
     buildDOMStructure() {
-        const wrap = Object.assign(document.createElement("div"), { className: "j0n4t-pg-wrap" });
+        const wrap = document.createElement("div");
+        wrap.className = "j0n4t-pg-wrap";
         wrap.innerHTML = `
             <div class="j0n4t-pg-basket-container">
                 <div class="j0n4t-pg-basket-header">
@@ -494,6 +495,11 @@ class PresetGalleryView {
     async openEditorForPreset(styleKey) {
         if (!this.cache[styleKey]) return;
         this.setPanelCollapseState(false);
+        
+        // Wipe historical memory references before mounting the new selected profile context
+        this.fetchedBlobImage = null;
+        this.dom.inpFile.value = "";
+
         this.lastSelectedKey = styleKey;
         this.currentMode = "edit";
 
@@ -508,11 +514,13 @@ class PresetGalleryView {
                 this.fetchedBlobImage = await PresetGalleryAPI.fetchPresetImage(this.cache[styleKey].filename);
             } catch (err) {
                 console.error("Failed to sync asset image stream", err);
+                this.fetchedBlobImage = null;
+                this.dom.editor.classList.replace("has-image", "no-image");
             }
         } else {
             this.dom.editor.classList.replace("has-image", "no-image");
         }
-        this.dom.inpFile.value = "";
+        
         this.updateBannerText();
         this.syncEditorHighlight();
     }
@@ -680,6 +688,7 @@ class PresetGalleryView {
         this.dom.btnChange.addEventListener("click", () => this.dom.inpFile.click());
         this.dom.inpFile.addEventListener("change", () => {
             if (this.dom.inpFile.files[0]) {
+                // Instantly break link to historical cached baseline images if a brand new file stream is uploaded manually
                 this.fetchedBlobImage = null;
                 this.dom.editor.classList.replace("no-image", "has-image");
             }
@@ -752,15 +761,22 @@ class PresetGalleryView {
         let shouldDeleteOriginal = false;
         let currentSelections = this.getSelectedArray();
 
-        // If explicitly hitting 'Save As New' or working from a wiped/blank state canvas
+        // If explicitly hitting 'Save As New' or working from a wiped state
         if (forceAsNew || this.currentMode === "new") {
             if (this.cache[uniqueKey] && !confirm(`"${uniqueKey}" already exists. Overwrite?`)) {
                 return;
             }
+            
+            // CRITICAL FIX: If saving an existing template as a brand new preset file, 
+            // drop the historical image pointer unless the template's image was kept explicitly.
+            // If the UI DOM state currently shows 'no-image', force clear internal variables.
+            if (this.dom.editor.classList.contains("no-image")) {
+                this.fetchedBlobImage = null;
+                this.dom.inpFile.value = "";
+            }
         } else {
-            // Regular inline save modifications: user edited an item and wants to update it
+            // Regular inline update modifications
             if (this.lastSelectedKey && this.lastSelectedKey !== uniqueKey) {
-                // Name or subfolder path changed during edit mode! Treat as file rename action.
                 if (!confirm(`Rename preset location from "${this.lastSelectedKey}" to "${uniqueKey}"?`)) return;
                 shouldDeleteOriginal = true;
             }
@@ -783,7 +799,6 @@ class PresetGalleryView {
         const res = await PresetGalleryAPI.savePreset(fd);
         if (!res.success) return alert(`Save failed: ${res.error}`);
 
-        // Clean up structural tracking if a rename occurred
         if (shouldDeleteOriginal && this.cache[this.lastSelectedKey]) {
             await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
             currentSelections = currentSelections.map(item => item === this.lastSelectedKey ? uniqueKey : item);
