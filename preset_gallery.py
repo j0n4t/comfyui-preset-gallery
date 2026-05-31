@@ -263,27 +263,40 @@ async def api_rename_folder(request):
         if old_path == new_path:
             return web.json_response({"success": True, "message": "No change needed"})
 
+        def move_item_safely(source_item: Path, target_dir: Path):
+            target_dir.mkdir(parents=True, exist_ok=True)
+            destination = target_dir / source_item.name
+            if destination.exists():
+                stem = source_item.stem
+                suffix = source_item.suffix
+                counter = 1
+                while True:
+                    new_name = f"{stem}_{counter}{suffix}"
+                    destination = target_dir / new_name
+                    if not destination.exists():
+                        break
+                    counter += 1
+            if source_item.is_dir():
+                for sub_item in source_item.iterdir():
+                    move_item_safely(sub_item, destination)
+                source_item.rmdir()
+            else:
+                shutil.move(str(source_item), str(destination))
+
         if old_path in new_path.parents:
             temp_dir = pool_root / f"_temp_rename_{os.urandom(4).hex()}"
             shutil.move(str(old_path), str(temp_dir))
             new_path.mkdir(parents=True, exist_ok=True)
             for item in temp_dir.iterdir():
-                shutil.move(str(item), str(new_path / item.name))
+                move_item_safely(item, new_path)
+
             if temp_dir.exists() and not any(temp_dir.iterdir()):
                 temp_dir.rmdir()
         else:
             if new_path.exists():
                 for item in old_path.iterdir():
-                    target_item = new_path / item.name
-                    if target_item.exists():
-                        if target_item.is_dir():
-                            shutil.copytree(str(item), str(target_item), dirs_exist_ok=True)
-                            shutil.rmtree(str(item))
-                        else:
-                            target_item.unlink()
-                            shutil.move(str(item), str(target_item))
-                    else:
-                        shutil.move(str(item), str(target_item))
+                    move_item_safely(item, new_path)
+                
                 if old_path != pool_root and old_path.exists() and not any(old_path.iterdir()):
                     old_path.rmdir()
             else:
