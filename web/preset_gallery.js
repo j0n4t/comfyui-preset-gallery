@@ -23,7 +23,12 @@ styles.textContent = `
     .j0n4t-pg-basket-chip-del svg { width: 10px; height: 10px; fill: currentColor; }
 
     .j0n4t-pg-top-bar { display: flex; gap: 6px; align-items: center; width: 100%; flex-shrink: 0; }
-    .j0n4t-pg-search { flex-grow: 1; padding: 6px; background: #1a1a1ab0; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; min-width: 0; }
+    .j0n4t-pg-search-wrapper { position: relative; flex-grow: 1; display: flex; align-items: center; }
+    .j0n4t-pg-search { width: 100%; padding: 6px 24px 6px 6px; background: #1a1a1ab0; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; min-width: 0; }
+    .j0n4t-pg-search-clear { position: absolute; right: 6px; width: 14px; height: 14px; color: #777; cursor: pointer; display: none; align-items: center; justify-content: center; border-radius: 2px; transition: color 0.1s, background-color 0.1s; }
+    .j0n4t-pg-search-clear:hover { color: #fff; background: #b23b3b; }
+    .j0n4t-pg-search-clear svg { width: 10px; height: 10px; fill: currentColor; }
+    
     .j0n4t-pg-views { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a80; padding: 2px; border-radius: 4px; border: 1px solid #444; }
     .j0n4t-pg-view-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 3px; cursor: pointer; color: #aaa; background: transparent; transition: 0.15s; }
     .j0n4t-pg-view-btn:hover { background: #333; color: #fff; }
@@ -117,7 +122,12 @@ app.registerExtension({
                 </div>
 
                 <div class="j0n4t-pg-top-bar">
-                    <input type="text" class="j0n4t-pg-search" placeholder="Filter presets or folders..." />
+                    <div class="j0n4t-pg-search-wrapper">
+                        <input type="text" class="j0n4t-pg-search" placeholder="Filter presets or folders..." />
+                        <div class="j0n4t-pg-search-clear" title="Clear Filter">
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        </div>
+                    </div>
                     <div class="j0n4t-pg-views">
                         <div class="j0n4t-pg-view-btn" data-view="small" title="Small Grid"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="3" height="3"/><rect x="6" y="1" width="3" height="3"/><rect x="11" y="1" width="3" height="3"/><rect x="1" y="6" width="3" height="3"/><rect x="6" y="6" width="3" height="3"/><rect x="11" y="6" width="3" height="3"/><rect x="1" y="11" width="3" height="3"/><rect x="6" y="11" width="3" height="3"/><rect x="11" y="11" width="3" height="3"/></svg></div>
                         <div class="j0n4t-pg-view-btn" data-view="big" title="Big Grid"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg></div>
@@ -177,6 +187,7 @@ app.registerExtension({
             const basketPool = wrap.querySelector(".j0n4t-pg-basket-pool");
             const grid = wrap.querySelector(".j0n4t-pg-grid");
             const search = wrap.querySelector(".j0n4t-pg-search");
+            const searchClear = wrap.querySelector(".j0n4t-pg-search-clear");
             const editor = wrap.querySelector(".j0n4t-pg-editor");
             const toggle = wrap.querySelector("#j0n4t-pg-toggle");
             const viewsContainer = wrap.querySelector(".j0n4t-pg-views");
@@ -287,6 +298,8 @@ app.registerExtension({
                 const query = search.value.toLowerCase().trim();
                 const items = grid.querySelectorAll(".j0n4t-pg-item");
                 const queryWords = query ? query.split(/\s+/) : [];
+
+                searchClear.style.display = query ? "flex" : "none";
 
                 items.forEach(el => {
                     const matchBlob = el.dataset.searchBlob;
@@ -570,6 +583,12 @@ app.registerExtension({
             });
 
             search.addEventListener("input", executeFilterPipeline);
+
+            searchClear.addEventListener("click", () => {
+                search.value = "";
+                executeFilterPipeline();
+                search.focus();
+            });
 
             modeToggleContainer.addEventListener("click", (e) => {
                 const btn = e.target.closest(".j0n4t-pg-mode-btn");
