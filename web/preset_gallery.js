@@ -75,14 +75,14 @@ styles.textContent = `
     
     .j0n4t-pg-editor { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #3d3d3d; padding-top: 8px; margin-top: 2px; box-sizing: border-box; flex-shrink: 0; }
     .j0n4t-pg-editor.collapsed { display: none !important; }
-    .j0n4t-pg-editor input, .j0n4t-pg-editor textarea { background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
+    .j0n4t-pg-editor input, .j0n4t-pg-editor textarea { background: #1a1a1a80; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
     .j0n4t-pg-editor textarea { resize: vertical; min-height: 65px; }
     .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
     
     .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; text-align: center; box-sizing: border-box; height: 28px; }
     .j0n4t-pg-btn:hover { background: #0062a3; }
     
-    .j0n4t-pg-mode-toggle { display: flex; width: 100%; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; overflow: hidden; padding: 2px; box-sizing: border-box; }
+    .j0n4t-pg-mode-toggle { display: flex; width: 100%; background: #1a1a1a80; border: 1px solid #444; border-radius: 4px; overflow: hidden; padding: 2px; box-sizing: border-box; }
     .j0n4t-pg-mode-btn { flex: 1; border: none; background: transparent; color: #888; font-size: 10px; font-weight: bold; padding: 4px 0; cursor: pointer; text-transform: uppercase; text-align: center; border-radius: 3px; transition: 0.15s; }
     .j0n4t-pg-mode-btn.active { background: #007acc; color: #fff; }
     .j0n4t-pg-mode-btn.mode-new.active { background: #228b22; }
