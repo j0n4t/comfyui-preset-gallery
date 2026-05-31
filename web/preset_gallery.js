@@ -1,6 +1,6 @@
 import { app } from "../../../scripts/app.js";
 
-const MIN_NODE_HEIGHT = 640; 
+const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
 
 const styles = document.createElement("style");
@@ -15,6 +15,7 @@ styles.textContent = `
     .j0n4t-pg-basket-custom-btn:hover { background: #1e7b1e; }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
     .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
+    .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
     
     .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 4px; background: #3a3a3a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; }
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
@@ -275,10 +276,10 @@ app.registerExtension({
             };
 
             const openEditorForPreset = async (styleKey) => {
-                if (!cache[styleKey]) return; 
+                if (!cache[styleKey]) return;
                 setPanelCollapseState(false);
                 setMode("edit");
-                
+
                 lastSelectedKey = styleKey;
                 if (styleKey && cache[styleKey]) {
                     const parts = styleKey.split("/");
@@ -378,7 +379,6 @@ app.registerExtension({
 
                     chip.addEventListener("dragend", () => {
                         chip.classList.remove("dragging");
-                        reorderSelectionsFromDOM();
                     });
 
                     chip.addEventListener("dblclick", (e) => {
@@ -387,8 +387,8 @@ app.registerExtension({
                             openEditorForPreset(styleKey);
                         } else {
                             const updatedVal = prompt("Edit one-time custom prompt terms/keywords:", styleKey);
-                            if (updatedVal === null) return; 
-                            
+                            if (updatedVal === null) return;
+
                             let currentSelections = getSelectedArray();
                             const idx = currentSelections.indexOf(styleKey);
                             if (idx !== -1) {
@@ -408,12 +408,29 @@ app.registerExtension({
                 });
             };
 
-            const getDropNextSibling = (container, clientX) => {
+            let dropIndicator = null;
+
+            const getClosestChip = (container, clientX, clientY) => {
                 const siblings = [...container.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)")];
-                return siblings.find(sibling => {
+
+                return siblings.reduce((closest, sibling) => {
                     const box = sibling.getBoundingClientRect();
-                    return clientX <= box.left + box.width / 2;
-                });
+                    const centerX = box.left + box.width / 2;
+                    const centerY = box.top + box.height / 2;
+                    const distance = Math.hypot(clientX - centerX, clientY - centerY);
+
+                    if (distance < closest.distance) {
+                        return { distance: distance, element: sibling, box: box };
+                    }
+                    return closest;
+                }, { distance: Infinity, element: null, box: null });
+            };
+
+            const removeDropIndicator = () => {
+                if (dropIndicator && dropIndicator.parentNode) {
+                    dropIndicator.remove();
+                }
+                dropIndicator = null;
             };
 
             basketContainer.addEventListener("dragenter", (e) => {
@@ -423,54 +440,91 @@ app.registerExtension({
 
             basketContainer.addEventListener("dragover", (e) => {
                 e.preventDefault();
-                
-                const draggingChip = basketPool.querySelector(".j0n4t-pg-basket-chip.dragging");
-                if (draggingChip) {
-                    const nextSibling = getDropNextSibling(basketPool, e.clientX);
-                    basketPool.insertBefore(draggingChip, nextSibling);
+
+                if (!dropIndicator) {
+                    dropIndicator = document.createElement("div");
+                    dropIndicator.className = "j0n4t-pg-basket-drop-indicator";
+                }
+
+                const closest = getClosestChip(basketPool, e.clientX, e.clientY);
+
+                if (closest.element) {
+                    dropIndicator.style.height = `${closest.box.height}px`;
+
+                    const dropAfter = e.clientX > (closest.box.left + closest.box.width / 2);
+                    if (dropAfter) {
+                        closest.element.after(dropIndicator);
+                    } else {
+                        closest.element.before(dropIndicator);
+                    }
+                } else {
+                    basketPool.appendChild(dropIndicator);
+                    dropIndicator.style.height = "12px";
                 }
             });
 
             basketContainer.addEventListener("dragleave", (e) => {
                 if (e.relatedTarget && basketContainer.contains(e.relatedTarget)) return;
                 basketContainer.classList.remove("drag-over");
+                removeDropIndicator();
             });
 
             basketContainer.addEventListener("drop", (e) => {
                 e.preventDefault();
                 basketContainer.classList.remove("drag-over");
-                
+                removeDropIndicator();
+
                 const styleKey = e.dataTransfer.getData("text/plain");
                 if (!styleKey) return;
 
                 const isFromBasket = e.dataTransfer.getData("source/basket");
+                let currentSelections = getSelectedArray();
+
+                const closest = getClosestChip(basketPool, e.clientX, e.clientY);
+
                 if (isFromBasket) {
-                    reorderSelectionsFromDOM();
-                } else {
-                    let currentSelections = getSelectedArray().filter(v => v !== styleKey);
-                    const nextSibling = getDropNextSibling(basketPool, e.clientX);
-                    if (nextSibling) {
-                        const targetId = nextSibling.dataset.id;
-                        const insertionIndex = currentSelections.indexOf(targetId);
-                        if (insertionIndex !== -1) {
-                            currentSelections.splice(insertionIndex, 0, styleKey);
-                        } else {
-                            currentSelections.push(styleKey);
-                        }
+                    currentSelections = currentSelections.filter(v => v !== styleKey);
+                }
+
+                if (closest.element) {
+                    const targetId = closest.element.dataset.id;
+                    let insertionIndex = currentSelections.indexOf(targetId);
+
+                    const dropAfter = e.clientX > (closest.box.left + closest.box.width / 2);
+                    if (dropAfter) {
+                        insertionIndex += 1;
+                    }
+
+                    if (insertionIndex !== -1) {
+                        currentSelections.splice(insertionIndex, 0, styleKey);
                     } else {
                         currentSelections.push(styleKey);
                     }
-
-                    widget.value = currentSelections.join(", ");
-                    if (widget.callback) widget.callback(widget.value);
-                    if (node.graph) node.graph._version++;
+                } else {
+                    if (!currentSelections.includes(styleKey)) {
+                        currentSelections.push(styleKey);
+                    }
                 }
+
+                const uniqueOrder = [...new Set(currentSelections)];
+
+                widget.value = uniqueOrder.join(", ");
+                if (widget.callback) widget.callback(widget.value);
+
+                renderBasket(uniqueOrder);
+
+                grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
+                    el.classList.toggle("selected", uniqueOrder.includes(el.dataset.style));
+                });
+
+                if (node.graph) node.graph._version++;
             });
+
 
             const reorderSelectionsFromDOM = () => {
                 const currentOrder = [...basketPool.querySelectorAll(".j0n4t-pg-basket-chip")].map(chip => chip.dataset.id);
                 const uniqueOrder = [...new Set(currentOrder)];
-                
+
                 widget.value = uniqueOrder.join(", ");
                 grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
                     el.classList.toggle("selected", uniqueOrder.includes(el.dataset.style));
@@ -545,7 +599,7 @@ app.registerExtension({
                 });
 
                 grid.innerHTML = htmlBuffer || `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
-                
+
                 grid.querySelectorAll(".j0n4t-pg-item").forEach(item => {
                     item.addEventListener("dragstart", (e) => {
                         item.classList.add("dragging");
@@ -570,7 +624,7 @@ app.registerExtension({
 
             const syncUI = async (delimitedValue) => {
                 const activeList = delimitedValue ? delimitedValue.split(",").map(v => v.trim()).filter(Boolean) : [];
-                
+
                 grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
                     el.classList.toggle("selected", activeList.includes(el.dataset.style));
                 });
@@ -664,7 +718,7 @@ app.registerExtension({
             grid.addEventListener("dblclick", (e) => {
                 const item = e.target.closest(".j0n4t-pg-item");
                 if (!item) return;
-                
+
                 e.stopPropagation();
                 openEditorForPreset(item.dataset.style);
             });
@@ -689,7 +743,7 @@ app.registerExtension({
             const handleEnterKeySave = (e) => {
                 if (e.key === "Enter") {
                     if (e.target.tagName === "TEXTAREA" && e.shiftKey) {
-                        return; 
+                        return;
                     }
                     e.preventDefault();
                     btnSave.click();
@@ -764,7 +818,7 @@ app.registerExtension({
                 const selections = getSelectedArray();
                 const uniqueKey = selections[selections.length - 1];
                 if (!uniqueKey) return alert("Select an item to delete.");
-                
+
                 if (cache[uniqueKey]) {
                     if (!confirm(`Permanently delete "${uniqueKey}"?`)) return;
                     await fetch('/custom_node/delete_preset_item', {
