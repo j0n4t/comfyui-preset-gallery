@@ -306,7 +306,7 @@ class PresetGalleryView {
         this.cache = {};
         this.fetchedBlobImage = null;
         this.lastSelectedKey = "";
-        this.currentMode = "edit"; 
+        this.currentMode = "new"; // Clear state lifecycle tracker
 
         this.helpers = {
             getHashColor: (str) => {
@@ -472,15 +472,22 @@ class PresetGalleryView {
         }
     }
 
+    /**
+     * Centralized utility to reset image state securely and prevent shared mutation leakages
+     */
+    resetImageState() {
+        this.fetchedBlobImage = null;
+        this.dom.inpFile.value = "";
+        this.dom.editor.classList.replace("has-image", "no-image");
+    }
+
     clearEditorFields() {
         this.currentMode = "new";
         this.lastSelectedKey = "";
-        this.fetchedBlobImage = null;
         this.dom.inpName.value = "";
         this.dom.inpFolder.value = "";
         this.dom.inpPreset.value = "";
-        this.dom.inpFile.value = "";
-        this.dom.editor.classList.replace("has-image", "no-image");
+        this.resetImageState();
         this.updateBannerText();
         this.syncEditorHighlight();
     }
@@ -496,13 +503,13 @@ class PresetGalleryView {
         if (!this.cache[styleKey]) return;
         this.setPanelCollapseState(false);
         
-        // Wipe historical memory references before mounting the new selected profile context
-        this.fetchedBlobImage = null;
-        this.dom.inpFile.value = "";
+        // Terminate old image context records before entering a new preset scope
+        this.resetImageState();
 
         this.lastSelectedKey = styleKey;
         this.currentMode = "edit";
 
+        // Read directly from a split copy to avoid mapping reference addresses directly
         const parts = styleKey.split("/");
         this.dom.inpName.value = parts.pop() || "";
         this.dom.inpFolder.value = parts.join("/");
@@ -511,14 +518,15 @@ class PresetGalleryView {
         if (this.cache[styleKey].filename) {
             this.dom.editor.classList.replace("no-image", "has-image");
             try {
-                this.fetchedBlobImage = await PresetGalleryAPI.fetchPresetImage(this.cache[styleKey].filename);
+                const blob = await PresetGalleryAPI.fetchPresetImage(this.cache[styleKey].filename);
+                // Confirm selection match didn't change while waiting for asynchronous download response threads
+                if (this.lastSelectedKey === styleKey && this.currentMode === "edit") {
+                    this.fetchedBlobImage = blob;
+                }
             } catch (err) {
                 console.error("Failed to sync asset image stream", err);
-                this.fetchedBlobImage = null;
-                this.dom.editor.classList.replace("has-image", "no-image");
+                this.resetImageState();
             }
-        } else {
-            this.dom.editor.classList.replace("has-image", "no-image");
         }
         
         this.updateBannerText();
@@ -688,17 +696,14 @@ class PresetGalleryView {
         this.dom.btnChange.addEventListener("click", () => this.dom.inpFile.click());
         this.dom.inpFile.addEventListener("change", () => {
             if (this.dom.inpFile.files[0]) {
-                // Instantly break link to historical cached baseline images if a brand new file stream is uploaded manually
-                this.fetchedBlobImage = null;
+                this.fetchedBlobImage = null; // Sever cached pointers when a manually loaded file stream takes over
                 this.dom.editor.classList.replace("no-image", "has-image");
             }
         });
 
         this.dom.btnRmImg.addEventListener("click", () => {
             if (!confirm("Clear this image attachment placeholder? Image will be deleted instantly on next save commit.")) return;
-            this.fetchedBlobImage = null;
-            this.dom.inpFile.value = "";
-            this.dom.editor.classList.replace("has-image", "no-image");
+            this.resetImageState();
         });
 
         const handleEnterKeySave = (e) => {
@@ -761,21 +766,21 @@ class PresetGalleryView {
         let shouldDeleteOriginal = false;
         let currentSelections = this.getSelectedArray();
 
-        // If explicitly hitting 'Save As New' or working from a wiped state
-        if (forceAsNew || this.currentMode === "new") {
+        // Mutate the UI operational tracking mode securely based on trigger flags
+        if (forceAsNew) {
+            this.currentMode = "new";
+        }
+
+        if (this.currentMode === "new") {
             if (this.cache[uniqueKey] && !confirm(`"${uniqueKey}" already exists. Overwrite?`)) {
                 return;
             }
-            
-            // CRITICAL FIX: If saving an existing template as a brand new preset file, 
-            // drop the historical image pointer unless the template's image was kept explicitly.
-            // If the UI DOM state currently shows 'no-image', force clear internal variables.
+            // Defensive State Cleanup: Force clear historical references if user cleared the image view prior to saving as new
             if (this.dom.editor.classList.contains("no-image")) {
                 this.fetchedBlobImage = null;
                 this.dom.inpFile.value = "";
             }
         } else {
-            // Regular inline update modifications
             if (this.lastSelectedKey && this.lastSelectedKey !== uniqueKey) {
                 if (!confirm(`Rename preset location from "${this.lastSelectedKey}" to "${uniqueKey}"?`)) return;
                 shouldDeleteOriginal = true;
@@ -788,9 +793,10 @@ class PresetGalleryView {
         fd.append("preset_text", this.dom.inpPreset.value.trim());
         fd.append("overwrite", "true");
 
+        // Transactional State Append Check
         if (this.dom.inpFile.files[0]) {
             fd.append("image_file", this.dom.inpFile.files[0]);
-        } else if (this.fetchedBlobImage) {
+        } else if (this.fetchedBlobImage && !this.dom.editor.classList.contains("no-image")) {
             fd.append("image_file", this.fetchedBlobImage, "image.jpg");
         } else {
             fd.append("clear_image", "true");
