@@ -325,7 +325,8 @@ app.registerExtension({
 
                     const chip = Object.assign(document.createElement("div"), {
                         className: "j0n4t-pg-basket-chip",
-                        draggable: true
+                        draggable: true,
+                        title: `${cleanLabel}`
                     });
                     chip.dataset.id = styleKey;
 
@@ -487,7 +488,7 @@ app.registerExtension({
                         : '';
 
                     htmlBuffer += `
-                        <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true">
+                        <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel}">
                             ${badge}
                             ${thumbnailHtml}
                             <div class="j0n4t-pg-label">${cleanLabel}</div>
