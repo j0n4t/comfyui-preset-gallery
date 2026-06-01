@@ -535,7 +535,7 @@ class PresetBasket {
             });
             chip.dataset.id = styleKey;
 
-            let thumbStyle = `background-color: ${helpers.getHashColor(styleKey)};`;
+            let thumbStyle = `background-color: ${helpers.getHashColor(helpers.getBaseFolder(styleKey))};`;
             if (item?.filename) {
                 thumbStyle = `background-image: url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}');`;
             }
