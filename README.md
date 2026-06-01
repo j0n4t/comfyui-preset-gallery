@@ -1,6 +1,7 @@
 # ComfyUI Preset Gallery
 A sleek, visual extension for ComfyUI to save, organize, filter, and reuse your favorite prompt snippets and style templates using an interactive embedded grid.
 
+![sample screenshot](sample.png)
 ## 🚀 Quick Start
 
 ### 1. Installation
@@ -11,6 +12,8 @@ Navigate to your ComfyUI custom nodes directory and clone the repository:
 cd ComfyUI/custom_nodes
 git clone https://github.com/j0n4t/comfyui-preset-gallery.git
 ```
+
+> Sample presets: [presets_sample.zip](./presets_sample.zip)
 
 Restart ComfyUI to load the extension.
 
