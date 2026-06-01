@@ -595,7 +595,9 @@ class PresetGalleryView {
             getInitials: (key) => {
                 const raw = key.includes("/") ? key.split("/").pop() : key;
                 return this.helpers.toTitleCase(raw).split(/\s+/).map(w => w.slice(0, 2)).join('').substring(0, 6);
-            }
+            },
+            getBaseFolder: (key) => key.includes("/") ? key.split("/")[0] : key,
+            getPresetColor: (key) => this.helpers.getHashColor(this.helpers.getBaseFolder(key))
         };
 
         this.dom = this.buildDOMStructure();
@@ -904,7 +906,7 @@ class PresetGalleryView {
                     </div>`;
             } else {
                 thumbnailHtml = `
-                    <div class="j0n4t-pg-thumb-box" style="background-color: ${this.helpers.getHashColor(uniqueKey)}; color: #fff;">
+                    <div class="j0n4t-pg-thumb-box" style="background-color: ${this.helpers.getPresetColor(uniqueKey)}; color: #fff;">
                         <svg class="j0n4t-pg-icon" viewBox="0 0 24 24" style="opacity: 0.25; color: #fff;"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                         <div class="j0n4t-pg-initials">${initials}</div>
                     </div>`;
