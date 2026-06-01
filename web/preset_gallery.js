@@ -598,8 +598,9 @@ class PresetGalleryView {
         this.widget = widget;
         this.cache = {};
         this.fetchedBlobImage = null;
-        this.lastSelectedKey = "";
+        this.editingKey = "";
         this.currentMode = "new";
+        this.isSaved = false;
 
         this.helpers = {
             getHashColor: (str) => {
@@ -786,14 +787,24 @@ class PresetGalleryView {
             this.dom.banner.innerText = "✨ Creating New Preset";
             this.dom.banner.style.color = "#228b22";
             this.dom.banner.style.background = "#228b2220";
-        } else if (this.lastSelectedKey) {
-            this.dom.banner.innerText = `📝 Editing: ${this.lastSelectedKey}`;
+            this.dom.btnSave.innerText = "Save Preset";
+        } else if (this.editingKey) {
+            this.dom.banner.innerText = `📝 Editing: ${this.editingKey}`;
             this.dom.banner.style.color = "#d1a119";
             this.dom.banner.style.background = "#d1a11920";
+            if (this.isSaved) {
+                this.dom.btnSave.innerText = "✅ Saved!";
+                this.dom.btnSave.style.background = "#228b22";
+            } else {
+                this.dom.btnSave.innerText = "Save Changes";
+                this.dom.btnSave.style.background = "#007acc"; // Restore default blue color
+            }
         } else {
             this.dom.banner.innerText = "📝 Edit Panel (Select Edit ✏️ on an Preset)";
             this.dom.banner.style.color = "#888";
             this.dom.banner.style.background = "#33333330";
+            this.dom.btnSave.innerText = "Save Changes";
+            this.dom.btnSave.style.background = "#007acc";
         }
     }
 
@@ -805,7 +816,8 @@ class PresetGalleryView {
 
     clearEditorFields() {
         this.currentMode = "new";
-        this.lastSelectedKey = "";
+        this.editingKey = "";
+        this.isSaved = false;
         this.dom.inpName.value = "";
         this.dom.inpFolder.value = "";
         this.dom.inpPreset.value = "";
@@ -816,7 +828,7 @@ class PresetGalleryView {
 
     syncEditorHighlight() {
         this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
-            const isEditingTarget = (this.currentMode === "edit" && el.dataset.style === this.lastSelectedKey);
+            const isEditingTarget = (this.currentMode === "edit" && el.dataset.style === this.editingKey);
             el.classList.toggle("editing", isEditingTarget);
         });
     }
@@ -826,8 +838,9 @@ class PresetGalleryView {
         this.setPanelCollapseState(false);
         this.resetImageState();
 
-        this.lastSelectedKey = styleKey;
+        this.editingKey = styleKey;
         this.currentMode = "edit";
+        this.isSaved = true;
 
         const parts = styleKey.split("/");
         this.dom.inpName.value = parts.pop() || "";
@@ -838,7 +851,7 @@ class PresetGalleryView {
             this.dom.editor.classList.replace("no-image", "has-image");
             try {
                 const blob = await PresetGalleryAPI.fetchPresetImage(this.cache[styleKey].filename);
-                if (this.lastSelectedKey === styleKey && this.currentMode === "edit") {
+                if (this.editingKey === styleKey && this.currentMode === "edit") {
                     this.fetchedBlobImage = blob;
                 }
             } catch (err) {
@@ -1122,18 +1135,39 @@ class PresetGalleryView {
             this.updateWidgetValue(selections);
         });
 
+        const markAsPendingChanges = () => {
+            if (this.currentMode === "edit" && this.isSaved) {
+                this.isSaved = false;
+                this.updateBannerText();
+            }
+        };
+
+        this.dom.inpName.addEventListener("input", markAsPendingChanges);
+        this.dom.inpFolder.addEventListener("input", markAsPendingChanges);
+        this.dom.inpPreset.addEventListener("input", markAsPendingChanges);
+
+        this.dom.inpFile.addEventListener("change", () => {
+            if (this.dom.inpFile.files[0]) {
+                this.fetchedBlobImage = null;
+                this.dom.editor.classList.replace("no-image", "has-image");
+                markAsPendingChanges();
+            }
+        });
+
         this.dom.btnPick.addEventListener("click", () => this.dom.inpFile.click());
         this.dom.btnChange.addEventListener("click", () => this.dom.inpFile.click());
         this.dom.inpFile.addEventListener("change", () => {
             if (this.dom.inpFile.files[0]) {
                 this.fetchedBlobImage = null;
                 this.dom.editor.classList.replace("no-image", "has-image");
+                markAsPendingChanges();
             }
         });
 
         this.dom.btnRmImg.addEventListener("click", () => {
             if (!confirm("Clear this image attachment placeholder? Image will be deleted instantly on next save commit.")) return;
             this.resetImageState();
+            markAsPendingChanges();
         });
 
         const handleEnterKeySave = (e) => {
@@ -1255,7 +1289,7 @@ class PresetGalleryView {
                 this.dom.inpFile.value = "";
             }
         } else {
-            if (this.lastSelectedKey && this.lastSelectedKey !== uniqueKey) {
+            if (this.editingKey && this.editingKey !== uniqueKey) {
                 shouldDeleteOriginal = true;
             }
         }
@@ -1277,17 +1311,18 @@ class PresetGalleryView {
         const res = await PresetGalleryAPI.savePreset(fd);
         if (!res.success) return alert(`Save failed: ${res.error}`);
 
-        if (shouldDeleteOriginal && this.cache[this.lastSelectedKey]) {
-            await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
-            currentSelections = currentSelections.map(item => item === this.lastSelectedKey ? uniqueKey : item);
+        if (shouldDeleteOriginal && this.cache[this.editingKey]) {
+            await PresetGalleryAPI.deletePreset(this.editingKey);
+            currentSelections = currentSelections.map(item => item === this.editingKey ? uniqueKey : item);
         }
 
         if (!currentSelections.includes(uniqueKey)) {
             currentSelections.push(uniqueKey);
         }
 
-        this.lastSelectedKey = uniqueKey;
+        this.editingKey = uniqueKey;
         this.currentMode = "edit";
+        this.isSaved = true;
 
         await this.loadGallery();
         this.updateWidgetValue(currentSelections);
@@ -1295,13 +1330,13 @@ class PresetGalleryView {
     }
 
     async handleDelete() {
-        if (!this.lastSelectedKey) return alert("No active target loaded into edit panel.");
-        if (!this.cache[this.lastSelectedKey]) return alert("Cannot remote delete a non-saved item.");
+        if (!this.editingKey) return alert("No active target loaded into edit panel.");
+        if (!this.cache[this.editingKey]) return alert("Cannot remote delete a non-saved item.");
 
-        if (!confirm(`Permanently delete "${this.lastSelectedKey}" from disk?`)) return;
+        if (!confirm(`Permanently delete "${this.editingKey}" from disk?`)) return;
 
-        await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
-        const selections = this.getSelectedArray().filter(v => v !== this.lastSelectedKey);
+        await PresetGalleryAPI.deletePreset(this.editingKey);
+        const selections = this.getSelectedArray().filter(v => v !== this.editingKey);
 
         await this.loadGallery();
         this.clearEditorFields();
