@@ -524,10 +524,9 @@ class PresetBasket {
             chip.innerHTML = `
                 <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
                 <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
-                ${cache[styleKey] ? `
                 <div class="j0n4t-pg-action-btn edit-btn" title="Edit Profile Configuration">
                     <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                </div>` : ''}
+                </div>
                 <div class="j0n4t-pg-action-btn del-btn" title="Deselect Preset from Queue">
                     <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                 </div>
@@ -539,12 +538,23 @@ class PresetBasket {
                 this.context.updateWidgetValue(filtered);
             });
 
-            if (cache[styleKey]) {
-                chip.querySelector(".edit-btn").addEventListener("click", (e) => {
-                    e.stopPropagation();
+            chip.querySelector(".edit-btn").addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (cache[styleKey]) {
                     this.context.openEditorForPreset(styleKey);
-                });
-            }
+                } else {
+                    const updatedVal = prompt("Edit one-time custom prompt terms/keywords:", styleKey);
+                    if (updatedVal === null) return;
+
+                    const selections = this.context.getSelectedArray();
+                    const idx = selections.indexOf(styleKey);
+                    if (idx !== -1) {
+                        if (updatedVal.trim()) selections[idx] = updatedVal.trim();
+                        else selections.splice(idx, 1);
+                        this.context.updateWidgetValue(selections);
+                    }
+                }
+            });
 
             chip.addEventListener("dragstart", (e) => {
                 chip.classList.add("dragging");
