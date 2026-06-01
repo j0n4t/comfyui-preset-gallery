@@ -1190,9 +1190,7 @@ class PresetGalleryView {
         this.dom.btnCustomChip.addEventListener("click", () => {
             const promptVal = prompt("Enter one-time custom prompt terms/keywords:");
             if (!promptVal || !promptVal.trim()) return;
-            const selections = this.getSelectedArray();
-            selections.push(promptVal.trim());
-            this.updateWidgetValue(selections);
+            this.addCustomChipToBasket(promptVal.trim());
         });
 
         this.dom.btnClearBasket.addEventListener("click", () => {
@@ -1310,6 +1308,25 @@ class PresetGalleryView {
         this.updateWidgetValue(selections);
     }
 
+    addPresetToBasket = (uniqueKey) => {
+        let currentSelections = this.getSelectedArray();
+        if (!currentSelections.includes(uniqueKey)) {
+            currentSelections.push(uniqueKey);
+            this.updateWidgetValue(currentSelections);
+        }
+
+        searchInput.value = "";
+        this.executeFilterPipeline();
+        closePopup();
+        searchInput.focus();
+    };
+
+    addCustomChipToBasket = (text) => {
+        const selections = this.getSelectedArray();
+        selections.push(text);
+        this.updateWidgetValue(selections);
+    }
+
     initFilterAutocomplete() {
         const searchInput = this.dom.search;
         let popupEl = null;
@@ -1330,19 +1347,6 @@ class PresetGalleryView {
             items.forEach((item, index) => {
                 item.classList.toggle("active", index === activeIndex);
             });
-        };
-
-        const addPresetToBasket = (uniqueKey) => {
-            let currentSelections = this.getSelectedArray();
-            if (!currentSelections.includes(uniqueKey)) {
-                currentSelections.push(uniqueKey);
-                this.updateWidgetValue(currentSelections);
-            }
-
-            searchInput.value = "";
-            this.executeFilterPipeline();
-            closePopup();
-            searchInput.focus();
         };
 
         searchInput.addEventListener("input", () => {
@@ -1383,15 +1387,13 @@ class PresetGalleryView {
                 const cleanLabel = this.helpers.toTitleCase(key.includes("/") ? key.split("/").pop() : key);
                 const row = document.createElement("div");
                 row.className = `j0n4t-pg-filter-autocomplete-item${index === activeIndex ? ' active' : ''}`;
-
                 row.innerHTML = `
-                <span>${cleanLabel}</span>
-                <span class="j0n4t-pg-filter-autocomplete-meta">${key}</span>
-            `;
-
+                    <span>${cleanLabel}</span>
+                    <span class="j0n4t-pg-filter-autocomplete-meta">${key}</span>
+                `;
                 row.addEventListener("mousedown", (e) => {
                     e.preventDefault();
-                    addPresetToBasket(key);
+                    this.addPresetToBasket(key);
                 });
 
                 popupEl.appendChild(row);
@@ -1399,12 +1401,14 @@ class PresetGalleryView {
         });
 
         searchInput.addEventListener("keydown", (e) => {
-            if (!popupEl || matches.length === 0) return;
-
             if (e.key === "Enter") {
                 e.preventDefault();
                 e.stopPropagation();
-                addPresetToBasket(matches[activeIndex]);
+                if (matches[activeIndex]) {
+                    this.addPresetToBasket(matches[activeIndex]);
+                } else {
+                    this.addCustomChipToBasket(e.target.value);
+                }
             } else if (e.key === "ArrowDown") {
                 e.preventDefault();
                 activeIndex = (activeIndex + 1) % matches.length;
@@ -1415,6 +1419,7 @@ class PresetGalleryView {
                 renderHighlight();
             } else if (e.key === "Escape") {
                 e.preventDefault();
+                e.stopPropagation();
                 closePopup();
             }
         });
