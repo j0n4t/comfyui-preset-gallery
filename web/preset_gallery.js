@@ -278,6 +278,8 @@ class PresetBasket {
     }
 
     initAutocomplete() {
+        this.textarea.addEventListener("click", () => this.closePopup());
+        
         this.textarea.addEventListener("input", () => {
             if (!this.container.classList.contains("raw-mode")) return;
             this.evaluateAutocomplete();
