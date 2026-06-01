@@ -31,8 +31,6 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
 
             .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 100px; max-height: 200px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; position: relative; z-index: 2; caret-color: #fff; }
-            .j0n4t-pg-basket-ghost-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; font-family: monospace; font-size: 11px; padding: 5px 4px 4px 5px; box-sizing: border-box; color: transparent; white-space: pre-wrap; word-wrap: break-word; pointer-events: none; z-index: 1; overflow: hidden; }
-            .j0n4t-pg-ghost-shaded { color: #ffffff45; }
             
             .j0n4t-pg-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 9999; display: flex; flex-direction: column; width: max-content; max-width: 280px; overflow: hidden; font-family: sans-serif; box-sizing: border-box; }
             .j0n4t-pg-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 6px; }
@@ -194,13 +192,11 @@ class PresetBasket {
         this.pool = pool;
         this.textarea = textarea;
         this.context = viewContext;
-        this.ghostPreview = viewContext.dom.ghostPreview;
         this.dropIndicator = null;
 
         this.popupEl = null;
         this.currentMatches = [];
         this.activeIndex = 0;
-        this.pendingGhostText = "";
 
         this.initDragAndDrop();
         this.initRawInputSync();
@@ -290,12 +286,6 @@ class PresetBasket {
 
         this.textarea.addEventListener("mousedown", (e) => e.stopPropagation());
 
-        this.textarea.addEventListener("scroll", () => {
-            if (this.ghostPreview) {
-                this.ghostPreview.scrollTop = this.textarea.scrollTop;
-                this.ghostPreview.scrollLeft = this.textarea.scrollLeft;
-            }
-        });
     }
 
     initAutocomplete() {
@@ -307,7 +297,7 @@ class PresetBasket {
         });
 
         this.textarea.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowRight" && this.pendingGhostText) {
+            if (e.key === "ArrowRight") {
                 if (this.textarea.selectionStart === this.textarea.value.length) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -326,12 +316,10 @@ class PresetBasket {
                 e.preventDefault();
                 this.activeIndex = (this.activeIndex + 1) % this.currentMatches.length;
                 this.renderActiveItemHighlight();
-                this.updateGhostOverlay();
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 this.activeIndex = (this.activeIndex - 1 + this.currentMatches.length) % this.currentMatches.length;
                 this.renderActiveItemHighlight();
-                this.updateGhostOverlay();
             } else if (e.key === "Escape") {
                 e.preventDefault();
                 e.stopPropagation();
@@ -388,36 +376,6 @@ class PresetBasket {
 
         this.activeIndex = 0;
         this.showPopup(lastCommaIndex + 1, currentToken);
-        this.updateGhostOverlay();
-    }
-
-    updateGhostOverlay() {
-        if (!this.ghostPreview) return;
-
-        const text = this.textarea.value;
-        const caretPos = this.textarea.selectionStart;
-
-        if (this.currentMatches.length > 0 && caretPos === text.length) {
-            const bestMatch = this.currentMatches[this.activeIndex];
-
-            const leftText = text.slice(0, caretPos);
-            const lastCommaIndex = leftText.lastIndexOf(",");
-            const currentToken = (lastCommaIndex === -1 ? leftText : leftText.slice(lastCommaIndex + 1)).trimStart();
-
-            const suffixToComplete = bestMatch.slice(currentToken.length);
-            this.pendingGhostText = suffixToComplete;
-
-            this.ghostPreview.innerHTML = `${escapeHTML(text)}<span class="j0n4t-pg-ghost-shaded">${escapeHTML(suffixToComplete)}</span>`;
-        } else {
-            this.clearGhostOverlay();
-        }
-    }
-
-    clearGhostOverlay() {
-        this.pendingGhostText = "";
-        if (this.ghostPreview) {
-            this.ghostPreview.innerHTML = "";
-        }
     }
 
     showPopup(tokenStartIndex, currentToken) {
@@ -487,7 +445,6 @@ class PresetBasket {
         }
         this.popupEl = null;
         this.currentMatches = [];
-        this.clearGhostOverlay();
     }
 
     getClosestChip(clientX, clientY) {
@@ -514,7 +471,6 @@ class PresetBasket {
 
     render(activeList, cache, helpers) {
         this.textarea.value = activeList.join(", ");
-        this.clearGhostOverlay();
 
         if (activeList.length === 0) {
             this.pool.innerHTML = `<span class="j0n4t-pg-basket-empty">No presets selected</span>`;
@@ -663,7 +619,6 @@ class PresetGalleryView {
                 </div>
                 <div class="j0n4t-pg-raw-wrapper">
                     <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Enter comma separated tokens..."></textarea>
-                    <div class="j0n4t-pg-basket-ghost-preview" id="j0n4t-pg-ghost-view"></div>
                 </div>
             </div>
             <div class="j0n4t-pg-top-bar">
@@ -747,7 +702,6 @@ class PresetGalleryView {
             chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
             basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
             rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input"),
-            ghostPreview: wrap.querySelector("#j0n4t-pg-ghost-view"),
             btnHideGallery: wrap.querySelector("#j0n4t-pg-hide-gallery-btn")
         };
     }
