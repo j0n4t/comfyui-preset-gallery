@@ -279,7 +279,7 @@ class PresetBasket {
 
     initAutocomplete() {
         this.textarea.addEventListener("click", () => this.closePopup());
-        
+
         this.textarea.addEventListener("input", () => {
             if (!this.container.classList.contains("raw-mode")) return;
             this.evaluateAutocomplete();
@@ -417,14 +417,14 @@ class PresetBasket {
 
         this.currentMatches.forEach((match, index) => {
             const cleanLabel = this.context.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match);
-            
+
             const row = document.createElement("div");
             row.className = `j0n4t-pg-autocomplete-item${index === this.activeIndex ? ' active' : ''}`;
             row.innerHTML = `
                 <span>${cleanLabel}</span>
                 <span class="j0n4t-pg-autocomplete-meta">${match}</span>
             `;
-            
+
             row.addEventListener("click", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -665,8 +665,8 @@ class PresetGalleryView {
                 <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
                 <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords... (Shift+Enter to line break)"></textarea>
                 <div class="j0n4t-pg-row">
-                    <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
                     <input type="text" id="j0n4t-pg-folder" placeholder="Sub-folder (Optional)" style="flex:1;" />
+                    <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
                 </div>
                 <div class="j0n4t-pg-row">
                     <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
@@ -1115,10 +1115,28 @@ class PresetGalleryView {
                 this.dom.btnSave.click();
             }
         };
+        const handlePastedPreset = (e) => {
+            if (this.dom.inpName.value.trim() === "" || this.currentMode === "new") {
+                const pastedText = (e.clipboardData || window.clipboardData).getData("text");
+                if (!pastedText) return;
+                let suggestedName = pastedText.split(/[,\n]/)[0].trim();
+                if (suggestedName.split(/\s+/).length > 4 || suggestedName.length > 30) {
+                    suggestedName = suggestedName.split(/\s+/).slice(0, 4).join("_");
+                }
+                suggestedName = suggestedName
+                    .toLowerCase()
+                    .replace(/[^a-z0-9\s-_]/g, "")
+                    .trim()
+                    .replace(/\s+/g, "_");
+                if (suggestedName) {
+                    this.dom.inpName.value = suggestedName;
+                }
+            }
+        }
         this.dom.inpName.addEventListener("keydown", handleEnterKeySave);
         this.dom.inpFolder.addEventListener("keydown", handleEnterKeySave);
         this.dom.inpPreset.addEventListener("keydown", handleEnterKeySave);
-
+        this.dom.inpPreset.addEventListener("paste", handlePastedPreset);
         this.dom.btnClearFields.addEventListener("click", () => this.clearEditorFields());
         this.dom.btnSaveNew.addEventListener("click", () => this.handleSave(true));
         this.dom.btnSave.addEventListener("click", () => this.handleSave(false));
@@ -1222,6 +1240,10 @@ class PresetGalleryView {
         if (shouldDeleteOriginal && this.cache[this.lastSelectedKey]) {
             await PresetGalleryAPI.deletePreset(this.lastSelectedKey);
             currentSelections = currentSelections.map(item => item === this.lastSelectedKey ? uniqueKey : item);
+        }
+
+        if (!currentSelections.includes(uniqueKey)) {
+            currentSelections.push(uniqueKey);
         }
 
         this.lastSelectedKey = uniqueKey;
