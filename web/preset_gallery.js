@@ -512,7 +512,7 @@ class PresetBasket {
             const chip = Object.assign(document.createElement("div"), {
                 className: "j0n4t-pg-basket-chip",
                 draggable: true,
-                title: cleanLabel
+                title: `${cleanLabel} [${styleKey}]\n${cache[styleKey].preset}`
             });
             chip.dataset.id = styleKey;
 
@@ -669,7 +669,7 @@ class PresetGalleryView {
                     <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
                     <input type="text" id="j0n4t-pg-folder" placeholder="Sub-folder (Optional)" style="flex:1;" />
                 </div>
-                <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords..."></textarea>
+                <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords... (Shift+Enter to line break)"></textarea>
                 <div class="j0n4t-pg-row">
                     <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
                     <button type="button" id="j0n4t-pg-pick-btn" class="j0n4t-pg-btn no-img-state" style="background:#444;" title="Pick Image">Pick Image</button>
@@ -917,7 +917,7 @@ class PresetGalleryView {
                 : '';
 
             htmlBuffer += `
-                <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel}">
+                <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel} [${uniqueKey}]\n${this.cache[uniqueKey].preset}">
                     ${badge}
                     <div class="j0n4t-pg-corner-edit" title="Edit ${cleanLabel}">
                         <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
