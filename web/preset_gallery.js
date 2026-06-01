@@ -14,7 +14,7 @@ class PresetGalleryStyles {
         styles.id = "j0n4t-pg-global-styles";
         styles.textContent = `
             .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; }
-            .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views { display: none !important; }
+            .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views, .j0n4t-pg-wrap.hide-gallery-mode #j0n4t-pg-global-collapse, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-checkbox-wrap:has(#j0n4t-pg-group-toggle) { display: none !important; }
 
             .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; }
             .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
@@ -1207,11 +1207,6 @@ class PresetGalleryView {
         const updateGalleryVisibilityState = (shouldHide) => {
             this.dom.wrap.classList.toggle("hide-gallery-mode", shouldHide);
             this.dom.btnHideGallery.classList.toggle("active", !shouldHide);
-            if (shouldHide) {
-                this.dom.chkBasketRaw.checked = true;
-                this.dom.basketContainer.classList.add("raw-mode");
-                localStorage.setItem("comfy_preset_gallery_raw_basket", "true");
-            }
             localStorage.setItem("comfy_preset_gallery_hidden", String(shouldHide));
         };
 
