@@ -661,11 +661,11 @@ class PresetGalleryView {
             </div>
             <div class="j0n4t-pg-editor collapsed">
                 <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
+                <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords... (Shift+Enter to line break)"></textarea>
                 <div class="j0n4t-pg-row">
                     <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
                     <input type="text" id="j0n4t-pg-folder" placeholder="Sub-folder (Optional)" style="flex:1;" />
                 </div>
-                <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords... (Shift+Enter to line break)"></textarea>
                 <div class="j0n4t-pg-row">
                     <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
                     <button type="button" id="j0n4t-pg-pick-btn" class="j0n4t-pg-btn no-img-state" style="background:#444;" title="Pick Image">Pick Image</button>
@@ -1156,8 +1156,24 @@ class PresetGalleryView {
     }
 
     async handleSave(forceAsNew = false) {
-        const name = this.dom.inpName.value.trim().toLowerCase().replace(/ /g, "_");
-        if (!name) return alert("Preset Name required.");
+        let name = this.dom.inpName.value.trim().toLowerCase().replace(/ /g, "_");
+        const presetText = this.dom.inpPreset.value.trim();
+
+        if (!name) {
+            if (!presetText) {
+                return alert("Preset Keywords or Name required to save.");
+            }
+            name = presetText
+                .split(/\s+/)
+                .slice(0, 3)
+                .map(word => word.replace(/[^a-zA-Z0-9]/g, "").toLowerCase())
+                .filter(Boolean)
+                .join("_");
+            if (!name) {
+                name = "unnamed_preset_" + Date.now().toString().slice(-4);
+            }
+            this.dom.inpName.value = name;
+        }
 
         const folder = this.dom.inpFolder.value.trim().toLowerCase().replace(/ /g, "_");
         const uniqueKey = folder ? `${folder}/${name}` : name;
