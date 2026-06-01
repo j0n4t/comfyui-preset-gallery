@@ -647,7 +647,7 @@ class PresetGalleryView {
             </div>
             <div class="j0n4t-pg-editor collapsed">
                 <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
-                <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords... (Shift+Enter to line break)"></textarea>
+                <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords... (Shift+Enter to save)"></textarea>
                 <div class="j0n4t-pg-row">
                     <input type="text" id="j0n4t-pg-folder" placeholder="Sub-folder (Optional)" style="flex:1;" />
                     <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
@@ -1124,9 +1124,8 @@ class PresetGalleryView {
             markAsPendingChanges();
         });
 
-        const handleEnterKeySave = (e) => {
-            if (e.key === "Enter") {
-                if (e.target.tagName === "TEXTAREA" && e.shiftKey) return;
+        const handleQuickSave = (e) => {
+            if (e.key === "Enter" && e.shiftKey) {
                 e.preventDefault();
                 this.dom.btnSave.click();
             }
@@ -1149,9 +1148,9 @@ class PresetGalleryView {
                 }
             }
         }
-        this.dom.inpName.addEventListener("keydown", handleEnterKeySave);
-        this.dom.inpFolder.addEventListener("keydown", handleEnterKeySave);
-        this.dom.inpPreset.addEventListener("keydown", handleEnterKeySave);
+        this.dom.inpName.addEventListener("keydown", handleQuickSave);
+        this.dom.inpFolder.addEventListener("keydown", handleQuickSave);
+        this.dom.inpPreset.addEventListener("keydown", handleQuickSave);
         this.dom.inpPreset.addEventListener("paste", handlePastedPreset);
         this.dom.btnClearFields.addEventListener("click", () => this.clearEditorFields());
         this.dom.btnSaveNew.addEventListener("click", () => this.handleSave(true));
@@ -1480,7 +1479,7 @@ class PresetGalleryView {
 
         folderInput.addEventListener("keydown", (e) => {
             if (!folderPopup || folderMatches.length === 0) return;
-            if (e.key === "Tab") {
+            if (e.key === "Tab" || e.key === "Enter") {
                 e.preventDefault();
                 selectFolder(folderMatches[activeFolderIndex]);
             } else if (e.key === "ArrowDown") {
