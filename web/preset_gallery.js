@@ -14,6 +14,7 @@ class PresetGalleryStyles {
         styles.id = "j0n4t-pg-global-styles";
         styles.textContent = `
             .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; }
+            .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views { display: none !important; }
             .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; }
             .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
             .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
@@ -56,7 +57,7 @@ class PresetGalleryStyles {
             .j0n4t-pg-search-clear { position: absolute; right: 6px; width: 14px; height: 14px; color: #777; cursor: pointer; display: none; align-items: center; justify-content: center; border-radius: 2px; transition: color 0.1s, background-color 0.1s; }
             .j0n4t-pg-search-clear:hover { color: #fff; background: #b23b3b; }
             .j0n4t-pg-search-clear svg { width: 10px; height: 10px; fill: currentColor; }
-            .j0n4t-pg-views { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a80; padding: 2px; border-radius: 4px; border: 1px solid #444; }
+            .j0n4t-pg-views, .j0n4t-pg-toggle-gallery-wrap { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a80; padding: 2px; border-radius: 4px; border: 1px solid #444; }
             .j0n4t-pg-view-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 3px; cursor: pointer; color: #aaa; background: transparent; transition: 0.15s; }
             .j0n4t-pg-view-btn:hover { background: #333; color: #fff; }
             .j0n4t-pg-view-btn.active { background: #007acc; color: #fff; }
@@ -660,6 +661,11 @@ class PresetGalleryView {
                     <div class="j0n4t-pg-view-btn" data-view="big" title="Big Grid"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg></div>
                     <div class="j0n4t-pg-view-btn" data-view="list" title="List View"><svg viewBox="0 0 16 16"><rect x="1" y="2" width="3" height="2"/><rect x="6" y="2" width="9" height="2"/><rect x="1" y="7" width="3" height="2"/><rect x="6" y="7" width="9" height="2"/><rect x="1" y="12" width="3" height="2"/><rect x="6" y="12" width="9" height="2"/></svg></div>
                 </div>
+                <div class="j0n4t-pg-toggle-gallery-wrap">
+                    <div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn" title="Toggle Gallery">
+                        <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                    </div>
+                </div>
             </div>
             <div class="j0n4t-pg-grid"></div>
             <div class="j0n4t-pg-control-bar">
@@ -724,7 +730,8 @@ class PresetGalleryView {
             chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
             basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
             rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input"),
-            ghostPreview: wrap.querySelector("#j0n4t-pg-ghost-view")
+            ghostPreview: wrap.querySelector("#j0n4t-pg-ghost-view"),
+            btnHideGallery: wrap.querySelector("#j0n4t-pg-hide-gallery-btn")
         };
     }
 
@@ -1177,6 +1184,26 @@ class PresetGalleryView {
             if (confirm("Are you sure you want to empty the basket?")) {
                 this.updateWidgetValue([]);
             }
+        });
+
+        let isGalleryHidden = localStorage.getItem("comfy_preset_gallery_hidden") === "true";
+
+        const updateGalleryVisibilityState = (shouldHide) => {
+            this.dom.wrap.classList.toggle("hide-gallery-mode", shouldHide);
+            this.dom.btnHideGallery.classList.toggle("active", !shouldHide);
+            if (shouldHide) {
+                this.dom.chkBasketRaw.checked = true;
+                this.dom.basketContainer.classList.add("raw-mode");
+                localStorage.setItem("comfy_preset_gallery_raw_basket", "true");
+            }
+            localStorage.setItem("comfy_preset_gallery_hidden", String(shouldHide));
+        };
+
+        updateGalleryVisibilityState(isGalleryHidden);
+
+        this.dom.btnHideGallery.addEventListener("click", () => {
+            isGalleryHidden = !isGalleryHidden;
+            updateGalleryVisibilityState(isGalleryHidden);
         });
     }
 
