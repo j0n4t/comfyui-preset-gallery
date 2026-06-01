@@ -881,7 +881,6 @@ class PresetGalleryView {
                 htmlBuffer += `
                     <div class="j0n4t-pg-group-header${memoryCollapseState}" data-group="${uiGroupTitle}" data-group-raw="${groupRawName}">
                         <span>${uiGroupTitle}</span>
-                        <span class="j0n4t-pg-group-rename-tip">Right-click to rename folder</span>
                         <div class="j0n4t-pg-group-line"></div>
                         <span class="j0n4t-pg-group-rename-tip">Right-click to rename folder</span>
                     </div>
