@@ -508,11 +508,12 @@ class PresetBasket {
             const item = cache[styleKey];
             const initials = helpers.getInitials(styleKey);
             const cleanLabel = item ? helpers.toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey) : styleKey;
+            const title = cache[styleKey] ? `${cleanLabel} [${styleKey}]{\n${cache[styleKey].preset}` : styleKey;
 
             const chip = Object.assign(document.createElement("div"), {
                 className: "j0n4t-pg-basket-chip",
                 draggable: true,
-                title: `${cleanLabel} [${styleKey}]\n${cache[styleKey].preset}`
+                title: title
             });
             chip.dataset.id = styleKey;
 
