@@ -1303,10 +1303,10 @@ class PresetGalleryView {
             this.updateWidgetValue(currentSelections);
         }
 
-        searchInput.value = "";
+        this.dom.search.value = "";
         this.executeFilterPipeline();
-        closePopup();
-        searchInput.focus();
+        this.closePopup();
+        this.dom.search.focus();
     };
 
     addCustomChipToBasket = (text) => {
@@ -1315,23 +1315,24 @@ class PresetGalleryView {
         this.updateWidgetValue(selections);
     }
 
+    closePopup = () => {
+        if (this.filterPopupEl) {
+            this.filterPopupEl.remove();
+            this.filterPopupEl = null;
+        }
+        this.filterMatches = [];
+    };
+
+    filterPopupEl = null;
+    filterMatches = [];
+
     initFilterAutocomplete() {
         const searchInput = this.dom.search;
-        let popupEl = null;
-        let matches = [];
         let activeIndex = 0;
 
-        const closePopup = () => {
-            if (popupEl) {
-                popupEl.remove();
-                popupEl = null;
-            }
-            matches = [];
-        };
-
         const renderHighlight = () => {
-            if (!popupEl) return;
-            const items = popupEl.querySelectorAll(".j0n4t-pg-filter-autocomplete-item");
+            if (!this.filterPopupEl) return;
+            const items = this.filterPopupEl.querySelectorAll(".j0n4t-pg-filter-autocomplete-item");
             items.forEach((item, index) => {
                 item.classList.toggle("active", index === activeIndex);
             });
@@ -1339,12 +1340,12 @@ class PresetGalleryView {
 
         searchInput.addEventListener("input", () => {
             const query = searchInput.value.toLowerCase().trim();
-            closePopup();
+            this.closePopup();
 
             if (!query) return;
 
             const allKeys = Object.keys(this.cache);
-            matches = allKeys.filter(key => key.toLowerCase().includes(query))
+            this.filterMatches = allKeys.filter(key => key.toLowerCase().includes(query))
                 .sort((a, b) => {
                     const aStart = a.toLowerCase().startsWith(query);
                     const bStart = b.toLowerCase().startsWith(query);
@@ -1354,24 +1355,24 @@ class PresetGalleryView {
                 })
                 .slice(0, 8);
 
-            if (matches.length === 0) return;
+            if (this.filterMatches.length === 0) return;
 
             activeIndex = 0;
 
-            popupEl = document.createElement("div");
-            popupEl.className = "j0n4t-pg-filter-autocomplete-popup";
+            this.filterPopupEl = document.createElement("div");
+            this.filterPopupEl.className = "j0n4t-pg-filter-autocomplete-popup";
 
             const rect = searchInput.getBoundingClientRect();
             const wrapRect = this.dom.wrap.getBoundingClientRect();
             const zoomFactor = wrapRect.width / this.dom.wrap.offsetWidth || 1;
 
-            popupEl.style.top = `${(rect.bottom - wrapRect.top) / zoomFactor + 2}px`;
-            popupEl.style.left = `${(rect.left - wrapRect.left) / zoomFactor}px`;
-            popupEl.style.width = `${rect.width / zoomFactor}px`;
+            this.filterPopupEl.style.top = `${(rect.bottom - wrapRect.top) / zoomFactor + 2}px`;
+            this.filterPopupEl.style.left = `${(rect.left - wrapRect.left) / zoomFactor}px`;
+            this.filterPopupEl.style.width = `${rect.width / zoomFactor}px`;
 
-            this.dom.wrap.appendChild(popupEl);
+            this.dom.wrap.appendChild(this.filterPopupEl);
 
-            matches.forEach((key, index) => {
+            this.filterMatches.forEach((key, index) => {
                 const cleanLabel = this.helpers.toTitleCase(key.includes("/") ? key.split("/").pop() : key);
                 const row = document.createElement("div");
                 row.className = `j0n4t-pg-filter-autocomplete-item${index === activeIndex ? ' active' : ''}`;
@@ -1384,7 +1385,7 @@ class PresetGalleryView {
                     this.addPresetToBasket(key);
                 });
 
-                popupEl.appendChild(row);
+                this.filterPopupEl.appendChild(row);
             });
         });
 
@@ -1392,28 +1393,32 @@ class PresetGalleryView {
             if (e.key === "Enter") {
                 e.preventDefault();
                 e.stopPropagation();
-                if (matches[activeIndex]) {
-                    this.addPresetToBasket(matches[activeIndex]);
+                if (this.filterMatches[activeIndex]) {
+                    this.addPresetToBasket(this.filterMatches[activeIndex]);
                 } else {
                     this.addCustomChipToBasket(e.target.value);
+                    this.dom.search.value = "";
+                    this.executeFilterPipeline();
+                    this.closePopup();
+                    this.dom.search.focus();
                 }
             } else if (e.key === "ArrowDown") {
                 e.preventDefault();
-                activeIndex = (activeIndex + 1) % matches.length;
+                activeIndex = (activeIndex + 1) % this.filterMatches.length;
                 renderHighlight();
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
-                activeIndex = (activeIndex - 1 + matches.length) % matches.length;
+                activeIndex = (activeIndex - 1 + this.filterMatches.length) % this.filterMatches.length;
                 renderHighlight();
             } else if (e.key === "Escape") {
                 e.preventDefault();
                 e.stopPropagation();
-                closePopup();
+                this.closePopup();
             }
         });
 
         searchInput.addEventListener("blur", () => {
-            setTimeout(closePopup, 200);
+            setTimeout(this.closePopup, 200);
         });
     }
 
