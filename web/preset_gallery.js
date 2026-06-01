@@ -115,6 +115,10 @@ class PresetGalleryStyles {
             .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
             .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; text-align: center; box-sizing: border-box; height: 28px; }
             .j0n4t-pg-btn:hover { background: #0062a3; }
+            .j0n4t-pg-folder-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10000; display: flex; flex-direction: column; width: max-content; overflow: hidden; font-family: sans-serif; box-sizing: border-box; }
+            .j0n4t-pg-folder-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; }
+            .j0n4t-pg-folder-autocomplete-item:last-child { border-bottom: none; }
+            .j0n4t-pg-folder-autocomplete-item.active { background: #007acc; color: #fff; }
             .has-image .no-img-state, .no-image .has-img-state { display: none !important; }
         `;
         document.head.appendChild(styles);
@@ -1268,11 +1272,96 @@ class PresetGalleryView {
         this.updateWidgetValue(selections);
     }
 
+    initFolderAutocomplete() {
+        const folderInput = this.dom.inpFolder;
+        let folderPopup = null;
+        let folderMatches = [];
+        let activeFolderIndex = 0;
+
+        const closeFolderPopup = () => {
+            if (folderPopup) {
+                folderPopup.remove();
+                folderPopup = null;
+            }
+            folderMatches = [];
+        };
+
+        const renderHighlight = () => {
+            if (!folderPopup) return;
+            const items = folderPopup.querySelectorAll(".j0n4t-pg-folder-autocomplete-item");
+            items.forEach((item, index) => {
+                item.classList.toggle("active", index === activeFolderIndex);
+            });
+        };
+
+        const selectFolder = (value) => {
+            folderInput.value = value;
+            closeFolderPopup();
+            folderInput.focus();
+        };
+
+        folderInput.addEventListener("input", () => {
+            const query = folderInput.value.trim().toLowerCase().replace(/ /g, "_");
+            closeFolderPopup();
+            if (!query) return;
+            const uniqueFolders = new Set();
+            Object.values(this.cache).forEach(item => {
+                if (item.tags && item.tags.length > 0) {
+                    uniqueFolders.add(item.tags.join("/"));
+                }
+            });
+            folderMatches = Array.from(uniqueFolders).filter(f => f.toLowerCase().includes(query));
+            if (folderMatches.length === 0) return;
+            activeFolderIndex = 0;
+            folderPopup = document.createElement("div");
+            folderPopup.className = "j0n4t-pg-folder-autocomplete-popup";
+            const rect = folderInput.getBoundingClientRect();
+            folderPopup.style.top = `${window.scrollY + rect.bottom + 2}px`;
+            folderPopup.style.left = `${window.scrollX + rect.left}px`;
+            folderPopup.style.minWidth = `${rect.width}px`;
+            document.body.appendChild(folderPopup);
+            folderMatches.forEach((folder, index) => {
+                const row = document.createElement("div");
+                row.className = `j0n4t-pg-folder-autocomplete-item${index === activeFolderIndex ? ' active' : ''}`;
+                row.innerText = folder.replace(/_/g, " "); // Display with pretty spaces
+                row.addEventListener("mousedown", (e) => {
+                    e.preventDefault(); // Prevent blurring input fields prematurely
+                    selectFolder(folder);
+                });
+                folderPopup.appendChild(row);
+            });
+        });
+
+        folderInput.addEventListener("keydown", (e) => {
+            if (!folderPopup || folderMatches.length === 0) return;
+            if (e.key === "Tab") {
+                e.preventDefault();
+                selectFolder(folderMatches[activeFolderIndex]);
+            } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeFolderIndex = (activeFolderIndex + 1) % folderMatches.length;
+                renderHighlight();
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeFolderIndex = (activeFolderIndex - 1 + folderMatches.length) % folderMatches.length;
+                renderHighlight();
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                closeFolderPopup();
+            }
+        });
+
+        folderInput.addEventListener("blur", () => {
+            setTimeout(closeFolderPopup, 200);
+        });
+    }
+
     async init() {
         await this.loadGallery();
         if (this.widget.value) {
             await this.syncUI(this.widget.value);
         }
+        this.initFolderAutocomplete();
         this.setPanelCollapseState(localStorage.getItem("comfy_preset_gallery_collapsed") === "true");
         this.node.setSize([this.node.size[0] || MIN_NODE_WIDTH, this.node.size[1] || MIN_NODE_HEIGHT]);
     }
