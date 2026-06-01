@@ -30,7 +30,7 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
 
-            .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 60px; max-height: 200px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; position: relative; z-index: 2; caret-color: #fff; }
+            .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 100px; max-height: 200px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; position: relative; z-index: 2; caret-color: #fff; }
             .j0n4t-pg-basket-ghost-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; font-family: monospace; font-size: 11px; padding: 5px 4px 4px 5px; box-sizing: border-box; color: transparent; white-space: pre-wrap; word-wrap: break-word; pointer-events: none; z-index: 1; overflow: hidden; }
             .j0n4t-pg-ghost-shaded { color: #ffffff45; }
             
@@ -667,7 +667,7 @@ class PresetGalleryView {
             </div>
             <div class="j0n4t-pg-top-bar">
                 <div class="j0n4t-pg-search-wrapper">
-                    <input type="text" class="j0n4t-pg-search" placeholder="Search presets or folders..." />
+                    <input type="text" class="j0n4t-pg-search" placeholder="Type presets, folders or custom text..." />
                     <div class="j0n4t-pg-search-clear" title="Clear Search">
                         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                     </div>
