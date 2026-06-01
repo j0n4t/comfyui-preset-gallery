@@ -1024,7 +1024,6 @@ class PresetGalleryView {
 
     bindEvents() {
         this.dom.toggle.addEventListener("click", () => {
-            this.clearEditorFields();
             this.setPanelCollapseState(!this.dom.editor.classList.contains("collapsed"))
         });
 
@@ -1217,7 +1216,6 @@ class PresetGalleryView {
             }
         } else {
             if (this.lastSelectedKey && this.lastSelectedKey !== uniqueKey) {
-                if (!confirm(`Rename preset location from "${this.lastSelectedKey}" to "${uniqueKey}"?`)) return;
                 shouldDeleteOriginal = true;
             }
         }
