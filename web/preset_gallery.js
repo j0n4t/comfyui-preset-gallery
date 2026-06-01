@@ -15,6 +15,7 @@ class PresetGalleryStyles {
         styles.textContent = `
             .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; }
             .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views { display: none !important; }
+
             .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; }
             .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
             .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
@@ -40,6 +41,13 @@ class PresetGalleryStyles {
             .j0n4t-pg-autocomplete-meta { font-size: 9px; color: #888; margin-left: auto; font-style: italic; }
             .j0n4t-pg-autocomplete-item.active .j0n4t-pg-autocomplete-meta { color: #bee3ff; }
 
+            .j0n4t-pg-filter-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10001; display: flex; flex-direction: column; overflow-y: auto; max-height: 250px; box-sizing: border-box; }
+            .j0n4t-pg-filter-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+            .j0n4t-pg-filter-autocomplete-item:last-child { border-bottom: none; }
+            .j0n4t-pg-filter-autocomplete-item.active { background: #007acc; color: #fff; }
+            .j0n4t-pg-filter-autocomplete-meta { font-size: 9px; color: #888; font-style: italic; margin-left: 10px; }
+            .j0n4t-pg-filter-autocomplete-item.active .j0n4t-pg-filter-autocomplete-meta { color: #bee3ff; }
+
             .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
             .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
             .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 2px; background: #3a3a3a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; position: relative; }
@@ -47,21 +55,25 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
             .j0n4t-pg-basket-chip-thumb { width: 16px; height: 16px; border-radius: 2px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000; flex-shrink: 0; }
             .j0n4t-pg-basket-chip-label { font-size: 10px; color: #ddd; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; margin-left: 2px; }
+
             .j0n4t-pg-action-btn { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #aaa; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 1px; }
             .j0n4t-pg-action-btn:hover { background: #555; color: #fff; }
             .j0n4t-pg-action-btn.del-btn:hover { background: #b23b3b; color: #fff; }
             .j0n4t-pg-action-btn svg { width: 10px; height: 10px; fill: currentColor; }
             .j0n4t-pg-top-bar { display: flex; gap: 6px; align-items: center; width: 100%; flex-shrink: 0; }
+
             .j0n4t-pg-search-wrapper { position: relative; flex-grow: 1; display: flex; align-items: center; }
             .j0n4t-pg-search { width: 100%; padding: 6px 24px 6px 6px; background: #1a1a1ab0; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; min-width: 0; }
             .j0n4t-pg-search-clear { position: absolute; right: 6px; width: 14px; height: 14px; color: #777; cursor: pointer; display: none; align-items: center; justify-content: center; border-radius: 2px; transition: color 0.1s, background-color 0.1s; }
             .j0n4t-pg-search-clear:hover { color: #fff; background: #b23b3b; }
             .j0n4t-pg-search-clear svg { width: 10px; height: 10px; fill: currentColor; }
+
             .j0n4t-pg-views, .j0n4t-pg-toggle-gallery-wrap { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a80; padding: 2px; border-radius: 4px; border: 1px solid #444; }
             .j0n4t-pg-view-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 3px; cursor: pointer; color: #aaa; background: transparent; transition: 0.15s; }
             .j0n4t-pg-view-btn:hover { background: #333; color: #fff; }
             .j0n4t-pg-view-btn.active { background: #007acc; color: #fff; }
             .j0n4t-pg-view-btn svg, .j0n4t-pg-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
             .j0n4t-pg-grid { display: grid; gap: 6px; flex-grow: 1; overflow-y: auto; min-height: 60px; align-content: start; margin-top: 2px; }
             .j0n4t-pg-grid.view-small { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
             .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
@@ -95,6 +107,7 @@ class PresetGalleryStyles {
             .j0n4t-pg-corner-edit:hover { background: #d1a119; color: #fff; border-color: #d1a119; }
             .j0n4t-pg-corner-edit svg { width: 11px; height: 11px; fill: currentColor; }
             .j0n4t-pg-item:hover .j0n4t-pg-corner-edit { display: flex; }
+
             .view-list .j0n4t-pg-item { display: flex; align-items: center; gap: 8px; text-align: left; padding: 4px 6px; }
             .view-list .j0n4t-pg-thumb-box { width: 32px; height: 32px; flex-shrink: 0; }
             .view-list .j0n4t-pg-icon { width: 14px; height: 14px; }
@@ -102,12 +115,14 @@ class PresetGalleryStyles {
             .view-list .j0n4t-pg-label { margin-top: 0; font-size: 11px; flex-grow: 1; }
             .view-list .j0n4t-pg-tag-badge { position: relative; top: auto; left: auto; background: #444; color: #bbb; max-width: none; font-size: 9px; }
             .view-list .j0n4t-pg-corner-edit { position: relative; top: auto; right: auto; display: flex !important; margin-left: auto; flex-shrink: 0; }
+
             .j0n4t-pg-grid.hide-folders .j0n4t-pg-tag-badge { display: block !important; }
             .j0n4t-pg-control-bar { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-shrink: 0; width: 100%; }
             .j0n4t-pg-toggle { flex-grow: 1; background: #333; border: 1px solid #444; color: #bbb; padding: 4px; border-radius: 3px; cursor: pointer; font-size: 10px; text-align: center; user-select: none; white-space: nowrap; }
             .j0n4t-pg-toggle:hover { background: #444; color: #fff; }
             .j0n4t-pg-checkbox-wrap { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #aaa; user-select: none; cursor: pointer; padding: 3px 2px; height: 20px; box-sizing: border-box; white-space: nowrap; }
             .j0n4t-pg-checkbox-wrap input { width: auto; margin: 0; cursor: pointer; }
+
             .j0n4t-pg-editor { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #3d3d3d; padding-top: 8px; margin-top: 2px; box-sizing: border-box; flex-shrink: 0; }
             .j0n4t-pg-editor.collapsed { display: none !important; }
             .j0n4t-pg-editor-banner { font-size: 10px; font-weight: bold; padding: 4px 6px; border-radius: 3px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; }
@@ -116,6 +131,7 @@ class PresetGalleryStyles {
             .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
             .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; text-align: center; box-sizing: border-box; height: 28px; }
             .j0n4t-pg-btn:hover { background: #0062a3; }
+
             .j0n4t-pg-folder-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10000; display: flex; flex-direction: column; width: max-content; overflow: hidden; font-family: sans-serif; box-sizing: border-box; }
             .j0n4t-pg-folder-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; }
             .j0n4t-pg-folder-autocomplete-item:last-child { border-bottom: none; }
@@ -651,8 +667,8 @@ class PresetGalleryView {
             </div>
             <div class="j0n4t-pg-top-bar">
                 <div class="j0n4t-pg-search-wrapper">
-                    <input type="text" class="j0n4t-pg-search" placeholder="Filter presets or folders..." />
-                    <div class="j0n4t-pg-search-clear" title="Clear Filter">
+                    <input type="text" class="j0n4t-pg-search" placeholder="Search presets or folders..." />
+                    <div class="j0n4t-pg-search-clear" title="Clear Search">
                         <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                     </div>
                 </div>
@@ -1299,6 +1315,120 @@ class PresetGalleryView {
         this.updateWidgetValue(selections);
     }
 
+    initFilterAutocomplete() {
+        const searchInput = this.dom.search;
+        let popupEl = null;
+        let matches = [];
+        let activeIndex = 0;
+
+        const closePopup = () => {
+            if (popupEl) {
+                popupEl.remove();
+                popupEl = null;
+            }
+            matches = [];
+        };
+
+        const renderHighlight = () => {
+            if (!popupEl) return;
+            const items = popupEl.querySelectorAll(".j0n4t-pg-filter-autocomplete-item");
+            items.forEach((item, index) => {
+                item.classList.toggle("active", index === activeIndex);
+            });
+        };
+
+        const addPresetToBasket = (uniqueKey) => {
+            let currentSelections = this.getSelectedArray();
+            if (!currentSelections.includes(uniqueKey)) {
+                currentSelections.push(uniqueKey);
+                this.updateWidgetValue(currentSelections);
+            }
+
+            searchInput.value = "";
+            this.executeFilterPipeline();
+            closePopup();
+            searchInput.focus();
+        };
+
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.toLowerCase().trim();
+            closePopup();
+
+            if (!query) return;
+
+            const allKeys = Object.keys(this.cache);
+            matches = allKeys.filter(key => key.toLowerCase().includes(query))
+                .sort((a, b) => {
+                    const aStart = a.toLowerCase().startsWith(query);
+                    const bStart = b.toLowerCase().startsWith(query);
+                    if (aStart && !bStart) return -1;
+                    if (!aStart && bStart) return 1;
+                    return a.localeCompare(b);
+                })
+                .slice(0, 8);
+
+            if (matches.length === 0) return;
+
+            activeIndex = 0;
+
+            popupEl = document.createElement("div");
+            popupEl.className = "j0n4t-pg-filter-autocomplete-popup";
+
+            const rect = searchInput.getBoundingClientRect();
+            const wrapRect = this.dom.wrap.getBoundingClientRect();
+            const zoomFactor = wrapRect.width / this.dom.wrap.offsetWidth || 1;
+
+            popupEl.style.top = `${(rect.bottom - wrapRect.top) / zoomFactor + 2}px`;
+            popupEl.style.left = `${(rect.left - wrapRect.left) / zoomFactor}px`;
+            popupEl.style.width = `${rect.width / zoomFactor}px`;
+
+            this.dom.wrap.appendChild(popupEl);
+
+            matches.forEach((key, index) => {
+                const cleanLabel = this.helpers.toTitleCase(key.includes("/") ? key.split("/").pop() : key);
+                const row = document.createElement("div");
+                row.className = `j0n4t-pg-filter-autocomplete-item${index === activeIndex ? ' active' : ''}`;
+
+                row.innerHTML = `
+                <span>${cleanLabel}</span>
+                <span class="j0n4t-pg-filter-autocomplete-meta">${key}</span>
+            `;
+
+                row.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    addPresetToBasket(key);
+                });
+
+                popupEl.appendChild(row);
+            });
+        });
+
+        searchInput.addEventListener("keydown", (e) => {
+            if (!popupEl || matches.length === 0) return;
+
+            if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                addPresetToBasket(matches[activeIndex]);
+            } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeIndex = (activeIndex + 1) % matches.length;
+                renderHighlight();
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeIndex = (activeIndex - 1 + matches.length) % matches.length;
+                renderHighlight();
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                closePopup();
+            }
+        });
+
+        searchInput.addEventListener("blur", () => {
+            setTimeout(closePopup, 200);
+        });
+    }
+
     initFolderAutocomplete() {
         const folderInput = this.dom.inpFolder;
         let folderPopup = null;
@@ -1388,6 +1518,7 @@ class PresetGalleryView {
         if (this.widget.value) {
             await this.syncUI(this.widget.value);
         }
+        this.initFilterAutocomplete();
         this.initFolderAutocomplete();
         this.setPanelCollapseState(localStorage.getItem("comfy_preset_gallery_collapsed") === "true");
         this.node.setSize([this.node.size[0] || MIN_NODE_WIDTH, this.node.size[1] || MIN_NODE_HEIGHT]);
