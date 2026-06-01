@@ -443,24 +443,19 @@ class PresetBasket {
     selectMatch(matchedKey) {
         const text = this.textarea.value;
         const caretPos = this.textarea.selectionStart;
-
         const leftText = text.slice(0, caretPos);
         const rightText = text.slice(caretPos);
         const lastCommaIndex = leftText.lastIndexOf(",");
-
         const prefix = lastCommaIndex === -1 ? "" : leftText.slice(0, lastCommaIndex + 1) + " ";
-        const nextCommaIndex = rightText.indexOf(",");
-        const suffix = nextCommaIndex === -1 ? "" : rightText.slice(nextCommaIndex);
-
-        this.textarea.value = prefix + matchedKey + (suffix.startsWith(",") ? suffix : (suffix ? ", " + suffix : ""));
+        this.textarea.value = prefix + matchedKey + "," + rightText;
         this.closePopup();
-
         const parsedArray = this.textarea.value.split(",")
             .map(item => item.trim())
             .filter(Boolean);
         this.context.updateWidgetValue(parsedArray);
         this.textarea.focus();
-        this.textarea.selectionStart = this.textarea.selectionEnd = prefix.length + matchedKey.length;
+        const newCaretPos = prefix.length + matchedKey.length + 2;
+        this.textarea.selectionStart = this.textarea.selectionEnd = newCaretPos;
     }
 
     closePopup() {
