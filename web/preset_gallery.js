@@ -145,6 +145,29 @@ class PresetGalleryStyles {
     }
 }
 
+class PresetGalleryCommon {
+    static getTopMatches(list, query) {
+        const cleanQuery = query.toLowerCase();
+        const buckets = list.reduce((acc, item) => {
+            const lowerItem = item.toLowerCase();
+            const idx = lowerItem.indexOf(cleanQuery);
+            if (idx === -1) return acc;
+            if (idx === 0) {
+                if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx });
+            } else {
+                if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx });
+            }
+            return acc;
+        }, { startsWith: [], fuzzy: [] });
+        const sortBucket = (arr) => arr
+            .sort((a, b) => a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item))
+            .map(entry => entry.item);
+        const finalStarts = sortBucket(buckets.startsWith);
+        const finalFuzzy = sortBucket(buckets.fuzzy);
+        return Array.from(new Set([...finalStarts, ...finalFuzzy]));
+    }
+}
+
 /**
  * Handles communication with backend server endpoints.
  */
@@ -351,28 +374,7 @@ class PresetBasket {
         const query = currentToken.toLowerCase();
         const keys = Object.keys(this.context.cache);
 
-        function getTopMatches(list, query) {
-            const cleanQuery = query.toLowerCase();
-            const buckets = list.reduce((acc, item) => {
-                const lowerItem = item.toLowerCase();
-                const idx = lowerItem.indexOf(cleanQuery);
-                if (idx === -1) return acc;
-                if (idx === 0) {
-                    if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx });
-                } else {
-                    if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx });
-                }
-                return acc;
-            }, { startsWith: [], fuzzy: [] });
-            const sortBucket = (arr) => arr
-                .sort((a, b) => a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item))
-                .map(entry => entry.item);
-            const finalStarts = sortBucket(buckets.startsWith);
-            const finalFuzzy = sortBucket(buckets.fuzzy);
-            return Array.from(new Set([...finalStarts, ...finalFuzzy]));
-        }
-
-        this.currentMatches = getTopMatches(keys, query);
+        this.currentMatches = PresetGalleryCommon.getTopMatches(keys, query);
 
         if (this.currentMatches.length === 0) {
             this.closePopup();
@@ -553,7 +555,7 @@ class PresetBasket {
 /**
  * Main Controller orchestrating view mutations and managing UI events.
  */
-class PresetGalleryView {
+class PresetGalleryApp {
     constructor(node, widget) {
         this.node = node;
         this.widget = widget;
@@ -790,7 +792,7 @@ class PresetGalleryView {
                 this.dom.btnSave.style.background = "#228b22";
             } else {
                 this.dom.btnSave.innerText = "Save Changes";
-                this.dom.btnSave.style.background = "#007acc"; 
+                this.dom.btnSave.style.background = "#007acc";
             }
         } else {
             this.dom.banner.innerText = "📝 Edit Panel (Select Edit ✏️ on an Preset)";
@@ -1178,7 +1180,7 @@ class PresetGalleryView {
                 this.dom.btnSave.click();
             }
         };
-        
+
         const handlePastedPreset = (e) => {
             if (this.dom.inpName.value.trim() === "" || this.currentMode === "new") {
                 const pastedText = (e.clipboardData || window.clipboardData).getData("text");
@@ -1395,16 +1397,7 @@ class PresetGalleryView {
             if (!query) return;
 
             const allKeys = Object.keys(this.cache);
-            this.filterMatches = allKeys.filter(key => key.toLowerCase().includes(query))
-                .sort((a, b) => {
-                    const aStart = a.toLowerCase().startsWith(query);
-                    const bStart = b.toLowerCase().startsWith(query);
-                    if (aStart && !bStart) return -1;
-                    if (!aStart && bStart) return 1;
-                    return a.localeCompare(b);
-                })
-                .slice(0, 8);
-
+            this.filterMatches = PresetGalleryCommon.getTopMatches(allKeys, query);
             if (this.filterMatches.length === 0) return;
 
             activeIndex = 0;
@@ -1570,9 +1563,7 @@ class PresetGalleryView {
 
 PresetGalleryStyles.inject();
 
-function escapeHTML(str) {
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+
 
 app.registerExtension({
     name: "Comfy.PresetGallery",
@@ -1588,7 +1579,7 @@ app.registerExtension({
 
             widget.hidden = true;
 
-            const galleryView = new PresetGalleryView(this, widget);
+            const galleryView = new PresetGalleryApp(this, widget);
 
             const baseCallback = widget.callback;
             widget.callback = function (value) {
