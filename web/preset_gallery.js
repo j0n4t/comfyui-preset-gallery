@@ -123,11 +123,11 @@ class PresetGalleryStyles {
 
             .j0n4t-pg-editor { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #3d3d3d; padding-top: 8px; margin-top: 2px; box-sizing: border-box; flex-shrink: 0; }
             .j0n4t-pg-editor.collapsed { display: none !important; }
-            .j0n4t-pg-editor-banner { font-size: 10px; font-weight: bold; padding: 4px 6px; border-radius: 3px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; }
+            .j0n4t-pg-editor-banner { font-size: 10px; font-weight: bold; padding: 4px 6px; border-radius: 3px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; flex: 1; text-overflow: ellipsis; overflow: hidden; }
             .j0n4t-pg-editor input, .j0n4t-pg-editor textarea { background: #1a1a1ab0; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
             .j0n4t-pg-editor textarea { resize: vertical; min-height: 48px; }
             .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
-            .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; text-align: center; box-sizing: border-box; height: 28px; }
+            .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; text-align: center; box-sizing: border-box; height: 24px; }
             .j0n4t-pg-btn:hover { background: #0062a3; }
 
             .j0n4t-pg-folder-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10000; display: flex; flex-direction: column; width: max-content; overflow: hidden; font-family: sans-serif; box-sizing: border-box; }
@@ -506,7 +506,7 @@ class PresetBasket {
             chip.innerHTML = `
                 <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
                 <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
-                <div class="j0n4t-pg-action-btn edit-btn" title="Edit Profile Configuration">
+                <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">
                     <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                 </div>
                 <div class="j0n4t-pg-action-btn del-btn" title="Deselect Preset from Queue">
@@ -655,7 +655,23 @@ class PresetGalleryApp {
                 <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group Folders</label>
             </div>
             <div class="j0n4t-pg-editor collapsed no-image">
-                <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
+                <div class="j0n4t-pg-row">
+                    <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
+                    <input type="file" id="j0n4t-pg-zip-file" accept=".zip" style="display:none;" />
+                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import ZIP Pool Package">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M11.625 15.513q-.175-.063-.325-.213l-3.6-3.6q-.3-.3-.288-.7t.288-.7q.3-.3.713-.312t.712.287L11 12.15V5q0-.425.288-.712T12 4t.713.288T13 5v7.15l1.875-1.875q.3-.3.713-.288t.712.313q.275.3.288.7t-.288.7l-3.6 3.6q-.15.15-.325.213t-.375.062t-.375-.062M6 20q-.825 0-1.412-.587T4 18v-2q0-.425.288-.712T5 15t.713.288T6 16v2h12v-2q0-.425.288-.712T19 15t.713.288T20 16v2q0 .825-.587 1.413T18 20z" />
+                        </svg>
+                    </button>
+                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Current Pool Package to ZIP Archive">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M6 20q-.825 0-1.412-.587T4 18v-2q0-.425.288-.712T5 15t.713.288T6 16v2h12v-2q0-.425.288-.712T19 15t.713.288T20 16v2q0 .825-.587 1.413T18 20zm5-12.15L9.125 9.725q-.3.3-.712.288T7.7 9.7q-.275-.3-.288-.7t.288-.7l3.6-3.6q.15-.15.325-.212T12 4.425t.375.063t.325.212l3.6 3.6q.3.3.288.7t-.288.7q-.3.3-.712.313t-.713-.288L13 7.85V15q0 .425-.288.713T12 16t-.712-.288T11 15z" />
+                        </svg>
+                    </button>
+                    <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;" title="Clear form to write a completely blank new preset">Clear</button>
+                    <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;" title="Save changes or overwrite current active file">Save</button>
+                    <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;" title="Permanently Delete Preset Entirely">Delete</button>
+                </div>
                 <div style="display: flex; gap: 6px; align-items: stretch;">
                     <div id="j0n4t-pg-editor-preview" class="j0n4t-pg-editor-preview" title="Click to Pick/Change Image"></div>
                     <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1; min-width: 0;">
@@ -667,17 +683,6 @@ class PresetGalleryApp {
                     </div>
                 </div>
                 <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
-                <div class="j0n4t-pg-row">
-                    <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;" title="Clear form to write a completely blank new preset">Clear / New</button>
-                    <button type="button" id="j0n4t-pg-save-new-btn" class="j0n4t-pg-btn" style="background:#228b22;" title="Save current parameters as a new separate preset file">Save as New</button>
-                    <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;" title="Save changes or overwrite current active file">Save Changes</button>
-                    <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;" title="Permanently Delete Preset Entirely">Delete</button>
-                </div>
-                <div class="j0n4t-pg-row" style="border-top: 1px dashed #444; padding-top: 6px; margin-top: 2px;">
-                    <input type="file" id="j0n4t-pg-zip-file" accept=".zip" style="display:none;" />
-                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import ZIP Pool Package">Import ZIP</button>
-                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Current Pool Package to ZIP Archive">Export ZIP</button>
-                </div>
             </div>
         `;
 
@@ -698,7 +703,6 @@ class PresetGalleryApp {
             inpPreset: wrap.querySelector("#j0n4t-pg-preset"),
             inpFile: wrap.querySelector("#j0n4t-pg-file"),
             btnClearFields: wrap.querySelector("#j0n4t-pg-clear-fields-btn"),
-            btnSaveNew: wrap.querySelector("#j0n4t-pg-save-new-btn"),
             btnSave: wrap.querySelector("#j0n4t-pg-save-btn"),
             btnDel: wrap.querySelector("#j0n4t-pg-del-btn"),
             inpZipFile: wrap.querySelector("#j0n4t-pg-zip-file"),
@@ -782,23 +786,25 @@ class PresetGalleryApp {
             this.dom.banner.innerText = "✨ Creating New Preset";
             this.dom.banner.style.color = "#228b22";
             this.dom.banner.style.background = "#228b2220";
-            this.dom.btnSave.innerText = "Save Preset";
+            this.dom.btnSave.innerText = "Save";
+            this.dom.btnSave.style.background = "#007acc";
         } else if (this.editingKey) {
-            this.dom.banner.innerText = `📝 Editing: ${this.editingKey}`;
+            this.dom.banner.innerText = `📝\u00A0Editing:\u00A0${this.editingKey}`;
+            this.dom.banner.title = `📝\u00A0Editing:\u00A0${this.editingKey}`;
             this.dom.banner.style.color = "#d1a119";
             this.dom.banner.style.background = "#d1a11920";
             if (this.isSaved) {
-                this.dom.btnSave.innerText = "✅ Saved!";
+                this.dom.btnSave.innerText = "Saved!";
                 this.dom.btnSave.style.background = "#228b22";
             } else {
-                this.dom.btnSave.innerText = "Save Changes";
+                this.dom.btnSave.innerText = "Save";
                 this.dom.btnSave.style.background = "#007acc";
             }
         } else {
             this.dom.banner.innerText = "📝 Edit Panel (Select Edit ✏️ on an Preset)";
             this.dom.banner.style.color = "#888";
             this.dom.banner.style.background = "#33333330";
-            this.dom.btnSave.innerText = "Save Changes";
+            this.dom.btnSave.innerText = "Save";
             this.dom.btnSave.style.background = "#007acc";
         }
     }
@@ -1205,7 +1211,6 @@ class PresetGalleryApp {
         this.dom.inpPreset.addEventListener("keydown", handleQuickSave);
         this.dom.inpPreset.addEventListener("paste", handlePastedPreset);
         this.dom.btnClearFields.addEventListener("click", () => this.clearEditorFields());
-        this.dom.btnSaveNew.addEventListener("click", () => this.handleSave(true));
         this.dom.btnSave.addEventListener("click", () => this.handleSave(false));
         this.dom.btnDel.addEventListener("click", () => this.handleDelete());
 
