@@ -20,8 +20,6 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
             .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
             .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
-            .j0n4t-pg-basket-custom-btn { font-size: 9px; color: #fff; background: #228b22; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; transition: background 0.15s; }
-            .j0n4t-pg-basket-custom-btn:hover { background: #1e7b1e; }
             .j0n4t-pg-basket-clear-btn:hover { background: #912e2e; }
             .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
             
@@ -53,6 +51,13 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
             .j0n4t-pg-basket-chip-thumb { width: 16px; height: 16px; border-radius: 2px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000; flex-shrink: 0; }
             .j0n4t-pg-basket-chip-label { font-size: 10px; color: #ddd; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; margin-left: 2px; }
+
+            .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; }
+            .j0n4t-pg-basket-chip.inline-editing .j0n4t-pg-basket-chip-thumb,
+            .j0n4t-pg-basket-chip.inline-editing .j0n4t-pg-action-btn { display: none; }
+            .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
+            .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; }
+            .j0n4t-pg-basket-add-btn:hover { border-color: #007acc; color: #fff; background: #1a242db0; }
 
             .j0n4t-pg-action-btn { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #aaa; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 1px; }
             .j0n4t-pg-action-btn:hover { background: #555; color: #fff; }
@@ -476,80 +481,260 @@ class PresetBasket {
         this.dropIndicator = null;
     }
 
-    render(activeList, cache, helpers) {
-        this.textarea.value = activeList.join(", ");
+    spawnInlineEditor(chipElement, initialValue) {
+        const isNew = !chipElement;
 
-        if (activeList.length === 0) {
-            this.pool.innerHTML = `<span class="j0n4t-pg-basket-empty">No presets selected</span>`;
-            return;
+        // Setup Chip DOM
+        if (isNew) {
+            chipElement = document.createElement("div");
+            chipElement.className = "j0n4t-pg-basket-chip inline-editing";
+            const addBtn = this.pool.querySelector(".j0n4t-pg-basket-add-btn");
+            if (addBtn) addBtn.before(chipElement);
+            else this.pool.appendChild(chipElement);
+        } else {
+            if (chipElement.classList.contains("inline-editing")) return;
+            chipElement.classList.add("inline-editing");
+            chipElement.draggable = false;
+            const label = chipElement.querySelector(".j0n4t-pg-basket-chip-label");
+            if (label) label.style.display = "none";
         }
 
-        this.pool.innerHTML = "";
-        activeList.forEach((styleKey) => {
-            const item = cache[styleKey];
-            const initials = helpers.getInitials(styleKey);
-            const cleanLabel = item ? helpers.toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey) : styleKey;
-            const title = cache[styleKey] ? `${cleanLabel} [${styleKey}]\n${cache[styleKey].preset}` : styleKey;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "j0n4t-pg-inline-edit";
+        input.value = initialValue || "";
 
-            const chip = Object.assign(document.createElement("div"), {
-                className: "j0n4t-pg-basket-chip",
-                draggable: true,
-                title: title
+        chipElement.prepend(input);
+        input.focus();
+        input.selectionStart = input.selectionEnd = input.value.length;
+
+        // Autocomplete State
+        let popup = null;
+        let matches = [];
+        let activeIdx = 0;
+
+        const closePopup = () => {
+            if (popup) popup.remove();
+            popup = null;
+            matches = [];
+        };
+
+        const renderHighlight = () => {
+            if (!popup) return;
+            popup.querySelectorAll(".j0n4t-pg-autocomplete-item").forEach((item, i) => {
+                item.classList.toggle("active", i === activeIdx);
             });
-            chip.dataset.id = styleKey;
+        };
 
-            let thumbStyle = `background-color: ${helpers.getHashColor(helpers.getBaseFolder(styleKey))};`;
-            if (item?.filename) {
-                thumbStyle = `background-image: url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}');`;
+        const evaluateAutocomplete = () => {
+            const query = input.value.trim().toLowerCase();
+            closePopup();
+            if (!query) return;
+
+            matches = PresetGalleryCommon.getTopMatches(Object.keys(this.context.cache), query);
+            if (matches.length === 0) return;
+
+            activeIdx = 0;
+            popup = document.createElement("div");
+            popup.className = "j0n4t-pg-autocomplete-popup";
+
+            const rect = input.getBoundingClientRect();
+            const containerRect = this.container.getBoundingClientRect();
+            const zoom = containerRect.width / this.container.offsetWidth || 1;
+
+            popup.style.top = `${(rect.bottom - containerRect.top) / zoom + 2}px`;
+            popup.style.left = `${(rect.left - containerRect.left) / zoom}px`;
+            popup.style.minWidth = `${rect.width / zoom}px`;
+
+            this.container.appendChild(popup);
+
+            matches.forEach((match, idx) => {
+                const row = document.createElement("div");
+                row.className = `j0n4t-pg-autocomplete-item${idx === activeIdx ? ' active' : ''}`;
+                row.innerHTML = `<span>${this.context.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match)}</span>`;
+                row.addEventListener("mousedown", (e) => {
+                    e.preventDefault(); // Prevents input blur
+                    input.value = match;
+                    finishEdit(true);
+                });
+                popup.appendChild(row);
+            });
+        };
+
+        const finishEdit = (save) => {
+            const newVal = input.value.trim();
+            closePopup();
+
+            try { input.remove(); } catch (e) { } // Ignore DOM race conditions from synchronous framework updates
+
+            if (isNew) {
+                    chipElement.remove();
+            } else {
+                chipElement.classList.remove("inline-editing");
+                chipElement.draggable = true;
+                const label = chipElement.querySelector(".j0n4t-pg-basket-chip-label");
+                if (label) label.style.display = "";
             }
 
-            chip.innerHTML = `
-                <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
-                <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
-                <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">
-                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                </div>
-                <div class="j0n4t-pg-action-btn del-btn" title="Deselect Preset from Queue">
-                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-                </div>
-            `;
-
-            chip.querySelector(".del-btn").addEventListener("click", (e) => {
-                e.stopPropagation();
-                const filtered = this.context.getSelectedArray().filter(v => v !== styleKey);
-                this.context.updateWidgetValue(filtered);
-            });
-
-            chip.querySelector(".edit-btn").addEventListener("click", (e) => {
-                e.stopPropagation();
-                if (cache[styleKey]) {
-                    this.context.openEditorForPreset(styleKey);
-                } else {
-                    const updatedVal = prompt("Edit one-time custom prompt terms/keywords:", styleKey);
-                    if (updatedVal === null) return;
-
-                    const selections = this.context.getSelectedArray();
-                    const idx = selections.indexOf(styleKey);
+            if (save) {
+                const selections = this.context.getSelectedArray();
+                if (isNew) {
+                    if (newVal && !selections.includes(newVal)) {
+                        selections.push(newVal);
+                        this.context.updateWidgetValue(selections);
+                    } else {
+                        this.context.updateWidgetValue(selections);
+                    }
+                } else if (newVal !== initialValue) {
+                    const idx = selections.indexOf(initialValue);
                     if (idx !== -1) {
-                        if (updatedVal.trim()) selections[idx] = updatedVal.trim();
+                        if (newVal) selections[idx] = newVal;
                         else selections.splice(idx, 1);
                         this.context.updateWidgetValue(selections);
                     }
                 }
-            });
+            }
+        };
 
-            chip.addEventListener("dragstart", (e) => {
-                chip.classList.add("dragging");
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", styleKey);
-                e.dataTransfer.setData("source/basket", "true");
-            });
+        input.addEventListener("input", evaluateAutocomplete);
+        input.addEventListener("blur", () => finishEdit(true));
+        input.addEventListener("keydown", (ev) => {
+            if (popup && matches.length > 0) {
+                if (ev.key === "Tab" || (ev.key === "Enter" && !ev.ctrlKey)) {
+                    ev.preventDefault();
+                    input.value = matches[activeIdx];
+                    finishEdit(true);
+                    return;
+                } else if (ev.key === "ArrowDown") {
+                    ev.preventDefault();
+                    activeIdx = (activeIdx + 1) % matches.length;
+                    renderHighlight();
+                    return;
+                } else if (ev.key === "ArrowUp") {
+                    ev.preventDefault();
+                    activeIdx = (activeIdx - 1 + matches.length) % matches.length;
+                    renderHighlight();
+                    return;
+                }
+            }
 
-            chip.addEventListener("dragend", () => chip.classList.remove("dragging"));
-
-            this.pool.appendChild(chip);
+            if (ev.key === "Enter") {
+                ev.preventDefault();
+                finishEdit(true);
+            } else if (ev.key === "Escape") {
+                ev.preventDefault();
+                finishEdit(false);
+            }
         });
     }
+
+    render(activeList, cache, helpers) {
+        this.textarea.value = activeList.join(", ");
+
+        this.pool.innerHTML = "";
+
+        if (activeList.length > 0) {
+            activeList.forEach((styleKey) => {
+                const item = cache[styleKey];
+                const initials = helpers.getInitials(styleKey);
+                const cleanLabel = item ? helpers.toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey) : styleKey;
+                const title = cache[styleKey] ? `${cleanLabel} [${styleKey}]\n${cache[styleKey].preset}` : styleKey;
+                const chip = Object.assign(document.createElement("div"), { className: "j0n4t-pg-basket-chip", draggable: true, title: title });
+                chip.dataset.id = styleKey;
+
+                let thumbStyle = `background-color: ${helpers.getHashColor(helpers.getBaseFolder(styleKey))};`;
+                if (item?.filename) {
+                    thumbStyle = `background-image: url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}');`;
+                }
+
+                chip.innerHTML = `
+                    <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
+                    <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
+                    <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">
+                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    </div>
+                    <div class="j0n4t-pg-action-btn del-btn" title="Remove from basket">
+                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </div>
+                `;
+
+                chip.addEventListener("click", (e) => {
+                    if (e.target.closest(".j0n4t-pg-action-btn")) return;
+
+                    const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${styleKey}"]`);
+                    if (itemEl) {
+                        if (this.context.dom.search.value) {
+                            this.context.dom.search.value = "";
+                        }
+
+                        let prev = itemEl.previousElementSibling;
+                        while (prev && !prev.classList.contains("j0n4t-pg-group-header")) {
+                            prev = prev.previousElementSibling;
+                        }
+                        if (prev && prev.classList.contains("collapsed")) {
+                            prev.classList.remove("collapsed");
+                            const collapsedList = this.context.getCollapsedFolders().filter(f => f !== prev.dataset.groupRaw);
+                            this.context.setCollapsedFolders(collapsedList);
+                        }
+
+                        this.context.executeFilterPipeline();
+
+                        itemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+                        itemEl.style.transition = "border-color 0.15s, box-shadow 0.15s";
+                        const originalBorderColor = itemEl.style.borderColor;
+                        itemEl.style.borderColor = "#007acc";
+                        itemEl.style.boxShadow = "0 0 8px rgba(0, 122, 204, 0.75)";
+
+                        setTimeout(() => {
+                            itemEl.style.borderColor = originalBorderColor;
+                            itemEl.style.boxShadow = "";
+                        }, 800);
+                    }
+                });
+
+                chip.querySelector(".edit-btn").addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    this.spawnInlineEditor(chip, styleKey);
+                });
+
+                chip.querySelector(".del-btn").addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const selections = this.context.getSelectedArray().filter(v => v !== styleKey);
+                    this.context.updateWidgetValue(selections);
+                });
+
+                chip.addEventListener("dblclick", (e) => {
+                    e.stopPropagation();
+                    this.spawnInlineEditor(chip, styleKey);
+                });
+
+                chip.addEventListener("dragstart", (e) => {
+                    chip.classList.add("dragging");
+                    e.dataTransfer.setData("text/plain", styleKey);
+                    e.dataTransfer.setData("source/basket", "true");
+                });
+
+                chip.addEventListener("dragend", () => {
+                    chip.classList.remove("dragging");
+                    this.removeDropIndicator();
+                });
+
+                this.pool.appendChild(chip);
+            });
+        }
+
+        const addBtn = document.createElement("div");
+        addBtn.className = "j0n4t-pg-basket-add-btn";
+        addBtn.innerText = "+ Add";
+        addBtn.title = "Add a new preset or keyword";
+        addBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.spawnInlineEditor(null, "");
+        });
+        this.pool.appendChild(addBtn);
+    }
+
 }
 
 /**
@@ -619,13 +804,10 @@ class PresetGalleryApp {
                     <div class="j0n4t-pg-basket-title">🧺 Presets Basket</div>
                     <div style="display: flex; gap: 4px; align-items: center;">
                         <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw Mode</label>
-                        <button type="button" class="j0n4t-pg-basket-custom-btn" title="Add temporary prompt chip">+ Custom</button>
                         <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear all presets from basket" style="font-size: 9px; color: #fff; background: #b23b3b; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; transition: background 0.15s;">🗑️ Clear</button>
                     </div>
                 </div>
-                <div class="j0n4t-pg-basket-pool">
-                    <span class="j0n4t-pg-basket-empty">No presets selected</span>
-                </div>
+                <div class="j0n4t-pg-basket-pool"></div>
                 <div class="j0n4t-pg-raw-wrapper">
                     <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Enter comma separated tokens..."></textarea>
                 </div>
@@ -708,7 +890,6 @@ class PresetGalleryApp {
             inpZipFile: wrap.querySelector("#j0n4t-pg-zip-file"),
             btnImport: wrap.querySelector("#j0n4t-pg-import-btn"),
             btnExport: wrap.querySelector("#j0n4t-pg-export-btn"),
-            btnCustomChip: wrap.querySelector(".j0n4t-pg-basket-custom-btn"),
             btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn"),
             chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
             basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
@@ -1231,12 +1412,6 @@ class PresetGalleryApp {
                 this.updateWidgetValue([]);
                 alert("Presets tree imported successfully!");
             }
-        });
-
-        this.dom.btnCustomChip.addEventListener("click", () => {
-            const promptVal = prompt("Enter one-time custom prompt terms/keywords:");
-            if (!promptVal || !promptVal.trim()) return;
-            this.addCustomChipToBasket(promptVal.trim());
         });
 
         this.dom.btnClearBasket.addEventListener("click", () => {
