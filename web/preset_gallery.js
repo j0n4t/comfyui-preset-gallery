@@ -313,7 +313,7 @@ class PresetBasket {
 
             if (!this.popupEl || this.currentMatches.length === 0) return;
 
-            if (e.key === "Tab" || e.key === "Enter") {
+            if (e.key === "Tab" || (e.key === "Enter" && !e.ctrlKey)) {
                 e.preventDefault();
                 e.stopPropagation();
                 this.selectMatch(this.currentMatches[this.activeIndex]);
@@ -487,7 +487,7 @@ class PresetBasket {
             const item = cache[styleKey];
             const initials = helpers.getInitials(styleKey);
             const cleanLabel = item ? helpers.toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey) : styleKey;
-            const title = cache[styleKey] ? `${cleanLabel} [${styleKey}]{\n${cache[styleKey].preset}` : styleKey;
+            const title = cache[styleKey] ? `${cleanLabel} [${styleKey}]\n${cache[styleKey].preset}` : styleKey;
 
             const chip = Object.assign(document.createElement("div"), {
                 className: "j0n4t-pg-basket-chip",
@@ -1440,7 +1440,7 @@ class PresetGalleryView {
         });
 
         searchInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && !e.ctrlKey) {
                 e.preventDefault();
                 e.stopPropagation();
                 if (this.filterMatches[activeIndex]) {
@@ -1534,7 +1534,7 @@ class PresetGalleryView {
 
         folderInput.addEventListener("keydown", (e) => {
             if (!folderPopup || folderMatches.length === 0) return;
-            if (e.key === "Tab" || e.key === "Enter") {
+            if (e.key === "Tab" || (e.key === "Enter" && !e.ctrlKey)) {
                 e.preventDefault();
                 selectFolder(folderMatches[activeFolderIndex]);
             } else if (e.key === "ArrowDown") {
