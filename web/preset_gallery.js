@@ -656,7 +656,7 @@ class PresetGalleryApp {
             </div>
             <div class="j0n4t-pg-editor collapsed no-image">
                 <div class="j0n4t-pg-row">
-                    <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
+                    <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 (Select Edit ✏️ on an Item)</div>
                     <input type="file" id="j0n4t-pg-zip-file" accept=".zip" style="display:none;" />
                     <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import ZIP Pool Package">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -789,11 +789,13 @@ class PresetGalleryApp {
             this.dom.btnSave.innerText = "Save";
             this.dom.btnSave.style.background = "#007acc";
         } else if (this.editingKey) {
-            this.dom.banner.innerText = `📝\u00A0Editing:\u00A0${this.editingKey}`;
-            this.dom.banner.title = `📝\u00A0Editing:\u00A0${this.editingKey}`;
+            this.dom.banner.innerText = `📝\u00A0${this.editingKey}`;
+            this.dom.banner.title = `📝\u00A0${this.editingKey}`;
             this.dom.banner.style.color = "#d1a119";
             this.dom.banner.style.background = "#d1a11920";
             if (this.isSaved) {
+                this.dom.banner.innerText = `✅\u00A0${this.editingKey}`;
+                this.dom.banner.title = `✅\u00A0${this.editingKey}`;
                 this.dom.btnSave.innerText = "Saved!";
                 this.dom.btnSave.style.background = "#228b22";
             } else {
@@ -801,7 +803,7 @@ class PresetGalleryApp {
                 this.dom.btnSave.style.background = "#007acc";
             }
         } else {
-            this.dom.banner.innerText = "📝 Edit Panel (Select Edit ✏️ on an Preset)";
+            this.dom.banner.innerText = "📝 (Select Edit ✏️ on an Preset)";
             this.dom.banner.style.color = "#888";
             this.dom.banner.style.background = "#33333330";
             this.dom.btnSave.innerText = "Save";
