@@ -12,7 +12,7 @@ class PresetGalleryStyles {
 
         const styles = document.createElement("style");
         styles.id = "j0n4t-pg-global-styles";
-        styles.textContent = `
+        styles.textContent = /*css*/ `
             .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; }
             .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views, .j0n4t-pg-wrap.hide-gallery-mode #j0n4t-pg-global-collapse, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-checkbox-wrap:has(#j0n4t-pg-group-toggle) { display: none !important; }
 
@@ -125,7 +125,7 @@ class PresetGalleryStyles {
             .j0n4t-pg-editor.collapsed { display: none !important; }
             .j0n4t-pg-editor-banner { font-size: 10px; font-weight: bold; padding: 4px 6px; border-radius: 3px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; }
             .j0n4t-pg-editor input, .j0n4t-pg-editor textarea { background: #1a1a1ab0; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
-            .j0n4t-pg-editor textarea { resize: vertical; min-height: 65px; }
+            .j0n4t-pg-editor textarea { resize: vertical; min-height: 48px; }
             .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
             .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; width: 100%; text-align: center; box-sizing: border-box; height: 28px; }
             .j0n4t-pg-btn:hover { background: #0062a3; }
@@ -134,7 +134,12 @@ class PresetGalleryStyles {
             .j0n4t-pg-folder-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; }
             .j0n4t-pg-folder-autocomplete-item:last-child { border-bottom: none; }
             .j0n4t-pg-folder-autocomplete-item.active { background: #007acc; color: #fff; }
-            .has-image .no-img-state, .no-image .has-img-state { display: none !important; }
+            
+            .j0n4t-pg-editor-preview { position: relative; width: 84px; flex-shrink: 0; border-radius: 3px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #111; cursor: pointer; border: 1px dashed #444; transition: border-color 0.2s; min-height: 84px; }
+            .j0n4t-pg-editor-preview:hover { border-color: #007acc; }
+            .j0n4t-pg-editor-preview .j0n4t-pg-corner-edit { top: 4px; right: 4px; background: #b23b3b; border-color: #b23b3b; z-index: 10; display: none; }
+            .j0n4t-pg-editor-preview:hover .j0n4t-pg-corner-edit { display: flex; }
+            .j0n4t-pg-editor-preview img { width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; }
         `;
         document.head.appendChild(styles);
     }
@@ -554,6 +559,7 @@ class PresetGalleryView {
         this.widget = widget;
         this.cache = {};
         this.fetchedBlobImage = null;
+        this.localPreviewUrl = null;
         this.editingKey = "";
         this.currentMode = "new";
         this.isSaved = false;
@@ -587,6 +593,7 @@ class PresetGalleryView {
         );
 
         this.bindEvents();
+        this.renderEditorPreview();
     }
 
     getCollapsedFolders() {
@@ -645,19 +652,19 @@ class PresetGalleryView {
                 <button type="button" class="j0n4t-pg-global-collapse-btn" id="j0n4t-pg-global-collapse" style="background: #2a2a2a80; border: 1px solid #444; color: #ccc; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; user-select: none; white-space: nowrap;">↕️ Collapse All</button>
                 <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group Folders</label>
             </div>
-            <div class="j0n4t-pg-editor collapsed">
+            <div class="j0n4t-pg-editor collapsed no-image">
                 <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Edit Panel (Select Edit ✏️ on an Item)</div>
-                <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords... (Shift+Enter to save)"></textarea>
-                <div class="j0n4t-pg-row">
-                    <input type="text" id="j0n4t-pg-folder" placeholder="Sub-folder (Optional)" style="flex:1;" />
-                    <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
+                <div style="display: flex; gap: 6px; align-items: stretch;">
+                    <div id="j0n4t-pg-editor-preview" class="j0n4t-pg-editor-preview" title="Click to Pick/Change Image"></div>
+                    <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1; min-width: 0;">
+                        <textarea id="j0n4t-pg-preset" placeholder="Preset Keywords... (Shift+Enter to save)" style="flex-grow: 1; min-height: 48px;"></textarea>
+                        <div class="j0n4t-pg-row">
+                            <input type="text" id="j0n4t-pg-folder" placeholder="Sub-folder (Optional)" style="flex:1;" />
+                            <input type="text" id="j0n4t-pg-name" placeholder="Preset Name" style="flex:1;" />
+                        </div>
+                    </div>
                 </div>
-                <div class="j0n4t-pg-row">
-                    <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
-                    <button type="button" id="j0n4t-pg-pick-btn" class="j0n4t-pg-btn no-img-state" style="background:#444;" title="Pick Image">Pick Image</button>
-                    <button type="button" id="j0n4t-pg-change-btn" class="j0n4t-pg-btn has-img-state" style="background:#2b5e3b;" title="Change Image">Change Img</button>
-                    <button type="button" id="j0n4t-pg-rm-img-btn" class="j0n4t-pg-btn has-img-state" style="background:#b23b3b;" title="Delete Image Asset Only">Clear Img</button>
-                </div>
+                <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
                 <div class="j0n4t-pg-row">
                     <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;" title="Clear form to write a completely blank new preset">Clear / New</button>
                     <button type="button" id="j0n4t-pg-save-new-btn" class="j0n4t-pg-btn" style="background:#228b22;" title="Save current parameters as a new separate preset file">Save as New</button>
@@ -683,13 +690,11 @@ class PresetGalleryView {
             viewsContainer: wrap.querySelector(".j0n4t-pg-views"),
             chkGroup: wrap.querySelector("#j0n4t-pg-group-toggle"),
             btnGlobalCollapse: wrap.querySelector("#j0n4t-pg-global-collapse"),
+            editorPreview: wrap.querySelector("#j0n4t-pg-editor-preview"),
             inpName: wrap.querySelector("#j0n4t-pg-name"),
             inpFolder: wrap.querySelector("#j0n4t-pg-folder"),
             inpPreset: wrap.querySelector("#j0n4t-pg-preset"),
             inpFile: wrap.querySelector("#j0n4t-pg-file"),
-            btnPick: wrap.querySelector("#j0n4t-pg-pick-btn"),
-            btnChange: wrap.querySelector("#j0n4t-pg-change-btn"),
-            btnRmImg: wrap.querySelector("#j0n4t-pg-rm-img-btn"),
             btnClearFields: wrap.querySelector("#j0n4t-pg-clear-fields-btn"),
             btnSaveNew: wrap.querySelector("#j0n4t-pg-save-new-btn"),
             btnSave: wrap.querySelector("#j0n4t-pg-save-btn"),
@@ -704,6 +709,40 @@ class PresetGalleryView {
             rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input"),
             btnHideGallery: wrap.querySelector("#j0n4t-pg-hide-gallery-btn")
         };
+    }
+
+    renderEditorPreview() {
+        const hasImage = this.dom.editor.classList.contains("has-image");
+        const rmBtnHtml = `<div class="j0n4t-pg-corner-edit" id="j0n4t-pg-rm-img-btn" title="Remove Image Attachment"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div>`;
+
+        if (hasImage) {
+            let imgSrc = "";
+            if (this.dom.inpFile.files && this.dom.inpFile.files[0]) {
+                if (this.localPreviewUrl) URL.revokeObjectURL(this.localPreviewUrl);
+                this.localPreviewUrl = URL.createObjectURL(this.dom.inpFile.files[0]);
+                imgSrc = this.localPreviewUrl;
+            } else if (this.editingKey && this.cache[this.editingKey]?.filename) {
+                imgSrc = `/custom_node/get_preset_image?filename=${encodeURIComponent(this.cache[this.editingKey].filename)}&t=${Date.now()}`;
+            }
+
+            if (imgSrc) {
+                this.dom.editorPreview.innerHTML = `${rmBtnHtml}<img src="${imgSrc}" alt="Preview" />`;
+                return;
+            }
+        }
+
+        const name = this.dom.inpName.value.trim() || "New";
+        const folder = this.dom.inpFolder.value.trim() || "";
+        const uniqueKey = folder ? `${folder}/${name}` : name;
+        const initials = this.helpers.getInitials(uniqueKey);
+        const bgColor = this.helpers.getPresetColor(uniqueKey);
+
+        this.dom.editorPreview.innerHTML = `
+            <div style="background-color: ${bgColor}; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; position: absolute; top:0; left:0;">
+                <svg class="j0n4t-pg-icon" viewBox="0 0 24 24" style="opacity: 0.25; color: #fff; width: 32px; height: 32px;"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                <div class="j0n4t-pg-initials" style="font-size: 14px;">${initials}</div>
+            </div>
+        `;
     }
 
     getSelectedArray() {
@@ -751,7 +790,7 @@ class PresetGalleryView {
                 this.dom.btnSave.style.background = "#228b22";
             } else {
                 this.dom.btnSave.innerText = "Save Changes";
-                this.dom.btnSave.style.background = "#007acc"; // Restore default blue color
+                this.dom.btnSave.style.background = "#007acc"; 
             }
         } else {
             this.dom.banner.innerText = "📝 Edit Panel (Select Edit ✏️ on an Preset)";
@@ -765,7 +804,13 @@ class PresetGalleryView {
     resetImageState() {
         this.fetchedBlobImage = null;
         this.dom.inpFile.value = "";
-        this.dom.editor.classList.replace("has-image", "no-image");
+        this.dom.editor.classList.remove("has-image");
+        this.dom.editor.classList.add("no-image");
+        if (this.localPreviewUrl) {
+            URL.revokeObjectURL(this.localPreviewUrl);
+            this.localPreviewUrl = null;
+        }
+        this.renderEditorPreview();
     }
 
     clearEditorFields() {
@@ -803,6 +848,7 @@ class PresetGalleryView {
 
         if (this.cache[styleKey].filename) {
             this.dom.editor.classList.replace("no-image", "has-image");
+            this.renderEditorPreview();
             try {
                 const blob = await PresetGalleryAPI.fetchPresetImage(this.cache[styleKey].filename);
                 if (this.editingKey === styleKey && this.currentMode === "edit") {
@@ -812,6 +858,8 @@ class PresetGalleryView {
                 console.error("Failed to sync asset image stream", err);
                 this.resetImageState();
             }
+        } else {
+            this.renderEditorPreview();
         }
 
         this.updateBannerText();
@@ -1094,34 +1142,34 @@ class PresetGalleryView {
                 this.isSaved = false;
                 this.updateBannerText();
             }
+            if (this.dom.editor.classList.contains("no-image")) {
+                this.renderEditorPreview();
+            }
         };
 
         this.dom.inpName.addEventListener("input", markAsPendingChanges);
         this.dom.inpFolder.addEventListener("input", markAsPendingChanges);
         this.dom.inpPreset.addEventListener("input", markAsPendingChanges);
 
+        this.dom.editorPreview.addEventListener("click", (e) => {
+            const rmBtn = e.target.closest("#j0n4t-pg-rm-img-btn");
+            if (rmBtn) {
+                e.stopPropagation();
+                if (!confirm("Clear this image attachment placeholder? Image will be deleted instantly on next save commit.")) return;
+                this.resetImageState();
+                markAsPendingChanges();
+            } else {
+                this.dom.inpFile.click();
+            }
+        });
+
         this.dom.inpFile.addEventListener("change", () => {
             if (this.dom.inpFile.files[0]) {
                 this.fetchedBlobImage = null;
                 this.dom.editor.classList.replace("no-image", "has-image");
+                this.renderEditorPreview();
                 markAsPendingChanges();
             }
-        });
-
-        this.dom.btnPick.addEventListener("click", () => this.dom.inpFile.click());
-        this.dom.btnChange.addEventListener("click", () => this.dom.inpFile.click());
-        this.dom.inpFile.addEventListener("change", () => {
-            if (this.dom.inpFile.files[0]) {
-                this.fetchedBlobImage = null;
-                this.dom.editor.classList.replace("no-image", "has-image");
-                markAsPendingChanges();
-            }
-        });
-
-        this.dom.btnRmImg.addEventListener("click", () => {
-            if (!confirm("Clear this image attachment placeholder? Image will be deleted instantly on next save commit.")) return;
-            this.resetImageState();
-            markAsPendingChanges();
         });
 
         const handleQuickSave = (e) => {
@@ -1130,6 +1178,7 @@ class PresetGalleryView {
                 this.dom.btnSave.click();
             }
         };
+        
         const handlePastedPreset = (e) => {
             if (this.dom.inpName.value.trim() === "" || this.currentMode === "new") {
                 const pastedText = (e.clipboardData || window.clipboardData).getData("text");
@@ -1145,6 +1194,7 @@ class PresetGalleryView {
                     .replace(/\s+/g, "_");
                 if (suggestedName) {
                     this.dom.inpName.value = suggestedName;
+                    markAsPendingChanges();
                 }
             }
         }
