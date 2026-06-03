@@ -151,6 +151,16 @@ class PresetGalleryStyles {
 }
 
 class PresetGalleryCommon {
+    static escapeHTML(str) {
+        if (str == null) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     static getTopMatches(list, query) {
         const cleanQuery = query.toLowerCase();
         const buckets = list.reduce((acc, item) => {
@@ -412,8 +422,8 @@ class PresetBasket {
             const row = document.createElement("div");
             row.className = `j0n4t-pg-autocomplete-item${index === this.activeIndex ? ' active' : ''}`;
             row.innerHTML = `
-                <span>${cleanLabel}</span>
-                <span class="j0n4t-pg-autocomplete-meta">${match}</span>
+                <span>${PresetGalleryCommon.escapeHTML(cleanLabel)}</span>
+                <span class="j0n4t-pg-autocomplete-meta">${PresetGalleryCommon.escapeHTML(match)}</span>
             `;
 
             row.addEventListener("click", (e) => {
@@ -551,7 +561,7 @@ class PresetBasket {
             matches.forEach((match, idx) => {
                 const row = document.createElement("div");
                 row.className = `j0n4t-pg-autocomplete-item${idx === activeIdx ? ' active' : ''}`;
-                row.innerHTML = `<span>${this.context.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match)}</span>`;
+                row.innerHTML = `<span>${PresetGalleryCommon.escapeHTML(this.context.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match))}</span>`;
                 row.addEventListener("mousedown", (e) => {
                     e.preventDefault(); // Prevents input blur
                     input.value = match;
@@ -648,8 +658,8 @@ class PresetBasket {
                 }
 
                 chip.innerHTML = `
-                    <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
-                    <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
+                    <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : PresetGalleryCommon.escapeHTML(initials.slice(0, 4))}</div>
+                    <div class="j0n4t-pg-basket-chip-label" title="${PresetGalleryCommon.escapeHTML(styleKey)}">${PresetGalleryCommon.escapeHTML(cleanLabel)}</div>
                     <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">
                         ${helpers.icons.edit}
                     </div>
@@ -932,7 +942,7 @@ class PresetGalleryApp {
         this.dom.editorPreview.innerHTML = `
             <div style="background-color: ${bgColor}; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; position: absolute; top:0; left:0;">
                 ${this.helpers.icons.file}
-                <div class="j0n4t-pg-initials" style="font-size: 14px;">${initials}</div>
+                <div class="j0n4t-pg-initials" style="font-size: 14px;">${PresetGalleryCommon.escapeHTML(initials)}</div>
             </div>
         `;
     }
@@ -1128,8 +1138,8 @@ class PresetGalleryApp {
                 const memoryCollapseState = isCurrentlyCollapsed ? " collapsed" : "";
 
                 htmlBuffer += `
-                    <div class="j0n4t-pg-group-header${memoryCollapseState}" data-group="${uiGroupTitle}" data-group-raw="${groupRawName}">
-                        <span>${uiGroupTitle}</span>
+                    <div class="j0n4t-pg-group-header${memoryCollapseState}" data-group="${PresetGalleryCommon.escapeHTML(uiGroupTitle)}" data-group-raw="${PresetGalleryCommon.escapeHTML(groupRawName)}">
+                        <span>${PresetGalleryCommon.escapeHTML(uiGroupTitle)}</span>
                         <div class="j0n4t-pg-group-line"></div>
                         <span class="j0n4t-pg-group-rename-tip">Right-click to rename folder</span>
                     </div>
@@ -1140,29 +1150,29 @@ class PresetGalleryApp {
             if (item.filename) {
                 thumbnailHtml = `
                     <div class="j0n4t-pg-thumb-box">
-                        <img class="j0n4t-pg-img" src="/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}" alt="${uniqueKey}" loading="lazy">
-                        <div class="j0n4t-pg-initials">${initials}</div>
+                        <img class="j0n4t-pg-img" src="/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}" alt="${PresetGalleryCommon.escapeHTML(uniqueKey)}" loading="lazy">
+                        <div class="j0n4t-pg-initials">${PresetGalleryCommon.escapeHTML(initials)}</div>
                     </div>`;
             } else {
                 thumbnailHtml = `
                     <div class="j0n4t-pg-thumb-box" style="background-color: ${this.helpers.getPresetColor(uniqueKey)}; color: #fff;">
                         ${this.helpers.icons.file}
-                        <div class="j0n4t-pg-initials">${initials}</div>
+                        <div class="j0n4t-pg-initials">${PresetGalleryCommon.escapeHTML(initials)}</div>
                     </div>`;
             }
 
             const badge = item.tags?.length
-                ? `<div class="j0n4t-pg-tag-badge" title="${item.tags.map(this.helpers.toTitleCase).join(' > ')}">${this.helpers.toTitleCase(item.tags[item.tags.length - 1])}</div>`
+                ? `<div class="j0n4t-pg-tag-badge" title="${PresetGalleryCommon.escapeHTML(item.tags.map(this.helpers.toTitleCase).join(' > '))}">${PresetGalleryCommon.escapeHTML(this.helpers.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
                 : '';
 
             htmlBuffer += `
-                <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel} [${uniqueKey}]\n${this.cache[uniqueKey].preset}">
+                <div class="j0n4t-pg-item" data-style="${PresetGalleryCommon.escapeHTML(uniqueKey)}" data-search-blob="${PresetGalleryCommon.escapeHTML(searchBlob)}" draggable="true" title="${PresetGalleryCommon.escapeHTML(cleanLabel)} [${PresetGalleryCommon.escapeHTML(uniqueKey)}]\n${PresetGalleryCommon.escapeHTML(this.cache[uniqueKey].preset || '')}">
                     ${badge}
-                    <div class="j0n4t-pg-corner-edit" title="Edit ${cleanLabel}">
+                    <div class="j0n4t-pg-corner-edit" title="Edit ${PresetGalleryCommon.escapeHTML(cleanLabel)}">
                         ${this.helpers.icons.edit}
                     </div>
                     ${thumbnailHtml}
-                    <div class="j0n4t-pg-label">${cleanLabel}</div>
+                    <div class="j0n4t-pg-label">${PresetGalleryCommon.escapeHTML(cleanLabel)}</div>
                 </div>
             `;
         });
@@ -1636,8 +1646,8 @@ class PresetGalleryApp {
                 const row = document.createElement("div");
                 row.className = `j0n4t-pg-filter-autocomplete-item${index === activeIndex ? ' active' : ''}`;
                 row.innerHTML = `
-                    <span>${cleanLabel}</span>
-                    <span class="j0n4t-pg-filter-autocomplete-meta">${key}</span>
+                    <span>${PresetGalleryCommon.escapeHTML(cleanLabel)}</span>
+                    <span class="j0n4t-pg-filter-autocomplete-meta">${PresetGalleryCommon.escapeHTML(key)}</span>
                 `;
                 row.addEventListener("mousedown", (e) => {
                     e.preventDefault();
