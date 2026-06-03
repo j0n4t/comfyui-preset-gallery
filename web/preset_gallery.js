@@ -651,10 +651,10 @@ class PresetBasket {
                     <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : initials.slice(0, 4)}</div>
                     <div class="j0n4t-pg-basket-chip-label" title="${styleKey}">${cleanLabel}</div>
                     <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">
-                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        ${helpers.icons.edit}
                     </div>
                     <div class="j0n4t-pg-action-btn del-btn" title="Remove from basket">
-                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        ${helpers.icons.close}
                     </div>
                 `;
 
@@ -768,7 +768,18 @@ class PresetGalleryApp {
                 return this.helpers.toTitleCase(raw).split(/\s+/).map(w => w.slice(0, 2)).join('').substring(0, 6);
             },
             getBaseFolder: (key) => key.includes("/") ? key.split("/")[0] : key,
-            getPresetColor: (key) => this.helpers.getHashColor(this.helpers.getBaseFolder(key))
+            getPresetColor: (key) => this.helpers.getHashColor(this.helpers.getBaseFolder(key)),
+            icons: {
+                close: `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+                edit: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
+                file: `<svg class="j0n4t-pg-icon" viewBox="0 0 24 24" style="opacity: 0.25; color: #fff; width: 32px; height: 32px;"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
+                list: `<svg viewBox="0 0 16 16"><rect x="1" y="2" width="3" height="2"/><rect x="6" y="2" width="9" height="2"/><rect x="1" y="7" width="3" height="2"/><rect x="6" y="7" width="9" height="2"/><rect x="1" y="12" width="3" height="2"/><rect x="6" y="12" width="9" height="2"/></svg>`,
+                small: `<svg viewBox="0 0 16 16"><rect x="1" y="1" width="3" height="3"/><rect x="6" y="1" width="3" height="3"/><rect x="11" y="1" width="3" height="3"/><rect x="1" y="6" width="3" height="3"/><rect x="6" y="6" width="3" height="3"/><rect x="11" y="6" width="3" height="3"/><rect x="1" y="11" width="3" height="3"/><rect x="6" y="11" width="3" height="3"/><rect x="11" y="11" width="3" height="3"/></svg>`,
+                big: `<svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg>`,
+                eye: `<svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`,
+                export: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M6 20q-.825 0-1.412-.587T4 18v-2q0-.425.288-.712T5 15t.713.288T6 16v2h12v-2q0-.425.288-.712T19 15t.713.288T20 16v2q0 .825-.587 1.413T18 20zm5-12.15L9.125 9.725q-.3.3-.712.288T7.7 9.7q-.275-.3-.288-.7t.288-.7l3.6-3.6q.15-.15.325-.212T12 4.425t.375.063t.325.212l3.6 3.6q.3.3.288.7t-.288.7q-.3.3-.712.313t-.713-.288L13 7.85V15q0 .425-.288.713T12 16t-.712-.288T11 15z" /></svg>`,
+                import: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M11.625 15.513q-.175-.063-.325-.213l-3.6-3.6q-.3-.3-.288-.7t.288-.7q.3-.3.713-.312t.712.287L11 12.15V5q0-.425.288-.712T12 4t.713.288T13 5v7.15l1.875-1.875q.3-.3.713-.288t.712.313q.275.3.288.7t-.288.7l-3.6 3.6q-.15.15-.325.213t-.375.062t-.375-.062M6 20q-.825 0-1.412-.587T4 18v-2q0-.425.288-.712T5 15t.713.288T6 16v2h12v-2q0-.425.288-.712T19 15t.713.288T20 16v2q0 .825-.587 1.413T18 20z" /></svg>`
+            }
         };
 
         this.dom = this.buildDOMStructure();
@@ -815,19 +826,15 @@ class PresetGalleryApp {
             <div class="j0n4t-pg-top-bar">
                 <div class="j0n4t-pg-search-wrapper">
                     <input type="text" class="j0n4t-pg-search" placeholder="Type presets, folders or custom text..." />
-                    <div class="j0n4t-pg-search-clear" title="Clear Search">
-                        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-                    </div>
+                    <div class="j0n4t-pg-search-clear" title="Clear Search">${this.helpers.icons.close}</div>
                 </div>
                 <div class="j0n4t-pg-views">
-                    <div class="j0n4t-pg-view-btn" data-view="small" title="Small Grid"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="3" height="3"/><rect x="6" y="1" width="3" height="3"/><rect x="11" y="1" width="3" height="3"/><rect x="1" y="6" width="3" height="3"/><rect x="6" y="6" width="3" height="3"/><rect x="11" y="6" width="3" height="3"/><rect x="1" y="11" width="3" height="3"/><rect x="6" y="11" width="3" height="3"/><rect x="11" y="11" width="3" height="3"/></svg></div>
-                    <div class="j0n4t-pg-view-btn" data-view="big" title="Big Grid"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg></div>
-                    <div class="j0n4t-pg-view-btn" data-view="list" title="List View"><svg viewBox="0 0 16 16"><rect x="1" y="2" width="3" height="2"/><rect x="6" y="2" width="9" height="2"/><rect x="1" y="7" width="3" height="2"/><rect x="6" y="7" width="9" height="2"/><rect x="1" y="12" width="3" height="2"/><rect x="6" y="12" width="9" height="2"/></svg></div>
+                    <div class="j0n4t-pg-view-btn" data-view="small" title="Small Grid">${this.helpers.icons.small}</div>
+                    <div class="j0n4t-pg-view-btn" data-view="big" title="Big Grid">${this.helpers.icons.big}</div>
+                    <div class="j0n4t-pg-view-btn" data-view="list" title="List View">${this.helpers.icons.list}</div>
                 </div>
                 <div class="j0n4t-pg-toggle-gallery-wrap">
-                    <div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn" title="Toggle Gallery">
-                        <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                    </div>
+                    <div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn" title="Toggle Gallery">${this.helpers.icons.eye}</div>
                 </div>
             </div>
             <div class="j0n4t-pg-grid"></div>
@@ -840,16 +847,8 @@ class PresetGalleryApp {
                 <div class="j0n4t-pg-row">
                     <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 (Select Edit ✏️ on an Item)</div>
                     <input type="file" id="j0n4t-pg-zip-file" accept=".zip" style="display:none;" />
-                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import ZIP Pool Package">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M11.625 15.513q-.175-.063-.325-.213l-3.6-3.6q-.3-.3-.288-.7t.288-.7q.3-.3.713-.312t.712.287L11 12.15V5q0-.425.288-.712T12 4t.713.288T13 5v7.15l1.875-1.875q.3-.3.713-.288t.712.313q.275.3.288.7t-.288.7l-3.6 3.6q-.15.15-.325.213t-.375.062t-.375-.062M6 20q-.825 0-1.412-.587T4 18v-2q0-.425.288-.712T5 15t.713.288T6 16v2h12v-2q0-.425.288-.712T19 15t.713.288T20 16v2q0 .825-.587 1.413T18 20z" />
-                        </svg>
-                    </button>
-                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Current Pool Package to ZIP Archive">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M6 20q-.825 0-1.412-.587T4 18v-2q0-.425.288-.712T5 15t.713.288T6 16v2h12v-2q0-.425.288-.712T19 15t.713.288T20 16v2q0 .825-.587 1.413T18 20zm5-12.15L9.125 9.725q-.3.3-.712.288T7.7 9.7q-.275-.3-.288-.7t.288-.7l3.6-3.6q.15-.15.325-.212T12 4.425t.375.063t.325.212l3.6 3.6q.3.3.288.7t-.288.7q-.3.3-.712.313t-.713-.288L13 7.85V15q0 .425-.288.713T12 16t-.712-.288T11 15z" />
-                        </svg>
-                    </button>
+                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import ZIP Pool Package">${this.helpers.icons.import}</button>
+                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Current Pool Package to ZIP Archive">${this.helpers.icons.export}</button>
                     <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;" title="Clear form to write a completely blank new preset">Clear</button>
                     <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;" title="Save changes or overwrite current active file">Save</button>
                     <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;" title="Permanently Delete Preset Entirely">Delete</button>
@@ -900,7 +899,7 @@ class PresetGalleryApp {
 
     renderEditorPreview() {
         const hasImage = this.dom.editor.classList.contains("has-image");
-        const rmBtnHtml = `<div class="j0n4t-pg-corner-edit" id="j0n4t-pg-rm-img-btn" title="Remove Image Attachment"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div>`;
+        const rmBtnHtml = `<div class="j0n4t-pg-corner-edit" id="j0n4t-pg-rm-img-btn" title="Remove Image Attachment">${this.helpers.icons.close}</div>`;
 
         if (hasImage) {
             let imgSrc = "";
@@ -926,7 +925,7 @@ class PresetGalleryApp {
 
         this.dom.editorPreview.innerHTML = `
             <div style="background-color: ${bgColor}; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; position: absolute; top:0; left:0;">
-                <svg class="j0n4t-pg-icon" viewBox="0 0 24 24" style="opacity: 0.25; color: #fff; width: 32px; height: 32px;"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                ${this.helpers.icons.file}
                 <div class="j0n4t-pg-initials" style="font-size: 14px;">${initials}</div>
             </div>
         `;
@@ -965,26 +964,27 @@ class PresetGalleryApp {
     updateBannerText() {
         if (this.currentMode === "new") {
             this.dom.banner.innerText = "✨ Creating New Preset";
-            this.dom.banner.style.color = "#228b22";
+            this.dom.banner.style.color = "#32d332";
             this.dom.banner.style.background = "#228b2220";
             this.dom.btnSave.innerText = "Save";
             this.dom.btnSave.style.background = "#007acc";
         } else if (this.editingKey) {
             this.dom.banner.innerText = `📝\u00A0${this.editingKey}`;
             this.dom.banner.title = `📝\u00A0${this.editingKey}`;
-            this.dom.banner.style.color = "#d1a119";
+            this.dom.banner.style.color = "#f0bc2f";
             this.dom.banner.style.background = "#d1a11920";
             if (this.isSaved) {
                 this.dom.banner.innerText = `✅\u00A0${this.editingKey}`;
                 this.dom.banner.title = `✅\u00A0${this.editingKey}`;
+                this.dom.banner.style.color = "#fff";
                 this.dom.btnSave.innerText = "Saved!";
-                this.dom.btnSave.style.background = "#228b22";
+                this.dom.banner.style.background = "#d1a11920";
             } else {
                 this.dom.btnSave.innerText = "Save";
                 this.dom.btnSave.style.background = "#007acc";
             }
         } else {
-            this.dom.banner.innerText = "📝 (Select Edit ✏️ on an Preset)";
+            this.dom.banner.innerText = "📝 Select Edit ✏️ on an Preset";
             this.dom.banner.style.color = "#888";
             this.dom.banner.style.background = "#33333330";
             this.dom.btnSave.innerText = "Save";
@@ -1140,7 +1140,7 @@ class PresetGalleryApp {
             } else {
                 thumbnailHtml = `
                     <div class="j0n4t-pg-thumb-box" style="background-color: ${this.helpers.getPresetColor(uniqueKey)}; color: #fff;">
-                        <svg class="j0n4t-pg-icon" viewBox="0 0 24 24" style="opacity: 0.25; color: #fff;"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                        ${this.helpers.icons.file}
                         <div class="j0n4t-pg-initials">${initials}</div>
                     </div>`;
             }
@@ -1153,7 +1153,7 @@ class PresetGalleryApp {
                 <div class="j0n4t-pg-item" data-style="${uniqueKey}" data-search-blob="${searchBlob}" draggable="true" title="${cleanLabel} [${uniqueKey}]\n${this.cache[uniqueKey].preset}">
                     ${badge}
                     <div class="j0n4t-pg-corner-edit" title="Edit ${cleanLabel}">
-                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        ${this.helpers.icons.edit}
                     </div>
                     ${thumbnailHtml}
                     <div class="j0n4t-pg-label">${cleanLabel}</div>
