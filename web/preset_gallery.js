@@ -695,7 +695,11 @@ class PresetBasket {
 
                 chip.querySelector(".edit-btn").addEventListener("click", (e) => {
                     e.stopPropagation();
-                    this.spawnInlineEditor(chip, styleKey);
+                    if (!cache[styleKey]) {
+                        this.spawnInlineEditor(chip, styleKey);
+                    } else {
+                       this.context.openEditorForPreset(styleKey);
+                    }
                 });
 
                 chip.querySelector(".del-btn").addEventListener("click", (e) => {
