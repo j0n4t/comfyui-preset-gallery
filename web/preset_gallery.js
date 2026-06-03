@@ -819,6 +819,7 @@ class PresetGalleryApp {
                     <div class="j0n4t-pg-basket-title">🧺 Presets Basket</div>
                     <div style="display: flex; gap: 4px; align-items: center;">
                         <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw Mode</label>
+                        <button type="button" id="j0n4t-pg-basket-copy-btn" title="Copy current expanded prompt to clipboard" style="font-size: 9px; color: #fff; background: #444; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; transition: background 0.15s;">📋 Copy</button>
                         <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear all presets from basket" style="font-size: 9px; color: #fff; background: #b23b3b; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; transition: background 0.15s;">🗑️ Clear</button>
                     </div>
                 </div>
@@ -893,6 +894,7 @@ class PresetGalleryApp {
             inpZipFile: wrap.querySelector("#j0n4t-pg-zip-file"),
             btnImport: wrap.querySelector("#j0n4t-pg-import-btn"),
             btnExport: wrap.querySelector("#j0n4t-pg-export-btn"),
+            btnCopyBasket: wrap.querySelector("#j0n4t-pg-basket-copy-btn"),
             btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn"),
             chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
             basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
@@ -1286,6 +1288,34 @@ class PresetGalleryApp {
         this.dom.chkBasketRaw.addEventListener("change", () => {
             localStorage.setItem("comfy_preset_gallery_raw_basket", String(this.dom.chkBasketRaw.checked));
             this.dom.basketContainer.classList.toggle("raw-mode", this.dom.chkBasketRaw.checked);
+        });
+
+        this.dom.btnCopyBasket.addEventListener("click", () => {
+            const selections = this.getSelectedArray();
+            if (selections.length === 0) return;
+
+            const expandedText = selections.map(key => {
+                const item = this.cache[key];
+                return item && item.preset ? item.preset : key;
+            }).filter(Boolean).join(", ");
+
+            if (!expandedText) return;
+
+            navigator.clipboard.writeText(expandedText).then(() => {
+                const originalText = this.dom.btnCopyBasket.innerText;
+                const originalBg = this.dom.btnCopyBasket.style.background;
+                
+                this.dom.btnCopyBasket.innerText = "✅ Copied!";
+                this.dom.btnCopyBasket.style.background = "#228b22";
+
+                setTimeout(() => {
+                    this.dom.btnCopyBasket.innerText = originalText;
+                    this.dom.btnCopyBasket.style.background = originalBg;
+                }, 1500);
+            }).catch(err => {
+                console.error("Failed to copy text: ", err);
+                alert("Clipboard copy failed. Check console for details.");
+            });
         });
 
         this.dom.btnGlobalCollapse.addEventListener("click", () => {
