@@ -85,7 +85,12 @@ class PresetGalleryNode:
                 "base_preset": ("STRING", {"forceInput": True, "default": ""})
             }
         }
-        
+    
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        # Returning NaN tells ComfyUI to always bypass the cache and re-execute this node
+        return float("NaN")
+
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("final_preset",)
     FUNCTION = "get_preset"
