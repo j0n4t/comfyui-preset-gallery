@@ -752,6 +752,401 @@ class PresetBasket {
 }
 
 /**
+ * Manages the UI state, events, and API calls for the Preset Editing Panel.
+ */
+class PresetEditor {
+    constructor(dom, context) {
+        this.dom = dom;
+        this.context = context; // Reference to the main App to access cache, helpers, and update states
+
+        this.fetchedBlobImage = null;
+        this.localPreviewUrl = null;
+        this.editingKey = "";
+        this.currentMode = "new";
+        this.isSaved = false;
+
+        this.bindEvents();
+        this.initFolderAutocomplete();
+    }
+
+    get cache() { return this.context.cache; }
+    get helpers() { return this.context.helpers; }
+
+    renderPreview() {
+        const hasImage = this.dom.editor.classList.contains("has-image");
+        const rmBtnHtml = `<div class="j0n4t-pg-corner-edit" id="j0n4t-pg-rm-img-btn" title="Remove Image Attachment">${this.helpers.icons.close}</div>`;
+
+        if (hasImage) {
+            let imgSrc = "";
+            if (this.dom.inpFile.files && this.dom.inpFile.files[0]) {
+                if (this.localPreviewUrl) URL.revokeObjectURL(this.localPreviewUrl);
+                this.localPreviewUrl = URL.createObjectURL(this.dom.inpFile.files[0]);
+                imgSrc = this.localPreviewUrl;
+            } else if (this.editingKey && this.cache[this.editingKey]?.filename) {
+                imgSrc = `/custom_node/get_preset_image?filename=${encodeURIComponent(this.cache[this.editingKey].filename)}&t=${Date.now()}`;
+            }
+
+            if (imgSrc) {
+                this.dom.editorPreview.innerHTML = `${rmBtnHtml}<img src="${imgSrc}" alt="Preview" />`;
+                return;
+            }
+        }
+
+        const name = this.dom.inpName.value.trim() || "New";
+        const folder = this.dom.inpFolder.value.trim() || "";
+        const uniqueKey = folder ? `${folder}/${name}` : name;
+        const initials = this.helpers.getInitials(uniqueKey);
+        const bgColor = this.helpers.getPresetColor(uniqueKey);
+
+        this.dom.editorPreview.innerHTML = `
+            <div style="background-color: ${bgColor}; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; position: absolute; top:0; left:0;">
+                ${this.helpers.icons.file}
+                <div class="j0n4t-pg-initials" style="font-size: 14px;">${PresetGalleryCommon.escapeHTML(initials)}</div>
+            </div>
+        `;
+    }
+
+    updateBanner() {
+        if (this.currentMode === "new") {
+            this.dom.banner.innerText = "✨ Creating New Preset";
+            this.dom.banner.style.color = "#32d332";
+            this.dom.banner.style.background = "#228b2220";
+            this.dom.btnSave.innerText = "Save";
+            this.dom.btnSave.style.background = "#007acc";
+        } else if (this.editingKey) {
+            this.dom.banner.innerText = `📝\u00A0${this.editingKey}`;
+            this.dom.banner.title = `📝\u00A0${this.editingKey}`;
+            this.dom.banner.style.color = "#f0bc2f";
+            this.dom.banner.style.background = "#d1a11920";
+            if (this.isSaved) {
+                this.dom.banner.innerText = `✅\u00A0${this.editingKey}`;
+                this.dom.banner.title = `✅\u00A0${this.editingKey}`;
+                this.dom.banner.style.color = "#fff";
+                this.dom.btnSave.innerText = "Saved!";
+                this.dom.banner.style.background = "#d1a11920";
+            } else {
+                this.dom.btnSave.innerText = "Save";
+                this.dom.btnSave.style.background = "#007acc";
+            }
+        } else {
+            this.dom.banner.innerText = "📝 Select Edit ✏️ on an Preset";
+            this.dom.banner.style.color = "#888";
+            this.dom.banner.style.background = "#33333330";
+            this.dom.btnSave.innerText = "Save";
+            this.dom.btnSave.style.background = "#007acc";
+        }
+    }
+
+    resetImageState() {
+        this.fetchedBlobImage = null;
+        this.dom.inpFile.value = "";
+        this.dom.editor.classList.remove("has-image");
+        this.dom.editor.classList.add("no-image");
+        if (this.localPreviewUrl) {
+            URL.revokeObjectURL(this.localPreviewUrl);
+            this.localPreviewUrl = null;
+        }
+        this.renderPreview();
+    }
+
+    clearFields() {
+        this.currentMode = "new";
+        this.editingKey = "";
+        this.isSaved = false;
+        this.dom.inpName.value = "";
+        this.dom.inpFolder.value = "";
+        this.dom.inpPreset.value = "";
+        this.resetImageState();
+        this.updateBanner();
+        this.context.syncEditorHighlight();
+    }
+
+    async openPreset(styleKey) {
+        if (!this.cache[styleKey]) return;
+        this.context.setPanelCollapseState(false);
+        this.resetImageState();
+
+        this.editingKey = styleKey;
+        this.currentMode = "edit";
+        this.isSaved = true;
+
+        const parts = styleKey.split("/");
+        this.dom.inpName.value = parts.pop() || "";
+        this.dom.inpFolder.value = parts.join("/");
+        this.dom.inpPreset.value = this.cache[styleKey].preset || "";
+
+        if (this.cache[styleKey].filename) {
+            this.dom.editor.classList.replace("no-image", "has-image");
+            this.renderPreview();
+            try {
+                const blob = await PresetGalleryAPI.fetchPresetImage(this.cache[styleKey].filename);
+                if (this.editingKey === styleKey && this.currentMode === "edit") {
+                    this.fetchedBlobImage = blob;
+                }
+            } catch (err) {
+                console.error("Failed to sync asset image stream", err);
+                this.resetImageState();
+            }
+        } else {
+            this.renderPreview();
+        }
+
+        this.updateBanner();
+        this.context.syncEditorHighlight();
+    }
+
+    async handleSave(forceAsNew = false) {
+        let name = this.dom.inpName.value.trim().toLowerCase().replace(/ /g, "_");
+        const presetText = this.dom.inpPreset.value.trim();
+
+        if (!name) {
+            if (!presetText) {
+                return alert("Preset Keywords or Name required to save.");
+            }
+            name = presetText
+                .split(/\s+/)
+                .slice(0, 3)
+                .map(word => word.replace(/[^a-zA-Z0-9]/g, "").toLowerCase())
+                .filter(Boolean)
+                .join("_");
+            if (!name) {
+                name = "unnamed_preset_" + Date.now().toString().slice(-4);
+            }
+            this.dom.inpName.value = name;
+        }
+
+        const folder = this.dom.inpFolder.value.trim().toLowerCase().replace(/ /g, "_");
+        const uniqueKey = folder ? `${folder}/${name}` : name;
+
+        let shouldDeleteOriginal = false;
+        let currentSelections = this.context.getSelectedArray();
+
+        if (forceAsNew) {
+            this.currentMode = "new";
+        }
+
+        if (this.currentMode === "new") {
+            if (this.cache[uniqueKey] && !confirm(`"${uniqueKey}" already exists. Overwrite?`)) {
+                return;
+            }
+            if (this.dom.editor.classList.contains("no-image")) {
+                this.fetchedBlobImage = null;
+                this.dom.inpFile.value = "";
+            }
+        } else {
+            if (this.editingKey && this.editingKey !== uniqueKey) {
+                shouldDeleteOriginal = true;
+            }
+        }
+
+        const fd = new FormData();
+        fd.append("preset_name", name);
+        fd.append("subfolder", folder);
+        fd.append("preset_text", this.dom.inpPreset.value.trim());
+        fd.append("overwrite", "true");
+
+        if (this.dom.inpFile.files[0]) {
+            fd.append("image_file", this.dom.inpFile.files[0]);
+        } else if (this.fetchedBlobImage && !this.dom.editor.classList.contains("no-image")) {
+            fd.append("image_file", this.fetchedBlobImage, "image.jpg");
+        } else {
+            fd.append("clear_image", "true");
+        }
+
+        const res = await PresetGalleryAPI.savePreset(fd);
+        if (!res.success) return alert(`Save failed: ${res.error}`);
+
+        if (shouldDeleteOriginal && this.cache[this.editingKey]) {
+            await PresetGalleryAPI.deletePreset(this.editingKey);
+            currentSelections = currentSelections.map(item => item === this.editingKey ? uniqueKey : item);
+        }
+
+        if (!currentSelections.includes(uniqueKey)) {
+            currentSelections.push(uniqueKey);
+        }
+
+        this.editingKey = uniqueKey;
+        this.currentMode = "edit";
+        this.isSaved = true;
+
+        await this.context.loadGallery();
+        this.context.updateWidgetValue(currentSelections);
+        this.updateBanner();
+    }
+
+    async handleDelete() {
+        if (!this.editingKey) return alert("No active target loaded into edit panel.");
+        if (!this.cache[this.editingKey]) return alert("Cannot remote delete a non-saved item.");
+
+        if (!confirm(`Permanently delete "${this.editingKey}" from disk?`)) return;
+
+        await PresetGalleryAPI.deletePreset(this.editingKey);
+        const selections = this.context.getSelectedArray().filter(v => v !== this.editingKey);
+
+        await this.context.loadGallery();
+        this.clearFields();
+        this.context.updateWidgetValue(selections);
+    }
+
+    bindEvents() {
+        const markAsPendingChanges = () => {
+            if (this.currentMode === "edit" && this.isSaved) {
+                this.isSaved = false;
+                this.updateBanner();
+            }
+            if (this.dom.editor.classList.contains("no-image")) {
+                this.renderPreview();
+            }
+        };
+
+        this.dom.inpName.addEventListener("input", markAsPendingChanges);
+        this.dom.inpFolder.addEventListener("input", markAsPendingChanges);
+        this.dom.inpPreset.addEventListener("input", markAsPendingChanges);
+
+        this.dom.editorPreview.addEventListener("click", (e) => {
+            const rmBtn = e.target.closest("#j0n4t-pg-rm-img-btn");
+            if (rmBtn) {
+                e.stopPropagation();
+                if (!confirm("Clear this image attachment placeholder? Image will be deleted instantly on next save commit.")) return;
+                this.resetImageState();
+                markAsPendingChanges();
+            } else {
+                this.dom.inpFile.click();
+            }
+        });
+
+        this.dom.inpFile.addEventListener("change", () => {
+            if (this.dom.inpFile.files[0]) {
+                this.fetchedBlobImage = null;
+                this.dom.editor.classList.replace("no-image", "has-image");
+                this.renderPreview();
+                markAsPendingChanges();
+            }
+        });
+
+        const handleQuickSave = (e) => {
+            if (e.key === "Enter" && e.shiftKey) {
+                e.preventDefault();
+                this.dom.btnSave.click();
+            }
+        };
+
+        const handlePastedPreset = (e) => {
+            if (this.dom.inpName.value.trim() === "" || this.currentMode === "new") {
+                const pastedText = (e.clipboardData || window.clipboardData).getData("text");
+                if (!pastedText) return;
+                let suggestedName = pastedText.split(/[,\n]/)[0].trim();
+                if (suggestedName.split(/\s+/).length > 4 || suggestedName.length > 30) {
+                    suggestedName = suggestedName.split(/\s+/).slice(0, 4).join("_");
+                }
+                suggestedName = suggestedName
+                    .toLowerCase()
+                    .replace(/[^a-z0-9\s-_]/g, "")
+                    .trim()
+                    .replace(/\s+/g, "_");
+                if (suggestedName) {
+                    this.dom.inpName.value = suggestedName;
+                    markAsPendingChanges();
+                }
+            }
+        }
+        
+        this.dom.inpName.addEventListener("keydown", handleQuickSave);
+        this.dom.inpFolder.addEventListener("keydown", handleQuickSave);
+        this.dom.inpPreset.addEventListener("keydown", handleQuickSave);
+        this.dom.inpPreset.addEventListener("paste", handlePastedPreset);
+        
+        this.dom.btnClearFields.addEventListener("click", () => this.clearFields());
+        this.dom.btnSave.addEventListener("click", () => this.handleSave(false));
+        this.dom.btnDel.addEventListener("click", () => this.handleDelete());
+    }
+
+    initFolderAutocomplete() {
+        const folderInput = this.dom.inpFolder;
+        let folderPopup = null;
+        let folderMatches = [];
+        let activeFolderIndex = 0;
+
+        const closeFolderPopup = () => {
+            if (folderPopup) {
+                folderPopup.remove();
+                folderPopup = null;
+            }
+            folderMatches = [];
+        };
+
+        const renderHighlight = () => {
+            if (!folderPopup) return;
+            const items = folderPopup.querySelectorAll(".j0n4t-pg-folder-autocomplete-item");
+            items.forEach((item, index) => {
+                item.classList.toggle("active", index === activeFolderIndex);
+            });
+        };
+
+        const selectFolder = (value) => {
+            folderInput.value = value;
+            closeFolderPopup();
+            folderInput.focus();
+        };
+
+        folderInput.addEventListener("input", () => {
+            const query = folderInput.value.trim().toLowerCase().replace(/ /g, "_");
+            closeFolderPopup();
+            if (!query) return;
+            const uniqueFolders = new Set();
+            Object.values(this.cache).forEach(item => {
+                if (item.tags && item.tags.length > 0) {
+                    uniqueFolders.add(item.tags.join("/"));
+                }
+            });
+            folderMatches = Array.from(uniqueFolders).filter(f => f.toLowerCase().includes(query));
+            if (folderMatches.length === 0) return;
+            activeFolderIndex = 0;
+            folderPopup = document.createElement("div");
+            folderPopup.className = "j0n4t-pg-folder-autocomplete-popup";
+            const rect = folderInput.getBoundingClientRect();
+            folderPopup.style.top = `${window.scrollY + rect.bottom + 2}px`;
+            folderPopup.style.left = `${window.scrollX + rect.left}px`;
+            folderPopup.style.minWidth = `${rect.width}px`;
+            document.body.appendChild(folderPopup);
+            folderMatches.forEach((folder, index) => {
+                const row = document.createElement("div");
+                row.className = `j0n4t-pg-folder-autocomplete-item${index === activeFolderIndex ? ' active' : ''}`;
+                row.innerText = folder.replace(/_/g, " "); // Display with pretty spaces
+                row.addEventListener("mousedown", (e) => {
+                    e.preventDefault(); // Prevent blurring input fields prematurely
+                    selectFolder(folder);
+                });
+                folderPopup.appendChild(row);
+            });
+        });
+
+        folderInput.addEventListener("keydown", (e) => {
+            if (!folderPopup || folderMatches.length === 0) return;
+            if (e.key === "Tab" || (e.key === "Enter" && !e.ctrlKey)) {
+                e.preventDefault();
+                selectFolder(folderMatches[activeFolderIndex]);
+            } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeFolderIndex = (activeFolderIndex + 1) % folderMatches.length;
+                renderHighlight();
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeFolderIndex = (activeFolderIndex - 1 + folderMatches.length) % folderMatches.length;
+                renderHighlight();
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                closeFolderPopup();
+            }
+        });
+
+        folderInput.addEventListener("blur", () => {
+            setTimeout(closeFolderPopup, 200);
+        });
+    }
+}
+
+/**
  * Main Controller orchestrating view mutations and managing UI events.
  */
 class PresetGalleryApp {
@@ -759,12 +1154,7 @@ class PresetGalleryApp {
         this.node = node;
         this.widget = widget;
         this.cache = {};
-        this.fetchedBlobImage = null;
-        this.localPreviewUrl = null;
-        this.editingKey = "";
-        this.currentMode = "new";
-        this.isSaved = false;
-
+        
         this.helpers = {
             getHashColor: (str) => {
                 let hash = 0;
@@ -798,14 +1188,15 @@ class PresetGalleryApp {
 
         this.dom = this.buildDOMStructure();
         this.basket = new PresetBasket(
-            this.dom.wrap.querySelector(".j0n4t-pg-basket-container"),
+            this.dom.basketContainer,
             this.dom.wrap.querySelector(".j0n4t-pg-basket-pool"),
-            this.dom.wrap.querySelector(".j0n4t-pg-basket-raw-textarea"),
+            this.dom.rawTextarea,
             this
         );
+        this.editor = new PresetEditor(this.dom, this);
 
         this.bindEvents();
-        this.renderEditorPreview();
+        this.editor.renderPreview();
     }
 
     getCollapsedFolders() {
@@ -913,40 +1304,6 @@ class PresetGalleryApp {
         };
     }
 
-    renderEditorPreview() {
-        const hasImage = this.dom.editor.classList.contains("has-image");
-        const rmBtnHtml = `<div class="j0n4t-pg-corner-edit" id="j0n4t-pg-rm-img-btn" title="Remove Image Attachment">${this.helpers.icons.close}</div>`;
-
-        if (hasImage) {
-            let imgSrc = "";
-            if (this.dom.inpFile.files && this.dom.inpFile.files[0]) {
-                if (this.localPreviewUrl) URL.revokeObjectURL(this.localPreviewUrl);
-                this.localPreviewUrl = URL.createObjectURL(this.dom.inpFile.files[0]);
-                imgSrc = this.localPreviewUrl;
-            } else if (this.editingKey && this.cache[this.editingKey]?.filename) {
-                imgSrc = `/custom_node/get_preset_image?filename=${encodeURIComponent(this.cache[this.editingKey].filename)}&t=${Date.now()}`;
-            }
-
-            if (imgSrc) {
-                this.dom.editorPreview.innerHTML = `${rmBtnHtml}<img src="${imgSrc}" alt="Preview" />`;
-                return;
-            }
-        }
-
-        const name = this.dom.inpName.value.trim() || "New";
-        const folder = this.dom.inpFolder.value.trim() || "";
-        const uniqueKey = folder ? `${folder}/${name}` : name;
-        const initials = this.helpers.getInitials(uniqueKey);
-        const bgColor = this.helpers.getPresetColor(uniqueKey);
-
-        this.dom.editorPreview.innerHTML = `
-            <div style="background-color: ${bgColor}; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; position: absolute; top:0; left:0;">
-                ${this.helpers.icons.file}
-                <div class="j0n4t-pg-initials" style="font-size: 14px;">${PresetGalleryCommon.escapeHTML(initials)}</div>
-            </div>
-        `;
-    }
-
     getSelectedArray() {
         return this.widget.value ? this.widget.value.split(",").map(v => v.trim()).filter(Boolean) : [];
     }
@@ -977,100 +1334,15 @@ class PresetGalleryApp {
         localStorage.setItem("comfy_preset_gallery_view", viewName);
     }
 
-    updateBannerText() {
-        if (this.currentMode === "new") {
-            this.dom.banner.innerText = "✨ Creating New Preset";
-            this.dom.banner.style.color = "#32d332";
-            this.dom.banner.style.background = "#228b2220";
-            this.dom.btnSave.innerText = "Save";
-            this.dom.btnSave.style.background = "#007acc";
-        } else if (this.editingKey) {
-            this.dom.banner.innerText = `📝\u00A0${this.editingKey}`;
-            this.dom.banner.title = `📝\u00A0${this.editingKey}`;
-            this.dom.banner.style.color = "#f0bc2f";
-            this.dom.banner.style.background = "#d1a11920";
-            if (this.isSaved) {
-                this.dom.banner.innerText = `✅\u00A0${this.editingKey}`;
-                this.dom.banner.title = `✅\u00A0${this.editingKey}`;
-                this.dom.banner.style.color = "#fff";
-                this.dom.btnSave.innerText = "Saved!";
-                this.dom.banner.style.background = "#d1a11920";
-            } else {
-                this.dom.btnSave.innerText = "Save";
-                this.dom.btnSave.style.background = "#007acc";
-            }
-        } else {
-            this.dom.banner.innerText = "📝 Select Edit ✏️ on an Preset";
-            this.dom.banner.style.color = "#888";
-            this.dom.banner.style.background = "#33333330";
-            this.dom.btnSave.innerText = "Save";
-            this.dom.btnSave.style.background = "#007acc";
-        }
-    }
-
-    resetImageState() {
-        this.fetchedBlobImage = null;
-        this.dom.inpFile.value = "";
-        this.dom.editor.classList.remove("has-image");
-        this.dom.editor.classList.add("no-image");
-        if (this.localPreviewUrl) {
-            URL.revokeObjectURL(this.localPreviewUrl);
-            this.localPreviewUrl = null;
-        }
-        this.renderEditorPreview();
-    }
-
-    clearEditorFields() {
-        this.currentMode = "new";
-        this.editingKey = "";
-        this.isSaved = false;
-        this.dom.inpName.value = "";
-        this.dom.inpFolder.value = "";
-        this.dom.inpPreset.value = "";
-        this.resetImageState();
-        this.updateBannerText();
-        this.syncEditorHighlight();
-    }
-
-    syncEditorHighlight() {
+   syncEditorHighlight() {
         this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
-            const isEditingTarget = (this.currentMode === "edit" && el.dataset.style === this.editingKey);
+            const isEditingTarget = (this.editor.currentMode === "edit" && el.dataset.style === this.editor.editingKey);
             el.classList.toggle("editing", isEditingTarget);
         });
     }
 
-    async openEditorForPreset(styleKey) {
-        if (!this.cache[styleKey]) return;
-        this.setPanelCollapseState(false);
-        this.resetImageState();
-
-        this.editingKey = styleKey;
-        this.currentMode = "edit";
-        this.isSaved = true;
-
-        const parts = styleKey.split("/");
-        this.dom.inpName.value = parts.pop() || "";
-        this.dom.inpFolder.value = parts.join("/");
-        this.dom.inpPreset.value = this.cache[styleKey].preset || "";
-
-        if (this.cache[styleKey].filename) {
-            this.dom.editor.classList.replace("no-image", "has-image");
-            this.renderEditorPreview();
-            try {
-                const blob = await PresetGalleryAPI.fetchPresetImage(this.cache[styleKey].filename);
-                if (this.editingKey === styleKey && this.currentMode === "edit") {
-                    this.fetchedBlobImage = blob;
-                }
-            } catch (err) {
-                console.error("Failed to sync asset image stream", err);
-                this.resetImageState();
-            }
-        } else {
-            this.renderEditorPreview();
-        }
-
-        this.updateBannerText();
-        this.syncEditorHighlight();
+    openEditorForPreset(styleKey) {
+        this.editor.openPreset(styleKey);
     }
 
     executeFilterPipeline() {
@@ -1372,75 +1644,6 @@ class PresetGalleryApp {
             this.updateWidgetValue(selections);
         });
 
-        const markAsPendingChanges = () => {
-            if (this.currentMode === "edit" && this.isSaved) {
-                this.isSaved = false;
-                this.updateBannerText();
-            }
-            if (this.dom.editor.classList.contains("no-image")) {
-                this.renderEditorPreview();
-            }
-        };
-
-        this.dom.inpName.addEventListener("input", markAsPendingChanges);
-        this.dom.inpFolder.addEventListener("input", markAsPendingChanges);
-        this.dom.inpPreset.addEventListener("input", markAsPendingChanges);
-
-        this.dom.editorPreview.addEventListener("click", (e) => {
-            const rmBtn = e.target.closest("#j0n4t-pg-rm-img-btn");
-            if (rmBtn) {
-                e.stopPropagation();
-                if (!confirm("Clear this image attachment placeholder? Image will be deleted instantly on next save commit.")) return;
-                this.resetImageState();
-                markAsPendingChanges();
-            } else {
-                this.dom.inpFile.click();
-            }
-        });
-
-        this.dom.inpFile.addEventListener("change", () => {
-            if (this.dom.inpFile.files[0]) {
-                this.fetchedBlobImage = null;
-                this.dom.editor.classList.replace("no-image", "has-image");
-                this.renderEditorPreview();
-                markAsPendingChanges();
-            }
-        });
-
-        const handleQuickSave = (e) => {
-            if (e.key === "Enter" && e.shiftKey) {
-                e.preventDefault();
-                this.dom.btnSave.click();
-            }
-        };
-
-        const handlePastedPreset = (e) => {
-            if (this.dom.inpName.value.trim() === "" || this.currentMode === "new") {
-                const pastedText = (e.clipboardData || window.clipboardData).getData("text");
-                if (!pastedText) return;
-                let suggestedName = pastedText.split(/[,\n]/)[0].trim();
-                if (suggestedName.split(/\s+/).length > 4 || suggestedName.length > 30) {
-                    suggestedName = suggestedName.split(/\s+/).slice(0, 4).join("_");
-                }
-                suggestedName = suggestedName
-                    .toLowerCase()
-                    .replace(/[^a-z0-9\s-_]/g, "")
-                    .trim()
-                    .replace(/\s+/g, "_");
-                if (suggestedName) {
-                    this.dom.inpName.value = suggestedName;
-                    markAsPendingChanges();
-                }
-            }
-        }
-        this.dom.inpName.addEventListener("keydown", handleQuickSave);
-        this.dom.inpFolder.addEventListener("keydown", handleQuickSave);
-        this.dom.inpPreset.addEventListener("keydown", handleQuickSave);
-        this.dom.inpPreset.addEventListener("paste", handlePastedPreset);
-        this.dom.btnClearFields.addEventListener("click", () => this.clearEditorFields());
-        this.dom.btnSave.addEventListener("click", () => this.handleSave(false));
-        this.dom.btnDel.addEventListener("click", () => this.handleDelete());
-
         this.dom.btnExport.addEventListener("click", () => window.open('/custom_node/export_presets_zip', '_blank'));
         this.dom.btnImport.addEventListener("click", () => this.dom.inpZipFile.click());
 
@@ -1479,99 +1682,6 @@ class PresetGalleryApp {
             isGalleryHidden = !isGalleryHidden;
             updateGalleryVisibilityState(isGalleryHidden);
         });
-    }
-
-    async handleSave(forceAsNew = false) {
-        let name = this.dom.inpName.value.trim().toLowerCase().replace(/ /g, "_");
-        const presetText = this.dom.inpPreset.value.trim();
-
-        if (!name) {
-            if (!presetText) {
-                return alert("Preset Keywords or Name required to save.");
-            }
-            name = presetText
-                .split(/\s+/)
-                .slice(0, 3)
-                .map(word => word.replace(/[^a-zA-Z0-9]/g, "").toLowerCase())
-                .filter(Boolean)
-                .join("_");
-            if (!name) {
-                name = "unnamed_preset_" + Date.now().toString().slice(-4);
-            }
-            this.dom.inpName.value = name;
-        }
-
-        const folder = this.dom.inpFolder.value.trim().toLowerCase().replace(/ /g, "_");
-        const uniqueKey = folder ? `${folder}/${name}` : name;
-
-        let shouldDeleteOriginal = false;
-        let currentSelections = this.getSelectedArray();
-
-        if (forceAsNew) {
-            this.currentMode = "new";
-        }
-
-        if (this.currentMode === "new") {
-            if (this.cache[uniqueKey] && !confirm(`"${uniqueKey}" already exists. Overwrite?`)) {
-                return;
-            }
-            if (this.dom.editor.classList.contains("no-image")) {
-                this.fetchedBlobImage = null;
-                this.dom.inpFile.value = "";
-            }
-        } else {
-            if (this.editingKey && this.editingKey !== uniqueKey) {
-                shouldDeleteOriginal = true;
-            }
-        }
-
-        const fd = new FormData();
-        fd.append("preset_name", name);
-        fd.append("subfolder", folder);
-        fd.append("preset_text", this.dom.inpPreset.value.trim());
-        fd.append("overwrite", "true");
-
-        if (this.dom.inpFile.files[0]) {
-            fd.append("image_file", this.dom.inpFile.files[0]);
-        } else if (this.fetchedBlobImage && !this.dom.editor.classList.contains("no-image")) {
-            fd.append("image_file", this.fetchedBlobImage, "image.jpg");
-        } else {
-            fd.append("clear_image", "true");
-        }
-
-        const res = await PresetGalleryAPI.savePreset(fd);
-        if (!res.success) return alert(`Save failed: ${res.error}`);
-
-        if (shouldDeleteOriginal && this.cache[this.editingKey]) {
-            await PresetGalleryAPI.deletePreset(this.editingKey);
-            currentSelections = currentSelections.map(item => item === this.editingKey ? uniqueKey : item);
-        }
-
-        if (!currentSelections.includes(uniqueKey)) {
-            currentSelections.push(uniqueKey);
-        }
-
-        this.editingKey = uniqueKey;
-        this.currentMode = "edit";
-        this.isSaved = true;
-
-        await this.loadGallery();
-        this.updateWidgetValue(currentSelections);
-        this.updateBannerText();
-    }
-
-    async handleDelete() {
-        if (!this.editingKey) return alert("No active target loaded into edit panel.");
-        if (!this.cache[this.editingKey]) return alert("Cannot remote delete a non-saved item.");
-
-        if (!confirm(`Permanently delete "${this.editingKey}" from disk?`)) return;
-
-        await PresetGalleryAPI.deletePreset(this.editingKey);
-        const selections = this.getSelectedArray().filter(v => v !== this.editingKey);
-
-        await this.loadGallery();
-        this.clearEditorFields();
-        this.updateWidgetValue(selections);
     }
 
     addPresetToBasket = (uniqueKey) => {
@@ -1688,90 +1798,6 @@ class PresetGalleryApp {
 
         searchInput.addEventListener("blur", () => {
             setTimeout(this.closePopup, 200);
-        });
-    }
-
-    initFolderAutocomplete() {
-        const folderInput = this.dom.inpFolder;
-        let folderPopup = null;
-        let folderMatches = [];
-        let activeFolderIndex = 0;
-
-        const closeFolderPopup = () => {
-            if (folderPopup) {
-                folderPopup.remove();
-                folderPopup = null;
-            }
-            folderMatches = [];
-        };
-
-        const renderHighlight = () => {
-            if (!folderPopup) return;
-            const items = folderPopup.querySelectorAll(".j0n4t-pg-folder-autocomplete-item");
-            items.forEach((item, index) => {
-                item.classList.toggle("active", index === activeFolderIndex);
-            });
-        };
-
-        const selectFolder = (value) => {
-            folderInput.value = value;
-            closeFolderPopup();
-            folderInput.focus();
-        };
-
-        folderInput.addEventListener("input", () => {
-            const query = folderInput.value.trim().toLowerCase().replace(/ /g, "_");
-            closeFolderPopup();
-            if (!query) return;
-            const uniqueFolders = new Set();
-            Object.values(this.cache).forEach(item => {
-                if (item.tags && item.tags.length > 0) {
-                    uniqueFolders.add(item.tags.join("/"));
-                }
-            });
-            folderMatches = Array.from(uniqueFolders).filter(f => f.toLowerCase().includes(query));
-            if (folderMatches.length === 0) return;
-            activeFolderIndex = 0;
-            folderPopup = document.createElement("div");
-            folderPopup.className = "j0n4t-pg-folder-autocomplete-popup";
-            const rect = folderInput.getBoundingClientRect();
-            folderPopup.style.top = `${window.scrollY + rect.bottom + 2}px`;
-            folderPopup.style.left = `${window.scrollX + rect.left}px`;
-            folderPopup.style.minWidth = `${rect.width}px`;
-            document.body.appendChild(folderPopup);
-            folderMatches.forEach((folder, index) => {
-                const row = document.createElement("div");
-                row.className = `j0n4t-pg-folder-autocomplete-item${index === activeFolderIndex ? ' active' : ''}`;
-                row.innerText = folder.replace(/_/g, " "); // Display with pretty spaces
-                row.addEventListener("mousedown", (e) => {
-                    e.preventDefault(); // Prevent blurring input fields prematurely
-                    selectFolder(folder);
-                });
-                folderPopup.appendChild(row);
-            });
-        });
-
-        folderInput.addEventListener("keydown", (e) => {
-            if (!folderPopup || folderMatches.length === 0) return;
-            if (e.key === "Tab" || (e.key === "Enter" && !e.ctrlKey)) {
-                e.preventDefault();
-                selectFolder(folderMatches[activeFolderIndex]);
-            } else if (e.key === "ArrowDown") {
-                e.preventDefault();
-                activeFolderIndex = (activeFolderIndex + 1) % folderMatches.length;
-                renderHighlight();
-            } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                activeFolderIndex = (activeFolderIndex - 1 + folderMatches.length) % folderMatches.length;
-                renderHighlight();
-            } else if (e.key === "Escape") {
-                e.preventDefault();
-                closeFolderPopup();
-            }
-        });
-
-        folderInput.addEventListener("blur", () => {
-            setTimeout(closeFolderPopup, 200);
         });
     }
 
