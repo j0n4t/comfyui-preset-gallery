@@ -77,18 +77,15 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
             .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 100px; max-height: 200px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; position: relative; z-index: 2; caret-color: #fff; }
-            .j0n4t-pg-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 9999; display: flex; flex-direction: column; width: max-content; max-width: 280px; overflow: hidden; font-family: sans-serif; box-sizing: border-box; }
-            .j0n4t-pg-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 6px; }
-            .j0n4t-pg-autocomplete-item:last-child { border-bottom: none; }
-            .j0n4t-pg-autocomplete-item.active { background: #007acc; color: #fff; }
-            .j0n4t-pg-autocomplete-meta { font-size: 9px; color: #888; margin-left: auto; font-style: italic; }
-            .j0n4t-pg-autocomplete-item.active .j0n4t-pg-autocomplete-meta { color: #bee3ff; }
-            .j0n4t-pg-filter-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10001; display: flex; flex-direction: column; overflow-y: auto; max-height: 250px; box-sizing: border-box; }
-            .j0n4t-pg-filter-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-            .j0n4t-pg-filter-autocomplete-item:last-child { border-bottom: none; }
-            .j0n4t-pg-filter-autocomplete-item.active { background: #007acc; color: #fff; }
-            .j0n4t-pg-filter-autocomplete-meta { font-size: 9px; color: #888; font-style: italic; margin-left: 10px; }
-            .j0n4t-pg-filter-autocomplete-item.active .j0n4t-pg-filter-autocomplete-meta { color: #bee3ff; }
+            .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; font-family: sans-serif; box-sizing: border-box; max-height: 250px; width: max-content; }
+            .j0n4t-pg-autocomplete-popup { z-index: 9999; max-width: 280px; }
+            .j0n4t-pg-filter-autocomplete-popup { z-index: 10001; }
+            .j0n4t-pg-autocomplete-item, .j0n4t-pg-filter-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+            .j0n4t-pg-autocomplete-item:last-child, .j0n4t-pg-filter-autocomplete-item:last-child { border-bottom: none; }
+            .j0n4t-pg-autocomplete-item.active, .j0n4t-pg-filter-autocomplete-item.active { background: #007acc; color: #fff; }
+            .j0n4t-pg-autocomplete-meta, .j0n4t-pg-filter-autocomplete-meta { font-size: 9px; color: #888; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+            .j0n4t-pg-autocomplete-item.active .j0n4t-pg-autocomplete-meta, .j0n4t-pg-filter-autocomplete-item.active .j0n4t-pg-filter-autocomplete-meta { color: #bee3ff; }
+
             .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
             .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
             .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 2px; background: #3a3a3a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; position: relative; }
@@ -320,7 +317,7 @@ class PresetBasket {
         const rect = this.textarea.getBoundingClientRect(), cRect = this.container.getBoundingClientRect(), zoom = cRect.width / this.container.offsetWidth || 1;
         this.popupEl.style.top = `${(rect.bottom - cRect.top) / zoom + 2}px`;
         this.popupEl.style.left = `${(rect.left - cRect.left) / zoom}px`;
-        this.popupEl.style.width = `${rect.width / zoom}px`;
+        this.popupEl.style.width = `${Math.max(200, rect.width / zoom)}px`; // Ensure it's wide enough for the split content
         this.popupEl.innerHTML = "";
 
         this.currentMatches.forEach((match, idx) => {
@@ -412,13 +409,13 @@ class PresetBasket {
             activeIdx = 0;
             popup = Object.assign(document.createElement("div"), { className: "j0n4t-pg-autocomplete-popup" });
             const rect = input.getBoundingClientRect(), cRect = this.container.getBoundingClientRect(), zoom = cRect.width / this.container.offsetWidth || 1;
-            popup.style.top = `${(rect.bottom - cRect.top) / zoom + 2}px`; popup.style.left = `${(rect.left - cRect.left) / zoom}px`; popup.style.minWidth = `${rect.width / zoom}px`;
+            popup.style.top = `${(rect.bottom - cRect.top) / zoom + 2}px`; popup.style.left = `${(rect.left - cRect.left) / zoom}px`; popup.style.minWidth = `${Math.max(200, rect.width / zoom)}px`;
 
             this.container.appendChild(popup);
             matches.forEach((match, idx) => {
                 const row = document.createElement("div");
                 row.className = `j0n4t-pg-autocomplete-item${idx === activeIdx ? ' active' : ''}`;
-                row.innerHTML = `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span>`;
+                row.innerHTML = `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`;
                 row.addEventListener("mousedown", (e) => { e.preventDefault(); input.value = match; finishEdit(true); });
                 popup.appendChild(row);
             });
@@ -956,7 +953,7 @@ class PresetGalleryApp {
             
             activeIdx = 0; popup = Object.assign(document.createElement("div"), { className: "j0n4t-pg-filter-autocomplete-popup" });
             const rect = searchInput.getBoundingClientRect(), wrapRect = this.dom.wrap.getBoundingClientRect(), zoom = wrapRect.width / this.dom.wrap.offsetWidth || 1;
-            popup.style.top = `${(rect.bottom - wrapRect.top) / zoom + 2}px`; popup.style.left = `${(rect.left - wrapRect.left) / zoom}px`; popup.style.width = `${rect.width / zoom}px`;
+            popup.style.top = `${(rect.bottom - wrapRect.top) / zoom + 2}px`; popup.style.left = `${(rect.left - wrapRect.left) / zoom}px`; popup.style.width = `${Math.max(200, rect.width / zoom)}px`;
             
             this.dom.wrap.appendChild(popup);
             matches.forEach((key, i) => {
