@@ -150,39 +150,6 @@ class PresetGalleryStyles {
     }
 }
 
-class PresetGalleryCommon {
-    static escapeHTML(str) {
-        if (str == null) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    static getTopMatches(list, query) {
-        const cleanQuery = query.toLowerCase();
-        const buckets = list.reduce((acc, item) => {
-            const lowerItem = item.toLowerCase();
-            const idx = lowerItem.indexOf(cleanQuery);
-            if (idx === -1) return acc;
-            if (idx === 0) {
-                if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx });
-            } else {
-                if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx });
-            }
-            return acc;
-        }, { startsWith: [], fuzzy: [] });
-        const sortBucket = (arr) => arr
-            .sort((a, b) => a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item))
-            .map(entry => entry.item);
-        const finalStarts = sortBucket(buckets.startsWith);
-        const finalFuzzy = sortBucket(buckets.fuzzy);
-        return Array.from(new Set([...finalStarts, ...finalFuzzy]));
-    }
-}
-
 /**
  * Handles communication with backend server endpoints.
  */
@@ -230,11 +197,11 @@ class PresetGalleryAPI {
  * Manages calculations, behaviors, and layout ordering inside the Basket component.
  */
 class PresetBasket {
-    constructor(container, pool, textarea, viewContext) {
+    constructor(container, pool, textarea, context) {
         this.container = container;
         this.pool = pool;
         this.textarea = textarea;
-        this.context = viewContext;
+        this.context = context;
         this.dropIndicator = null;
 
         this.popupEl = null;
@@ -244,7 +211,11 @@ class PresetBasket {
         this.initDragAndDrop();
         this.initRawInputSync();
         this.initAutocomplete();
+        this.initBasketActions();
     }
+    
+    get cache() { return this.context.cache; }
+    get helpers() { return this.context.helpers; }
 
     initDragAndDrop() {
         this.container.addEventListener("dragenter", (e) => {
@@ -373,6 +344,51 @@ class PresetBasket {
         this.textarea.addEventListener("blur", () => setTimeout(() => this.closePopup(), 180));
     }
 
+    initBasketActions() {
+        this.context.dom.btnClearBasket.addEventListener("click", () => {
+            if (this.context.getSelectedArray().length === 0) return;
+            if (confirm("Are you sure you want to empty the basket?")) {
+                this.context.updateWidgetValue([]);
+            }
+        });
+
+        this.context.dom.chkBasketRaw.checked = localStorage.getItem("comfy_preset_gallery_raw_basket") === "true";
+        this.context.dom.basketContainer.classList.toggle("raw-mode", this.context.dom.chkBasketRaw.checked);
+
+        this.context.dom.chkBasketRaw.addEventListener("change", () => {
+            localStorage.setItem("comfy_preset_gallery_raw_basket", String(this.context.dom.chkBasketRaw.checked));
+            this.context.dom.basketContainer.classList.toggle("raw-mode", this.context.dom.chkBasketRaw.checked);
+        });
+
+        this.context.dom.btnCopyBasket.addEventListener("click", () => {
+            const selections = this.context.getSelectedArray();
+            if (selections.length === 0) return;
+
+            const expandedText = selections.map(key => {
+                const item = this.context.cache[key];
+                return item && item.preset ? item.preset : key;
+            }).filter(Boolean).join(", ");
+
+            if (!expandedText) return;
+
+            navigator.clipboard.writeText(expandedText).then(() => {
+                const originalText = this.context.dom.btnCopyBasket.innerText;
+                const originalBg = this.context.dom.btnCopyBasket.style.background;
+
+                this.context.dom.btnCopyBasket.innerText = "✅ Copied!";
+                this.context.dom.btnCopyBasket.style.background = "#228b22";
+
+                setTimeout(() => {
+                    this.context.dom.btnCopyBasket.innerText = originalText;
+                    this.context.dom.btnCopyBasket.style.background = originalBg;
+                }, 1500);
+            }).catch(err => {
+                console.error("Failed to copy text: ", err);
+                alert("Clipboard copy failed. Check console for details.");
+            });
+        });
+    }
+
     evaluateAutocomplete() {
         const text = this.textarea.value;
         const caretPos = this.textarea.selectionStart;
@@ -389,7 +405,7 @@ class PresetBasket {
         const query = currentToken.toLowerCase();
         const keys = Object.keys(this.context.cache);
 
-        this.currentMatches = PresetGalleryCommon.getTopMatches(keys, query);
+        this.currentMatches = this.helpers.getTopMatches(keys, query);
 
         if (this.currentMatches.length === 0) {
             this.closePopup();
@@ -417,13 +433,13 @@ class PresetBasket {
         this.popupEl.innerHTML = "";
 
         this.currentMatches.forEach((match, index) => {
-            const cleanLabel = this.context.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match);
+            const cleanLabel = this.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match);
 
             const row = document.createElement("div");
             row.className = `j0n4t-pg-autocomplete-item${index === this.activeIndex ? ' active' : ''}`;
             row.innerHTML = `
-                <span>${PresetGalleryCommon.escapeHTML(cleanLabel)}</span>
-                <span class="j0n4t-pg-autocomplete-meta">${PresetGalleryCommon.escapeHTML(match)}</span>
+                <span>${this.helpers.escapeHTML(cleanLabel)}</span>
+                <span class="j0n4t-pg-autocomplete-meta">${this.helpers.escapeHTML(match)}</span>
             `;
 
             row.addEventListener("click", (e) => {
@@ -541,7 +557,7 @@ class PresetBasket {
             closePopup();
             if (!query) return;
 
-            matches = PresetGalleryCommon.getTopMatches(Object.keys(this.context.cache), query);
+            matches = this.helpers.getTopMatches(Object.keys(this.context.cache), query);
             if (matches.length === 0) return;
 
             activeIdx = 0;
@@ -561,7 +577,7 @@ class PresetBasket {
             matches.forEach((match, idx) => {
                 const row = document.createElement("div");
                 row.className = `j0n4t-pg-autocomplete-item${idx === activeIdx ? ' active' : ''}`;
-                row.innerHTML = `<span>${PresetGalleryCommon.escapeHTML(this.context.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match))}</span>`;
+                row.innerHTML = `<span>${this.helpers.escapeHTML(this.helpers.toTitleCase(match.includes("/") ? match.split("/").pop() : match))}</span>`;
                 row.addEventListener("mousedown", (e) => {
                     e.preventDefault(); // Prevents input blur
                     input.value = match;
@@ -578,7 +594,7 @@ class PresetBasket {
             try { input.remove(); } catch (e) { } // Ignore DOM race conditions from synchronous framework updates
 
             if (isNew) {
-                    chipElement.remove();
+                chipElement.remove();
             } else {
                 chipElement.classList.remove("inline-editing");
                 chipElement.draggable = true;
@@ -638,33 +654,33 @@ class PresetBasket {
         });
     }
 
-    render(activeList, cache, helpers) {
+    render(activeList) {
         this.textarea.value = activeList.join(", ");
 
         this.pool.innerHTML = "";
 
         if (activeList.length > 0) {
             activeList.forEach((styleKey) => {
-                const item = cache[styleKey];
-                const initials = helpers.getInitials(styleKey);
-                const cleanLabel = item ? helpers.toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey) : styleKey;
-                const title = cache[styleKey] ? `${cleanLabel} [${styleKey}]\n${cache[styleKey].preset}` : styleKey;
+                const item = this.cache[styleKey];
+                const initials = this.helpers.getInitials(styleKey);
+                const cleanLabel = item ? this.helpers.toTitleCase(styleKey.includes("/") ? styleKey.split("/").pop() : styleKey) : styleKey;
+                const title = this.cache[styleKey] ? `${cleanLabel} [${styleKey}]\n${this.cache[styleKey].preset}` : styleKey;
                 const chip = Object.assign(document.createElement("div"), { className: "j0n4t-pg-basket-chip", draggable: true, title: title });
                 chip.dataset.id = styleKey;
 
-                let thumbStyle = `background-color: ${helpers.getHashColor(helpers.getBaseFolder(styleKey))};`;
+                let thumbStyle = `background-color: ${this.helpers.getHashColor(this.helpers.getBaseFolder(styleKey))};`;
                 if (item?.filename) {
                     thumbStyle = `background-image: url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}');`;
                 }
 
                 chip.innerHTML = `
-                    <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : PresetGalleryCommon.escapeHTML(initials.slice(0, 4))}</div>
-                    <div class="j0n4t-pg-basket-chip-label" title="${PresetGalleryCommon.escapeHTML(styleKey)}">${PresetGalleryCommon.escapeHTML(cleanLabel)}</div>
+                    <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? '' : this.helpers.escapeHTML(initials.slice(0, 4))}</div>
+                    <div class="j0n4t-pg-basket-chip-label" title="${this.helpers.escapeHTML(styleKey)}">${this.helpers.escapeHTML(cleanLabel)}</div>
                     <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">
-                        ${helpers.icons.edit}
+                        ${this.helpers.icons.edit}
                     </div>
                     <div class="j0n4t-pg-action-btn del-btn" title="Remove from basket">
-                        ${helpers.icons.close}
+                        ${this.helpers.icons.close}
                     </div>
                 `;
 
@@ -687,7 +703,7 @@ class PresetBasket {
                             this.context.setCollapsedFolders(collapsedList);
                         }
 
-                        this.context.executeFilterPipeline();
+                        this.context.grid.executeFilterPipeline();
 
                         itemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
@@ -708,7 +724,7 @@ class PresetBasket {
                     if (!cache[styleKey]) {
                         this.spawnInlineEditor(chip, styleKey);
                     } else {
-                       this.context.openEditorForPreset(styleKey);
+                        this.context.openEditorForPreset(styleKey);
                     }
                 });
 
@@ -749,6 +765,280 @@ class PresetBasket {
         this.pool.appendChild(addBtn);
     }
 
+}
+
+/**
+ * Manages the UI state, rendering, and interactions for the Main Gallery Grid.
+ */
+class PresetGrid {
+    constructor(dom, context) {
+        this.dom = dom;
+        this.context = context; // Reference to the main App
+
+        this.bindEvents();
+    }
+
+    get helpers() { return this.context.helpers; }
+
+    switchView(viewName) {
+        ['small', 'big', 'list'].forEach(v => this.dom.grid.classList.remove(`view-${v}`));
+        this.dom.viewsContainer.querySelectorAll(".j0n4t-pg-view-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.dataset.view === viewName);
+        });
+        this.dom.grid.classList.add(`view-${viewName}`);
+        localStorage.setItem("comfy_preset_gallery_view", viewName);
+    }
+
+    executeFilterPipeline(query = "") {
+        const queryWords = query.toLowerCase().trim() ? query.toLowerCase().trim().split(/\s+/) : [];
+        const items = this.dom.grid.querySelectorAll(".j0n4t-pg-item");
+
+        this.dom.searchClear.style.display = query ? "flex" : "none";
+
+        items.forEach(el => {
+            const matchBlob = el.dataset.searchBlob;
+            const isVisible = queryWords.length === 0 || queryWords.every(word => matchBlob.includes(word));
+            el.classList.toggle("j0n4t-pg-hidden", !isVisible);
+        });
+
+        this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").forEach(header => {
+            const isCollapsed = header.classList.contains("collapsed");
+
+            let next = header.nextElementSibling;
+            let hasVisibleChildren = false;
+
+            while (next && !next.classList.contains("j0n4t-pg-group-header")) {
+                const searchBlob = next.dataset.searchBlob || "";
+                const matchesSearch = queryWords.length === 0 || queryWords.every(word => searchBlob.includes(word));
+
+                if (matchesSearch) {
+                    hasVisibleChildren = true;
+                    next.classList.toggle("j0n4t-pg-hidden", isCollapsed);
+                } else {
+                    next.classList.add("j0n4t-pg-hidden");
+                }
+                next = next.nextElementSibling;
+            }
+            header.classList.toggle("j0n4t-pg-hidden", !hasVisibleChildren);
+        });
+    }
+
+    compile(cache) {
+        let htmlBuffer = "";
+        let lastGroup = null;
+
+        const masterCollapsedList = this.context.getCollapsedFolders();
+
+        const sortedKeys = Object.keys(cache).sort((a, b) => {
+            const groupA = cache[a].tags?.length ? cache[a].tags.join(" > ") : "root_presets";
+            const groupB = cache[b].tags?.length ? cache[b].tags.join(" > ") : "root_presets";
+            if (groupA === "root_presets" && groupB !== "root_presets") return -1;
+            if (groupB === "root_presets" && groupA !== "root_presets") return 1;
+            return groupA !== groupB ? groupA.localeCompare(groupB) : a.localeCompare(b);
+        });
+
+        sortedKeys.forEach(uniqueKey => {
+            const item = cache[uniqueKey];
+            const rawLabel = uniqueKey.includes("/") ? uniqueKey.split("/").pop() : uniqueKey;
+            const cleanLabel = this.helpers.toTitleCase(rawLabel);
+            const initials = this.helpers.getInitials(uniqueKey);
+
+            const searchBlob = `${uniqueKey} ${initials} ${item.preset} ${(item.tags || []).join(' ')}`.toLowerCase();
+            const uiGroupTitle = item.tags?.length ? item.tags.map(this.helpers.toTitleCase).join(" › ") : "Root Presets";
+            const groupRawName = item.tags?.length ? item.tags.join("/") : "root_presets";
+
+            if (uiGroupTitle !== lastGroup) {
+                lastGroup = uiGroupTitle;
+                const isCurrentlyCollapsed = masterCollapsedList.includes(groupRawName);
+                const memoryCollapseState = isCurrentlyCollapsed ? " collapsed" : "";
+
+                htmlBuffer += `
+                    <div class="j0n4t-pg-group-header${memoryCollapseState}" data-group="${this.helpers.escapeHTML(uiGroupTitle)}" data-group-raw="${this.helpers.escapeHTML(groupRawName)}">
+                        <span>${this.helpers.escapeHTML(uiGroupTitle)}</span>
+                        <div class="j0n4t-pg-group-line"></div>
+                        <span class="j0n4t-pg-group-rename-tip">Right-click to rename folder</span>
+                    </div>
+                `;
+            }
+
+            let thumbnailHtml = "";
+            if (item.filename) {
+                thumbnailHtml = `
+                    <div class="j0n4t-pg-thumb-box">
+                        <img class="j0n4t-pg-img" src="/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}" alt="${this.helpers.escapeHTML(uniqueKey)}" loading="lazy">
+                        <div class="j0n4t-pg-initials">${this.helpers.escapeHTML(initials)}</div>
+                    </div>`;
+            } else {
+                thumbnailHtml = `
+                    <div class="j0n4t-pg-thumb-box" style="background-color: ${this.helpers.getPresetColor(uniqueKey)}; color: #fff;">
+                        ${this.helpers.icons.file}
+                        <div class="j0n4t-pg-initials">${this.helpers.escapeHTML(initials)}</div>
+                    </div>`;
+            }
+
+            const badge = item.tags?.length
+                ? `<div class="j0n4t-pg-tag-badge" title="${this.helpers.escapeHTML(item.tags.map(this.helpers.toTitleCase).join(' > '))}">${this.helpers.escapeHTML(this.helpers.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
+                : '';
+
+            htmlBuffer += `
+                <div class="j0n4t-pg-item" data-style="${this.helpers.escapeHTML(uniqueKey)}" data-search-blob="${this.helpers.escapeHTML(searchBlob)}" draggable="true" title="${this.helpers.escapeHTML(cleanLabel)} [${this.helpers.escapeHTML(uniqueKey)}]\n${this.helpers.escapeHTML(cache[uniqueKey].preset || '')}">
+                    ${badge}
+                    <div class="j0n4t-pg-corner-edit" title="Edit ${this.helpers.escapeHTML(cleanLabel)}">
+                        ${this.helpers.icons.edit}
+                    </div>
+                    ${thumbnailHtml}
+                    <div class="j0n4t-pg-label">${this.helpers.escapeHTML(cleanLabel)}</div>
+                </div>
+            `;
+        });
+
+        this.dom.grid.innerHTML = htmlBuffer || `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
+
+        const totalHeadersCount = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length;
+        this.dom.btnGlobalCollapse.innerText = masterCollapsedList.length > (totalHeadersCount / 2) ? "↕️ Expand All" : "↕️ Collapse All";
+
+        this.attachGridItemEvents();
+
+        this.switchView(localStorage.getItem("comfy_preset_gallery_view") || "big");
+        this.executeFilterPipeline(this.dom.search.value);
+        this.context.syncEditorHighlight();
+    }
+
+    attachGridItemEvents() {
+        // Handle Group Header Interactivity
+        this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").forEach(header => {
+            const rawFolder = header.dataset.groupRaw;
+
+            header.addEventListener("click", () => {
+                const isCollapsedNow = header.classList.toggle("collapsed");
+                let list = this.context.getCollapsedFolders();
+
+                if (isCollapsedNow) {
+                    if (!list.includes(rawFolder)) list.push(rawFolder);
+                } else {
+                    list = list.filter(item => item !== rawFolder);
+                }
+
+                this.context.setCollapsedFolders(list);
+
+                const total = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length;
+                this.dom.btnGlobalCollapse.innerText = list.length > (total / 2) ? "↕️ Expand All" : "↕️ Collapse All";
+
+                this.executeFilterPipeline(this.dom.search.value);
+            });
+
+            header.addEventListener("contextmenu", async (e) => {
+                if (rawFolder === "root_presets") return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                const newFolderName = prompt(`Rename folder category "${rawFolder.replace(/_/g, " ")}" to:`, rawFolder.replace(/_/g, " "));
+                if (newFolderName === null) return;
+
+                const cleanNewName = newFolderName.trim().toLowerCase().replace(/ /g, "_");
+                if (!cleanNewName || cleanNewName === rawFolder) return;
+
+                const res = await PresetGalleryAPI.renameFolder(rawFolder, cleanNewName);
+                if (res.success) {
+                    let currentSelections = this.context.getSelectedArray();
+                    currentSelections = currentSelections.map(item => {
+                        if (item.startsWith(`${rawFolder}/`)) {
+                            return item.replace(`${rawFolder}/`, `${cleanNewName}/`);
+                        }
+                        return item;
+                    });
+
+                    let list = this.context.getCollapsedFolders().filter(item => item !== rawFolder);
+                    this.context.setCollapsedFolders(list);
+
+                    await this.context.loadGallery();
+                    this.context.updateWidgetValue(currentSelections);
+                } else {
+                    alert(`Failed to rename folder structure: ${res.error}`);
+                }
+            });
+        });
+
+        // Handle Preset Item Interactivity
+        this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach(item => {
+            item.addEventListener("dragstart", (e) => {
+                item.classList.add("dragging");
+                e.dataTransfer.effectAllowed = "copyMove";
+                e.dataTransfer.setData("text/plain", item.dataset.style);
+                e.dataTransfer.setData("source/grid", "true");
+            });
+            item.addEventListener("dragend", () => item.classList.remove("dragging"));
+
+            item.querySelector(".j0n4t-pg-corner-edit").addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.context.openEditorForPreset(item.dataset.style);
+            });
+        });
+    }
+
+    syncSelection(activeList) {
+        this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
+            el.classList.toggle("selected", activeList.includes(el.dataset.style));
+        });
+    }
+
+    bindEvents() {
+        // Layout and View Toggles
+        this.dom.viewsContainer.addEventListener("click", (e) => {
+            const btn = e.target.closest(".j0n4t-pg-view-btn");
+            if (btn) this.switchView(btn.dataset.view);
+        });
+
+        this.dom.chkGroup.checked = localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
+        if (!this.dom.chkGroup.checked) this.dom.grid.classList.add("hide-folders");
+        this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked ? "block" : "none";
+
+        this.dom.chkGroup.addEventListener("change", () => {
+            localStorage.setItem("comfy_preset_gallery_grouped", String(this.dom.chkGroup.checked));
+            this.dom.grid.classList.toggle("hide-folders", !this.dom.chkGroup.checked);
+            this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked ? "block" : "none";
+            this.executeFilterPipeline(this.dom.search.value);
+        });
+
+        // Global Expand/Collapse
+        this.dom.btnGlobalCollapse.addEventListener("click", () => {
+            const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
+            if (headers.length === 0) return;
+
+            let collapsedList = this.context.getCollapsedFolders();
+            const turningToCollapsedState = !this.dom.btnGlobalCollapse.innerText.includes("Expand");
+
+            if (turningToCollapsedState) {
+                collapsedList = [...headers].map(h => h.dataset.groupRaw);
+                this.dom.btnGlobalCollapse.innerText = "↕️ Expand All";
+            } else {
+                collapsedList = [];
+                this.dom.btnGlobalCollapse.innerText = "↕️ Collapse All";
+            }
+
+            this.context.setCollapsedFolders(collapsedList);
+
+            headers.forEach(header => {
+                header.classList.toggle("collapsed", turningToCollapsedState);
+            });
+
+            this.executeFilterPipeline(this.dom.search.value);
+        });
+
+        // Grid Click Selection Delegation
+        this.dom.grid.addEventListener("click", (e) => {
+            if (e.target.closest(".j0n4t-pg-corner-edit") || e.target.closest(".j0n4t-pg-group-header")) return;
+
+            const item = e.target.closest(".j0n4t-pg-item");
+            if (!item || !this.context.widget.callback) return;
+
+            const styleKey = item.dataset.style;
+            let selections = this.context.getSelectedArray();
+            selections = selections.includes(styleKey) ? selections.filter(v => v !== styleKey) : [...selections, styleKey];
+
+            this.context.updateWidgetValue(selections);
+        });
+    }
 }
 
 /**
@@ -801,7 +1091,7 @@ class PresetEditor {
         this.dom.editorPreview.innerHTML = `
             <div style="background-color: ${bgColor}; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; position: absolute; top:0; left:0;">
                 ${this.helpers.icons.file}
-                <div class="j0n4t-pg-initials" style="font-size: 14px;">${PresetGalleryCommon.escapeHTML(initials)}</div>
+                <div class="j0n4t-pg-initials" style="font-size: 14px;">${this.helpers.escapeHTML(initials)}</div>
             </div>
         `;
     }
@@ -1050,12 +1340,12 @@ class PresetEditor {
                 }
             }
         }
-        
+
         this.dom.inpName.addEventListener("keydown", handleQuickSave);
         this.dom.inpFolder.addEventListener("keydown", handleQuickSave);
         this.dom.inpPreset.addEventListener("keydown", handleQuickSave);
         this.dom.inpPreset.addEventListener("paste", handlePastedPreset);
-        
+
         this.dom.btnClearFields.addEventListener("click", () => this.clearFields());
         this.dom.btnSave.addEventListener("click", () => this.handleSave(false));
         this.dom.btnDel.addEventListener("click", () => this.handleDelete());
@@ -1154,8 +1444,37 @@ class PresetGalleryApp {
         this.node = node;
         this.widget = widget;
         this.cache = {};
-        
+
         this.helpers = {
+            escapeHTML: (str) => {
+                if (str == null) return "";
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            },
+            getTopMatches: (list, query) => {
+                const cleanQuery = query.toLowerCase();
+                const buckets = list.reduce((acc, item) => {
+                    const lowerItem = item.toLowerCase();
+                    const idx = lowerItem.indexOf(cleanQuery);
+                    if (idx === -1) return acc;
+                    if (idx === 0) {
+                        if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx });
+                    } else {
+                        if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx });
+                    }
+                    return acc;
+                }, { startsWith: [], fuzzy: [] });
+                const sortBucket = (arr) => arr
+                    .sort((a, b) => a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item))
+                    .map(entry => entry.item);
+                const finalStarts = sortBucket(buckets.startsWith);
+                const finalFuzzy = sortBucket(buckets.fuzzy);
+                return Array.from(new Set([...finalStarts, ...finalFuzzy]));
+            },
             getHashColor: (str) => {
                 let hash = 0;
                 for (let i = 0; i < str.length; i++) {
@@ -1194,21 +1513,10 @@ class PresetGalleryApp {
             this
         );
         this.editor = new PresetEditor(this.dom, this);
+        this.grid = new PresetGrid(this.dom, this);
 
         this.bindEvents();
         this.editor.renderPreview();
-    }
-
-    getCollapsedFolders() {
-        try {
-            return JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || [];
-        } catch (e) {
-            return [];
-        }
-    }
-
-    setCollapsedFolders(folderArray) {
-        localStorage.setItem("pg_collapsed_folders_list", JSON.stringify(folderArray));
     }
 
     buildDOMStructure() {
@@ -1304,6 +1612,16 @@ class PresetGalleryApp {
         };
     }
 
+    // --- State Accessors & Mutators --- //
+
+    getCollapsedFolders() {
+        try { return JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || []; } catch (e) { return []; }
+    }
+
+    setCollapsedFolders(folderArray) {
+        localStorage.setItem("pg_collapsed_folders_list", JSON.stringify(folderArray));
+    }
+
     getSelectedArray() {
         return this.widget.value ? this.widget.value.split(",").map(v => v.trim()).filter(Boolean) : [];
     }
@@ -1319,22 +1637,16 @@ class PresetGalleryApp {
         if (this.node.graph) this.node.graph._version++;
     }
 
+    // --- App Level Actions --- //
+
     setPanelCollapseState(shouldCollapse) {
         this.dom.editor.classList.toggle("collapsed", shouldCollapse);
         this.dom.toggle.innerText = shouldCollapse ? "⚙️ Management Panel" : "🔼 Hide Panel";
         localStorage.setItem("comfy_preset_gallery_collapsed", String(shouldCollapse));
     }
 
-    switchView(viewName) {
-        ['small', 'big', 'list'].forEach(v => this.dom.grid.classList.remove(`view-${v}`));
-        this.dom.viewsContainer.querySelectorAll(".j0n4t-pg-view-btn").forEach(btn => {
-            btn.classList.toggle("active", btn.dataset.view === viewName);
-        });
-        this.dom.grid.classList.add(`view-${viewName}`);
-        localStorage.setItem("comfy_preset_gallery_view", viewName);
-    }
 
-   syncEditorHighlight() {
+    syncEditorHighlight() {
         this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach(el => {
             const isEditingTarget = (this.editor.currentMode === "edit" && el.dataset.style === this.editor.editingKey);
             el.classList.toggle("editing", isEditingTarget);
@@ -1345,191 +1657,22 @@ class PresetGalleryApp {
         this.editor.openPreset(styleKey);
     }
 
-    executeFilterPipeline() {
-        const query = this.dom.search.value.toLowerCase().trim();
-        const items = this.dom.grid.querySelectorAll(".j0n4t-pg-item");
-        const queryWords = query ? query.split(/\s+/) : [];
-
-        this.dom.searchClear.style.display = query ? "flex" : "none";
-
-        items.forEach(el => {
-            const matchBlob = el.dataset.searchBlob;
-            const isVisible = queryWords.length === 0 || queryWords.every(word => matchBlob.includes(word));
-            el.classList.toggle("j0n4t-pg-hidden", !isVisible);
-        });
-
-        this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").forEach(header => {
-            const isCollapsed = header.classList.contains("collapsed");
-
-            let next = header.nextElementSibling;
-            let hasVisibleChildren = false;
-
-            while (next && !next.classList.contains("j0n4t-pg-group-header")) {
-                const searchBlob = next.dataset.searchBlob || "";
-                const matchesSearch = queryWords.length === 0 || queryWords.every(word => searchBlob.includes(word));
-
-                if (matchesSearch) {
-                    hasVisibleChildren = true;
-                    next.classList.toggle("j0n4t-pg-hidden", isCollapsed);
-                } else {
-                    next.classList.add("j0n4t-pg-hidden");
-                }
-                next = next.nextElementSibling;
-            }
-            header.classList.toggle("j0n4t-pg-hidden", !hasVisibleChildren);
-        });
+    async loadGallery() {
+        this.cache = await PresetGalleryAPI.fetchGallery();
+        this.grid.compile(this.cache); // Delegate to Grid
     }
 
-    compileStaticDOMStructure() {
-        let htmlBuffer = "";
-        let lastGroup = null;
+    async syncUI(delimitedValue) {
+        const activeList = delimitedValue ? delimitedValue.split(",").map(v => v.trim()).filter(Boolean) : [];
 
-        const masterCollapsedList = this.getCollapsedFolders();
-
-        const sortedKeys = Object.keys(this.cache).sort((a, b) => {
-            const groupA = this.cache[a].tags?.length ? this.cache[a].tags.join(" > ") : "root_presets";
-            const groupB = this.cache[b].tags?.length ? this.cache[b].tags.join(" > ") : "root_presets";
-            if (groupA === "root_presets" && groupB !== "root_presets") return -1;
-            if (groupB === "root_presets" && groupA !== "root_presets") return 1;
-            return groupA !== groupB ? groupA.localeCompare(groupB) : a.localeCompare(b);
-        });
-
-        sortedKeys.forEach(uniqueKey => {
-            const item = this.cache[uniqueKey];
-            const rawLabel = uniqueKey.includes("/") ? uniqueKey.split("/").pop() : uniqueKey;
-            const cleanLabel = this.helpers.toTitleCase(rawLabel);
-            const initials = this.helpers.getInitials(uniqueKey);
-
-            const searchBlob = `${uniqueKey} ${initials} ${item.preset} ${(item.tags || []).join(' ')}`.toLowerCase();
-            const uiGroupTitle = item.tags?.length ? item.tags.map(this.helpers.toTitleCase).join(" › ") : "Root Presets";
-            const groupRawName = item.tags?.length ? item.tags.join("/") : "root_presets";
-
-            if (uiGroupTitle !== lastGroup) {
-                lastGroup = uiGroupTitle;
-                const isCurrentlyCollapsed = masterCollapsedList.includes(groupRawName);
-                const memoryCollapseState = isCurrentlyCollapsed ? " collapsed" : "";
-
-                htmlBuffer += `
-                    <div class="j0n4t-pg-group-header${memoryCollapseState}" data-group="${PresetGalleryCommon.escapeHTML(uiGroupTitle)}" data-group-raw="${PresetGalleryCommon.escapeHTML(groupRawName)}">
-                        <span>${PresetGalleryCommon.escapeHTML(uiGroupTitle)}</span>
-                        <div class="j0n4t-pg-group-line"></div>
-                        <span class="j0n4t-pg-group-rename-tip">Right-click to rename folder</span>
-                    </div>
-                `;
-            }
-
-            let thumbnailHtml = "";
-            if (item.filename) {
-                thumbnailHtml = `
-                    <div class="j0n4t-pg-thumb-box">
-                        <img class="j0n4t-pg-img" src="/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}" alt="${PresetGalleryCommon.escapeHTML(uniqueKey)}" loading="lazy">
-                        <div class="j0n4t-pg-initials">${PresetGalleryCommon.escapeHTML(initials)}</div>
-                    </div>`;
-            } else {
-                thumbnailHtml = `
-                    <div class="j0n4t-pg-thumb-box" style="background-color: ${this.helpers.getPresetColor(uniqueKey)}; color: #fff;">
-                        ${this.helpers.icons.file}
-                        <div class="j0n4t-pg-initials">${PresetGalleryCommon.escapeHTML(initials)}</div>
-                    </div>`;
-            }
-
-            const badge = item.tags?.length
-                ? `<div class="j0n4t-pg-tag-badge" title="${PresetGalleryCommon.escapeHTML(item.tags.map(this.helpers.toTitleCase).join(' > '))}">${PresetGalleryCommon.escapeHTML(this.helpers.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
-                : '';
-
-            htmlBuffer += `
-                <div class="j0n4t-pg-item" data-style="${PresetGalleryCommon.escapeHTML(uniqueKey)}" data-search-blob="${PresetGalleryCommon.escapeHTML(searchBlob)}" draggable="true" title="${PresetGalleryCommon.escapeHTML(cleanLabel)} [${PresetGalleryCommon.escapeHTML(uniqueKey)}]\n${PresetGalleryCommon.escapeHTML(this.cache[uniqueKey].preset || '')}">
-                    ${badge}
-                    <div class="j0n4t-pg-corner-edit" title="Edit ${PresetGalleryCommon.escapeHTML(cleanLabel)}">
-                        ${this.helpers.icons.edit}
-                    </div>
-                    ${thumbnailHtml}
-                    <div class="j0n4t-pg-label">${PresetGalleryCommon.escapeHTML(cleanLabel)}</div>
-                </div>
-            `;
-        });
-
-        this.dom.grid.innerHTML = htmlBuffer || `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
-
-        const totalHeadersCount = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length;
-        this.dom.btnGlobalCollapse.innerText = masterCollapsedList.length > (totalHeadersCount / 2) ? "↕️ Expand All" : "↕️ Collapse All";
-
-        this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").forEach(header => {
-            const rawFolder = header.dataset.groupRaw;
-
-            header.addEventListener("click", () => {
-                const isCollapsedNow = header.classList.toggle("collapsed");
-                let list = this.getCollapsedFolders();
-
-                if (isCollapsedNow) {
-                    if (!list.includes(rawFolder)) list.push(rawFolder);
-                } else {
-                    list = list.filter(item => item !== rawFolder);
-                }
-
-                this.setCollapsedFolders(list);
-
-                const total = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length;
-                this.dom.btnGlobalCollapse.innerText = list.length > (total / 2) ? "↕️ Expand All" : "↕️ Collapse All";
-
-                this.executeFilterPipeline();
-            });
-
-            header.addEventListener("contextmenu", async (e) => {
-                if (rawFolder === "root_presets") return;
-                e.preventDefault();
-                e.stopPropagation();
-
-                const newFolderName = prompt(`Rename folder category "${rawFolder.replace(/_/g, " ")}" to:`, rawFolder.replace(/_/g, " "));
-                if (newFolderName === null) return;
-
-                const cleanNewName = newFolderName.trim().toLowerCase().replace(/ /g, "_");
-                if (!cleanNewName || cleanNewName === rawFolder) return;
-
-                const res = await PresetGalleryAPI.renameFolder(rawFolder, cleanNewName);
-                if (res.success) {
-                    let currentSelections = this.getSelectedArray();
-                    currentSelections = currentSelections.map(item => {
-                        if (item.startsWith(`${rawFolder}/`)) {
-                            return item.replace(`${rawFolder}/`, `${cleanNewName}/`);
-                        }
-                        return item;
-                    });
-
-                    let list = this.getCollapsedFolders().filter(item => item !== rawFolder);
-                    this.setCollapsedFolders(list);
-
-                    await this.loadGallery();
-                    this.updateWidgetValue(currentSelections);
-                } else {
-                    alert(`Failed to rename folder structure: ${res.error}`);
-                }
-            });
-        });
-
-        this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach(item => {
-            item.addEventListener("dragstart", (e) => {
-                item.classList.add("dragging");
-                e.dataTransfer.effectAllowed = "copyMove";
-                e.dataTransfer.setData("text/plain", item.dataset.style);
-                e.dataTransfer.setData("source/grid", "true");
-            });
-            item.addEventListener("dragend", () => item.classList.remove("dragging"));
-
-            item.querySelector(".j0n4t-pg-corner-edit").addEventListener("click", (e) => {
-                e.stopPropagation();
-                this.openEditorForPreset(item.dataset.style);
-            });
-        });
-
-        this.switchView(localStorage.getItem("comfy_preset_gallery_view") || "big");
-        this.executeFilterPipeline();
+        this.grid.syncSelection(activeList); // Delegate to Grid
+        this.basket.render(activeList, this.cache); // Delegate to Basket
         this.syncEditorHighlight();
     }
 
     async loadGallery() {
         this.cache = await PresetGalleryAPI.fetchGallery();
-        this.compileStaticDOMStructure();
+        this.grid.compile(this.cache); // Delegate to Grid
     }
 
     async syncUI(delimitedValue) {
@@ -1539,111 +1682,27 @@ class PresetGalleryApp {
             el.classList.toggle("selected", activeList.includes(el.dataset.style));
         });
 
-        this.basket.render(activeList, this.cache, this.helpers);
+        this.basket.render(activeList, this.cache);
         this.syncEditorHighlight();
     }
 
+    // --- Core Binding for App Level Interactivity --- //
+
     bindEvents() {
+        // Toggle Panel
         this.dom.toggle.addEventListener("click", () => {
-            this.setPanelCollapseState(!this.dom.editor.classList.contains("collapsed"))
+            this.setPanelCollapseState(!this.dom.editor.classList.contains("collapsed"));
         });
 
-        this.dom.viewsContainer.addEventListener("click", (e) => {
-            const btn = e.target.closest(".j0n4t-pg-view-btn");
-            if (btn) this.switchView(btn.dataset.view);
-        });
-
-        this.dom.chkGroup.checked = localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
-        if (!this.dom.chkGroup.checked) this.dom.grid.classList.add("hide-folders");
-        this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked ? "block" : "none";
-
-        this.dom.chkGroup.addEventListener("change", () => {
-            localStorage.setItem("comfy_preset_gallery_grouped", String(this.dom.chkGroup.checked));
-            this.dom.grid.classList.toggle("hide-folders", !this.dom.chkGroup.checked);
-            this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked ? "block" : "none";
-            this.executeFilterPipeline();
-        });
-
-        this.dom.chkBasketRaw.checked = localStorage.getItem("comfy_preset_gallery_raw_basket") === "true";
-        this.dom.basketContainer.classList.toggle("raw-mode", this.dom.chkBasketRaw.checked);
-
-        this.dom.chkBasketRaw.addEventListener("change", () => {
-            localStorage.setItem("comfy_preset_gallery_raw_basket", String(this.dom.chkBasketRaw.checked));
-            this.dom.basketContainer.classList.toggle("raw-mode", this.dom.chkBasketRaw.checked);
-        });
-
-        this.dom.btnCopyBasket.addEventListener("click", () => {
-            const selections = this.getSelectedArray();
-            if (selections.length === 0) return;
-
-            const expandedText = selections.map(key => {
-                const item = this.cache[key];
-                return item && item.preset ? item.preset : key;
-            }).filter(Boolean).join(", ");
-
-            if (!expandedText) return;
-
-            navigator.clipboard.writeText(expandedText).then(() => {
-                const originalText = this.dom.btnCopyBasket.innerText;
-                const originalBg = this.dom.btnCopyBasket.style.background;
-                
-                this.dom.btnCopyBasket.innerText = "✅ Copied!";
-                this.dom.btnCopyBasket.style.background = "#228b22";
-
-                setTimeout(() => {
-                    this.dom.btnCopyBasket.innerText = originalText;
-                    this.dom.btnCopyBasket.style.background = originalBg;
-                }, 1500);
-            }).catch(err => {
-                console.error("Failed to copy text: ", err);
-                alert("Clipboard copy failed. Check console for details.");
-            });
-        });
-
-        this.dom.btnGlobalCollapse.addEventListener("click", () => {
-            const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
-            if (headers.length === 0) return;
-
-            let collapsedList = this.getCollapsedFolders();
-            const turningToCollapsedState = !this.dom.btnGlobalCollapse.innerText.includes("Expand");
-
-            if (turningToCollapsedState) {
-                collapsedList = [...headers].map(h => h.dataset.groupRaw);
-                this.dom.btnGlobalCollapse.innerText = "↕️ Expand All";
-            } else {
-                collapsedList = [];
-                this.dom.btnGlobalCollapse.innerText = "↕️ Collapse All";
-            }
-
-            this.setCollapsedFolders(collapsedList);
-
-            headers.forEach(header => {
-                header.classList.toggle("collapsed", turningToCollapsedState);
-            });
-
-            this.executeFilterPipeline();
-        });
-
-        this.dom.search.addEventListener("input", () => this.executeFilterPipeline());
+        // Search Handlers
+        this.dom.search.addEventListener("input", () => this.grid.executeFilterPipeline(this.dom.search.value));
         this.dom.searchClear.addEventListener("click", () => {
             this.dom.search.value = "";
-            this.executeFilterPipeline();
+            this.grid.executeFilterPipeline("");
             this.dom.search.focus();
         });
 
-        this.dom.grid.addEventListener("click", (e) => {
-            if (e.target.closest(".j0n4t-pg-corner-edit") || e.target.closest(".j0n4t-pg-group-header")) return;
-
-            const item = e.target.closest(".j0n4t-pg-item");
-            if (!item || !this.widget.callback) return;
-
-            const styleKey = item.dataset.style;
-            let selections = this.getSelectedArray();
-            selections = selections.includes(styleKey) ? selections.filter(v => v !== styleKey) : [...selections, styleKey];
-
-            this.updateWidgetValue(selections);
-        });
-
+        // Global Import/Export 
         this.dom.btnExport.addEventListener("click", () => window.open('/custom_node/export_presets_zip', '_blank'));
         this.dom.btnImport.addEventListener("click", () => this.dom.inpZipFile.click());
 
@@ -1661,21 +1720,13 @@ class PresetGalleryApp {
             }
         });
 
-        this.dom.btnClearBasket.addEventListener("click", () => {
-            if (this.getSelectedArray().length === 0) return;
-            if (confirm("Are you sure you want to empty the basket?")) {
-                this.updateWidgetValue([]);
-            }
-        });
-
+        // Gallery Hide Mode
         let isGalleryHidden = localStorage.getItem("comfy_preset_gallery_hidden") === "true";
-
         const updateGalleryVisibilityState = (shouldHide) => {
             this.dom.wrap.classList.toggle("hide-gallery-mode", shouldHide);
             this.dom.btnHideGallery.classList.toggle("active", !shouldHide);
             localStorage.setItem("comfy_preset_gallery_hidden", String(shouldHide));
         };
-
         updateGalleryVisibilityState(isGalleryHidden);
 
         this.dom.btnHideGallery.addEventListener("click", () => {
@@ -1733,7 +1784,7 @@ class PresetGalleryApp {
             if (!query) return;
 
             const allKeys = Object.keys(this.cache);
-            this.filterMatches = PresetGalleryCommon.getTopMatches(allKeys, query);
+            this.filterMatches = this.helpers.getTopMatches(allKeys, query);
             if (this.filterMatches.length === 0) return;
 
             activeIndex = 0;
@@ -1756,8 +1807,8 @@ class PresetGalleryApp {
                 const row = document.createElement("div");
                 row.className = `j0n4t-pg-filter-autocomplete-item${index === activeIndex ? ' active' : ''}`;
                 row.innerHTML = `
-                    <span>${PresetGalleryCommon.escapeHTML(cleanLabel)}</span>
-                    <span class="j0n4t-pg-filter-autocomplete-meta">${PresetGalleryCommon.escapeHTML(key)}</span>
+                    <span>${this.helpers.escapeHTML(cleanLabel)}</span>
+                    <span class="j0n4t-pg-filter-autocomplete-meta">${this.helpers.escapeHTML(key)}</span>
                 `;
                 row.addEventListener("mousedown", (e) => {
                     e.preventDefault();
@@ -1807,7 +1858,6 @@ class PresetGalleryApp {
             await this.syncUI(this.widget.value);
         }
         this.initFilterAutocomplete();
-        this.initFolderAutocomplete();
         this.setPanelCollapseState(localStorage.getItem("comfy_preset_gallery_collapsed") === "true");
         this.node.setSize([this.node.size[0] || MIN_NODE_WIDTH, this.node.size[1] || MIN_NODE_HEIGHT]);
     }
