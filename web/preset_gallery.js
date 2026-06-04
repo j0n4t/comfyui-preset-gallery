@@ -841,8 +841,8 @@ class PresetGalleryApp {
                     <div class="j0n4t-pg-basket-title">🧺 Presets Basket</div>
                     <div style="display: flex; gap: 4px; align-items: center;">
                         <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
-                        <button type="button" id="j0n4t-pg-basket-copy-btn" title="Copy" style="font-size:9px; color:#fff; background:#444; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">📋 Copy</button>
-                        <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
+                        <button type="button" id="j0n4t-pg-basket-copy-btn" title="Copy expanded prompt output (useful for creating new presets)" style="font-size:9px; color:#fff; background:#444; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">📋 Output</button>
+                        <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
                     </div>
                 </div>
                 <div class="j0n4t-pg-basket-pool"></div>
@@ -853,11 +853,11 @@ class PresetGalleryApp {
                 <div class="j0n4t-pg-views">
                     <div class="j0n4t-pg-view-btn" data-view="small">${PresetUtils.icons.small}</div><div class="j0n4t-pg-view-btn" data-view="big">${PresetUtils.icons.big}</div><div class="j0n4t-pg-view-btn" data-view="list">${PresetUtils.icons.list}</div>
                 </div>
-                <div class="j0n4t-pg-toggle-gallery-wrap"><div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn">${PresetUtils.icons.eye}</div></div>
+                <div class="j0n4t-pg-toggle-gallery-wrap" title="Toggle Gallery View"><div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn">${PresetUtils.icons.eye}</div></div>
             </div>
             <div class="j0n4t-pg-grid"></div>
             <div class="j0n4t-pg-control-bar">
-                <div class="j0n4t-pg-toggle" id="j0n4t-pg-toggle">⚙️ Panel</div>
+                <div class="j0n4t-pg-toggle" id="j0n4t-pg-toggle">⚙️ Management Panel</div>
                 <button type="button" id="j0n4t-pg-global-collapse" style="background:#2a2a2a80; border:1px solid #444; color:#ccc; padding:4px 8px; border-radius:3px; cursor:pointer; font-size:10px;">↕️ Collapse All</button>
                 <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group</label>
             </div>
