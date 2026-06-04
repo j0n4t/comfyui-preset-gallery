@@ -72,11 +72,11 @@ class PresetGalleryStyles {
             .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
             .j0n4t-pg-basket-clear-btn:hover { background: #912e2e; }
             .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
-            .j0n4t-pg-raw-wrapper { position: relative; width: 100%; min-height: 36px; max-height: 200px; display: none; }
+            .j0n4t-pg-raw-wrapper { position: relative; width: 100%; min-height: 36px; display: none; }
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block !important; }
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
             .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
-            .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 100px; max-height: 200px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; position: relative; z-index: 2; caret-color: #fff; }
+            .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 48px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; position: relative; z-index: 2; caret-color: #fff; }
             .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; font-family: sans-serif; box-sizing: border-box; max-height: 250px; width: max-content; }
             .j0n4t-pg-autocomplete-popup { z-index: 9999; max-width: 280px; }
             .j0n4t-pg-filter-autocomplete-popup { z-index: 10001; }
@@ -157,7 +157,7 @@ class PresetGalleryStyles {
             .j0n4t-pg-checkbox-wrap input { width: auto; margin: 0; cursor: pointer; }
             .j0n4t-pg-editor { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #3d3d3d; padding-top: 8px; margin-top: 2px; box-sizing: border-box; flex-shrink: 0; }
             .j0n4t-pg-editor.collapsed { display: none !important; }
-            .j0n4t-pg-editor-banner { font-size: 10px; font-weight: bold; padding: 4px 6px; border-radius: 3px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; flex: 1; text-overflow: ellipsis; overflow: hidden; }
+            .j0n4t-pg-editor-banner { font-size: 10px; font-weight: bold; padding: 4px 6px; border-radius: 3px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
             .j0n4t-pg-editor input, .j0n4t-pg-editor textarea { background: #1a1a1ab0; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
             .j0n4t-pg-editor textarea { resize: vertical; min-height: 48px; }
             .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
