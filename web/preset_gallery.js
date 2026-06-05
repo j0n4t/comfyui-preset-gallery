@@ -11,11 +11,15 @@ const PresetUtils = {
             .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     },
-    getTopMatches: (list, query) => {
-        const cleanQuery = query.toLowerCase();
+    getSearchBlob: (key, item) => `${key} ${PresetUtils.getInitials(key)} ${item.preset || ''} ${(item.tags || []).join(' ')}`.toLowerCase(),
+    getTopMatches: (list, query, getSearchBlob = (i) => i) => {
+        const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+        if (!queryWords.length) return [];
         const buckets = list.reduce((acc, item) => {
-            const idx = item.toLowerCase().indexOf(cleanQuery);
-            if (idx === -1) return acc;
+            const blob = getSearchBlob(item).toLowerCase();
+            if (!queryWords.every(word => blob.includes(word))) return acc;
+            let idx = blob.indexOf(queryWords.join(" "));
+            if (idx === -1) idx = blob.indexOf(queryWords[0]);
             if (idx === 0) {
                 if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx });
             } else {
@@ -300,7 +304,7 @@ class PresetBasket {
 
         if (!currentToken) return this.closePopup();
 
-        this.currentMatches = PresetUtils.getTopMatches(Object.keys(this.context.cache), currentToken);
+        this.currentMatches = PresetUtils.getTopMatches(Object.keys(this.context.cache), currentToken, k => PresetUtils.getSearchBlob(k, this.context.cache[k]));
         if (!this.currentMatches.length) return this.closePopup();
 
         this.activeIndex = 0;
@@ -403,7 +407,8 @@ class PresetBasket {
             closeInlinePopup();
             const query = input.value.trim().toLowerCase();
             if (!query) return;
-            matches = PresetUtils.getTopMatches(Object.keys(this.context.cache), query);
+            matches = PresetUtils.getTopMatches(
+                Object.keys(this.context.cache), query, k => PresetUtils.getSearchBlob(k, this.context.cache[k]));
             if (!matches.length) return;
 
             activeIdx = 0;
@@ -792,7 +797,8 @@ class PresetEditor {
             const query = input.value.trim().toLowerCase().replace(/ /g, "_");
             close(); if (!query) return;
 
-            matches = Array.from(new Set(Object.values(this.context.cache).flatMap(i => i.tags?.length ? [i.tags.join("/")] : []))).filter(f => f.toLowerCase().includes(query));
+            const allFolders = Array.from(new Set(Object.values(this.context.cache).flatMap(i => i.tags?.length ? [i.tags.join("/")] : [])));
+            matches = PresetUtils.getTopMatches(allFolders, query, f => f.replace(/_/g, " "));
             if (!matches.length) return;
 
             activeIdx = 0;
@@ -949,7 +955,8 @@ class PresetGalleryApp {
 
         searchInput.addEventListener("input", () => {
             close(); const q = searchInput.value.toLowerCase().trim(); if (!q) return;
-            matches = PresetUtils.getTopMatches(Object.keys(this.cache), q); if (!matches.length) return;
+            matches = PresetUtils.getTopMatches(Object.keys(this.cache), q, k => PresetUtils.getSearchBlob(k, this.cache[k]));
+            if (!matches.length) return;
             
             activeIdx = 0; popup = Object.assign(document.createElement("div"), { className: "j0n4t-pg-filter-autocomplete-popup" });
             const rect = searchInput.getBoundingClientRect(), wrapRect = this.dom.wrap.getBoundingClientRect(), zoom = wrapRect.width / this.dom.wrap.offsetWidth || 1;
