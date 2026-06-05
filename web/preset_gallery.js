@@ -852,28 +852,30 @@ class PresetGrid {
       );
     });
 
-    this.dom.grid
-      .querySelectorAll(".j0n4t-pg-group-header")
-      .forEach((header) => {
-        let next = header.nextElementSibling,
-          hasVisibleChildren = false;
-        while (next && !next.classList.contains("j0n4t-pg-group-header")) {
-          const matches =
-            !queryWords.length ||
-            queryWords.every((word) =>
-              (next.dataset.searchBlob || "").includes(word),
-            );
-          if (matches) {
-            hasVisibleChildren = true;
-            next.classList.toggle(
-              "j0n4t-pg-hidden",
-              header.classList.contains("collapsed"),
-            );
-          } else next.classList.add("j0n4t-pg-hidden");
-          next = next.nextElementSibling;
-        }
-        header.classList.toggle("j0n4t-pg-hidden", !hasVisibleChildren);
-      });
+    if (this.dom.chkGroup.checked) {
+      this.dom.grid
+        .querySelectorAll(".j0n4t-pg-group-header")
+        .forEach((header) => {
+          let next = header.nextElementSibling,
+            hasVisibleChildren = false;
+          while (next && !next.classList.contains("j0n4t-pg-group-header")) {
+            const matches =
+              !queryWords.length ||
+              queryWords.every((word) =>
+                (next.dataset.searchBlob || "").includes(word),
+              );
+            if (matches) {
+              hasVisibleChildren = true;
+              next.classList.toggle(
+                "j0n4t-pg-hidden",
+                header.classList.contains("collapsed"),
+              );
+            } else next.classList.add("j0n4t-pg-hidden");
+            next = next.nextElementSibling;
+          }
+          header.classList.toggle("j0n4t-pg-hidden", !hasVisibleChildren);
+        });
+    }
   }
 
   compile(cache) {
