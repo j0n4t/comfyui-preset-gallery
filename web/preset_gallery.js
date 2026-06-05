@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { app } from "../../../scripts/app.js";
 
 const MIN_NODE_HEIGHT = 640;
@@ -449,9 +448,11 @@ class PresetBasket {
       const closest = this.getClosestChip(e.clientX, e.clientY);
       if (closest.element) {
         this.dropIndicator.style.height = `${closest.box.height}px`;
-        e.clientX > closest.box.left + closest.box.width / 2
-          ? closest.element.after(this.dropIndicator)
-          : closest.element.before(this.dropIndicator);
+        if (e.clientX > closest.box.left + closest.box.width / 2) {
+          closest.element.after(this.dropIndicator);
+        } else {
+          closest.element.before(this.dropIndicator);
+        }
       } else {
         this.pool.appendChild(this.dropIndicator);
         this.dropIndicator.style.height = "12px";
@@ -591,29 +592,6 @@ class PresetBasket {
     });
   }
 
-  evaluateAutocomplete() {
-    const text = this.textarea.value;
-    const caretPos = this.textarea.selectionStart;
-    const lastCommaIndex = text.slice(0, caretPos).lastIndexOf(",");
-    const currentToken = (
-      lastCommaIndex === -1
-        ? text.slice(0, caretPos)
-        : text.slice(lastCommaIndex + 1, caretPos)
-    ).trimStart();
-
-    if (!currentToken) return this.closePopup();
-
-    this.currentMatches = PresetUtils.getTopMatches(
-      Object.keys(this.context.cache),
-      currentToken,
-      (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
-    );
-    if (!this.currentMatches.length) return this.closePopup();
-
-    this.activeIndex = 0;
-    this.showPopup(lastCommaIndex + 1, currentToken);
-  }
-
   removeDropIndicator() {
     this.dropIndicator?.remove();
     this.dropIndicator = null;
@@ -644,7 +622,11 @@ class PresetBasket {
         className: "j0n4t-pg-basket-chip inline-editing",
       });
       const addBtn = this.pool.querySelector(".j0n4t-pg-basket-add-btn");
-      addBtn ? addBtn.before(chipElement) : this.pool.appendChild(chipElement);
+      if (addBtn) {
+        addBtn.before(chipElement);
+      } else {
+        this.pool.appendChild(chipElement);
+      }
     } else {
       if (chipElement.classList.contains("inline-editing")) return;
       chipElement.classList.add("inline-editing");
@@ -686,7 +668,11 @@ class PresetBasket {
         } else if (!isNew && newVal !== initialValue) {
           const idx = selections.indexOf(initialValue);
           if (idx !== -1) {
-            newVal ? (selections[idx] = newVal) : selections.splice(idx, 1);
+            if (newVal) {
+              selections[idx] = newVal;
+            } else {
+              selections.splice(idx, 1);
+            }
             this.context.updateWidgetValue(selections);
           }
         }
@@ -800,9 +786,11 @@ class PresetBasket {
 
       chip.querySelector(".edit-btn").addEventListener("click", (e) => {
         e.stopPropagation();
-        item
-          ? this.context.openEditorForPreset(styleKey)
-          : this.spawnInlineEditor(chip, styleKey);
+        if (item) {
+          this.context.openEditorForPreset(styleKey);
+        } else {
+          this.spawnInlineEditor(chip, styleKey);
+        }
       });
       chip.querySelector(".del-btn").addEventListener("click", (e) => {
         e.stopPropagation();
@@ -969,9 +957,11 @@ class PresetGrid {
         header.addEventListener("click", () => {
           const isCollapsed = header.classList.toggle("collapsed");
           let list = this.context.getCollapsedFolders();
-          isCollapsed
-            ? !list.includes(rawFolder) && list.push(rawFolder)
-            : (list = list.filter((i) => i !== rawFolder));
+          if (isCollapsed && !list.includes(rawFolder)) {
+            list.push(rawFolder);
+          } else {
+            list = list.filter((i) => i !== rawFolder);
+          }
           this.context.setCollapsedFolders(list);
           this.dom.btnGlobalCollapse.innerText =
             list.length >
