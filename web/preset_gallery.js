@@ -595,6 +595,11 @@ class PresetBasket {
         }, 1500);
       });
     });
+
+    dom.basketContainer.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      this.spawnInlineEditor(null, "");
+    });
   }
 
   removeDropIndicator() {
