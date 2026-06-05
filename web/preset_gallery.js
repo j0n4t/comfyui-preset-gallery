@@ -4,7 +4,6 @@ import { app } from "../../../scripts/app.js";
 const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
 
-// --- 1. Utilities & Helpers --- //
 const PresetUtils = {
   escapeHTML: (str) => {
     if (str == null) return "";
@@ -75,7 +74,9 @@ const PresetUtils = {
   getPresetColor: (key) =>
     PresetUtils.getHashColor(PresetUtils.getBaseFolder(key)),
   getPresetTitle: (key, cache) =>
-    PresetUtils.escapeHTML(`${PresetUtils.toTitleCase(key.split("/").pop())} [${key}]\n${cache[key].preset}`),
+    PresetUtils.escapeHTML(
+      `${PresetUtils.toTitleCase(key.split("/").pop())} [${key}]\n${cache[key].preset}`,
+    ),
   icons: {
     close: `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
     edit: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
@@ -89,7 +90,149 @@ const PresetUtils = {
   },
 };
 
-// --- 2. Styles --- //
+class AutocompleteManager {
+  constructor({
+    input,
+    container,
+    popupClass = "j0n4t-pg-autocomplete-popup",
+    itemClass = "j0n4t-pg-autocomplete-item",
+    getMatches,
+    renderItem,
+    onSelect,
+    onKeyDown,
+  }) {
+    this.input = input;
+    this.container = container || document.body;
+    this.popupClass = popupClass;
+    this.itemClass = itemClass;
+    this.getMatches = getMatches;
+    this.renderItem = renderItem;
+    this.onSelect = onSelect;
+    this.onKeyDown = onKeyDown; // Hook for custom key logic
+
+    this.popupEl = null;
+    this.matches = [];
+    this.activeIndex = 0;
+
+    this.initEvents();
+  }
+
+  get isOpen() {
+    return !!this.popupEl;
+  }
+
+  initEvents() {
+    this.input.addEventListener("input", () => this.evaluate());
+    this.input.addEventListener("click", () => this.close());
+    this.input.addEventListener("blur", () =>
+      setTimeout(() => this.close(), 200),
+    );
+    this.input.addEventListener("keydown", (e) => this.handleKeydown(e));
+  }
+
+  evaluate() {
+    const query = this.input.value;
+    const cursor = this.input.selectionStart;
+
+    this.matches = this.getMatches(query, cursor) || [];
+
+    if (!this.matches.length) {
+      this.close();
+      return;
+    }
+
+    this.activeIndex = 0;
+    this.renderPopup();
+  }
+
+  renderPopup() {
+    if (!this.popupEl) {
+      this.popupEl = Object.assign(document.createElement("div"), {
+        className: this.popupClass,
+      });
+      this.popupEl.addEventListener("mousedown", (e) => e.stopPropagation());
+      this.container.appendChild(this.popupEl);
+    }
+
+    const rect = this.input.getBoundingClientRect();
+    const cRect = this.container.getBoundingClientRect();
+    const zoom = cRect.width / this.container.offsetWidth || 1;
+
+    const isBody = this.container === document.body;
+    const top = isBody
+      ? window.scrollY + rect.bottom
+      : (rect.bottom - cRect.top) / zoom;
+    const left = isBody
+      ? window.scrollX + rect.left
+      : (rect.left - cRect.left) / zoom;
+
+    this.popupEl.style.top = `${top + 2}px`;
+    this.popupEl.style.left = `${left}px`;
+    this.popupEl.style.minWidth = `${Math.max(200, rect.width / zoom)}px`;
+    this.popupEl.innerHTML = "";
+
+    this.matches.forEach((match, idx) => {
+      const row = document.createElement("div");
+      row.className = `${this.itemClass}${idx === this.activeIndex ? " active" : ""}`;
+      row.innerHTML = this.renderItem(match);
+
+      row.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.onSelect(match, e);
+        this.close();
+      });
+      this.popupEl.appendChild(row);
+    });
+  }
+
+  highlight() {
+    if (!this.popupEl) return;
+    this.popupEl
+      .querySelectorAll(`.${this.itemClass.split(" ")[0]}`)
+      .forEach((item, i) => {
+        item.classList.toggle("active", i === this.activeIndex);
+      });
+  }
+
+  handleKeydown(e) {
+    const activeMatch = this.matches[this.activeIndex];
+
+    // Allow custom hooks (like saving on Enter when popup is closed)
+    if (this.onKeyDown && this.onKeyDown(e, activeMatch)) {
+      if (this.isOpen) this.close();
+      return;
+    }
+
+    if (!this.isOpen || !this.matches.length) return;
+
+    if (["Tab", "Enter"].includes(e.key) && !e.ctrlKey) {
+      e.preventDefault();
+      this.onSelect(activeMatch, e);
+      this.close();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      this.activeIndex = (this.activeIndex + 1) % this.matches.length;
+      this.highlight();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      this.activeIndex =
+        (this.activeIndex - 1 + this.matches.length) % this.matches.length;
+      this.highlight();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      this.close();
+    }
+  }
+
+  close() {
+    this.popupEl?.remove();
+    this.popupEl = null;
+    this.matches = [];
+  }
+}
+
 class PresetGalleryStyles {
   static inject() {
     if (document.getElementById("j0n4t-pg-global-styles")) return;
@@ -221,7 +364,6 @@ class PresetGalleryStyles {
   }
 }
 
-// --- 3. API Actions --- //
 class PresetGalleryAPI {
   static async fetchGallery() {
     return (await fetch("/custom_node/live_preset_gallery")).json();
@@ -266,7 +408,6 @@ class PresetGalleryAPI {
   }
 }
 
-// --- 4. Sub-Components --- //
 class PresetBasket {
   constructor(container, pool, textarea, context) {
     this.container = container;
@@ -355,40 +496,59 @@ class PresetBasket {
   }
 
   initAutocomplete() {
-    this.textarea.addEventListener("click", () => this.closePopup());
-    this.textarea.addEventListener("input", () => {
-      if (this.container.classList.contains("raw-mode"))
-        this.evaluateAutocomplete();
-    });
-    this.textarea.addEventListener("keydown", (e) => {
-      if (
-        e.key === "ArrowRight" &&
-        this.textarea.selectionStart === this.textarea.value.length
-      )
-        return this.selectMatch(this.currentMatches[this.activeIndex], e);
-      if (!this.popupEl || !this.currentMatches.length) return;
+    new AutocompleteManager({
+      input: this.textarea,
+      container: this.container,
+      getMatches: (text, cursor) => {
+        if (!this.container.classList.contains("raw-mode")) return [];
+        const lastCommaIndex = text.slice(0, cursor).lastIndexOf(",");
+        const currentToken = (
+          lastCommaIndex === -1
+            ? text.slice(0, cursor)
+            : text.slice(lastCommaIndex + 1, cursor)
+        ).trimStart();
+        if (!currentToken) return [];
 
-      if (["Tab", "Enter"].includes(e.key) && !e.ctrlKey)
-        this.selectMatch(this.currentMatches[this.activeIndex], e);
-      else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        this.activeIndex = (this.activeIndex + 1) % this.currentMatches.length;
-        this.renderActiveItemHighlight();
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        this.activeIndex =
-          (this.activeIndex - 1 + this.currentMatches.length) %
-          this.currentMatches.length;
-        this.renderActiveItemHighlight();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        this.closePopup();
-      }
+        return PresetUtils.getTopMatches(
+          Object.keys(this.context.cache),
+          currentToken,
+          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+        );
+      },
+      renderItem: (match) =>
+        `<span title="${PresetUtils.getPresetTitle(match, this.context.cache)}">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
+      onSelect: (match) => {
+        const cursor = this.textarea.selectionStart;
+        const leftText = this.textarea.value.slice(0, cursor);
+        const prefix =
+          leftText.lastIndexOf(",") === -1
+            ? ""
+            : leftText.slice(0, leftText.lastIndexOf(",") + 1) + " ";
+
+        this.textarea.value =
+          prefix + match + "," + this.textarea.value.slice(cursor);
+        this.context.updateWidgetValue(
+          this.textarea.value
+            .split(",")
+            .map((i) => i.trim())
+            .filter(Boolean),
+        );
+
+        this.textarea.focus();
+        this.textarea.selectionStart = this.textarea.selectionEnd =
+          prefix.length + match.length + 2;
+      },
+      onKeyDown: (e, activeMatch) => {
+        if (
+          e.key === "ArrowRight" &&
+          this.textarea.selectionStart === this.textarea.value.length &&
+          activeMatch
+        ) {
+          // Triggers selection logic automatically via the manager if we return false/undefined
+          return false;
+        }
+      },
     });
-    this.textarea.addEventListener("blur", () =>
-      setTimeout(() => this.closePopup(), 180),
-    );
   }
 
   initBasketActions() {
@@ -454,78 +614,6 @@ class PresetBasket {
     this.showPopup(lastCommaIndex + 1, currentToken);
   }
 
-  showPopup(tokenStartIndex, currentToken) {
-    if (!this.popupEl) {
-      this.popupEl = Object.assign(document.createElement("div"), {
-        className: "j0n4t-pg-autocomplete-popup",
-      });
-      this.popupEl.addEventListener("mousedown", (e) => e.stopPropagation());
-      this.container.appendChild(this.popupEl);
-    }
-
-    const rect = this.textarea.getBoundingClientRect(),
-      cRect = this.container.getBoundingClientRect(),
-      zoom = cRect.width / this.container.offsetWidth || 1;
-    this.popupEl.style.top = `${(rect.bottom - cRect.top) / zoom + 2}px`;
-    this.popupEl.style.left = `${(rect.left - cRect.left) / zoom}px`;
-    this.popupEl.style.width = `${Math.max(200, rect.width / zoom)}px`;
-    this.popupEl.innerHTML = "";
-
-    this.currentMatches.forEach((match, idx) => {
-      const row = document.createElement("div");
-      row.className = `j0n4t-pg-autocomplete-item${idx === this.activeIndex ? " active" : ""}`;
-      row.innerHTML = `<span title="${PresetUtils.getPresetTitle(match, this.context.cache)}">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`;
-      row.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.selectMatch(match);
-      });
-      this.popupEl.appendChild(row);
-    });
-  }
-
-  renderActiveItemHighlight() {
-    this.popupEl
-      ?.querySelectorAll(".j0n4t-pg-autocomplete-item")
-      .forEach((item, i) =>
-        item.classList.toggle("active", i === this.activeIndex),
-      );
-  }
-
-  selectMatch(matchedKey, event) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    const leftText = this.textarea.value.slice(0, this.textarea.selectionStart);
-    const prefix =
-      leftText.lastIndexOf(",") === -1
-        ? ""
-        : leftText.slice(0, leftText.lastIndexOf(",") + 1) + " ";
-
-    this.textarea.value =
-      prefix +
-      matchedKey +
-      "," +
-      this.textarea.value.slice(this.textarea.selectionStart);
-    this.closePopup();
-    this.context.updateWidgetValue(
-      this.textarea.value
-        .split(",")
-        .map((i) => i.trim())
-        .filter(Boolean),
-    );
-
-    this.textarea.focus();
-    this.textarea.selectionStart = this.textarea.selectionEnd =
-      prefix.length + matchedKey.length + 2;
-  }
-
-  closePopup() {
-    this.popupEl?.remove();
-    this.popupEl = null;
-    this.currentMatches = [];
-  }
   removeDropIndicator() {
     this.dropIndicator?.remove();
     this.dropIndicator = null;
@@ -574,26 +662,12 @@ class PresetBasket {
     input.focus();
     input.selectionStart = input.selectionEnd = input.value.length;
 
-    let popup = null,
-      matches = [],
-      activeIdx = 0;
-    const closeInlinePopup = () => {
-      popup?.remove();
-      popup = null;
-      matches = [];
-    };
-    const highlight = () =>
-      popup
-        ?.querySelectorAll(".j0n4t-pg-autocomplete-item")
-        .forEach((item, i) => item.classList.toggle("active", i === activeIdx));
-
     const finishEdit = (save) => {
       const newVal = input.value.trim();
-      closeInlinePopup();
       try {
         // DOM is crazy
         input.remove();
-      // eslint-disable-next-line no-empty, @typescript-eslint/no-unused-vars
+        // eslint-disable-next-line no-empty, @typescript-eslint/no-unused-vars
       } catch (e) {}
 
       if (isNew) chipElement.remove();
@@ -618,66 +692,37 @@ class PresetBasket {
         }
       }
     };
-
-    input.addEventListener("input", () => {
-      closeInlinePopup();
-      const query = input.value.trim().toLowerCase();
-      if (!query) return;
-      matches = PresetUtils.getTopMatches(
-        Object.keys(this.context.cache),
-        query,
-        (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
-      );
-      if (!matches.length) return;
-
-      activeIdx = 0;
-      popup = Object.assign(document.createElement("div"), {
-        className: "j0n4t-pg-autocomplete-popup",
-      });
-      const rect = input.getBoundingClientRect(),
-        cRect = this.container.getBoundingClientRect(),
-        zoom = cRect.width / this.container.offsetWidth || 1;
-      popup.style.top = `${(rect.bottom - cRect.top) / zoom + 2}px`;
-      popup.style.left = `${(rect.left - cRect.left) / zoom}px`;
-      popup.style.minWidth = `${Math.max(200, rect.width / zoom)}px`;
-
-      this.container.appendChild(popup);
-      matches.forEach((match, idx) => {
-        const row = document.createElement("div");
-        row.className = `j0n4t-pg-autocomplete-item${idx === activeIdx ? " active" : ""}`;
-        row.innerHTML = `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`;
-        row.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          input.value = match;
-          finishEdit(true);
-        });
-        popup.appendChild(row);
-      });
-    });
-
-    input.addEventListener("blur", () => finishEdit(true));
-    input.addEventListener("keydown", (ev) => {
-      if (popup && matches.length) {
-        if (["Tab", "Enter"].includes(ev.key) && !ev.ctrlKey) {
-          ev.preventDefault();
-          input.value = matches[activeIdx];
-          finishEdit(true);
-        } else if (ev.key === "ArrowDown") {
-          ev.preventDefault();
-          activeIdx = (activeIdx + 1) % matches.length;
-          highlight();
-        } else if (ev.key === "ArrowUp") {
-          ev.preventDefault();
-          activeIdx = (activeIdx - 1 + matches.length) % matches.length;
-          highlight();
-        }
-      } else if (ev.key === "Enter") {
-        ev.preventDefault();
+    const manager = new AutocompleteManager({
+      input: input,
+      container: this.container,
+      getMatches: (query) => {
+        query = query.trim().toLowerCase();
+        if (!query) return [];
+        return PresetUtils.getTopMatches(
+          Object.keys(this.context.cache),
+          query,
+          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+        );
+      },
+      renderItem: (match) =>
+        `<span title="${PresetUtils.getPresetTitle(match, this.context.cache)}">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
+      onSelect: (match) => {
+        input.value = match;
         finishEdit(true);
-      } else if (ev.key === "Escape") {
-        ev.preventDefault();
-        finishEdit(false);
-      }
+      },
+      onKeyDown: (e) => {
+        if (!manager.isOpen) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            finishEdit(true);
+            return true;
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            finishEdit(false);
+            return true;
+          }
+        }
+      },
     });
   }
 
@@ -1158,7 +1203,7 @@ class PresetEditor {
           this.context.cache[styleKey].filename,
         );
         if (this.editingKey === styleKey) this.fetchedBlobImage = blob;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
         this.resetImageState();
       }
@@ -1324,92 +1369,34 @@ class PresetEditor {
   }
 
   initFolderAutocomplete() {
-    const input = this.dom.inpFolder;
-    let popup = null,
-      matches = [],
-      activeIdx = 0;
-
-    const close = () => {
-      popup?.remove();
-      popup = null;
-      matches = [];
-    };
-    const select = (val) => {
-      input.value = val;
-      close();
-      input.focus();
-    };
-
-    input.addEventListener("input", () => {
-      const query = input.value.trim().toLowerCase().replace(/ /g, "_");
-      close();
-      if (!query) return;
-
-      const allFolders = Array.from(
-        new Set(
-          Object.values(this.context.cache).flatMap((i) =>
-            i.tags?.length ? [i.tags.join("/")] : [],
+    new AutocompleteManager({
+      input: this.dom.inpFolder,
+      container: document.body,
+      popupClass: "j0n4t-pg-folder-autocomplete-popup",
+      itemClass: "j0n4t-pg-folder-autocomplete-item",
+      getMatches: (query) => {
+        query = query.trim().toLowerCase().replace(/ /g, "_");
+        if (!query) return [];
+        const allFolders = Array.from(
+          new Set(
+            Object.values(this.context.cache).flatMap((i) =>
+              i.tags?.length ? [i.tags.join("/")] : [],
+            ),
           ),
-        ),
-      );
-      matches = PresetUtils.getTopMatches(allFolders, query, (f) =>
-        f.replace(/_/g, " "),
-      );
-      if (!matches.length) return;
-
-      activeIdx = 0;
-      popup = Object.assign(document.createElement("div"), {
-        className: "j0n4t-pg-folder-autocomplete-popup",
-      });
-      const rect = input.getBoundingClientRect();
-      popup.style.top = `${window.scrollY + rect.bottom + 2}px`;
-      popup.style.left = `${window.scrollX + rect.left}px`;
-      popup.style.minWidth = `${rect.width}px`;
-
-      document.body.appendChild(popup);
-      matches.forEach((folder, i) => {
-        const row = document.createElement("div");
-        row.className = `j0n4t-pg-folder-autocomplete-item${i === activeIdx ? " active" : ""}`;
-        row.innerText = folder.replace(/_/g, " ");
-        row.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          select(folder);
-        });
-        popup.appendChild(row);
-      });
+        );
+        return PresetUtils.getTopMatches(allFolders, query, (f) =>
+          f.replace(/_/g, " "),
+        );
+      },
+      renderItem: (match) => match.replace(/_/g, " "),
+      onSelect: (match) => {
+        this.dom.inpFolder.value = match;
+        this.dom.inpFolder.focus();
+      },
     });
-
-    input.addEventListener("keydown", (e) => {
-      if (!popup) return;
-      if (["Tab", "Enter"].includes(e.key) && !e.ctrlKey) {
-        e.preventDefault();
-        select(matches[activeIdx]);
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        activeIdx = (activeIdx + 1) % matches.length;
-        popup
-          .querySelectorAll(".j0n4t-pg-folder-autocomplete-item")
-          .forEach((item, i) =>
-            item.classList.toggle("active", i === activeIdx),
-          );
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        activeIdx = (activeIdx - 1 + matches.length) % matches.length;
-        popup
-          .querySelectorAll(".j0n4t-pg-folder-autocomplete-item")
-          .forEach((item, i) =>
-            item.classList.toggle("active", i === activeIdx),
-          );
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        close();
-      }
-    });
-    input.addEventListener("blur", () => setTimeout(close, 200));
   }
 }
 
-// --- 5. Main App Controller --- //
 class PresetGalleryApp {
   constructor(node, widget) {
     this.node = node;
@@ -1515,7 +1502,7 @@ class PresetGalleryApp {
       return (
         JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || []
       );
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       return [];
     }
@@ -1622,83 +1609,43 @@ class PresetGalleryApp {
   }
 
   initFilterAutocomplete() {
-    const searchInput = this.dom.search;
-    let popup = null,
-      matches = [],
-      activeIdx = 0;
-
-    const close = () => {
-      popup?.remove();
-      popup = null;
-      matches = [];
-    };
-    const select = (val) => {
-      const sel = this.getSelectedArray();
-      if (!sel.includes(val)) this.updateWidgetValue([...sel, val]);
-      searchInput.value = "";
-      this.grid.executeFilterPipeline();
-      close();
-      searchInput.focus();
-    };
-
-    searchInput.addEventListener("input", () => {
-      close();
-      const q = searchInput.value.toLowerCase().trim();
-      if (!q) return;
-      matches = PresetUtils.getTopMatches(Object.keys(this.cache), q, (k) =>
-        PresetUtils.getSearchBlob(k, this.cache[k]),
-      );
-      if (!matches.length) return;
-
-      activeIdx = 0;
-      popup = Object.assign(document.createElement("div"), {
-        className: "j0n4t-pg-filter-autocomplete-popup",
-      });
-      const rect = searchInput.getBoundingClientRect(),
-        wrapRect = this.dom.wrap.getBoundingClientRect(),
-        zoom = wrapRect.width / this.dom.wrap.offsetWidth || 1;
-      popup.style.top = `${(rect.bottom - wrapRect.top) / zoom + 2}px`;
-      popup.style.left = `${(rect.left - wrapRect.left) / zoom}px`;
-      popup.style.width = `${Math.max(200, rect.width / zoom)}px`;
-
-      this.dom.wrap.appendChild(popup);
-      matches.forEach((key, i) => {
-        const row = document.createElement("div");
-        row.className = `j0n4t-pg-filter-autocomplete-item${i === activeIdx ? " active" : ""}`;
-        row.innerHTML = `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(key.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetUtils.escapeHTML(key)}</span>`;
-        row.addEventListener("mousedown", (e) => {
+    const manager = new AutocompleteManager({
+      input: this.dom.search,
+      container: this.dom.wrap,
+      popupClass: "j0n4t-pg-filter-autocomplete-popup",
+      itemClass: "j0n4t-pg-filter-autocomplete-item",
+      getMatches: (query) => {
+        query = query.trim().toLowerCase();
+        if (!query) return [];
+        return PresetUtils.getTopMatches(Object.keys(this.cache), query, (k) =>
+          PresetUtils.getSearchBlob(k, this.cache[k]),
+        );
+      },
+      renderItem: (match) =>
+        `<span title="${PresetUtils.getPresetTitle(match, this.cache)}">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
+      onSelect: (match) => {
+        const sel = this.getSelectedArray();
+        if (!sel.includes(match)) this.updateWidgetValue([...sel, match]);
+        this.dom.search.value = "";
+        this.grid.executeFilterPipeline();
+        this.dom.search.focus();
+      },
+      onKeyDown: (e) => {
+        if (!manager.isOpen && e.key === "Enter" && !e.ctrlKey) {
           e.preventDefault();
-          select(key);
-        });
-        popup.appendChild(row);
-      });
-    });
-
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.ctrlKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (matches[activeIdx]) select(matches[activeIdx]);
-        else {
-          select(e.target.value);
+          e.stopPropagation();
+          const val = e.target.value.trim();
+          if (val) {
+            const sel = this.getSelectedArray();
+            if (!sel.includes(val)) this.updateWidgetValue([...sel, val]);
+          }
+          this.dom.search.value = "";
+          this.grid.executeFilterPipeline();
+          this.dom.search.focus();
+          return true;
         }
-      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        activeIdx =
-          (activeIdx + (e.key === "ArrowDown" ? 1 : -1 + matches.length)) %
-          matches.length;
-        popup
-          ?.querySelectorAll(".j0n4t-pg-filter-autocomplete-item")
-          .forEach((item, i) =>
-            item.classList.toggle("active", i === activeIdx),
-          );
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        close();
-      }
+      },
     });
-    searchInput.addEventListener("blur", () => setTimeout(close, 200));
   }
 
   async init() {
