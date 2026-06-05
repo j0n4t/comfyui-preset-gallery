@@ -597,6 +597,35 @@ class PresetBasket {
     this.dropIndicator = null;
   }
 
+  explodeChip(targetKey) {
+    const currentSelections = this.context.widget.value.split(",");
+    const targetPreset = this.context.cache[targetKey];
+    if (!targetPreset) return;
+    const rawPreset = targetPreset.preset || [targetKey];
+    const updatedSelections = [];
+
+    for (const key of currentSelections) {
+      if (key.trim() === targetKey.trim()) {
+        for (const token of rawPreset.split(',')) {
+          updatedSelections.push(token.trim());
+        }
+      } else {
+        updatedSelections.push(key.trim());
+      }
+    }
+
+    const uniqueSelections = Array.from(new Set(updatedSelections));
+
+    // Update the underlying ComfyUI widget value and re-render the basket UI
+    this.context.updateWidgetValue(uniqueSelections);
+    this.context.syncUI(uniqueSelections.join(","));
+
+    // If raw textarea mode is open, update its value as well
+    if (this.textarea && this.container.classList.contains("raw-mode")) {
+      this.textarea.value = uniqueSelections.join(", ");
+    }
+  }
+
   getClosestChip(clientX, clientY) {
     return [
       ...this.pool.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)"),
@@ -738,7 +767,7 @@ class PresetBasket {
       const chip = Object.assign(document.createElement("div"), {
         className: "j0n4t-pg-basket-chip",
         draggable: true,
-        title: item ? `${cleanLabel} [${styleKey}]\n${item.preset}` : styleKey,
+        title: item ? `${cleanLabel} [${styleKey}] (right-click to explode)\n${item.preset}` : styleKey,
       });
       chip.dataset.id = styleKey;
 
@@ -810,6 +839,12 @@ class PresetBasket {
       chip.addEventListener("dragend", () => {
         chip.classList.remove("dragging");
         this.removeDropIndicator();
+      });
+      chip.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.explodeChip(styleKey);
       });
       this.pool.appendChild(chip);
     });
