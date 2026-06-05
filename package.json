@@ -18,6 +18,7 @@
   "homepage": "https://github.com/j0n4t/comfyui-preset-gallery#readme",
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "@types/node": "^25.9.1"
+    "@types/node": "^25.9.1",
+    "prettier": "3.8.3"
   }
 }
