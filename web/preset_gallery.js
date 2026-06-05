@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { app } from "../../../scripts/app.js";
 
 const MIN_NODE_HEIGHT = 640;
@@ -590,7 +591,9 @@ class PresetBasket {
       const newVal = input.value.trim();
       closeInlinePopup();
       try {
+        // DOM is crazy
         input.remove();
+      // eslint-disable-next-line no-empty, @typescript-eslint/no-unused-vars
       } catch (e) {}
 
       if (isNew) chipElement.remove();
@@ -1155,6 +1158,7 @@ class PresetEditor {
           this.context.cache[styleKey].filename,
         );
         if (this.editingKey === styleKey) this.fetchedBlobImage = blob;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
         this.resetImageState();
       }
@@ -1511,6 +1515,7 @@ class PresetGalleryApp {
       return (
         JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || []
       );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       return [];
     }
