@@ -784,7 +784,7 @@ class PresetBasket {
       chip.addEventListener("click", (e) => {
         if (e.target.closest(".j0n4t-pg-action-btn")) return;
         const itemEl = this.context.dom.grid.querySelector(
-          `.j0n4t-pg-item[data-style="${styleKey}"]`,
+          `.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`,
         );
         if (itemEl) {
           this.context.dom.search.value = "";
