@@ -99,6 +99,7 @@ class AutocompleteManager {
     renderItem,
     onSelect,
     onKeyDown,
+    onBlur,
   }) {
     this.input = input;
     this.container = container || document.body;
@@ -108,6 +109,7 @@ class AutocompleteManager {
     this.renderItem = renderItem;
     this.onSelect = onSelect;
     this.onKeyDown = onKeyDown; // Hook for custom key logic
+    this.onBlur = onBlur;
 
     this.popupEl = null;
     this.matches = [];
@@ -123,9 +125,12 @@ class AutocompleteManager {
   initEvents() {
     this.input.addEventListener("input", () => this.evaluate());
     this.input.addEventListener("click", () => this.close());
-    this.input.addEventListener("blur", () =>
-      setTimeout(() => this.close(), 200),
-    );
+    this.input.addEventListener("blur", () => {
+      if (this.onBlur) {
+        this.onBlur();
+      }
+      setTimeout(() => this.close(), 200);
+    });
     this.input.addEventListener("keydown", (e) => this.handleKeydown(e));
   }
 
@@ -606,7 +611,7 @@ class PresetBasket {
 
     for (const key of currentSelections) {
       if (key.trim() === targetKey.trim()) {
-        for (const token of rawPreset.split(',')) {
+        for (const token of rawPreset.split(",")) {
           updatedSelections.push(token.trim());
         }
       } else {
@@ -738,6 +743,10 @@ class PresetBasket {
           }
         }
       },
+      onBlur: () => {
+        finishEdit(false);
+        return true;
+      },
     });
   }
 
@@ -767,7 +776,9 @@ class PresetBasket {
       const chip = Object.assign(document.createElement("div"), {
         className: "j0n4t-pg-basket-chip",
         draggable: true,
-        title: item ? `${cleanLabel} [${styleKey}] (right-click to explode)\n${item.preset}` : styleKey,
+        title: item
+          ? `${cleanLabel} [${styleKey}] (right-click to explode)\n${item.preset}`
+          : styleKey,
       });
       chip.dataset.id = styleKey;
 
