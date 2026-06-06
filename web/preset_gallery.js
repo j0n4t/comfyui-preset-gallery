@@ -13,8 +13,37 @@ const PresetUtils = {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   },
+  toTitleCase: (str) =>
+    str
+      .replace(/_/g, " ")
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase()),
+  getHashColor: (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++)
+      hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
+    hash = (hash ^ (hash >>> 16)) * 0x85ebca6b;
+    hash = (hash ^ (hash >>> 13)) * 0xc2b2ae35;
+    return `hsl(${Math.abs(hash ^ (hash >>> 16)) % 360}, 65%, 35%)`;
+  },
+  getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
+  getPresetColor: (key) =>
+    PresetUtils.getHashColor(PresetUtils.getPresetBaseFolder(key)),
+  getPresetName: (key) => key.split("/").pop(),
+  getPresetTitle: (key, cache) =>
+    PresetUtils.escapeHTML(
+      `${PresetUtils.toTitleCase(PresetUtils.getPresetName(key))} [${key}]\n${cache[key].preset}`,
+    ),
+  getPresetInitials: (key) => {
+    const raw = key.includes("/") ? PresetUtils.getPresetName(key) : key;
+    return PresetUtils.toTitleCase(raw)
+      .split(/\s+/)
+      .map((w) => w.slice(0, 2))
+      .join("")
+      .substring(0, 6);
+  },  
   getSearchBlob: (key, item) =>
-    `${key} ${PresetUtils.getInitials(key)} ${item.preset || ""} ${(item.tags || []).join(" ")}`.toLowerCase(),
+    `${PresetUtils.getPresetName(key)} ${key} ${PresetUtils.getPresetInitials(key)} ${item.preset || ""} ${(item.tags || []).join(" ")}`.toLowerCase(),
   getTopMatches: (list, query, getSearchBlob = (i) => i) => {
     const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
     if (!queryWords.length) return [];
@@ -48,34 +77,6 @@ const PresetUtils = {
       ]),
     );
   },
-  getHashColor: (str) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++)
-      hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
-    hash = (hash ^ (hash >>> 16)) * 0x85ebca6b;
-    hash = (hash ^ (hash >>> 13)) * 0xc2b2ae35;
-    return `hsl(${Math.abs(hash ^ (hash >>> 16)) % 360}, 65%, 35%)`;
-  },
-  toTitleCase: (str) =>
-    str
-      .replace(/_/g, " ")
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase()),
-  getInitials: (key) => {
-    const raw = key.includes("/") ? key.split("/").pop() : key;
-    return PresetUtils.toTitleCase(raw)
-      .split(/\s+/)
-      .map((w) => w.slice(0, 2))
-      .join("")
-      .substring(0, 6);
-  },
-  getBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
-  getPresetColor: (key) =>
-    PresetUtils.getHashColor(PresetUtils.getBaseFolder(key)),
-  getPresetTitle: (key, cache) =>
-    PresetUtils.escapeHTML(
-      `${PresetUtils.toTitleCase(key.split("/").pop())} [${key}]\n${cache[key].preset}`,
-    ),
   icons: {
     close: `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
     edit: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
@@ -775,7 +776,7 @@ class PresetBasket {
     activeList.forEach((styleKey) => {
       const item = this.context.cache[styleKey];
       const cleanLabel = item
-        ? PresetUtils.toTitleCase(styleKey.split("/").pop())
+        ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))
         : styleKey;
 
       const chip = Object.assign(document.createElement("div"), {
@@ -791,7 +792,7 @@ class PresetBasket {
         ? `background-image: url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}');`
         : `background-color: ${PresetUtils.getPresetColor(styleKey)};`;
       chip.innerHTML = `
-                <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? "" : PresetUtils.escapeHTML(PresetUtils.getInitials(styleKey).slice(0, 4))}</div>
+                <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? "" : PresetUtils.escapeHTML(PresetUtils.getPresetInitials(styleKey).slice(0, 4))}</div>
                 <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(styleKey)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
                 <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">${PresetUtils.icons.edit}</div>
                 <div class="j0n4t-pg-action-btn del-btn" title="Remove">${PresetUtils.icons.close}</div>
@@ -950,8 +951,10 @@ class PresetGrid {
 
     sortedKeys.forEach((key) => {
       const item = cache[key];
-      const cleanLabel = PresetUtils.toTitleCase(key.split("/").pop()),
-        initials = PresetUtils.getInitials(key);
+      const cleanLabel = PresetUtils.toTitleCase(
+          PresetUtils.getPresetName(key),
+        ),
+        initials = PresetUtils.getPresetInitials(key);
       const searchBlob =
         `${key} ${initials} ${item.preset} ${(item.tags || []).join(" ")}`.toLowerCase();
       const uiGroup = item.tags?.length
@@ -1176,7 +1179,7 @@ class PresetEditor {
       (this.dom.inpFolder.value.trim()
         ? `${this.dom.inpFolder.value.trim()}/`
         : "") + (this.dom.inpName.value.trim() || "New");
-    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetUtils.getPresetColor(uniqueKey)}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;">${PresetUtils.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetUtils.escapeHTML(PresetUtils.getInitials(uniqueKey))}</div></div>`;
+    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetUtils.getPresetColor(uniqueKey)}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;">${PresetUtils.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetUtils.escapeHTML(PresetUtils.getPresetInitials(uniqueKey))}</div></div>`;
   }
 
   updateBanner() {
