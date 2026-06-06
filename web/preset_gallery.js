@@ -41,7 +41,7 @@ const PresetUtils = {
       .map((w) => w.slice(0, 2))
       .join("")
       .substring(0, 6);
-  },  
+  },
   getSearchBlob: (key, item) =>
     `${PresetUtils.getPresetName(key)} ${key} ${PresetUtils.getPresetInitials(key)} ${item.preset || ""} ${(item.tags || []).join(" ")}`.toLowerCase(),
   getTopMatches: (list, query, getSearchBlob = (i) => i) => {
@@ -1301,14 +1301,16 @@ class PresetEditor {
     fd.append("preset_text", this.dom.inpPreset.value.trim());
     fd.append("overwrite", "true");
 
-    if (this.dom.inpFile.files[0])
+    if (this.dom.inpFile.files[0]) {
       fd.append("image_file", this.dom.inpFile.files[0]);
-    else if (
+    } else if (
       this.fetchedBlobImage &&
       !this.dom.editor.classList.contains("no-image")
-    )
+    ) {
       fd.append("image_file", this.fetchedBlobImage, "image.jpg");
-    else fd.append("clear_image", "true");
+    } else {
+      fd.append("clear_image", "true");
+    }
 
     const res = await PresetGalleryAPI.savePreset(fd);
     if (!res.success) return alert(`Save failed: ${res.error}`);
@@ -1332,6 +1334,18 @@ class PresetEditor {
     await this.context.loadGallery();
     this.context.updateWidgetValue(selections);
     this.updateBanner();
+
+    if (this.context.dom.inpFile.files[0]) {
+      const card = this.context.dom.grid.querySelector(
+        `[data-style="${uniqueKey}"]`,
+      );
+      if (card) {
+        const img = card.querySelector("img");
+        if (img) {
+          img.src = `${img.src}&t=${Date.now()}`;
+        }
+      }
+    }
   }
 
   async handleDelete() {
