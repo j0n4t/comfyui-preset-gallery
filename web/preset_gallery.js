@@ -1196,7 +1196,7 @@ class PresetEditor {
       banner.style.color = this.isSaved ? "#fff" : "#f0bc2f";
       banner.style.background = "#d1a11920";
       btnSave.innerText = this.isSaved ? "Saved!" : "Save";
-      btnSave.style.background = this.isSaved ? "#007acc" : "#007acc";
+      btnSave.style.background = this.isSaved ? "#27b427" : "#007acc";
     } else {
       banner.innerText = "📝 Select Edit ✏️ on an Preset";
       banner.style.color = "#888";
