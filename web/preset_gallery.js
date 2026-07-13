@@ -1544,7 +1544,7 @@ class PresetGalleryApp {
                     <input type="file" id="j0n4t-pg-zip-file" accept=".zip" style="display:none;" />
                     <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;">${PresetUtils.icons.import}</button>
                     <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;">${PresetUtils.icons.export}</button>
-                    <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;">Clear</button>
+                    <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;">New</button>
                     <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;">Save</button>
                     <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;">Delete</button>
                 </div>
