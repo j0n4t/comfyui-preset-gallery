@@ -776,7 +776,7 @@ class PresetBasket {
 
     activeList.forEach((styleKey) => {
       const item = this.context.cache[styleKey];
-      const cleanLabel = item
+      let cleanLabel = item
         ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))
         : styleKey;
 
@@ -798,6 +798,7 @@ class PresetBasket {
       if (loraMatch) {
         const weight = loraMatch[3] || "1.0";
         loraInputHtml = `<input type="number" step="0.05" class="j0n4t-pg-lora-weight lora-weight-input" value="${weight}" title="LoRA Weight" />`;
+        cleanLabel = loraMatch[2];
       }
 
       chip.innerHTML = `
