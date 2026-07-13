@@ -280,6 +280,8 @@ class PresetGalleryStyles {
       .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
       .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; }
       .j0n4t-pg-basket-add-btn:hover { border-color: #007acc; color: #fff; background: #1a242db0; }
+      .j0n4t-pg-lora-weight { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 0 0 2px; text-align: center; margin: 0 2px; outline: none; }
+      .j0n4t-pg-lora-weight:focus { border-color: #007acc; }
 
       .j0n4t-pg-action-btn { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #aaa; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 1px; }
       .j0n4t-pg-action-btn:hover { background: #555; color: #fff; }
@@ -690,7 +692,7 @@ class PresetBasket {
         // DOM is crazy
         input.remove();
         // eslint-disable-next-line no-empty, @typescript-eslint/no-unused-vars
-      } catch (e) {}
+      } catch (e) { }
 
       if (isNew) chipElement.remove();
       else {
@@ -791,15 +793,45 @@ class PresetBasket {
       const thumbStyle = item?.filename
         ? `background-image: url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}');`
         : `background-color: ${PresetUtils.getPresetColor(styleKey)};`;
+
+      let loraInputHtml = "";
+      const loraMatch = styleKey.match(/^<(lora|lyco):(.+?)(?::(-?\d+(?:\.\d+)?))?>$/i);
+      if (loraMatch) {
+        const weight = loraMatch[3] || "1.0";
+        loraInputHtml = `<input type="number" step="0.05" class="j0n4t-pg-lora-weight lora-weight-input" value="${weight}" title="LoRA Weight" />`;
+      }
+
       chip.innerHTML = `
                 <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? "" : PresetUtils.escapeHTML(PresetUtils.getPresetInitials(styleKey).slice(0, 4))}</div>
                 <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(styleKey)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
+                ${loraInputHtml}
                 <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">${PresetUtils.icons.edit}</div>
                 <div class="j0n4t-pg-action-btn del-btn" title="Remove">${PresetUtils.icons.close}</div>
             `;
 
+      if (loraMatch) {
+        const loraInput = chip.querySelector('.lora-weight-input');
+        loraInput.addEventListener("mousedown", (e) => e.stopPropagation());
+        loraInput.addEventListener("dblclick", (e) => e.stopPropagation());
+
+        loraInput.addEventListener("change", (e) => {
+          const newWeight = parseFloat(e.target.value);
+          if (isNaN(newWeight)) return;
+
+          const newStyleKey = `<${loraMatch[1]}:${loraMatch[2]}:${newWeight}>`;
+          const selections = this.context.getSelectedArray();
+          const idx = selections.indexOf(styleKey);
+
+          if (idx !== -1) {
+            selections[idx] = newStyleKey;
+            this.context.updateWidgetValue(selections);
+          }
+        });
+      }
+      // ----------------------------------
+
       chip.addEventListener("click", (e) => {
-        if (e.target.closest(".j0n4t-pg-action-btn")) return;
+        if (e.target.closest(".j0n4t-pg-action-btn") || e.target.closest(".lora-weight-input")) return;
         const itemEl = this.context.dom.grid.querySelector(
           `.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`,
         );
@@ -900,7 +932,7 @@ class PresetGrid {
       el.classList.toggle(
         "j0n4t-pg-hidden",
         queryWords.length &&
-          !queryWords.every((word) => el.dataset.searchBlob.includes(word)),
+        !queryWords.every((word) => el.dataset.searchBlob.includes(word)),
       );
     });
 
@@ -952,8 +984,8 @@ class PresetGrid {
     sortedKeys.forEach((key) => {
       const item = cache[key];
       const cleanLabel = PresetUtils.toTitleCase(
-          PresetUtils.getPresetName(key),
-        ),
+        PresetUtils.getPresetName(key),
+      ),
         initials = PresetUtils.getPresetInitials(key);
       const searchBlob =
         `${key} ${initials} ${item.preset} ${(item.tags || []).join(" ")}`.toLowerCase();
@@ -996,7 +1028,7 @@ class PresetGrid {
       `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
     this.dom.btnGlobalCollapse.innerText =
       collapsedList.length >
-      this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
+        this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
         ? "↕️ Expand All"
         : "↕️ Collapse All";
     this.attachGridItemEvents();
@@ -1021,7 +1053,7 @@ class PresetGrid {
           this.context.setCollapsedFolders(list);
           this.dom.btnGlobalCollapse.innerText =
             list.length >
-            this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
+              this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
               ? "↕️ Expand All"
               : "↕️ Collapse All";
           this.executeFilterPipeline(this.dom.search.value);
@@ -1573,9 +1605,9 @@ class PresetGalleryApp {
   getSelectedArray() {
     return this.widget.value
       ? this.widget.value
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean)
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean)
       : [];
   }
 
@@ -1599,7 +1631,7 @@ class PresetGalleryApp {
         el.classList.toggle(
           "editing",
           this.editor.currentMode === "edit" &&
-            el.dataset.style === this.editor.editingKey,
+          el.dataset.style === this.editor.editingKey,
         ),
       );
   }
@@ -1614,9 +1646,9 @@ class PresetGalleryApp {
   async syncUI(val) {
     const arr = val
       ? val
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean)
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean)
       : [];
     this.grid.syncSelection(arr);
     this.basket.render(arr);
