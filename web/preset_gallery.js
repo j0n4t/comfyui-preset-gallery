@@ -332,13 +332,12 @@ class PresetGalleryStyles {
       .j0n4t-pg-corner-edit svg { width: 11px; height: 11px; fill: currentColor; }
       .j0n4t-pg-item:hover .j0n4t-pg-corner-edit { display: flex; }
 
-      .view-list .j0n4t-pg-item { display: flex; align-items: center; gap: 8px; text-align: left; padding: 4px 6px; }
-      .view-list .j0n4t-pg-thumb-box { width: 32px; height: 32px; flex-shrink: 0; }
-      .view-list .j0n4t-pg-icon { width: 14px; height: 14px; }
-      .view-list .j0n4t-pg-initials { display: none; }
-      .view-list .j0n4t-pg-label { margin-top: 0; font-size: 11px; flex-grow: 1; }
-      .view-list .j0n4t-pg-tag-badge { position: relative; top: auto; left: auto; background: #444; color: #bbb; max-width: none; font-size: 9px; }
-      .view-list .j0n4t-pg-corner-edit { position: relative; top: auto; right: auto; display: flex !important; margin-left: auto; flex-shrink: 0; }
+      .view-list .j0n4t-pg-item { display: flex; align-items: center; gap: 6px; text-align: left; padding: 2px 4px; }
+      .view-list .j0n4t-pg-thumb-box { display: none !important; }
+      .view-list .j0n4t-pg-label { margin-top: 0; font-size: 11px; flex-grow: 1; line-height: 1; }
+      .view-list .j0n4t-pg-tag-badge { position: relative; top: auto; left: auto; background: var(--item-color, #444); color: #bbb; max-width: none; font-size: 8px; padding: 1px 3px; }
+      .view-list .j0n4t-pg-corner-edit { position: relative; top: auto; right: auto; display: flex !important; margin-left: auto; flex-shrink: 0; width: 14px; height: 14px; }
+      .view-list .j0n4t-pg-corner-edit svg { width: 9px; height: 9px; }
 
       .j0n4t-pg-grid.hide-folders .j0n4t-pg-tag-badge { display: block !important; }
       .j0n4t-pg-control-bar { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-shrink: 0; width: 100%; }
@@ -1008,13 +1007,13 @@ class PresetGrid {
         ? `<img class="j0n4t-pg-img" src="/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}" loading="lazy">`
         : `<div style="background-color: ${PresetUtils.getPresetColor(key)}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;">${PresetUtils.icons.file}</div>`;
       const badge = item.tags?.length
-        ? `<div class="j0n4t-pg-tag-badge">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
+        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${PresetUtils.getPresetColor(key)};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
         : "";
 
       htmlBuffer += `
-        <div class="j0n4t-pg-item" data-style="${PresetUtils.escapeHTML(key)}" data-search-blob="${PresetUtils.escapeHTML(searchBlob)}" draggable="true" title="${PresetUtils.escapeHTML(cleanLabel)} [${PresetUtils.escapeHTML(key)}]\n${PresetUtils.escapeHTML(item.preset || "")}">
-          ${badge}
+       <div class="j0n4t-pg-item" data-style="${PresetUtils.escapeHTML(key)}" data-search-blob="${PresetUtils.escapeHTML(searchBlob)}" draggable="true" title="${PresetUtils.escapeHTML(cleanLabel)} [${PresetUtils.escapeHTML(key)}]\n${PresetUtils.escapeHTML(item.preset || "")}">
           <div class="j0n4t-pg-corner-edit" title="Edit">${PresetUtils.icons.edit}</div>
+          ${badge}
           <div class="j0n4t-pg-thumb-box">
             ${thumb}
             <div class="j0n4t-pg-initials">${PresetUtils.escapeHTML(initials)}</div>
