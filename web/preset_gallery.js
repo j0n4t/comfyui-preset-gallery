@@ -247,7 +247,7 @@ class PresetGalleryStyles {
       .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; }
       .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views, .j0n4t-pg-wrap.hide-gallery-mode #j0n4t-pg-global-collapse, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-checkbox-wrap:has(#j0n4t-pg-group-toggle) { display: none !important; }
 
-      .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; }
+      .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; resize: vertical; overflow-y: auto; overflow-x: hidden; min-height: 40px; }
       .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
       .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
       .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
@@ -257,7 +257,7 @@ class PresetGalleryStyles {
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block !important; }
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
-      .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 48px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: vertical; position: relative; z-index: 2; caret-color: #fff; }
+      .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 48px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: none; position: relative; z-index: 2; caret-color: #fff; }
 
       .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; font-family: sans-serif; box-sizing: border-box; max-height: 250px; width: max-content; }
       .j0n4t-pg-autocomplete-popup { z-index: 9999; max-width: 280px; }
@@ -299,7 +299,7 @@ class PresetGalleryStyles {
       .j0n4t-pg-view-btn:hover { background: #333; color: #fff; }
       .j0n4t-pg-view-btn.active { background: #007acc; color: #fff; }
       .j0n4t-pg-view-btn svg, .j0n4t-pg-btn svg { width: 14px; height: 14px; fill: currentColor; }
-      .j0n4t-pg-grid { display: grid; gap: 6px; flex-grow: 1; overflow-y: auto; min-height: 60px; align-content: start; margin-top: 2px; }
+      .j0n4t-pg-grid { display: grid; gap: 6px; flex-grow: 1; overflow-y: auto; min-height: 60px; height: 50%; max-height: 100vh; align-content: start; margin-top: 2px; resize: vertical; }
       .j0n4t-pg-grid.view-small { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
       .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
       .j0n4t-pg-grid.view-list { grid-template-columns: 1fr; gap: 4px; }
@@ -506,7 +506,7 @@ class PresetBasket {
   initAutocomplete() {
     new AutocompleteManager({
       input: this.textarea,
-      container: this.container,
+      container: document.body,
       getMatches: (text, cursor) => {
         if (!this.container.classList.contains("raw-mode")) return [];
         const lastCommaIndex = text.slice(0, cursor).lastIndexOf(",");
@@ -721,7 +721,7 @@ class PresetBasket {
     };
     const manager = new AutocompleteManager({
       input: input,
-      container: this.container,
+      container: document.body,
       getMatches: (query) => {
         query = query.trim().toLowerCase();
         if (!query) return [];
@@ -1525,15 +1525,7 @@ class PresetGalleryApp {
                 <div class="j0n4t-pg-basket-pool"></div>
                 <div class="j0n4t-pg-raw-wrapper"><textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..."></textarea></div>
             </div>
-            <div class="j0n4t-pg-top-bar">
-                <div class="j0n4t-pg-search-wrapper"><input type="text" class="j0n4t-pg-search" placeholder="Search..." /><div class="j0n4t-pg-search-clear">${PresetUtils.icons.close}</div></div>
-                <div class="j0n4t-pg-views">
-                    <div class="j0n4t-pg-view-btn" data-view="small">${PresetUtils.icons.small}</div><div class="j0n4t-pg-view-btn" data-view="big">${PresetUtils.icons.big}</div><div class="j0n4t-pg-view-btn" data-view="list">${PresetUtils.icons.list}</div>
-                </div>
-                <div class="j0n4t-pg-toggle-gallery-wrap" title="Toggle Gallery View"><div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn">${PresetUtils.icons.eye}</div></div>
-            </div>
-            <div class="j0n4t-pg-grid"></div>
-            <div class="j0n4t-pg-control-bar">
+             <div class="j0n4t-pg-control-bar">
                 <div class="j0n4t-pg-toggle" id="j0n4t-pg-toggle">⚙️ Management Panel</div>
                 <button type="button" id="j0n4t-pg-global-collapse" style="background:#2a2a2a80; border:1px solid #444; color:#ccc; padding:4px 8px; border-radius:3px; cursor:pointer; font-size:10px;">↕️ Collapse All</button>
                 <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group</label>
@@ -1557,6 +1549,14 @@ class PresetGalleryApp {
                 </div>
                 <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
             </div>
+            <div class="j0n4t-pg-top-bar">
+                <div class="j0n4t-pg-search-wrapper"><input type="text" class="j0n4t-pg-search" placeholder="Search..." /><div class="j0n4t-pg-search-clear">${PresetUtils.icons.close}</div></div>
+                <div class="j0n4t-pg-views">
+                    <div class="j0n4t-pg-view-btn" data-view="small">${PresetUtils.icons.small}</div><div class="j0n4t-pg-view-btn" data-view="big">${PresetUtils.icons.big}</div><div class="j0n4t-pg-view-btn" data-view="list">${PresetUtils.icons.list}</div>
+                </div>
+                <div class="j0n4t-pg-toggle-gallery-wrap" title="Toggle Gallery View"><div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn">${PresetUtils.icons.eye}</div></div>
+            </div>
+            <div class="j0n4t-pg-grid"></div>
         `;
     return {
       wrap,
@@ -1618,7 +1618,48 @@ class PresetGalleryApp {
     if (this.node.graph) this.node.graph._version++;
   }
 
-  setPanelCollapseState(col) {
+  setPanelCollapseState(col, isInit = false) {
+    const isCurrentlyCollapsed = this.dom.editor.classList.contains("collapsed");
+    if (isCurrentlyCollapsed === col) return;
+
+    if (!isInit) {
+      // The extra 6px accounts for the editor's margin-top (2px) and the wrap's gap (4px)
+      const spaceDelta = (this.dom.editor.offsetHeight || 200) + 6;
+
+      if (col) {
+        // Hiding panel: give space to grid or basket
+        this.lastEditorHeight = spaceDelta;
+
+        const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
+        if (!isGalleryHidden && this.dom.grid.offsetHeight > 0) {
+          const currentGridH = this.dom.grid.offsetHeight;
+          this.dom.grid.style.height = `${currentGridH + spaceDelta}px`;
+          this.dom.grid.style.flexGrow = "0";
+          localStorage.setItem("comfy_preset_gallery_grid_h", String(currentGridH + spaceDelta));
+        } else {
+          const currentBasketH = this.dom.basketContainer.offsetHeight;
+          this.dom.basketContainer.style.height = `${currentBasketH + spaceDelta}px`;
+          localStorage.setItem("comfy_preset_gallery_basket_h", String(currentBasketH + spaceDelta));
+        }
+      } else {
+        // Showing panel: take space back from grid or basket
+        const takeBackHeight = this.lastEditorHeight || 200;
+
+        const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
+        if (!isGalleryHidden && this.dom.grid.offsetHeight > 0) {
+          const currentGridH = this.dom.grid.offsetHeight;
+          const newH = Math.max(60, currentGridH - takeBackHeight); // 60px min-height
+          this.dom.grid.style.height = `${newH}px`;
+          localStorage.setItem("comfy_preset_gallery_grid_h", String(newH));
+        } else {
+          const currentBasketH = this.dom.basketContainer.offsetHeight;
+          const newH = Math.max(40, currentBasketH - takeBackHeight); // 40px min-height
+          this.dom.basketContainer.style.height = `${newH}px`;
+          localStorage.setItem("comfy_preset_gallery_basket_h", String(newH));
+        }
+      }
+    }
+
     this.dom.editor.classList.toggle("collapsed", col);
     this.dom.toggle.innerText = col ? "⚙️ Management Panel" : "🔼 Hide Panel";
     localStorage.setItem("comfy_preset_gallery_collapsed", String(col));
@@ -1698,6 +1739,35 @@ class PresetGalleryApp {
     this.dom.btnHideGallery.addEventListener("click", () =>
       toggleGallery(!this.dom.wrap.classList.contains("hide-gallery-mode")),
     );
+
+    // --- Resize Observers & State Restoration Logic ---
+    const savedBasketH = localStorage.getItem("comfy_preset_gallery_basket_h");
+    if (savedBasketH) {
+      this.dom.basketContainer.style.height = `${savedBasketH}px`;
+    }
+
+    const savedGridH = localStorage.getItem("comfy_preset_gallery_grid_h");
+    if (savedGridH) {
+      this.dom.grid.style.height = `${savedGridH}px`;
+      this.dom.grid.style.flexGrow = "0"; // Stop flex from expanding over inline height
+    }
+
+    this.resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.target.offsetHeight;
+        if (h === 0) continue; // Don't override save states when elements are display: none 
+
+        if (entry.target === this.dom.basketContainer) {
+          localStorage.setItem("comfy_preset_gallery_basket_h", String(h));
+        } else if (entry.target === this.dom.grid) {
+          localStorage.setItem("comfy_preset_gallery_grid_h", String(h));
+          entry.target.style.flexGrow = "0";
+        }
+      }
+    });
+
+    this.resizeObserver.observe(this.dom.basketContainer);
+    this.resizeObserver.observe(this.dom.grid);
   }
 
   initFilterAutocomplete() {
@@ -1746,6 +1816,7 @@ class PresetGalleryApp {
     this.initFilterAutocomplete();
     this.setPanelCollapseState(
       localStorage.getItem("comfy_preset_gallery_collapsed") === "true",
+      true // Pass isInit = true to avoid resizing during boot
     );
     this.node.setSize([
       this.node.size[0] || MIN_NODE_WIDTH,
