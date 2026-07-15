@@ -247,13 +247,13 @@ class PresetGalleryStyles {
       .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; }
       .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views, .j0n4t-pg-wrap.hide-gallery-mode #j0n4t-pg-global-collapse, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-checkbox-wrap:has(#j0n4t-pg-group-toggle) { display: none !important; }
 
-      .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; resize: vertical; overflow-y: auto; overflow-x: hidden; min-height: 40px; }
+      .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 0; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; resize: vertical; overflow-y: auto; overflow-x: hidden; min-height: 40px; }
       .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
-      .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+      .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; padding: 4px; background: #222;  position: sticky; top: 0; z-index: 1; }
       .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
       .j0n4t-pg-basket-clear-btn:hover { background: #912e2e; }
-      .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
-      .j0n4t-pg-raw-wrapper { position: relative; width: 100%; height: 100%; display: none; }
+      .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; padding: 4px; }
+      .j0n4t-pg-raw-wrapper { position: relative; width: 100%; height: 100%; display: none; padding: 4px; }
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block !important; }
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
@@ -679,6 +679,7 @@ class PresetBasket {
     const input = Object.assign(document.createElement("input"), {
       type: "text",
       className: "j0n4t-pg-inline-edit",
+      enterKeyHint: "enter",
       value: initialValue || "",
     });
     chipElement.prepend(input);
@@ -1525,6 +1526,13 @@ class PresetGalleryApp {
                 <div class="j0n4t-pg-basket-pool"></div>
                 <div class="j0n4t-pg-raw-wrapper"><textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..."></textarea></div>
             </div>
+            <div class="j0n4t-pg-top-bar">
+                <div class="j0n4t-pg-search-wrapper"><input type="text" enterkeyhint="enter" class="j0n4t-pg-search" placeholder="Search..." /><div class="j0n4t-pg-search-clear">${PresetUtils.icons.close}</div></div>
+                <div class="j0n4t-pg-views">
+                    <div class="j0n4t-pg-view-btn" data-view="small">${PresetUtils.icons.small}</div><div class="j0n4t-pg-view-btn" data-view="big">${PresetUtils.icons.big}</div><div class="j0n4t-pg-view-btn" data-view="list">${PresetUtils.icons.list}</div>
+                </div>
+                <div class="j0n4t-pg-toggle-gallery-wrap" title="Toggle Gallery View"><div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn">${PresetUtils.icons.eye}</div></div>
+            </div>
              <div class="j0n4t-pg-control-bar">
                 <div class="j0n4t-pg-toggle" id="j0n4t-pg-toggle">⚙️ Management Panel</div>
                 <button type="button" id="j0n4t-pg-global-collapse" style="background:#2a2a2a80; border:1px solid #444; color:#ccc; padding:4px 8px; border-radius:3px; cursor:pointer; font-size:10px;">↕️ Collapse All</button>
@@ -1548,13 +1556,6 @@ class PresetGalleryApp {
                     </div>
                 </div>
                 <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
-            </div>
-            <div class="j0n4t-pg-top-bar">
-                <div class="j0n4t-pg-search-wrapper"><input type="text" class="j0n4t-pg-search" placeholder="Search..." /><div class="j0n4t-pg-search-clear">${PresetUtils.icons.close}</div></div>
-                <div class="j0n4t-pg-views">
-                    <div class="j0n4t-pg-view-btn" data-view="small">${PresetUtils.icons.small}</div><div class="j0n4t-pg-view-btn" data-view="big">${PresetUtils.icons.big}</div><div class="j0n4t-pg-view-btn" data-view="list">${PresetUtils.icons.list}</div>
-                </div>
-                <div class="j0n4t-pg-toggle-gallery-wrap" title="Toggle Gallery View"><div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn">${PresetUtils.icons.eye}</div></div>
             </div>
             <div class="j0n4t-pg-grid"></div>
         `;
