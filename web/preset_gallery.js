@@ -20,15 +20,52 @@ const PresetUtils = {
       .replace(/\b\w/g, (l) => l.toUpperCase()),
   getHashColor: (str) => {
     let hash = 0;
-    for (let i = 0; i < str.length; i++)
-      hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
+    for (let i = 0; i < 6; i++)  hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
     hash = (hash ^ (hash >>> 16)) * 0x85ebca6b;
     hash = (hash ^ (hash >>> 13)) * 0xc2b2ae35;
-    return `hsl(${Math.abs(hash ^ (hash >>> 16)) % 360}, 65%, 35%)`;
+    const hue = Math.abs(hash ^ (hash >>> 15) % 360);
+    return `hsl(${hue}, 65%, 35%)`;
+  },
+  hslToHex: (h, s, l) => {
+    l /= 100;
+    const a = (s * Math.min(l, 1 - l)) / 100;
+    const f = (n) => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
+  },
+  getGroupColor: (groupRaw) => {
+    try {
+      const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
+      if (customColors[groupRaw]) return customColors[groupRaw];
+    } catch (e) {}
+    return PresetUtils.getHashColor(groupRaw);
+  },
+  getGroupHexColor: (groupRaw) => {
+    const color = PresetUtils.getGroupColor(groupRaw);
+    if (color.startsWith("#")) return color;
+    const hslMatch = color.match(/hsl\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)%\s*,\s*(\d+(?:\.\d+)?)%\s*\)/i);
+    if (hslMatch) {
+      return PresetUtils.hslToHex(parseFloat(hslMatch[1]), parseFloat(hslMatch[2]), parseFloat(hslMatch[3]));
+    }
+    return "#007acc";
+  },
+  setGroupColor: (groupRaw, color) => {
+    try {
+      const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
+      if (color) {
+        customColors[groupRaw] = color;
+      } else {
+        delete customColors[groupRaw];
+      }
+      localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
+    } catch (e) {}
   },
   getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
   getPresetColor: (key) =>
-    PresetUtils.getHashColor(PresetUtils.getPresetBaseFolder(key)),
+    PresetUtils.getGroupColor(PresetUtils.getPresetBaseFolder(key)),
   getPresetName: (key) => key.split("/").pop(),
   getPresetTitle: (key, cache) =>
     PresetUtils.escapeHTML(
@@ -304,9 +341,12 @@ class PresetGalleryStyles {
       .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
       .j0n4t-pg-grid.view-list { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 4px; }
 
-      .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; cursor: pointer; padding: 4px 0; position: relative; }
+      .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; cursor: pointer; padding: 4px 0; position: relative; }
       .j0n4t-pg-group-header::before { content: "▼"; font-size: 8px; color: #888; transition: transform 0.15s ease; }
       .j0n4t-pg-group-header.collapsed::before { transform: rotate(-90deg); }
+      .j0n4t-pg-group-color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); transition: transform 0.15s ease, box-shadow 0.15s ease; position: relative; }
+      .j0n4t-pg-group-color-dot:hover { transform: scale(1.25); box-shadow: 0 0 4px rgba(255,255,255,0.4); }
+      .j0n4t-pg-group-color-picker { position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer; border: none; padding: 0; margin: 0; }
       .j0n4t-pg-group-line { flex-grow: 1; height: 1px; background: #bdbdbd40; margin-right: 8px; }
       .j0n4t-pg-group-header .j0n4t-pg-group-rename-tip { display:none }
       .j0n4t-pg-group-header:hover .j0n4t-pg-group-rename-tip { display:block; font-size: 8px; color: #666; font-weight: normal; text-transform: none; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; padding-right: 4px; opacity: 1; }
@@ -997,8 +1037,13 @@ class PresetGrid {
 
       if (uiGroup !== lastGroup) {
         lastGroup = uiGroup;
+        const groupColor = PresetUtils.getGroupColor(rawGroup);
+        const hexColor = PresetUtils.getGroupHexColor(rawGroup);
         htmlBuffer += `
             <div class="j0n4t-pg-group-header${collapsedList.includes(rawGroup) ? " collapsed" : ""}" data-group="${PresetUtils.escapeHTML(uiGroup)}" data-group-raw="${PresetUtils.escapeHTML(rawGroup)}">
+                <span class="j0n4t-pg-group-color-dot" style="background-color: ${groupColor};" title="Click to customize group color">
+                    <input type="color" class="j0n4t-pg-group-color-picker" value="${hexColor}" title="Customize group color" />
+                </span>
                 <span>${PresetUtils.escapeHTML(uiGroup)}</span>
                 <div class="j0n4t-pg-group-line"></div>
                 <span class="j0n4t-pg-group-rename-tip">Right-click to rename</span>
@@ -1043,7 +1088,29 @@ class PresetGrid {
       .querySelectorAll(".j0n4t-pg-group-header")
       .forEach((header) => {
         const rawFolder = header.dataset.groupRaw;
-        header.addEventListener("click", () => {
+        const colorDot = header.querySelector(".j0n4t-pg-group-color-dot");
+        const colorPicker = header.querySelector(".j0n4t-pg-group-color-picker");
+        if (colorPicker) {
+          colorPicker.addEventListener("click", (e) => e.stopPropagation());
+          colorPicker.addEventListener("mousedown", (e) => e.stopPropagation());
+          
+          colorPicker.addEventListener("input", (e) => {
+            e.stopPropagation();
+            const newColor = e.target.value;
+            if (colorDot) colorDot.style.backgroundColor = newColor;
+            PresetUtils.setGroupColor(rawFolder, newColor);
+          });
+          
+          colorPicker.addEventListener("change", (e) => {
+            e.stopPropagation();
+            const newColor = e.target.value;
+            PresetUtils.setGroupColor(rawFolder, newColor);
+            this.compile(this.context.cache);
+          });
+        }
+
+        header.addEventListener("click", (e) => {
+          if (e.target.closest(".j0n4t-pg-group-color-picker") || e.target.closest(".j0n4t-pg-group-color-dot")) return;
           const isCollapsed = header.classList.toggle("collapsed");
           let list = this.context.getCollapsedFolders();
           if (isCollapsed && !list.includes(rawFolder)) {
@@ -1208,10 +1275,7 @@ class PresetEditor {
       }
     }
 
-    const uniqueKey =
-      (this.dom.inpFolder.value.trim()
-        ? `${this.dom.inpFolder.value.trim()}/`
-        : "") + (this.dom.inpName.value.trim() || "New");
+    const uniqueKey = this.dom.inpFolder.value.trim() || "";
     this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetUtils.getPresetColor(uniqueKey)}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;">${PresetUtils.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetUtils.escapeHTML(PresetUtils.getPresetInitials(uniqueKey))}</div></div>`;
   }
 
