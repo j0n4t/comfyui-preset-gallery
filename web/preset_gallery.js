@@ -290,11 +290,14 @@ class PresetGalleryStyles {
       .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
       .j0n4t-pg-basket-clear-btn:hover { background: #912e2e; }
       .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; padding: 4px; }
-      .j0n4t-pg-raw-wrapper { position: relative; width: 100%; height: 100%; display: none; padding: 4px; }
+      .j0n4t-pg-raw-wrapper { position: relative; width: 100%; height: 100%; display: none; padding: 4px; box-sizing: border-box; }
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block !important; }
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
-      .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
-      .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 48px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: none; position: relative; z-index: 2; caret-color: #fff; }
+      .j0n4t-pg-raw-highlights, .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 48px; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; margin: 0; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4; border: 1px solid transparent; letter-spacing: normal; word-spacing: normal; text-transform: none; text-indent: 0px; text-shadow: none; }
+      .j0n4t-pg-raw-highlights { position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px; pointer-events: none; color: transparent; overflow: hidden; background: transparent; z-index: 1; width: calc(100% - 8px); height: calc(100% - 8px); }
+      .j0n4t-pg-basket-raw-textarea { display: block; background: transparent; border-color: #444; color: transparent; caret-color: #fff; resize: none; position: relative; z-index: 2; }
+      .j0n4t-pg-raw-token { color: #569cd6; font-weight: bold; }
+      .j0n4t-pg-raw-token.plain-text { color: #cccccc; font-weight: normal; }
 
       .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup, .j0n4t-pg-chip-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; overflow-y: auto; overflow-x: hidden; font-family: sans-serif; box-sizing: border-box; max-height: 250px; width: max-content; }
       .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup { flex-direction: column; }
@@ -539,15 +542,79 @@ class PresetBasket {
   }
 
   initRawInputSync() {
-    this.textarea.addEventListener("change", () =>
+    const sync = () => {
+      this.updateRawHighlights();
       this.context.updateWidgetValue(
         this.textarea.value
           .split(",")
           .map((i) => i.trim())
           .filter(Boolean),
-      ),
-    );
+      );
+    };
+
+    this.textarea.addEventListener("input", () => this.updateRawHighlights());
+    this.textarea.addEventListener("scroll", () => {
+      if (this.context.dom.rawHighlights) {
+        this.context.dom.rawHighlights.scrollTop = this.textarea.scrollTop;
+        this.context.dom.rawHighlights.scrollLeft = this.textarea.scrollLeft;
+      }
+    });
+    this.textarea.addEventListener("change", sync);
     this.textarea.addEventListener("mousedown", (e) => e.stopPropagation());
+  }
+
+  updateRawHighlights() {
+    const highlightsEl = this.context.dom.rawHighlights;
+    if (!highlightsEl) return;
+
+    const val = this.textarea.value || "";
+    if (!val) {
+      highlightsEl.innerHTML = "";
+      return;
+    }
+
+    const parts = val.split(/(\s*,\s*)/);
+    let html = "";
+
+    parts.forEach((part) => {
+      if (/^\s*,\s*$/.test(part)) {
+        html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(part)}</span>`;
+      } else {
+        const trimmed = part.trim();
+        if (!trimmed) {
+          html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(part)}</span>`;
+          return;
+        }
+
+        const leadingSpace = part.slice(0, part.indexOf(trimmed));
+        const trailingSpace = part.slice(part.indexOf(trimmed) + trimmed.length);
+
+        const item = this.context.cache[trimmed];
+        let textColor = "";
+        let isPlainText = false;
+
+        if (item) {
+          textColor = PresetUtils.getPresetColor(trimmed);
+        } else if (/^<(lora|lyco):.+?>$/i.test(trimmed)) {
+          textColor = "#4fc1ff";
+        } else {
+          isPlainText = true;
+        }
+
+        const spanClass = isPlainText
+          ? "j0n4t-pg-raw-token plain-text"
+          : "j0n4t-pg-raw-token";
+        const styleAttr = textColor ? ` style="color: ${textColor};"` : "";
+
+        html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(leadingSpace)}</span>` +
+          `<span class="${spanClass}"${styleAttr}>${PresetUtils.escapeHTML(trimmed)}</span>` +
+          `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(trailingSpace)}</span>`;
+      }
+    });
+
+    highlightsEl.innerHTML = html + "\n";
+    highlightsEl.scrollTop = this.textarea.scrollTop;
+    highlightsEl.scrollLeft = this.textarea.scrollLeft;
   }
 
   initAutocomplete() {
@@ -820,6 +887,7 @@ class PresetBasket {
 
   render(activeList) {
     this.textarea.value = activeList.join(", ");
+    this.updateRawHighlights();
     this.pool.innerHTML = "";
 
     activeList.forEach((styleKey) => {
@@ -1666,7 +1734,10 @@ class PresetGalleryApp {
                     </div>
                 </div>
                 <div class="j0n4t-pg-basket-pool"></div>
-                <div class="j0n4t-pg-raw-wrapper"><textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..."></textarea></div>
+                <div class="j0n4t-pg-raw-wrapper">
+                    <div class="j0n4t-pg-raw-highlights" id="j0n4t-pg-raw-highlights"></div>
+                    <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..."></textarea>
+                </div>
             </div>
             <div class="j0n4t-pg-top-bar">
                 <div class="j0n4t-pg-search-wrapper"><input type="text" enterkeyhint="enter" class="j0n4t-pg-search" placeholder="Search..." /><div class="j0n4t-pg-search-clear">${PresetUtils.icons.close}</div></div>
@@ -1728,6 +1799,7 @@ class PresetGalleryApp {
       chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
       basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
       rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input"),
+      rawHighlights: wrap.querySelector("#j0n4t-pg-raw-highlights"),
       btnHideGallery: wrap.querySelector("#j0n4t-pg-hide-gallery-btn"),
     };
   }
