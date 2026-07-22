@@ -40,7 +40,7 @@ const PresetUtils = {
     try {
       const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
       if (customColors[groupRaw]) return customColors[groupRaw];
-    } catch (e) {}
+    } catch (e) { }
     return PresetUtils.getHashColor(groupRaw);
   },
   getGroupHexColor: (groupRaw) => {
@@ -61,7 +61,7 @@ const PresetUtils = {
         delete customColors[groupRaw];
       }
       localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
-    } catch (e) {}
+    } catch (e) { }
   },
   getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
   getPresetColor: (key) =>
@@ -296,7 +296,14 @@ class PresetGalleryStyles {
       .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-raw-textarea { display: block !important; }
       .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 48px; background: transparent; border: 1px solid #444; color: #fff; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; resize: none; position: relative; z-index: 2; caret-color: #fff; }
 
-      .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; font-family: sans-serif; box-sizing: border-box; max-height: 250px; width: max-content; }
+      .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup, .j0n4t-pg-chip-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; overflow-y: auto; overflow-x: hidden; font-family: sans-serif; box-sizing: border-box; max-height: 250px; width: max-content; }
+      .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup { flex-direction: column; }
+      .j0n4t-pg-chip-popup { z-index: 10002; padding: 2px; background: #1a1a1ff5; border-color: #007acc; flex-direction: row; gap: 2px; border-radius: 4px; }
+      .j0n4t-pg-chip-popup-item { padding: 4px 6px; font-size: 11px; color: #ddd; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 3px; transition: background 0.1s, color 0.1s; }
+      .j0n4t-pg-chip-popup-item:hover { background: #007acc; color: #fff; }
+      .j0n4t-pg-chip-popup-item.danger:hover { background: #b23b3b; color: #fff; }
+      .j0n4t-pg-chip-popup-item svg { width: 14px; height: 14px; fill: currentColor; }
+      .j0n4t-pg-basket-chip.active-menu, .j0n4t-pg-basket-chip:focus { border-color: #007acc; background: #1a2c3d; box-shadow: 0 0 6px rgba(0, 122, 204, 0.6); }
       .j0n4t-pg-autocomplete-popup { z-index: 9999; max-width: 280px; }
       .j0n4t-pg-filter-autocomplete-popup { z-index: 10001; }
       .j0n4t-pg-autocomplete-item, .j0n4t-pg-filter-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -307,13 +314,13 @@ class PresetGalleryStyles {
 
       .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
       .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
-      .j0n4t-pg-basket-chip { display: flex; align-items: center; gap: 2px; background: #3a3a3a; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s; position: relative; }
+      .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; }
+      .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 0; pointer-events: none; }
       .j0n4t-pg-basket-chip:active { cursor: grabbing; }
       .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
-      .j0n4t-pg-basket-chip-thumb { width: 16px; height: 16px; border-radius: 2px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 900; color: #fff; text-shadow: 0 1px 1px #000; flex-shrink: 0; }
-      .j0n4t-pg-basket-chip-label { font-size: 10px; color: #ddd; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; margin-left: 2px; }
-      .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; }
-      .j0n4t-pg-basket-chip.inline-editing .j0n4t-pg-basket-chip-thumb, .j0n4t-pg-basket-chip.inline-editing .j0n4t-pg-action-btn { display: none; }
+      .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; z-index: 1; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
+      .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
+      .j0n4t-pg-basket-chip.inline-editing::before { display: none; }
       .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
       .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; }
       .j0n4t-pg-basket-add-btn:hover { border-color: #007acc; color: #fff; background: #1a242db0; }
@@ -341,7 +348,7 @@ class PresetGalleryStyles {
       .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
       .j0n4t-pg-grid.view-list { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 4px; }
 
-      .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; cursor: pointer; padding: 4px 0; position: relative; }
+      .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; cursor: pointer; padding: 4px 0; position: relative; }
       .j0n4t-pg-group-header::before { content: "▼"; font-size: 8px; color: #888; transition: transform 0.15s ease; }
       .j0n4t-pg-group-header.collapsed::before { transform: rotate(-90deg); }
       .j0n4t-pg-group-color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); transition: transform 0.15s ease, box-shadow 0.15s ease; position: relative; }
@@ -830,9 +837,11 @@ class PresetBasket {
       });
       chip.dataset.id = styleKey;
 
-      const thumbStyle = item?.filename
-        ? `background-image: url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}');`
-        : `background-color: ${PresetUtils.getPresetColor(styleKey)};`;
+      if (item?.filename) {
+        chip.style.backgroundImage = `url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}')`;
+      } else {
+        chip.style.backgroundColor = PresetUtils.getPresetColor(styleKey);
+      }
 
       let loraInputHtml = "";
       const loraMatch = styleKey.match(/^<(lora|lyco):(.+?)(?::(-?\d+(?:\.\d+)?))?>$/i);
@@ -843,11 +852,8 @@ class PresetBasket {
       }
 
       chip.innerHTML = `
-                <div class="j0n4t-pg-basket-chip-thumb" style="${thumbStyle}">${item?.filename ? "" : PresetUtils.escapeHTML(PresetUtils.getPresetInitials(styleKey).slice(0, 4))}</div>
                 <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(styleKey)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
                 ${loraInputHtml}
-                <div class="j0n4t-pg-action-btn edit-btn" title="Edit Preset">${PresetUtils.icons.edit}</div>
-                <div class="j0n4t-pg-action-btn del-btn" title="Remove">${PresetUtils.icons.close}</div>
             `;
 
       if (loraMatch) {
@@ -872,7 +878,71 @@ class PresetBasket {
       // ----------------------------------
 
       chip.addEventListener("click", (e) => {
-        if (e.target.closest(".j0n4t-pg-action-btn") || e.target.closest(".lora-weight-input")) return;
+        if (e.target.closest(".lora-weight-input")) return;
+        e.stopPropagation();
+        this.showChipMenu(chip, styleKey, item);
+      });
+      chip.addEventListener("dblclick", (e) => {
+        e.stopPropagation();
+        this.spawnInlineEditor(chip, styleKey);
+      });
+      chip.addEventListener("dragstart", (e) => {
+        chip.classList.add("dragging");
+        e.dataTransfer.setData("text/plain", styleKey);
+        e.dataTransfer.setData("source/basket", "true");
+      });
+      chip.addEventListener("dragend", () => {
+        chip.classList.remove("dragging");
+        this.removeDropIndicator();
+      });
+      chip.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.explodeChip(styleKey);
+      });
+      this.pool.appendChild(chip);
+    });
+
+    this.renderAddNewChipButton();
+  }
+
+  showChipMenu(chipElement, styleKey, item) {
+    if (this.activeChipMenuEl) {
+      this.activeChipMenuEl.classList.remove("active-menu");
+    }
+    this.popupEl?.remove();
+
+    chipElement.classList.add("active-menu");
+    this.activeChipMenuEl = chipElement;
+
+    const popup = Object.assign(document.createElement("div"), {
+      className: "j0n4t-pg-chip-popup",
+    });
+
+    const editBtn = document.createElement("div");
+    editBtn.className = "j0n4t-pg-chip-popup-item";
+    editBtn.title = "Edit";
+    editBtn.innerHTML = PresetUtils.icons.edit;
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.closeChipMenu();
+      if (item) {
+        this.context.openEditorForPreset(styleKey);
+      } else {
+        this.spawnInlineEditor(chipElement, styleKey);
+      }
+    });
+    popup.appendChild(editBtn);
+
+    if (item) {
+      const locateBtn = document.createElement("div");
+      locateBtn.className = "j0n4t-pg-chip-popup-item";
+      locateBtn.title = "Locate in Gallery";
+      locateBtn.innerHTML = PresetUtils.icons.eye;
+      locateBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.closeChipMenu();
         const itemEl = this.context.dom.grid.querySelector(
           `.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`,
         );
@@ -902,44 +972,45 @@ class PresetBasket {
           }, 800);
         }
       });
+      popup.appendChild(locateBtn);
+    }
 
-      chip.querySelector(".edit-btn").addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (item) {
-          this.context.openEditorForPreset(styleKey);
-        } else {
-          this.spawnInlineEditor(chip, styleKey);
-        }
-      });
-      chip.querySelector(".del-btn").addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.context.updateWidgetValue(
-          this.context.getSelectedArray().filter((v) => v !== styleKey),
-        );
-      });
-      chip.addEventListener("dblclick", (e) => {
-        e.stopPropagation();
-        this.spawnInlineEditor(chip, styleKey);
-      });
-      chip.addEventListener("dragstart", (e) => {
-        chip.classList.add("dragging");
-        e.dataTransfer.setData("text/plain", styleKey);
-        e.dataTransfer.setData("source/basket", "true");
-      });
-      chip.addEventListener("dragend", () => {
-        chip.classList.remove("dragging");
-        this.removeDropIndicator();
-      });
-      chip.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        this.explodeChip(styleKey);
-      });
-      this.pool.appendChild(chip);
+    const delBtn = document.createElement("div");
+    delBtn.className = "j0n4t-pg-chip-popup-item danger";
+    delBtn.title = "Remove";
+    delBtn.innerHTML = PresetUtils.icons.close;
+    delBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.closeChipMenu();
+      this.context.updateWidgetValue(
+        this.context.getSelectedArray().filter((v) => v !== styleKey),
+      );
     });
+    popup.appendChild(delBtn);
 
-    this.renderAddNewChipButton();
+    document.body.appendChild(popup);
+    this.popupEl = popup;
+
+    const rect = chipElement.getBoundingClientRect();
+    popup.style.top = `${window.scrollY + rect.bottom + 4}px`;
+    popup.style.left = `${window.scrollX + rect.left}px`;
+
+    const closeHandler = (e) => {
+      if (!popup.contains(e.target) && e.target !== chipElement) {
+        this.closeChipMenu();
+        document.removeEventListener("mousedown", closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener("mousedown", closeHandler), 10);
+  }
+
+  closeChipMenu() {
+    if (this.activeChipMenuEl) {
+      this.activeChipMenuEl.classList.remove("active-menu");
+      this.activeChipMenuEl = null;
+    }
+    this.popupEl?.remove();
+    this.popupEl = null;
   }
 }
 
@@ -1093,14 +1164,14 @@ class PresetGrid {
         if (colorPicker) {
           colorPicker.addEventListener("click", (e) => e.stopPropagation());
           colorPicker.addEventListener("mousedown", (e) => e.stopPropagation());
-          
+
           colorPicker.addEventListener("input", (e) => {
             e.stopPropagation();
             const newColor = e.target.value;
             if (colorDot) colorDot.style.backgroundColor = newColor;
             PresetUtils.setGroupColor(rawFolder, newColor);
           });
-          
+
           colorPicker.addEventListener("change", (e) => {
             e.stopPropagation();
             const newColor = e.target.value;
