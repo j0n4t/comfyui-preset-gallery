@@ -115,6 +115,7 @@ const PresetUtils = {
     );
   },
   icons: {
+    add: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
     close: `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
     edit: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
     file: `<svg class="j0n4t-pg-icon" viewBox="0 0 24 24" style="opacity: 0.25; color: #fff; width: 32px; height: 32px;"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
@@ -1041,6 +1042,36 @@ class PresetBasket {
         }
       });
       popup.appendChild(locateBtn);
+    } else {
+      const createBtn = document.createElement("div");
+      createBtn.className = "j0n4t-pg-chip-popup-item";
+      createBtn.title = "Create Preset from Chip";
+      createBtn.innerHTML = PresetUtils.icons.add;
+      createBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.closeChipMenu();
+        this.context.setPanelCollapseState(false);
+        this.context.editor.clearFields();
+
+        const presetText = item ? item.preset : styleKey;
+        this.context.editor.dom.inpPreset.value = presetText;
+
+        const cleanName = styleKey
+          .replace(/^<(lora|lyco):/i, "")
+          .replace(/>$/, "")
+          .split(":")[0]
+          .split("/")
+          .pop()
+          .replace(/[^a-zA-Z0-9\s-_]/g, "")
+          .trim()
+          .replace(/\s+/g, "_");
+
+        if (cleanName) {
+          this.context.editor.dom.inpName.value = cleanName;
+        }
+        this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
+      });
+      popup.appendChild(createBtn);
     }
 
     const delBtn = document.createElement("div");
@@ -2008,18 +2039,8 @@ class PresetGalleryApp {
         this.dom.search.focus();
       },
       onKeyDown: (e) => {
-        if (!manager.isOpen && e.key === "Enter" && !e.ctrlKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          const val = e.target.value.trim();
-          if (val) {
-            const sel = this.getSelectedArray();
-            if (!sel.includes(val)) this.updateWidgetValue([...sel, val]);
-          }
-          this.dom.search.value = "";
-          this.grid.executeFilterPipeline();
-          this.dom.search.focus();
-          return true;
+        if (!manager.isOpen && e.key === "Enter" && !e.shiftKey) {
+          this.grid.executeFilterPipeline(this.dom.search.value);
         }
       },
     });
