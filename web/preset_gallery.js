@@ -988,6 +988,8 @@ class PresetBasket {
     });
     popup.appendChild(delBtn);
 
+    popup.addEventListener("mousedown", (e) => e.stopPropagation());
+
     document.body.appendChild(popup);
     this.popupEl = popup;
 
@@ -1001,10 +1003,15 @@ class PresetBasket {
         document.removeEventListener("mousedown", closeHandler);
       }
     };
+    this.closeHandler = closeHandler;
     setTimeout(() => document.addEventListener("mousedown", closeHandler), 10);
   }
 
   closeChipMenu() {
+    if (this.closeHandler) {
+      document.removeEventListener("mousedown", this.closeHandler);
+      this.closeHandler = null;
+    }
     if (this.activeChipMenuEl) {
       this.activeChipMenuEl.classList.remove("active-menu");
       this.activeChipMenuEl = null;
