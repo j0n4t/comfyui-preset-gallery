@@ -299,7 +299,7 @@ class PresetGalleryStyles {
       .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup, .j0n4t-pg-chip-popup { position: absolute; background: #1f1f1fe8; border: 1px solid #007acc; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; overflow-y: auto; overflow-x: hidden; font-family: sans-serif; box-sizing: border-box; max-height: 250px; width: max-content; }
       .j0n4t-pg-autocomplete-popup, .j0n4t-pg-filter-autocomplete-popup { flex-direction: column; }
       .j0n4t-pg-chip-popup { z-index: 10002; padding: 2px; background: #1a1a1ff5; border-color: #007acc; flex-direction: row; gap: 2px; border-radius: 4px; }
-      .j0n4t-pg-chip-popup-item { padding: 4px 6px; font-size: 11px; color: #ddd; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 3px; transition: background 0.1s, color 0.1s; }
+      .j0n4t-pg-chip-popup-item { padding: 2px; font-size: 11px; color: #ddd; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 3px; transition: background 0.1s, color 0.1s; }
       .j0n4t-pg-chip-popup-item:hover { background: #007acc; color: #fff; }
       .j0n4t-pg-chip-popup-item.danger:hover { background: #b23b3b; color: #fff; }
       .j0n4t-pg-chip-popup-item svg { width: 14px; height: 14px; fill: currentColor; }
