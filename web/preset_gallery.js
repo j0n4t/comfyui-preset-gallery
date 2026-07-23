@@ -41,6 +41,68 @@ const fileToDataURL = (file) =>
     reader.readAsDataURL(file);
   });
 
+/**
+ * Creates a thumbnail version of an image to save localStorage space
+ * @param {string} dataUrl - The original image as a data URL
+ * @returns {Promise<string>} - Thumbnail image as a data URL
+ */
+const createThumbnail = async (dataUrl) => {
+  if (!dataUrl || !dataUrl.startsWith("data:image/")) return dataUrl;
+
+  try {
+    const img = new Image();
+    img.src = dataUrl;
+
+    // Wait for image to load
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+
+    // Create canvas for thumbnail
+    const canvas = document.createElement("canvas");
+    const MAX_DIMENSION = 200; // Max width or height for thumbnail
+
+    // Calculate dimensions maintaining aspect ratio
+    let width = img.width;
+    let height = img.height;
+
+    if (width > height) {
+      if (width > MAX_DIMENSION) {
+        height = Math.round((height * MAX_DIMENSION) / width);
+        width = MAX_DIMENSION;
+      }
+    } else {
+      if (height > MAX_DIMENSION) {
+        width = Math.round((width * MAX_DIMENSION) / height);
+        height = MAX_DIMENSION;
+      }
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Draw image onto canvas
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, width, height);
+
+    // Convert to JPEG with reasonable quality to save space
+    // Try to preserve original format if it was JPEG/PNG, but use JPEG for smaller size
+    let mimeType = "image/jpeg";
+    let quality = 0.7; // Good balance of quality and size
+
+    // If original was PNG and has transparency, we might want to preserve it
+    // But for simplicity and space savings, we'll convert to JPEG
+    // In future, we could check if PNG with alpha is needed
+
+    return canvas.toDataURL(mimeType, quality);
+  } catch (error) {
+    console.error("Error creating thumbnail:", error);
+    // Return original if thumbnail creation fails
+    return dataUrl;
+  }
+};
+
 const YAMLUtils = {
   stringify(obj, indent = 0) {
     let yaml = "";
@@ -299,7 +361,8 @@ class PresetGalleryAPI {
     if (clearImage) {
       finalImage = null;
     } else if (imageData) {
-      finalImage = imageData;
+      // Create a thumbnail to save localStorage space
+      finalImage = await createThumbnail(imageData);
     }
 
     pool[newKey] = {
@@ -496,7 +559,9 @@ class PresetGalleryAPI {
             const { entry, ext } = imgFiles[key];
             const base64 = await entry.async("base64");
             const mime = getMimeType(ext);
-            filename = `data:${mime};base64,${base64}`;
+            const dataUrl = `data:${mime};base64,${base64}`;
+            // Create a thumbnail to save localStorage space
+            filename = await createThumbnail(dataUrl);
           }
 
           const cleanKey = key.toLowerCase().replace(/ /g, "_");
@@ -543,6 +608,15 @@ class PresetGalleryAPI {
           const flattenedImport = NestedPoolUtils.nestedToFlat(parsedData);
           const currentPool = PresetGalleryAPI.getPool();
           const merged = { ...currentPool, ...flattenedImport };
+
+          // Process imported images to create thumbnails for localStorage efficiency
+          for (const [key, item] of Object.entries(merged)) {
+            if (item && item.filename && item.filename.startsWith("data:image/")) {
+              // Create a thumbnail for each image to save localStorage space
+              item.filename = await createThumbnail(item.filename);
+            }
+          }
+
           PresetGalleryAPI.savePool(merged);
           resolve({ success: true });
         } catch (err) {
