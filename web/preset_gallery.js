@@ -3,6 +3,151 @@ import { app } from "../../../scripts/app.js";
 const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
 
+const loadJSZip = async () => {
+  if (window.JSZip) return window.JSZip;
+  if (globalThis.JSZip) return globalThis.JSZip;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    script.onload = () => resolve(window.JSZip || globalThis.JSZip);
+    script.onerror = () => reject(new Error("Failed to load JSZip library"));
+    document.head.appendChild(script);
+  });
+};
+
+const parseDataURL = (dataUrl) => {
+  if (!dataUrl || !dataUrl.startsWith("data:")) return null;
+  const matches = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,(.+)$/i);
+  if (!matches) return null;
+  let ext = matches[1].toLowerCase();
+  if (ext === "jpeg") ext = "jpg";
+  return { ext, base64: matches[2] };
+};
+
+const getMimeType = (ext) => {
+  const e = ext.toLowerCase();
+  if (e === "jpg" || e === "jpeg") return "image/jpeg";
+  if (e === "png") return "image/png";
+  if (e === "webp") return "image/webp";
+  if (e === "gif") return "image/gif";
+  return "image/png";
+};
+
+const fileToDataURL = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+const YAMLUtils = {
+  stringify(obj, indent = 0) {
+    let yaml = "";
+    const spaces = " ".repeat(indent);
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+        yaml += `${spaces}${key}:\n${YAMLUtils.stringify(value, indent + 2)}`;
+      } else {
+        const strVal = String(value ?? "");
+        if (strVal.includes("\n") || strVal.includes(":") || strVal.includes("#") || strVal.startsWith(" ") || strVal === "") {
+          yaml += `${spaces}${key}: "${strVal.replace(/"/g, '\\"')}"\n`;
+        } else {
+          yaml += `${spaces}${key}: ${strVal}\n`;
+        }
+      }
+    }
+    return yaml;
+  },
+  parse(yamlStr) {
+    const lines = yamlStr.split(/\r?\n/);
+    const result = {};
+    const stack = [{ indent: -1, obj: result }];
+
+    for (let line of lines) {
+      const commentIdx = line.indexOf(" #");
+      if (commentIdx !== -1) line = line.slice(0, commentIdx);
+      if (!line.trim()) continue;
+
+      const indent = line.search(/\S/);
+      const trimmed = line.trim();
+      const colonIdx = trimmed.indexOf(":");
+      if (colonIdx === -1) continue;
+
+      const key = trimmed.slice(0, colonIdx).trim().replace(/^['"]|['"]$/g, "");
+      const valStr = trimmed.slice(colonIdx + 1).trim();
+
+      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+        stack.pop();
+      }
+
+      const currentParent = stack[stack.length - 1].obj;
+
+      if (valStr === "" || valStr === "null") {
+        const newObj = {};
+        currentParent[key] = newObj;
+        stack.push({ indent, obj: newObj });
+      } else {
+        let cleanVal = valStr;
+        if ((cleanVal.startsWith('"') && cleanVal.endsWith('"')) || (cleanVal.startsWith("'") && cleanVal.endsWith("'"))) {
+          cleanVal = cleanVal.slice(1, -1).replace(/\\"/g, '"');
+        }
+        currentParent[key] = cleanVal;
+      }
+    }
+    return result;
+  },
+};
+
+const NestedPoolUtils = {
+  flatToNested(pool, presetOnly = true) {
+    const root = {};
+    for (const [key, item] of Object.entries(pool)) {
+      const parts = key.split("/");
+      let curr = root;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (!curr[part] || typeof curr[part] !== "object") {
+          curr[part] = {};
+        }
+        curr = curr[part];
+      }
+      const lastPart = parts[parts.length - 1];
+      if (presetOnly) {
+        curr[lastPart] = typeof item === "string" ? item : item.preset || "";
+      } else {
+        curr[lastPart] = item;
+      }
+    }
+    return root;
+  },
+  nestedToFlat(obj, prefix = "") {
+    let flat = {};
+    for (const [key, val] of Object.entries(obj)) {
+      const fullKey = prefix ? `${prefix}/${key}` : key;
+      if (val !== null && typeof val === "object" && !("preset" in val)) {
+        Object.assign(flat, NestedPoolUtils.nestedToFlat(val, fullKey));
+      } else {
+        const tags = fullKey.includes("/") ? fullKey.split("/").slice(0, -1) : [];
+        if (typeof val === "string") {
+          flat[fullKey] = {
+            preset: val,
+            tags: tags,
+            filename: null,
+          };
+        } else if (typeof val === "object" && val !== null) {
+          flat[fullKey] = {
+            preset: val.preset || "",
+            tags: val.tags || tags,
+            filename: val.filename || null,
+          };
+        }
+      }
+    }
+    return flat;
+  },
+};
+
 const PresetUtils = {
   escapeHTML: (str) => {
     if (str == null) return "";
@@ -20,10 +165,10 @@ const PresetUtils = {
       .replace(/\b\w/g, (l) => l.toUpperCase()),
   getHashColor: (str) => {
     let hash = 0;
-    for (let i = 0; i < 6; i++)  hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
+    for (let i = 0; i < 6; i++) hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
     hash = (hash ^ (hash >>> 16)) * 0x85ebca6b;
     hash = (hash ^ (hash >>> 13)) * 0xc2b2ae35;
-    const hue = Math.abs(hash ^ (hash >>> 15) % 360);
+    const hue = Math.abs((hash ^ (hash >>> 15)) % 360);
     return `hsl(${hue}, 65%, 35%)`;
   },
   hslToHex: (h, s, l) => {
@@ -32,7 +177,7 @@ const PresetUtils = {
     const f = (n) => {
       const k = (n + h / 30) % 12;
       const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-      return Math.round(255 * color).toString(16).padStart(2, '0');
+      return Math.round(255 * color).toString(16).padStart(2, "0");
     };
     return `#${f(0)}${f(8)}${f(4)}`;
   },
@@ -55,21 +200,17 @@ const PresetUtils = {
   setGroupColor: (groupRaw, color) => {
     try {
       const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-      if (color) {
-        customColors[groupRaw] = color;
-      } else {
-        delete customColors[groupRaw];
-      }
+      if (color) customColors[groupRaw] = color;
+      else delete customColors[groupRaw];
       localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
     } catch (e) { }
   },
   getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
-  getPresetColor: (key) =>
-    PresetUtils.getGroupColor(PresetUtils.getPresetBaseFolder(key)),
+  getPresetColor: (key) => PresetUtils.getGroupColor(PresetUtils.getPresetBaseFolder(key)),
   getPresetName: (key) => key.split("/").pop(),
   getPresetTitle: (key, cache) =>
     PresetUtils.escapeHTML(
-      `${PresetUtils.toTitleCase(PresetUtils.getPresetName(key))} [${key}]\n${cache[key].preset}`,
+      `${PresetUtils.toTitleCase(PresetUtils.getPresetName(key))} [${key}]\n${cache[key]?.preset || ""}`
     ),
   getPresetInitials: (key) => {
     const raw = key.includes("/") ? PresetUtils.getPresetName(key) : key;
@@ -97,22 +238,15 @@ const PresetUtils = {
         }
         return acc;
       },
-      { startsWith: [], fuzzy: [] },
+      { startsWith: [], fuzzy: [] }
     );
 
     const sortBucket = (arr) =>
       arr
-        .sort((a, b) =>
-          a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item),
-        )
+        .sort((a, b) => (a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item)))
         .map((entry) => entry.item);
 
-    return Array.from(
-      new Set([
-        ...sortBucket(buckets.startsWith),
-        ...sortBucket(buckets.fuzzy),
-      ]),
-    );
+    return Array.from(new Set([...sortBucket(buckets.startsWith), ...sortBucket(buckets.fuzzy)]));
   },
   icons: {
     add: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
@@ -127,6 +261,299 @@ const PresetUtils = {
     import: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M11.625 15.513q-.175-.063-.325-.213l-3.6-3.6q-.3-.3-.288-.7t.288-.7q.3-.3.713-.312t.712.287L11 12.15V5q0-.425.288-.712T12 4t.713.288T13 5v7.15l1.875-1.875q.3-.3.713-.288t.712.313q.275.3.288.7t-.288.7l-3.6 3.6q-.15.15-.325.213t-.375.062t-.375-.062M6 20q-.825 0-1.412-.587T4 18v-2q0-.425.288-.712T5 15t.713.288T6 16v2h12v-2q0-.425.288-.712T19 15t.713.288T20 16v2q0 .825-.587 1.413T18 20z" /></svg>`,
   },
 };
+
+/**
+ * LocalStorage Persistence Manager
+ */
+class PresetGalleryAPI {
+  static STORAGE_KEY = "comfy_preset_gallery_pool";
+
+  static getPool() {
+    try {
+      return JSON.parse(localStorage.getItem(PresetGalleryAPI.STORAGE_KEY) || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+
+  static savePool(pool) {
+    localStorage.setItem(PresetGalleryAPI.STORAGE_KEY, JSON.stringify(pool));
+  }
+
+  static async fetchGallery() {
+    return PresetGalleryAPI.getPool();
+  }
+
+  static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode }) {
+    const pool = PresetGalleryAPI.getPool();
+    const cleanFolder = folder ? folder.trim().toLowerCase().replace(/ /g, "_") : "";
+    const cleanName = name.trim().toLowerCase().replace(/ /g, "_");
+    const newKey = cleanFolder ? `${cleanFolder}/${cleanName}` : cleanName;
+    const tags = cleanFolder ? cleanFolder.split("/") : [];
+
+    if (mode === "edit" && editingKey && editingKey !== newKey) {
+      delete pool[editingKey];
+    }
+
+    let finalImage = pool[newKey]?.filename || null;
+    if (clearImage) {
+      finalImage = null;
+    } else if (imageData) {
+      finalImage = imageData;
+    }
+
+    pool[newKey] = {
+      preset: presetText,
+      tags: tags,
+      filename: finalImage,
+    };
+
+    PresetGalleryAPI.savePool(pool);
+    return { success: true, key: newKey };
+  }
+
+  static async deletePreset(uniqueKey) {
+    const pool = PresetGalleryAPI.getPool();
+    delete pool[uniqueKey];
+    PresetGalleryAPI.savePool(pool);
+    return { success: true };
+  }
+
+  static async renameFolder(oldFolder, newFolder) {
+    const pool = PresetGalleryAPI.getPool();
+    const newPool = {};
+    const prefix = `${oldFolder}/`;
+
+    for (const key in pool) {
+      if (key.startsWith(prefix) || key === oldFolder) {
+        const suffix = key.startsWith(prefix) ? key.slice(prefix.length) : "";
+        const newKey = suffix ? `${newFolder}/${suffix}` : newFolder;
+        const item = pool[key];
+        item.tags = newKey.includes("/") ? newKey.split("/").slice(0, -1) : [];
+        newPool[newKey] = item;
+      } else {
+        newPool[key] = pool[key];
+      }
+    }
+
+    PresetGalleryAPI.savePool(newPool);
+    return { success: true };
+  }
+
+  static showExportModal(onExport) {
+    const overlay = document.createElement("div");
+    overlay.className = "j0n4t-pg-modal-overlay";
+    overlay.innerHTML = `
+      <div class="j0n4t-pg-modal">
+        <h3>📦 Export Presets</h3>
+        <div class="j0n4t-pg-modal-field">
+          <label>File Format</label>
+          <select id="j0n4t-pg-exp-format">
+          <option value="yaml">YAML (.yaml)</option>
+          <option value="json">JSON (.json)</option>
+          <option value="zip">ZIP Archive (.zip)</option>
+          </select>
+        </div>
+        <div class="j0n4t-pg-modal-field">
+          <label>Data Content</label>
+          <select id="j0n4t-pg-exp-mode">
+            <option value="preset-only">Nested Presets Only (Clean)</option>
+            <option value="full">Full Pool Data (With Images)</option>
+          </select>
+        </div>
+        <div class="j0n4t-pg-modal-actions">
+          <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-exp-cancel" style="background:#444;">Cancel</button>
+          <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-exp-confirm" style="background:#007acc;">Export File</button>
+        </div>
+      </div>
+    `;
+
+    const close = () => overlay.remove();
+    overlay.querySelector("#j0n4t-pg-exp-cancel").addEventListener("click", close);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+
+    overlay.querySelector("#j0n4t-pg-exp-confirm").addEventListener("click", () => {
+      const format = overlay.querySelector("#j0n4t-pg-exp-format").value;
+      const mode = overlay.querySelector("#j0n4t-pg-exp-mode").value;
+      close();
+      onExport(format, mode);
+    });
+
+    document.body.appendChild(overlay);
+  }
+
+  static async exportPool(format = "zip", mode = "full") {
+    const pool = PresetGalleryAPI.getPool();
+
+    if (format === "zip") {
+      try {
+        const JSZip = await loadJSZip();
+        const zip = new JSZip();
+
+        for (const [key, item] of Object.entries(pool)) {
+          zip.file(`${key}.txt`, item.preset || "");
+
+          if (mode !== "preset-only" && item.filename) {
+            const parsed = parseDataURL(item.filename);
+            if (parsed) {
+              zip.file(`${key}.${parsed.ext}`, parsed.base64, { base64: true });
+            }
+          }
+        }
+
+        const blob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `presets_pool_${mode}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("ZIP export failed: " + err.message);
+      }
+      return;
+    }
+
+    let dataStr = "";
+    let mimeType = "text/yaml";
+    let ext = "yaml";
+
+    if (mode === "preset-only") {
+      const nested = NestedPoolUtils.flatToNested(pool, true);
+      if (format === "yaml") {
+        dataStr = YAMLUtils.stringify(nested);
+        mimeType = "text/yaml";
+        ext = "yaml";
+      } else {
+        dataStr = JSON.stringify(nested, null, 2);
+        mimeType = "application/json";
+        ext = "json";
+      }
+    } else {
+      const exportData = {};
+      for (const [key, item] of Object.entries(pool)) {
+        exportData[key] = {
+          preset: item.preset,
+          tags: item.tags || [],
+          filename: item.filename || null,
+        };
+      }
+      if (format === "yaml") {
+        const nestedFull = NestedPoolUtils.flatToNested(exportData, false);
+        dataStr = YAMLUtils.stringify(nestedFull);
+        mimeType = "text/yaml";
+        ext = "yaml";
+      } else {
+        dataStr = JSON.stringify(exportData, null, 2);
+        mimeType = "application/json";
+        ext = "json";
+      }
+    }
+
+    const blob = new Blob([dataStr], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `presets_pool_${mode}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  static async importFile(file) {
+    if (file.name.toLowerCase().endsWith(".zip")) {
+      try {
+        const JSZip = await loadJSZip();
+        const zip = await JSZip.loadAsync(file);
+        const importedPool = {};
+
+        const txtFiles = {};
+        const imgFiles = {};
+
+        for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+          if (zipEntry.dir) continue;
+
+          const normalizedPath = relativePath.replace(/\\/g, "/").replace(/^[\/\\]+/, "");
+          const lastDot = normalizedPath.lastIndexOf(".");
+          if (lastDot === -1) continue;
+
+          const ext = normalizedPath.slice(lastDot + 1).toLowerCase();
+          const keyPath = normalizedPath.slice(0, lastDot);
+
+          if (ext === "txt") {
+            txtFiles[keyPath] = zipEntry;
+          } else if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) {
+            imgFiles[keyPath] = { entry: zipEntry, ext };
+          }
+        }
+
+        for (const [key, txtEntry] of Object.entries(txtFiles)) {
+          const presetText = await txtEntry.async("string");
+          let filename = null;
+
+          if (imgFiles[key]) {
+            const { entry, ext } = imgFiles[key];
+            const base64 = await entry.async("base64");
+            const mime = getMimeType(ext);
+            filename = `data:${mime};base64,${base64}`;
+          }
+
+          const cleanKey = key.toLowerCase().replace(/ /g, "_");
+          const tags = cleanKey.includes("/") ? cleanKey.split("/").slice(0, -1) : [];
+
+          importedPool[cleanKey] = {
+            preset: presetText,
+            tags: tags,
+            filename: filename,
+          };
+        }
+
+        const currentPool = PresetGalleryAPI.getPool();
+        const merged = { ...currentPool, ...importedPool };
+        PresetGalleryAPI.savePool(merged);
+        return { success: true };
+      } catch (err) {
+        alert("Failed to parse ZIP file: " + err.message);
+        return { success: false };
+      }
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target.result;
+          let parsedData = null;
+
+          if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
+            parsedData = YAMLUtils.parse(text);
+          } else {
+            try {
+              parsedData = JSON.parse(text);
+            } catch (err) {
+              parsedData = YAMLUtils.parse(text);
+            }
+          }
+
+          if (typeof parsedData !== "object" || parsedData === null) {
+            throw new Error("Invalid file structure");
+          }
+
+          const flattenedImport = NestedPoolUtils.nestedToFlat(parsedData);
+          const currentPool = PresetGalleryAPI.getPool();
+          const merged = { ...currentPool, ...flattenedImport };
+          PresetGalleryAPI.savePool(merged);
+          resolve({ success: true });
+        } catch (err) {
+          alert("Failed to parse file: " + err.message);
+          resolve({ success: false });
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+}
 
 class AutocompleteManager {
   constructor({
@@ -147,7 +574,7 @@ class AutocompleteManager {
     this.getMatches = getMatches;
     this.renderItem = renderItem;
     this.onSelect = onSelect;
-    this.onKeyDown = onKeyDown; // Hook for custom key logic
+    this.onKeyDown = onKeyDown;
     this.onBlur = onBlur;
 
     this.popupEl = null;
@@ -165,9 +592,7 @@ class AutocompleteManager {
     this.input.addEventListener("input", () => this.evaluate());
     this.input.addEventListener("click", () => this.close());
     this.input.addEventListener("blur", () => {
-      if (this.onBlur) {
-        this.onBlur();
-      }
+      if (this.onBlur) this.onBlur();
       setTimeout(() => this.close(), 200);
     });
     this.input.addEventListener("keydown", (e) => this.handleKeydown(e));
@@ -241,7 +666,6 @@ class AutocompleteManager {
   handleKeydown(e) {
     const activeMatch = this.matches[this.activeIndex];
 
-    // Allow custom hooks (like saving on Enter when popup is closed)
     if (this.onKeyDown && this.onKeyDown(e, activeMatch)) {
       if (this.isOpen) this.close();
       return;
@@ -416,52 +840,17 @@ class PresetGalleryStyles {
       .j0n4t-pg-editor-preview .j0n4t-pg-corner-edit { top: 4px; right: 4px; background: #b23b3b; border-color: #b23b3b; z-index: 10; display: none; }
       .j0n4t-pg-editor-preview:hover .j0n4t-pg-corner-edit { display: flex; }
       .j0n4t-pg-editor-preview img { width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; }
-        `;
-    document.head.appendChild(styles);
-  }
-}
 
-class PresetGalleryAPI {
-  static async fetchGallery() {
-    return (await fetch("/custom_node/live_preset_gallery")).json();
-  }
-  static async fetchPresetImage(filename) {
-    const res = await fetch(
-      `/custom_node/get_preset_image?filename=${encodeURIComponent(filename)}`,
-    );
-    return res.ok ? res.blob() : null;
-  }
-  static async savePreset(formData) {
-    return (
-      await fetch("/custom_node/save_preset_item", {
-        method: "POST",
-        body: formData,
-      })
-    ).json();
-  }
-  static async deletePreset(uniqueKey) {
-    return fetch("/custom_node/delete_preset_item", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ unique_key: uniqueKey }),
-    });
-  }
-  static async renameFolder(oldFolder, newFolder) {
-    return (
-      await fetch("/custom_node/rename_preset_folder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ old_folder: oldFolder, new_folder: newFolder }),
-      })
-    ).json();
-  }
-  static async importZip(formData) {
-    return (
-      await fetch("/custom_node/import_presets_zip", {
-        method: "POST",
-        body: formData,
-      })
-    ).json();
+      .j0n4t-pg-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(3px); z-index: 20000; display: flex; align-items: center; justify-content: center; }
+      .j0n4t-pg-modal { background: #1f1f1f; border: 1px solid #007acc; border-radius: 8px; width: 320px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); font-family: sans-serif; display: flex; flex-direction: column; gap: 12px; color: #eee; }
+      .j0n4t-pg-modal h3 { margin: 0; font-size: 13px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 6px; }
+      .j0n4t-pg-modal-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+      .j0n4t-pg-modal-field label { color: #aaa; font-weight: bold; }
+      .j0n4t-pg-modal-field select { background: #111; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; }
+      .j0n4t-pg-modal-field select:focus { border-color: #007acc; }
+      .j0n4t-pg-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+    `;
+    document.head.appendChild(styles);
   }
 }
 
@@ -549,7 +938,7 @@ class PresetBasket {
         this.textarea.value
           .split(",")
           .map((i) => i.trim())
-          .filter(Boolean),
+          .filter(Boolean)
       );
     };
 
@@ -607,7 +996,8 @@ class PresetBasket {
           : "j0n4t-pg-raw-token";
         const styleAttr = textColor ? ` style="color: ${textColor};"` : "";
 
-        html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(leadingSpace)}</span>` +
+        html +=
+          `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(leadingSpace)}</span>` +
           `<span class="${spanClass}"${styleAttr}>${PresetUtils.escapeHTML(trimmed)}</span>` +
           `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(trailingSpace)}</span>`;
       }
@@ -635,7 +1025,7 @@ class PresetBasket {
         return PresetUtils.getTopMatches(
           Object.keys(this.context.cache),
           currentToken,
-          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k])
         );
       },
       renderItem: (match) =>
@@ -654,7 +1044,7 @@ class PresetBasket {
           this.textarea.value
             .split(",")
             .map((i) => i.trim())
-            .filter(Boolean),
+            .filter(Boolean)
         );
 
         this.textarea.focus();
@@ -667,7 +1057,6 @@ class PresetBasket {
           this.textarea.selectionStart === this.textarea.value.length &&
           activeMatch
         ) {
-          // Triggers selection logic automatically via the manager if we return false/undefined
           return false;
         }
       },
@@ -687,11 +1076,11 @@ class PresetBasket {
     dom.chkBasketRaw.addEventListener("change", () => {
       localStorage.setItem(
         "comfy_preset_gallery_raw_basket",
-        String(dom.chkBasketRaw.checked),
+        String(dom.chkBasketRaw.checked)
       );
       dom.basketContainer.classList.toggle(
         "raw-mode",
-        dom.chkBasketRaw.checked,
+        dom.chkBasketRaw.checked
       );
     });
 
@@ -707,7 +1096,7 @@ class PresetBasket {
         dom.btnCopyBasket.innerText = "✅ Copied!";
         dom.btnCopyBasket.style.background = "#228b22";
         setTimeout(() => {
-          dom.btnCopyBasket.innerText = "📋 Copy";
+          dom.btnCopyBasket.innerText = "📋 Output";
           dom.btnCopyBasket.style.background = origBg;
         }, 1500);
       });
@@ -743,11 +1132,9 @@ class PresetBasket {
 
     const uniqueSelections = Array.from(new Set(updatedSelections));
 
-    // Update the underlying ComfyUI widget value and re-render the basket UI
     this.context.updateWidgetValue(uniqueSelections);
     this.context.syncUI(uniqueSelections.join(","));
 
-    // If raw textarea mode is open, update its value as well
     if (this.textarea && this.container.classList.contains("raw-mode")) {
       this.textarea.value = uniqueSelections.join(", ");
     }
@@ -761,13 +1148,13 @@ class PresetBasket {
         const box = el.getBoundingClientRect();
         const dist = Math.hypot(
           clientX - (box.left + box.width / 2),
-          clientY - (box.top + box.height / 2),
+          clientY - (box.top + box.height / 2)
         );
         return dist < closest.distance
           ? { distance: dist, element: el, box }
           : closest;
       },
-      { distance: Infinity, element: null, box: null },
+      { distance: Infinity, element: null, box: null }
     );
   }
 
@@ -804,9 +1191,7 @@ class PresetBasket {
     const finishEdit = (save) => {
       const newVal = input.value.trim();
       try {
-        // DOM is crazy
         input.remove();
-        // eslint-disable-next-line no-empty, @typescript-eslint/no-unused-vars
       } catch (e) { }
 
       if (isNew) chipElement.remove();
@@ -825,16 +1210,14 @@ class PresetBasket {
         } else if (!isNew && newVal !== initialValue) {
           const idx = selections.indexOf(initialValue);
           if (idx !== -1) {
-            if (newVal) {
-              selections[idx] = newVal;
-            } else {
-              selections.splice(idx, 1);
-            }
+            if (newVal) selections[idx] = newVal;
+            else selections.splice(idx, 1);
             this.context.updateWidgetValue(selections);
           }
         }
       }
     };
+
     const manager = new AutocompleteManager({
       input: input,
       container: document.body,
@@ -844,7 +1227,7 @@ class PresetBasket {
         return PresetUtils.getTopMatches(
           Object.keys(this.context.cache),
           query,
-          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k])
         );
       },
       renderItem: (match) =>
@@ -907,7 +1290,7 @@ class PresetBasket {
       chip.dataset.id = styleKey;
 
       if (item?.filename) {
-        chip.style.backgroundImage = `url('/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}')`;
+        chip.style.backgroundImage = `url("${item.filename}")`;
       } else {
         chip.style.backgroundColor = PresetUtils.getPresetColor(styleKey);
       }
@@ -926,7 +1309,7 @@ class PresetBasket {
             `;
 
       if (loraMatch) {
-        const loraInput = chip.querySelector('.lora-weight-input');
+        const loraInput = chip.querySelector(".lora-weight-input");
         loraInput.addEventListener("mousedown", (e) => e.stopPropagation());
         loraInput.addEventListener("dblclick", (e) => e.stopPropagation());
 
@@ -944,7 +1327,6 @@ class PresetBasket {
           }
         });
       }
-      // ----------------------------------
 
       chip.addEventListener("click", (e) => {
         if (e.target.closest(".lora-weight-input")) return;
@@ -967,7 +1349,6 @@ class PresetBasket {
       chip.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         e.stopPropagation();
-
         this.explodeChip(styleKey);
       });
       this.pool.appendChild(chip);
@@ -1013,7 +1394,7 @@ class PresetBasket {
         e.stopPropagation();
         this.closeChipMenu();
         const itemEl = this.context.dom.grid.querySelector(
-          `.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`,
+          `.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`
         );
         if (itemEl) {
           this.context.dom.search.value = "";
@@ -1025,7 +1406,7 @@ class PresetBasket {
             this.context.setCollapsedFolders(
               this.context
                 .getCollapsedFolders()
-                .filter((f) => f !== prev.dataset.groupRaw),
+                .filter((f) => f !== prev.dataset.groupRaw)
             );
           }
           this.context.grid.executeFilterPipeline();
@@ -1082,7 +1463,7 @@ class PresetBasket {
       e.stopPropagation();
       this.closeChipMenu();
       this.context.updateWidgetValue(
-        this.context.getSelectedArray().filter((v) => v !== styleKey),
+        this.context.getSelectedArray().filter((v) => v !== styleKey)
       );
     });
     popup.appendChild(delBtn);
@@ -1129,12 +1510,12 @@ class PresetGrid {
 
   switchView(viewName) {
     ["small", "big", "list"].forEach((v) =>
-      this.dom.grid.classList.remove(`view-${v}`),
+      this.dom.grid.classList.remove(`view-${v}`)
     );
     this.dom.viewsContainer
       .querySelectorAll(".j0n4t-pg-view-btn")
       .forEach((btn) =>
-        btn.classList.toggle("active", btn.dataset.view === viewName),
+        btn.classList.toggle("active", btn.dataset.view === viewName)
       );
     this.dom.grid.classList.add(`view-${viewName}`);
     localStorage.setItem("comfy_preset_gallery_view", viewName);
@@ -1150,7 +1531,7 @@ class PresetGrid {
       el.classList.toggle(
         "j0n4t-pg-hidden",
         queryWords.length &&
-        !queryWords.every((word) => el.dataset.searchBlob.includes(word)),
+        !queryWords.every((word) => el.dataset.searchBlob.includes(word))
       );
     });
 
@@ -1164,13 +1545,13 @@ class PresetGrid {
             const matches =
               !queryWords.length ||
               queryWords.every((word) =>
-                (next.dataset.searchBlob || "").includes(word),
+                (next.dataset.searchBlob || "").includes(word)
               );
             if (matches) {
               hasVisibleChildren = true;
               next.classList.toggle(
                 "j0n4t-pg-hidden",
-                header.classList.contains("collapsed"),
+                header.classList.contains("collapsed")
               );
             } else next.classList.add("j0n4t-pg-hidden");
             next = next.nextElementSibling;
@@ -1202,7 +1583,7 @@ class PresetGrid {
     sortedKeys.forEach((key) => {
       const item = cache[key];
       const cleanLabel = PresetUtils.toTitleCase(
-        PresetUtils.getPresetName(key),
+        PresetUtils.getPresetName(key)
       ),
         initials = PresetUtils.getPresetInitials(key);
       const searchBlob =
@@ -1228,7 +1609,7 @@ class PresetGrid {
       }
 
       const thumb = item.filename
-        ? `<img class="j0n4t-pg-img" src="/custom_node/get_preset_image?filename=${encodeURIComponent(item.filename)}" loading="lazy">`
+        ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy">`
         : `<div style="background-color: ${PresetUtils.getPresetColor(key)}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;">${PresetUtils.icons.file}</div>`;
       const badge = item.tags?.length
         ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${PresetUtils.getPresetColor(key)};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
@@ -1287,7 +1668,11 @@ class PresetGrid {
         }
 
         header.addEventListener("click", (e) => {
-          if (e.target.closest(".j0n4t-pg-group-color-picker") || e.target.closest(".j0n4t-pg-group-color-dot")) return;
+          if (
+            e.target.closest(".j0n4t-pg-group-color-picker") ||
+            e.target.closest(".j0n4t-pg-group-color-dot")
+          )
+            return;
           const isCollapsed = header.classList.toggle("collapsed");
           let list = this.context.getCollapsedFolders();
           if (isCollapsed && !list.includes(rawFolder)) {
@@ -1309,7 +1694,7 @@ class PresetGrid {
           e.stopPropagation();
           const newName = prompt(
             `Rename folder "${rawFolder.replace(/_/g, " ")}" to:`,
-            rawFolder.replace(/_/g, " "),
+            rawFolder.replace(/_/g, " ")
           )
             ?.trim()
             .toLowerCase()
@@ -1318,7 +1703,7 @@ class PresetGrid {
           const res = await PresetGalleryAPI.renameFolder(rawFolder, newName);
           if (res.success) {
             this.context.setCollapsedFolders(
-              this.context.getCollapsedFolders().filter((i) => i !== rawFolder),
+              this.context.getCollapsedFolders().filter((i) => i !== rawFolder)
             );
             await this.context.loadGallery();
             this.context.updateWidgetValue(
@@ -1327,10 +1712,10 @@ class PresetGrid {
                 .map((i) =>
                   i.startsWith(`${rawFolder}/`)
                     ? i.replace(`${rawFolder}/`, `${newName}/`)
-                    : i,
-                ),
+                    : i
+                )
             );
-          } else alert(`Rename failed: ${res.error}`);
+          } else alert(`Rename failed`);
         });
       });
 
@@ -1355,7 +1740,7 @@ class PresetGrid {
     this.dom.grid
       .querySelectorAll(".j0n4t-pg-item")
       .forEach((el) =>
-        el.classList.toggle("selected", activeList.includes(el.dataset.style)),
+        el.classList.toggle("selected", activeList.includes(el.dataset.style))
       );
   }
 
@@ -1375,11 +1760,11 @@ class PresetGrid {
     this.dom.chkGroup.addEventListener("change", () => {
       localStorage.setItem(
         "comfy_preset_gallery_grouped",
-        String(this.dom.chkGroup.checked),
+        String(this.dom.chkGroup.checked)
       );
       this.dom.grid.classList.toggle(
         "hide-folders",
-        !this.dom.chkGroup.checked,
+        !this.dom.chkGroup.checked
       );
       this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked
         ? "block"
@@ -1392,7 +1777,7 @@ class PresetGrid {
       const collapseAll =
         !this.dom.btnGlobalCollapse.innerText.includes("Expand");
       this.context.setCollapsedFolders(
-        collapseAll ? [...headers].map((h) => h.dataset.groupRaw) : [],
+        collapseAll ? [...headers].map((h) => h.dataset.groupRaw) : []
       );
       this.dom.btnGlobalCollapse.innerText = collapseAll
         ? "↕️ Expand All"
@@ -1412,7 +1797,7 @@ class PresetGrid {
       const key = item.dataset.style;
       let sel = this.context.getSelectedArray();
       this.context.updateWidgetValue(
-        sel.includes(key) ? sel.filter((v) => v !== key) : [...sel, key],
+        sel.includes(key) ? sel.filter((v) => v !== key) : [...sel, key]
       );
     });
   }
@@ -1422,8 +1807,6 @@ class PresetEditor {
   constructor(dom, context) {
     this.dom = dom;
     this.context = context;
-    this.fetchedBlobImage = null;
-    this.localPreviewUrl = null;
     this.editingKey = "";
     this.currentMode = "new";
     this.isSaved = false;
@@ -1438,13 +1821,13 @@ class PresetEditor {
       if (this.dom.inpFile.files?.[0]) {
         if (this.localPreviewUrl) URL.revokeObjectURL(this.localPreviewUrl);
         imgSrc = this.localPreviewUrl = URL.createObjectURL(
-          this.dom.inpFile.files[0],
+          this.dom.inpFile.files[0]
         );
       } else if (
         this.editingKey &&
         this.context.cache[this.editingKey]?.filename
       ) {
-        imgSrc = `/custom_node/get_preset_image?filename=${encodeURIComponent(this.context.cache[this.editingKey].filename)}&t=${Date.now()}`;
+        imgSrc = this.context.cache[this.editingKey].filename;
       }
       if (imgSrc) {
         this.dom.editorPreview.innerHTML = `${rmBtnHtml}<img src="${imgSrc}" />`;
@@ -1479,7 +1862,6 @@ class PresetEditor {
   }
 
   resetImageState() {
-    this.fetchedBlobImage = null;
     this.dom.inpFile.value = "";
     this.dom.editor.classList.remove("has-image");
     this.dom.editor.classList.add("no-image");
@@ -1517,17 +1899,8 @@ class PresetEditor {
 
     if (this.context.cache[styleKey].filename) {
       this.dom.editor.classList.replace("no-image", "has-image");
-      this.renderPreview();
-      try {
-        const blob = await PresetGalleryAPI.fetchPresetImage(
-          this.context.cache[styleKey].filename,
-        );
-        if (this.editingKey === styleKey) this.fetchedBlobImage = blob;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (err) {
-        this.resetImageState();
-      }
-    } else this.renderPreview();
+    }
+    this.renderPreview();
 
     this.updateBanner();
     this.context.syncEditorHighlight();
@@ -1560,43 +1933,41 @@ class PresetEditor {
         !confirm(`Overwrite "${uniqueKey}"?`)
       )
         return;
-      if (this.dom.editor.classList.contains("no-image")) {
-        this.fetchedBlobImage = null;
-        this.dom.inpFile.value = "";
-      }
     }
 
-    const fd = new FormData();
-    fd.append("preset_name", name);
-    fd.append(
-      "subfolder",
-      this.dom.inpFolder.value.trim().toLowerCase().replace(/ /g, "_"),
-    );
-    fd.append("preset_text", this.dom.inpPreset.value.trim());
-    fd.append("overwrite", "true");
+    let imageData = null;
+    let clearImage = false;
 
     if (this.dom.inpFile.files[0]) {
-      fd.append("image_file", this.dom.inpFile.files[0]);
+      imageData = await fileToDataURL(this.dom.inpFile.files[0]);
+    } else if (this.dom.editor.classList.contains("no-image")) {
+      clearImage = true;
     } else if (
-      this.fetchedBlobImage &&
-      !this.dom.editor.classList.contains("no-image")
+      this.editingKey &&
+      this.context.cache[this.editingKey]?.filename
     ) {
-      fd.append("image_file", this.fetchedBlobImage, "image.jpg");
-    } else {
-      fd.append("clear_image", "true");
+      imageData = this.context.cache[this.editingKey].filename;
     }
 
-    const res = await PresetGalleryAPI.savePreset(fd);
-    if (!res.success) return alert(`Save failed: ${res.error}`);
+    const res = await PresetGalleryAPI.savePreset({
+      name,
+      folder: this.dom.inpFolder.value.trim(),
+      presetText: this.dom.inpPreset.value.trim(),
+      imageData,
+      clearImage,
+      editingKey: this.editingKey,
+      mode: this.currentMode,
+    });
+
+    if (!res.success) return alert(`Save failed.`);
 
     if (
       this.currentMode === "edit" &&
       this.editingKey !== uniqueKey &&
       this.context.cache[this.editingKey]
     ) {
-      await PresetGalleryAPI.deletePreset(this.editingKey);
       selections = selections.map((item) =>
-        item === this.editingKey ? uniqueKey : item,
+        item === this.editingKey ? uniqueKey : item
       );
     }
 
@@ -1608,18 +1979,6 @@ class PresetEditor {
     await this.context.loadGallery();
     this.context.updateWidgetValue(selections);
     this.updateBanner();
-
-    if (this.context.dom.inpFile.files[0]) {
-      const card = this.context.dom.grid.querySelector(
-        `[data-style="${uniqueKey}"]`,
-      );
-      if (card) {
-        const img = card.querySelector("img");
-        if (img) {
-          img.src = `${img.src}&t=${Date.now()}`;
-        }
-      }
-    }
   }
 
   async handleDelete() {
@@ -1630,7 +1989,7 @@ class PresetEditor {
     await PresetGalleryAPI.deletePreset(this.editingKey);
     await this.context.loadGallery();
     this.context.updateWidgetValue(
-      this.context.getSelectedArray().filter((v) => v !== this.editingKey),
+      this.context.getSelectedArray().filter((v) => v !== this.editingKey)
     );
     this.clearFields();
   }
@@ -1645,7 +2004,7 @@ class PresetEditor {
     };
 
     ["inpName", "inpFolder", "inpPreset"].forEach((id) =>
-      this.dom[id].addEventListener("input", markDirty),
+      this.dom[id].addEventListener("input", markDirty)
     );
     this.dom.editorPreview.addEventListener("click", (e) => {
       if (e.target.closest("#j0n4t-pg-rm-img-btn")) {
@@ -1658,7 +2017,6 @@ class PresetEditor {
     });
     this.dom.inpFile.addEventListener("change", () => {
       if (this.dom.inpFile.files[0]) {
-        this.fetchedBlobImage = null;
         this.dom.editor.classList.replace("no-image", "has-image");
         this.renderPreview();
         markDirty();
@@ -1672,7 +2030,7 @@ class PresetEditor {
       }
     };
     ["inpName", "inpFolder", "inpPreset"].forEach((id) =>
-      this.dom[id].addEventListener("keydown", handleQuickSave),
+      this.dom[id].addEventListener("keydown", handleQuickSave)
     );
 
     this.dom.inpPreset.addEventListener("paste", (e) => {
@@ -1714,12 +2072,12 @@ class PresetEditor {
         const allFolders = Array.from(
           new Set(
             Object.values(this.context.cache).flatMap((i) =>
-              i.tags?.length ? [i.tags.join("/")] : [],
-            ),
-          ),
+              i.tags?.length ? [i.tags.join("/")] : []
+            )
+          )
         );
         return PresetUtils.getTopMatches(allFolders, query, (f) =>
-          f.replace(/_/g, " "),
+          f.replace(/_/g, " ")
         );
       },
       renderItem: (match) => match.replace(/_/g, " "),
@@ -1742,7 +2100,7 @@ class PresetGalleryApp {
       this.dom.basketContainer,
       this.dom.wrap.querySelector(".j0n4t-pg-basket-pool"),
       this.dom.rawTextarea,
-      this,
+      this
     );
     this.editor = new PresetEditor(this.dom, this);
     this.grid = new PresetGrid(this.dom, this);
@@ -1785,9 +2143,9 @@ class PresetGalleryApp {
             <div class="j0n4t-pg-editor collapsed no-image">
                 <div class="j0n4t-pg-row">
                     <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Select an Item</div>
-                    <input type="file" id="j0n4t-pg-zip-file" accept=".zip" style="display:none;" />
-                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;">${PresetUtils.icons.import}</button>
-                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;">${PresetUtils.icons.export}</button>
+                    <input type="file" id="j0n4t-pg-json-file" accept=".zip,.json,.yaml,.yml" style="display:none;" />
+                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import Presets (.zip, .yaml, .json)">${PresetUtils.icons.import}</button>
+                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Presets (.zip, .yaml, .json)">${PresetUtils.icons.export}</button>
                     <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;">New</button>
                     <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;">Save</button>
                     <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;">Delete</button>
@@ -1822,7 +2180,7 @@ class PresetGalleryApp {
       btnClearFields: wrap.querySelector("#j0n4t-pg-clear-fields-btn"),
       btnSave: wrap.querySelector("#j0n4t-pg-save-btn"),
       btnDel: wrap.querySelector("#j0n4t-pg-del-btn"),
-      inpZipFile: wrap.querySelector("#j0n4t-pg-zip-file"),
+      inpJsonFile: wrap.querySelector("#j0n4t-pg-json-file"),
       btnImport: wrap.querySelector("#j0n4t-pg-import-btn"),
       btnExport: wrap.querySelector("#j0n4t-pg-export-btn"),
       btnCopyBasket: wrap.querySelector("#j0n4t-pg-basket-copy-btn"),
@@ -1840,14 +2198,15 @@ class PresetGalleryApp {
       return (
         JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || []
       );
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       return [];
     }
   }
+
   setCollapsedFolders(list) {
     localStorage.setItem("pg_collapsed_folders_list", JSON.stringify(list));
   }
+
   getSelectedArray() {
     return this.widget.value
       ? this.widget.value
@@ -1869,13 +2228,10 @@ class PresetGalleryApp {
     if (isCurrentlyCollapsed === col) return;
 
     if (!isInit) {
-      // The extra 6px accounts for the editor's margin-top (2px) and the wrap's gap (4px)
       const spaceDelta = (this.dom.editor.offsetHeight || 200) + 6;
 
       if (col) {
-        // Hiding panel: give space to grid or basket
         this.lastEditorHeight = spaceDelta;
-
         const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
         if (!isGalleryHidden && this.dom.grid.offsetHeight > 0) {
           const currentGridH = this.dom.grid.offsetHeight;
@@ -1888,18 +2244,16 @@ class PresetGalleryApp {
           localStorage.setItem("comfy_preset_gallery_basket_h", String(currentBasketH + spaceDelta));
         }
       } else {
-        // Showing panel: take space back from grid or basket
         const takeBackHeight = this.lastEditorHeight || 200;
-
         const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
         if (!isGalleryHidden && this.dom.grid.offsetHeight > 0) {
           const currentGridH = this.dom.grid.offsetHeight;
-          const newH = Math.max(60, currentGridH - takeBackHeight); // 60px min-height
+          const newH = Math.max(60, currentGridH - takeBackHeight);
           this.dom.grid.style.height = `${newH}px`;
           localStorage.setItem("comfy_preset_gallery_grid_h", String(newH));
         } else {
           const currentBasketH = this.dom.basketContainer.offsetHeight;
-          const newH = Math.max(40, currentBasketH - takeBackHeight); // 40px min-height
+          const newH = Math.max(40, currentBasketH - takeBackHeight);
           this.dom.basketContainer.style.height = `${newH}px`;
           localStorage.setItem("comfy_preset_gallery_basket_h", String(newH));
         }
@@ -1918,10 +2272,11 @@ class PresetGalleryApp {
         el.classList.toggle(
           "editing",
           this.editor.currentMode === "edit" &&
-          el.dataset.style === this.editor.editingKey,
-        ),
+          el.dataset.style === this.editor.editingKey
+        )
       );
   }
+
   openEditorForPreset(styleKey) {
     this.editor.openPreset(styleKey);
   }
@@ -1930,6 +2285,7 @@ class PresetGalleryApp {
     this.cache = await PresetGalleryAPI.fetchGallery();
     this.grid.compile(this.cache);
   }
+
   async syncUI(val) {
     const arr = val
       ? val
@@ -1945,48 +2301,46 @@ class PresetGalleryApp {
   bindEvents() {
     this.dom.toggle.addEventListener("click", () =>
       this.setPanelCollapseState(
-        !this.dom.editor.classList.contains("collapsed"),
-      ),
+        !this.dom.editor.classList.contains("collapsed")
+      )
     );
     this.dom.search.addEventListener("input", () =>
-      this.grid.executeFilterPipeline(this.dom.search.value),
+      this.grid.executeFilterPipeline(this.dom.search.value)
     );
     this.dom.searchClear.addEventListener("click", () => {
       this.dom.search.value = "";
       this.grid.executeFilterPipeline();
       this.dom.search.focus();
     });
-    this.dom.btnExport.addEventListener("click", () =>
-      window.open("/custom_node/export_presets_zip", "_blank"),
-    );
-    this.dom.btnImport.addEventListener("click", () =>
-      this.dom.inpZipFile.click(),
-    );
-    this.dom.inpZipFile.addEventListener("change", async () => {
-      if (!this.dom.inpZipFile.files[0]) return;
-      const fd = new FormData();
-      fd.append("zip_file", this.dom.inpZipFile.files[0]);
-      if ((await PresetGalleryAPI.importZip(fd)).success) {
-        this.dom.inpZipFile.value = "";
-        await this.loadGallery();
-        this.updateWidgetValue([]);
-        alert("Imported!");
-      }
+
+    this.dom.btnExport.addEventListener("click", () => {
+      PresetGalleryAPI.showExportModal((format, mode) => {
+        PresetGalleryAPI.exportPool(format, mode);
+      });
     });
 
-    const toggleGallery = (hide) => {
-      this.dom.wrap.classList.toggle("hide-gallery-mode", hide);
-      this.dom.btnHideGallery.classList.toggle("active", !hide);
-      localStorage.setItem("comfy_preset_gallery_hidden", String(hide));
-    };
-    toggleGallery(
-      localStorage.getItem("comfy_preset_gallery_hidden") === "true",
-    );
-    this.dom.btnHideGallery.addEventListener("click", () =>
-      toggleGallery(!this.dom.wrap.classList.contains("hide-gallery-mode")),
-    );
+    this.dom.btnImport.addEventListener("click", () => this.dom.inpJsonFile.click());
+    this.dom.inpJsonFile.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const res = await PresetGalleryAPI.importFile(file);
+      if (res.success) {
+        await this.loadGallery();
+        alert("Presets imported successfully!");
+      }
+      this.dom.inpJsonFile.value = "";
+    });
 
-    // --- Resize Observers & State Restoration Logic ---
+    this.dom.btnHideGallery.addEventListener("click", () => {
+      const isHidden = this.dom.wrap.classList.toggle("hide-gallery-mode");
+      this.dom.btnHideGallery.classList.toggle("active", !isHidden);
+      localStorage.setItem("comfy_preset_gallery_hidden", String(isHidden));
+    });
+
+    if (localStorage.getItem("comfy_preset_gallery_hidden") === "true") {
+      this.dom.wrap.classList.add("hide-gallery-mode");
+      this.dom.btnHideGallery.classList.remove("active");
+    }
     const savedBasketH = localStorage.getItem("comfy_preset_gallery_basket_h");
     if (savedBasketH) {
       this.dom.basketContainer.style.height = `${savedBasketH}px`;
@@ -1995,13 +2349,13 @@ class PresetGalleryApp {
     const savedGridH = localStorage.getItem("comfy_preset_gallery_grid_h");
     if (savedGridH) {
       this.dom.grid.style.height = `${savedGridH}px`;
-      this.dom.grid.style.flexGrow = "0"; // Stop flex from expanding over inline height
+      this.dom.grid.style.flexGrow = "0";
     }
 
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const h = entry.target.offsetHeight;
-        if (h === 0) continue; // Don't override save states when elements are display: none 
+        if (h === 0) continue;
 
         if (entry.target === this.dom.basketContainer) {
           localStorage.setItem("comfy_preset_gallery_basket_h", String(h));
@@ -2026,7 +2380,7 @@ class PresetGalleryApp {
         query = query.trim().toLowerCase();
         if (!query) return [];
         return PresetUtils.getTopMatches(Object.keys(this.cache), query, (k) =>
-          PresetUtils.getSearchBlob(k, this.cache[k]),
+          PresetUtils.getSearchBlob(k, this.cache[k])
         );
       },
       renderItem: (match) =>
@@ -2052,7 +2406,7 @@ class PresetGalleryApp {
     this.initFilterAutocomplete();
     this.setPanelCollapseState(
       localStorage.getItem("comfy_preset_gallery_collapsed") === "true",
-      true // Pass isInit = true to avoid resizing during boot
+      true
     );
     this.node.setSize([
       this.node.size[0] || MIN_NODE_WIDTH,
@@ -2061,7 +2415,7 @@ class PresetGalleryApp {
   }
 }
 
-// --- 6. Registration --- //
+// Registration
 PresetGalleryStyles.inject();
 
 app.registerExtension({
@@ -2082,6 +2436,19 @@ app.registerExtension({
       widget.callback = function (value) {
         galleryView.syncUI(value);
         baseCallback?.apply(this, arguments);
+      };
+
+      // Client-side prompt expansion prior to queue execution
+      widget.serializeValue = function () {
+        const raw = widget.value || "";
+        const keys = raw
+          .split(",")
+          .map((k) => k.trim())
+          .filter(Boolean);
+        const expanded = keys
+          .map((k) => galleryView.cache[k]?.preset || k)
+          .join(", ");
+        return expanded;
       };
 
       galleryView.init();
