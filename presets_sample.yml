@@ -1,0 +1,36 @@
+# Core Photographic Styles
+styles:
+  cinematic_lighting: "cinematic lighting, dramatic shadows, moody atmosphere, volumetric god rays, 8k resolution"
+  vintage_analog: "vintage analog photo, 35mm film grain, faded colors, subtle light leaks, retro aesthetic"
+  cyberpunk_neon: "cyberpunk aesthetic, glowing neon lights, rain-slicked streets, high contrast, vibrant purple and teal cyan colors"
+  minimalist_clean: "minimalist design, studio white backdrop, clean lines, soft diffused corporate lighting, high-end commercial style"
+  dark_fantasy: "dark fantasy vibe, gothic architecture, eerie mist, ominous moonlight, intricate macabre details"
+
+# Camera & Shot Types
+camera:
+  macro_extreme: "extreme macro close-up shot, shallow depth of field, sharp focus, microscopic details visible"
+  wide_drone_angle: "wide-angle aerial drone photography, bird's-eye view, sweeping landscape, expansive perspective"
+  fisheye_distortion: "fisheye lens distortion, ultra-wide perspective, warped edges, dynamic action framing"
+  portrait_bokeh: "85mm focal length bokeh portrait, blurred background creaminess, sharp focus on eyes, professional headshot"
+
+# Digital & Traditional Art Mediums
+mediums:
+  watercolor_wash: "soft watercolor painting, bleeding ink washes, hand-drawn paper texture, pastel color palette"
+  oil_canvas_impasto: "thick impasto oil painting texture, visible palette knife strokes, rich oil canvas paint layers"
+  retro_pixel_art: "16-bit retro pixel art game sprite layout, clean grid lines, limited color palette, nostalgic shading"
+  vector_flat_illustration: "flat vector illustration, minimal shading, clean SVGs shapes, vibrant pop colors, modern graphic design"
+
+# Architectural & Environmental Settings
+environments:
+  brutalist_concrete: "brutalist architecture style, raw concrete textures, monolithic structures, geometric shadows"
+  biophilic_greenhouse: "biophilic design interior, solarium greenhouse, lush tropical plants cascading, sun-drenched glass panels"
+  steampunk_workshop: "steampunk laboratory workshop, brass gears turning, copper pipes hiss, dim amber Edison bulb illumination"
+
+# Character Attributes & Wardrobe
+characters:
+  stealth_cyber_ninja: "wearing sleek tactical stealth cyber ninja armor, matte black plating, glowing LED visor visor accents"
+  royal_baroque_gown: "wearing an ornate royal baroque gown, intricate gold embroidery thread, heavy velvet fabric, historical regality"
+
+# Root Category Presets (to demonstrate loose, un-grouped layout behaviors)
+hyper_detailed_enhancer: "hyper-detailed textures, highly intricate filigree lines, masterpiece quality composition, flawless render"
+surreal_dreamscape: "surreal dreamscape environment, floating islands, liquid sky physics, gravity-defying architecture, ethereal color shifts"

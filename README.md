@@ -14,7 +14,7 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/j0n4t/comfyui-preset-gallery.git
 ```
 
-> Sample presets: [presets_sample.zip](./presets_sample.zip)
+> Sample presets: [presets_sample.yml](./presets_sample.yml)
 
 Restart ComfyUI to load the extension.
 
