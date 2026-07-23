@@ -2674,7 +2674,17 @@ class PresetGalleryApp {
       },
       onKeyDown: (e) => {
         if (!manager.isOpen && e.key === "Enter" && !e.shiftKey) {
-          this.grid.executeFilterPipeline(this.dom.search.value);
+          const searchValue = this.dom.search.value.trim();
+          if (searchValue) {
+            const sel = this.getSelectedArray();
+            if (!sel.includes(searchValue)) {
+              this.updateWidgetValue([...sel, searchValue]);
+            }
+            this.dom.search.value = "";
+            this.grid.executeFilterPipeline();
+            this.dom.search.focus();
+          }
+          return true;
         }
       },
     });
