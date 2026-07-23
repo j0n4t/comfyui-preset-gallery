@@ -951,6 +951,10 @@ class PresetBasket {
     });
     this.textarea.addEventListener("change", sync);
     this.textarea.addEventListener("mousedown", (e) => e.stopPropagation());
+
+    // Add mousemove listener for tooltip functionality
+    this.textarea.addEventListener("mousemove", (e) => this.handleTextareaMouseMove(e));
+    this.textarea.addEventListener("mouseleave", () => this.textarea.title = "");
   }
 
   updateRawHighlights() {
@@ -995,10 +999,11 @@ class PresetBasket {
           ? "j0n4t-pg-raw-token plain-text"
           : "j0n4t-pg-raw-token";
         const styleAttr = textColor ? ` style="color: ${textColor};"` : "";
+        const titleAttr = item && !isPlainText ? ` title="${PresetUtils.escapeHTML(`${PresetUtils.toTitleCase(PresetUtils.getPresetName(trimmed))} [${trimmed}]\n${PresetUtils.escapeHTML(item.preset || "")}`)}"` : "";
 
         html +=
           `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(leadingSpace)}</span>` +
-          `<span class="${spanClass}"${styleAttr}>${PresetUtils.escapeHTML(trimmed)}</span>` +
+          `<span class="${spanClass}"${styleAttr}${titleAttr}>${PresetUtils.escapeHTML(trimmed)}</span>` +
           `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(trailingSpace)}</span>`;
       }
     });
@@ -1006,6 +1011,204 @@ class PresetBasket {
     highlightsEl.innerHTML = html + "\n";
     highlightsEl.scrollTop = this.textarea.scrollTop;
     highlightsEl.scrollLeft = this.textarea.scrollLeft;
+  }
+
+  /**
+   * Handle mouse movement over the textarea to show tooltips for presets
+   * @param {MouseEvent} e - Mouse event
+   */
+  handleTextareaMouseMove(e) {
+    const rect = this.textarea.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Get character position at mouse coordinates
+    const pos = this.getCharPositionAt(x, y);
+    if (pos === -1) {
+      this.textarea.title = "";
+      return;
+    }
+
+    // Find which token contains this position
+    const token = this.getTokenAtPosition(pos);
+    if (token && token.item && !token.isPlainText) {
+      // Set tooltip with preset info
+      this.textarea.title = `${PresetUtils.toTitleCase(PresetUtils.getPresetName(token.key))} [${token.key}]\n${token.item.preset || ""}`;
+    } else {
+      this.textarea.title = "";
+    }
+  }
+
+  /**
+* Get character position at x,y coordinates within the textarea
+* @param {number} x - X coordinate relative to textarea
+* @param {number} y - Y coordinate relative to textarea
+* @returns {number} Character index or -1 if not determinable
+*/
+  getCharPositionAt(x, y) {
+    const rect = this.textarea.getBoundingClientRect();
+    const clientX = rect.left + x;
+    const clientY = rect.top + y;
+
+    // Try to use the browser's caret position API for accuracy
+    let pos = -1;
+    if (document.caretPositionFromPoint) {
+      const caretPos = document.caretPositionFromPoint(clientX, clientY);
+      if (caretPos && caretPos.offsetNode === this.textarea) {
+        pos = caretPos.offset;
+      }
+    } else if (document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(clientX, clientY);
+      if (range && range.startContainer === this.textarea) {
+        pos = range.startOffset;
+      }
+    }
+
+    if (pos !== -1) {
+      // Post‑process: ensure we are not inside a delimiter (comma/whitespace)
+      // that could have changed due to a race.
+      return this._normalizeTokenPosition(pos);
+    }
+
+    // Fallback: approximate based on metrics (should rarely be used)
+    const style = window.getComputedStyle(this.textarea);
+    const paddingLeft = parseFloat(style.paddingLeft);
+    const paddingRight = parseFloat(style.paddingRight);
+    const paddingTop = parseFloat(style.paddingTop);
+    const paddingBottom = parseFloat(style.paddingBottom);
+    const borderLeft = parseFloat(style.borderLeftWidth);
+    const borderRight = parseFloat(style.borderRightWidth);
+    const borderTop = parseFloat(style.borderTopWidth);
+    const borderBottom = parseFloat(style.borderBottomWidth);
+
+    // Adjust for padding and border
+    const xPos = x - paddingLeft - borderLeft;
+    const yPos = y - paddingTop - borderTop;
+
+    const innerWidth = this.textarea.clientWidth - paddingLeft - paddingRight - borderLeft - borderRight;
+    const innerHeight = this.textarea.clientHeight - paddingTop - paddingBottom - borderTop - borderBottom;
+
+    if (xPos < 0 || yPos < 0 || xPos > innerWidth || yPos > innerHeight) return -1;
+
+    // Get font metrics
+    const fontSize = parseFloat(style.fontSize);
+    const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.2;
+    const charWidth = fontSize * 0.6; // Approximate average character width (monospace)
+
+    // Calculate characters per line and visible lines
+    const charsPerLine = Math.max(1, Math.floor(innerWidth / charWidth));
+    const linesCount = Math.max(1, Math.floor(innerHeight / lineHeight));
+
+    // Calculate column and row (zero-indexed)
+    const col = Math.min(Math.round(xPos / charWidth), charsPerLine - 1);
+    const row = Math.min(Math.floor(yPos / lineHeight), linesCount - 1);
+
+    // Calculate position
+    let calcPos = row * charsPerLine + col;
+
+    // Get text content and clamp
+    const text = this.textarea.value;
+    if (!text) return -1;
+    return this._normalizeTokenPosition(Math.min(calcPos, text.length));
+  }
+
+  /**
+   * Adjusts a raw character index to the nearest position that lies inside a token
+   * (i.e., not inside a comma or whitespace delimiter). This helps mitigate
+   * race conditions where the textarea's value changed slightly after the
+   * mouse event was processed.
+   * @param {number} pos - Raw character index (0‑based)
+   * @returns {number} Adjusted index, clamped to [0, text.length]
+   */
+  _normalizeTokenPosition(pos) {
+    const value = this.textarea.value;
+    if (!value) return 0;
+
+    // Clamp to valid range
+    if (pos < 0) return 0;
+    if (pos > value.length) return value.length;
+
+    // If the position is already inside a non‑delimiter, return it.
+    const ch = value[pos];
+    if (ch !== ',' && !/\s/.test(ch)) {
+      return pos;
+    }
+
+    // Otherwise, scan left and right to find the nearest non‑delimiter.
+    let left = pos - 1;
+    while (left >= 0 && (value[left] === ',' || /\s/.test(value[left]))) {
+      left--;
+    }
+    let right = pos + 1;
+    while (right < value.length && (value[right] === ',' || /\s/.test(value[right]))) {
+      right++;
+    }
+
+    // Choose the closer side; if tie, prefer left.
+    const leftDist = pos - (left + 1); // distance to the character after left delimiter
+    const rightDist = right - pos;     // distance to the character before right delimiter
+    return leftDist <= rightLeft ? left + 1 : right - 1;
+  }
+
+  /**
+   * Get token information at a specific character position
+   * @param {number} pos - Character position in textarea value
+   * @returns {Object|null} Token info or null if not found
+   */
+  getTokenAtPosition(pos) {
+    const value = this.textarea.value;
+    if (!value || pos < 0 || pos > value.length) return null;
+
+    // Split by commas and spaces to find tokens
+    let currentPos = 0;
+    const parts = value.split(/(\s*,\s*)/);
+
+    for (const part of parts) {
+      const partEnd = currentPos + part.length;
+
+      // Check if position is within this part
+      if (pos >= currentPos && pos <= partEnd) {
+        const trimmed = part.trim();
+        if (!trimmed) {
+          currentPos = partEnd;
+          continue;
+        }
+
+        // Check if it's a comma separator
+        if (/^\s*,\s*$/.test(part)) {
+          currentPos = partEnd;
+          continue;
+        }
+
+        // Find where the trimmed text starts within this part
+        const trimmedStart = part.indexOf(trimmed);
+        const trimmedEnd = trimmedStart + trimmed.length;
+
+        // Check if position is within the trimmed text
+        const relativePos = pos - currentPos;
+        if (relativePos >= trimmedStart && relativePos <= trimmedEnd) {
+          // Found our token
+          const item = this.context.cache[trimmed];
+          let isPlainText = false;
+
+          if (!item && !(/^<(lora|lyco):.+?>$/i.test(trimmed))) {
+            isPlainText = true;
+          }
+
+          return {
+            key: trimmed,
+            item: item || null,
+            isPlainText: isPlainText,
+            start: currentPos + trimmedStart,
+            end: currentPos + trimmedEnd
+          };
+        }
+      }
+
+      currentPos = partEnd;
+    }
+
+    return null;
   }
 
   initAutocomplete() {
