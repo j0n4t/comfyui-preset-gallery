@@ -586,7 +586,7 @@ class PresetGalleryAPI {
 
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const text = e.target.result;
           let parsedData = null;
@@ -1221,7 +1221,7 @@ class PresetBasket {
     // Choose the closer side; if tie, prefer left.
     const leftDist = pos - (left + 1); // distance to the character after left delimiter
     const rightDist = right - pos;     // distance to the character before right delimiter
-    return leftDist <= rightLeft ? left + 1 : right - 1;
+    return leftDist <= rightDist ? left + 1 : right - 1;
   }
 
   /**
