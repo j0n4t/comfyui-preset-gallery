@@ -243,12 +243,34 @@ const PresetUtils = {
     };
     return `#${f(0)}${f(8)}${f(4)}`;
   },
-  getGroupColor: (groupRaw) => {
+  getInheritedGroupColor: (groupRaw) => {
+    if (!groupRaw) return PresetUtils.getHashColor(""); // fallback
+
     try {
       const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-      if (customColors[groupRaw]) return customColors[groupRaw];
-    } catch (e) { }
-    return PresetUtils.getHashColor(groupRaw);
+
+      // Split the path and check from most specific to least specific
+      const parts = groupRaw.split("/");
+      for (let i = parts.length; i > 0; i--) {
+        const parentPath = parts.slice(0, i).join("/");
+        if (customColors[parentPath]) {
+          return customColors[parentPath];
+        }
+      }
+
+      // If no custom color found in hierarchy, use hash of the top-level group
+      const topLevel = parts[0] || "";
+      return PresetUtils.getHashColor(topLevel);
+    } catch (e) {
+      // fallback to hash of top-level group on error
+      const parts = groupRaw.split("/");
+      const topLevel = parts[0] || "";
+      return PresetUtils.getHashColor(topLevel);
+    }
+  },
+
+  getGroupColor: (groupRaw) => {
+    return PresetUtils.getInheritedGroupColor(groupRaw);
   },
   getGroupHexColor: (groupRaw) => {
     const color = PresetUtils.getGroupColor(groupRaw);
@@ -268,7 +290,17 @@ const PresetUtils = {
     } catch (e) { }
   },
   getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
-  getPresetColor: (key) => PresetUtils.getGroupColor(PresetUtils.getPresetBaseFolder(key)),
+  getPresetColor: (key) => {
+    // For root-level items (no "/"), use the item's own name for color
+    // For items in groups, use the group path with inheritance
+    if (!key.includes("/")) {
+      return PresetUtils.getHashColor(key);
+    }
+
+    // Get the group path (everything except the last part)
+    const groupPath = key.substring(0, key.lastIndexOf("/"));
+    return PresetUtils.getInheritedGroupColor(groupPath);
+  },
   getPresetName: (key) => key.split("/").pop(),
   getPresetTitle: (key, cache) =>
     PresetUtils.escapeHTML(
@@ -2116,7 +2148,7 @@ class PresetEditor {
       (this.dom.inpFolder.value.trim()
         ? `${this.dom.inpFolder.value.trim()}/`
         : "") + (this.dom.inpName.value.trim() || "New");
-    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetUtils.getPresetColor(this.dom.inpFolder.value.trim() || "")}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;">${PresetUtils.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetUtils.escapeHTML(PresetUtils.getPresetInitials(uniqueKey))}</div></div>`;
+    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetUtils.getGroupColor(uniqueKey) || ""}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;">${PresetUtils.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetUtils.escapeHTML(PresetUtils.getPresetInitials(uniqueKey))}</div></div>`;
   }
 
   updateBanner() {
@@ -2364,6 +2396,7 @@ class PresetEditor {
       onSelect: (match) => {
         this.dom.inpFolder.value = match;
         this.dom.inpFolder.focus();
+        this.dom.inpFolder.dispatchEvent(new Event('input', { bubbles: true }));
       },
     });
   }
