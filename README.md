@@ -2,6 +2,7 @@
 A sleek, visual extension for ComfyUI to save, organize, filter, and reuse your favorite prompt snippets and style templates using an interactive embedded grid.
 
 ![sample screenshot](sample.png)
+
 ## 🚀 Quick Start
 
 ### 1. Installation
@@ -24,48 +25,23 @@ Restart ComfyUI to load the extension.
 3. **Select Items:** Click any grid thumbnail to add it to the **Basket**. Click multiple items to concatenate them into a single prompt sequence.
 4. **Queue Prompt:** Run your generation; the combined string is sent right down the pipeline.
 
-
 ## Key Features
 
 ### 🧺 Interactive Presets Basket
 
 * **Drag-and-Drop:** Drag presets directly from the grid to arrange, sort, or insert them exactly where you want them inside your basket.
-* **Raw Mode & Auto-complete:** Toggle **Raw Mode** to edit your selection as raw comma-separated text. Includes an overlay auto-complete helper with fuzzy search matching.
-* **Custom Snippets:** Click **+ Custom** to inject temporary, one-time keywords into your selection pool without cluttering your permanent library.
+* **Raw Mode & Auto-complete:** Toggle **Raw Mode** to edit your selection as raw comma-separated text. Includes an overlay auto-complete helper with fuzzy search matching and syntax highlighting for better readability.
+* **Custom Snippets:** You can add one-time keywords into your selection pool without cluttering your library.
 
 ### 🔍 Live Grid Layouts & Filter Search
 
 * **Dynamic Views:** Toggle between small grids, large visual grids, or clean list views instantly.
-* **Live Search & Grouping:** Filter presets instantly by keyword, path, or tag. Keep things organized with mass-collapsible subfolder groups.
-* **Automatic Initials:** Items missing thumbnail images automatically generate color-coded cards with title initials.
+* **Live Search & Grouping:** Filter presets instantly by keyword, path, or tag. Keep things organized with subfolder groups.
 
 ### ⚙️ Management & Preset Editor
 
-Expand the **⚙️ Management Panel** at the bottom to curate your collection:
+Expand the **⚙️ Management Panel** to curate your collection:
 
-* **Save, Edit, Overwrite:** Create brand-new items or edit existing items on your grid to update text parameters or subfolders.
+* **Save, Edit, Overwrite:** Create brand‑new items or edit existing items on your grid to update text parameters or subfolders.
 * **Image Assets:** Add, replace, or erase reference cover artwork (`.jpg`, `.png`, `.webp`) for any preset entry.
-* **Portable Packages:** Import and export your entire asset tree via `.zip` archive backups for quick migrations.
-
-## Technical Details
-
-* **Node Class Name:** `PresetGalleryNode`
-* **Category:** `utils`
-* **Files Reference:** Frontend UI mutations and styles are orchestrated by `preset_gallery.js`, while the backend state, disk operations, and server endpoints are driven by `preset_gallery.py`.
-
-### Storage Architecture
-
-Your catalog data is stored as flat text configurations accompanied by image pairs inside the localized asset path:
-
-```text
-comfyui-preset-gallery/
-├── preset_gallery.py
-├── web/
-│   └── preset_gallery.js
-└── presets_pool/         # Managed library files
-    ├── explicit_style.txt
-    ├── explicit_style.jpg
-    └── characters/
-        ├── default_avatar.txt
-        └── default_avatar.png
-```
+* **Persistence:** Your preset pool is saved in browser `localStorage`, and you can import and export via `.yaml`, `.json` or `.zip` files.
