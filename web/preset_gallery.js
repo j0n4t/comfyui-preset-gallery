@@ -41,11 +41,6 @@ const fileToDataURL = (file) =>
     reader.readAsDataURL(file);
   });
 
-/**
- * Creates a thumbnail version of an image to save localStorage space
- * @param {string} dataUrl - The original image as a data URL
- * @returns {Promise<string>} - Thumbnail image as a data URL
- */
 const createThumbnail = async (dataUrl) => {
   if (!dataUrl || !dataUrl.startsWith("data:image/")) return dataUrl;
 
@@ -53,17 +48,14 @@ const createThumbnail = async (dataUrl) => {
     const img = new Image();
     img.src = dataUrl;
 
-    // Wait for image to load
     await new Promise((resolve, reject) => {
       img.onload = resolve;
       img.onerror = reject;
     });
 
-    // Create canvas for thumbnail
     const canvas = document.createElement("canvas");
-    const MAX_DIMENSION = 200; // Max width or height for thumbnail
+    const MAX_DIMENSION = 200;
 
-    // Calculate dimensions maintaining aspect ratio
     let width = img.width;
     let height = img.height;
 
@@ -82,23 +74,12 @@ const createThumbnail = async (dataUrl) => {
     canvas.width = width;
     canvas.height = height;
 
-    // Draw image onto canvas
     const ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0, width, height);
 
-    // Convert to JPEG with reasonable quality to save space
-    // Try to preserve original format if it was JPEG/PNG, but use JPEG for smaller size
-    let mimeType = "image/jpeg";
-    let quality = 0.7; // Good balance of quality and size
-
-    // If original was PNG and has transparency, we might want to preserve it
-    // But for simplicity and space savings, we'll convert to JPEG
-    // In future, we could check if PNG with alpha is needed
-
-    return canvas.toDataURL(mimeType, quality);
+    return canvas.toDataURL("image/jpeg", 0.7);
   } catch (error) {
     console.error("Error creating thumbnail:", error);
-    // Return original if thumbnail creation fails
     return dataUrl;
   }
 };
@@ -244,12 +225,10 @@ const PresetUtils = {
     return `#${f(0)}${f(8)}${f(4)}`;
   },
   getInheritedGroupColor: (groupRaw) => {
-    if (!groupRaw) return PresetUtils.getHashColor(""); // fallback
+    if (!groupRaw) return PresetUtils.getHashColor("");
 
     try {
       const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-
-      // Split the path and check from most specific to least specific
       const parts = groupRaw.split("/");
       for (let i = parts.length; i > 0; i--) {
         const parentPath = parts.slice(0, i).join("/");
@@ -258,20 +237,16 @@ const PresetUtils = {
         }
       }
 
-      // If no custom color found in hierarchy, use hash of the top-level group
       const topLevel = parts[0] || "";
       return PresetUtils.getHashColor(topLevel);
     } catch (e) {
-      // fallback to hash of top-level group on error
       const parts = groupRaw.split("/");
       const topLevel = parts[0] || "";
       return PresetUtils.getHashColor(topLevel);
     }
   },
 
-  getGroupColor: (groupRaw) => {
-    return PresetUtils.getInheritedGroupColor(groupRaw);
-  },
+  getGroupColor: (groupRaw) => PresetUtils.getInheritedGroupColor(groupRaw),
   getGroupHexColor: (groupRaw) => {
     const color = PresetUtils.getGroupColor(groupRaw);
     if (color.startsWith("#")) return color;
@@ -291,13 +266,9 @@ const PresetUtils = {
   },
   getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
   getPresetColor: (key) => {
-    // For root-level items (no "/"), use the item's own name for color
-    // For items in groups, use the group path with inheritance
     if (!key.includes("/")) {
       return PresetUtils.getHashColor(key);
     }
-
-    // Get the group path (everything except the last part)
     const groupPath = key.substring(0, key.lastIndexOf("/"));
     return PresetUtils.getInheritedGroupColor(groupPath);
   },
@@ -393,7 +364,6 @@ class PresetGalleryAPI {
     if (clearImage) {
       finalImage = null;
     } else if (imageData) {
-      // Create a thumbnail to save localStorage space
       finalImage = await createThumbnail(imageData);
     }
 
@@ -435,52 +405,209 @@ class PresetGalleryAPI {
     return { success: true };
   }
 
+  /**
+   * Builds the preset selection tree UI element
+   */
+  static buildPresetSelectorTree(pool) {
+    const container = document.createElement("div");
+    container.className = "j0n4t-pg-selector-container";
+
+    const controls = document.createElement("div");
+    controls.className = "j0n4t-pg-selector-controls";
+    controls.innerHTML = `
+      <label class="j0n4t-pg-checkbox-wrap">
+        <input type="checkbox" id="j0n4t-pg-sel-all" checked />
+        <span><strong>Select / Deselect All</strong></span>
+      </label>
+    `;
+    container.appendChild(controls);
+
+    const treeBox = document.createElement("div");
+    treeBox.className = "j0n4t-pg-selector-tree";
+
+    // Group items by tags/folder
+    const groups = {};
+    for (const [key, item] of Object.entries(pool)) {
+      const gKey = item.tags && item.tags.length ? item.tags.join("/") : "root_presets";
+      if (!groups[gKey]) groups[gKey] = [];
+      groups[gKey].push({ key, item });
+    }
+
+    for (const [gKey, items] of Object.entries(groups)) {
+      const gName = gKey === "root_presets" ? "Root Presets" : gKey.split("/").map(PresetUtils.toTitleCase).join(" › ");
+
+      const groupEl = document.createElement("div");
+      groupEl.className = "j0n4t-pg-tree-group";
+
+      const groupHeader = document.createElement("div");
+      groupHeader.className = "j0n4t-pg-tree-group-header";
+      groupHeader.innerHTML = `
+        <label class="j0n4t-pg-checkbox-wrap">
+          <input type="checkbox" class="j0n4t-pg-group-cb" data-group="${PresetUtils.escapeHTML(gKey)}" checked />
+          <span><strong>${PresetUtils.escapeHTML(gName)}</strong> (${items.length})</span>
+        </label>
+      `;
+      groupEl.appendChild(groupHeader);
+
+      const itemsBox = document.createElement("div");
+      itemsBox.className = "j0n4t-pg-tree-group-items";
+
+      items.forEach(({ key }) => {
+        const itemRow = document.createElement("div");
+        itemRow.className = "j0n4t-pg-tree-item";
+        itemRow.innerHTML = `
+          <label class="j0n4t-pg-checkbox-wrap">
+            <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetUtils.escapeHTML(gKey)}" value="${PresetUtils.escapeHTML(key)}" checked />
+            <span>${PresetUtils.escapeHTML(PresetUtils.getPresetName(key))}</span>
+          </label>
+        `;
+        itemsBox.appendChild(itemRow);
+      });
+
+      groupEl.appendChild(itemsBox);
+      treeBox.appendChild(groupEl);
+    }
+
+    container.appendChild(treeBox);
+
+    // Wire up Selection Sync
+    const masterCb = controls.querySelector("#j0n4t-pg-sel-all");
+    const groupCbs = treeBox.querySelectorAll(".j0n4t-pg-group-cb");
+    const itemCbs = treeBox.querySelectorAll(".j0n4t-pg-item-cb");
+
+    const updateGroupAndMasterStates = () => {
+      let allItemsChecked = true;
+      let anyItemChecked = false;
+
+      groupCbs.forEach((gCb) => {
+        const gKey = gCb.dataset.group;
+        const groupItems = treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`);
+        const checkedCount = Array.from(groupItems).filter((c) => c.checked).length;
+
+        if (checkedCount === groupItems.length) {
+          gCb.checked = true;
+          gCb.indeterminate = false;
+        } else if (checkedCount === 0) {
+          gCb.checked = false;
+          gCb.indeterminate = false;
+        } else {
+          gCb.checked = false;
+          gCb.indeterminate = true;
+        }
+
+        if (checkedCount > 0) anyItemChecked = true;
+        if (checkedCount < groupItems.length) allItemsChecked = false;
+      });
+
+      masterCb.checked = allItemsChecked;
+      masterCb.indeterminate = !allItemsChecked && anyItemChecked;
+    };
+
+    masterCb.addEventListener("change", () => {
+      itemCbs.forEach((cb) => (cb.checked = masterCb.checked));
+      groupCbs.forEach((cb) => {
+        cb.checked = masterCb.checked;
+        cb.indeterminate = false;
+      });
+    });
+
+    groupCbs.forEach((gCb) => {
+      gCb.addEventListener("change", () => {
+        const gKey = gCb.dataset.group;
+        const groupItems = treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`);
+        groupItems.forEach((cb) => (cb.checked = gCb.checked));
+        updateGroupAndMasterStates();
+      });
+    });
+
+    itemCbs.forEach((cb) => {
+      cb.addEventListener("change", updateGroupAndMasterStates);
+    });
+
+    return {
+      element: container,
+      getSelectedKeys: () =>
+        Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map((cb) => cb.value),
+    };
+  }
+
   static showExportModal(onExport) {
+    const pool = PresetGalleryAPI.getPool();
+    if (Object.keys(pool).length === 0) {
+      alert("No presets available to export.");
+      return;
+    }
+
     const overlay = document.createElement("div");
     overlay.className = "j0n4t-pg-modal-overlay";
-    overlay.innerHTML = `
-      <div class="j0n4t-pg-modal">
-        <h3>📦 Export Presets</h3>
-        <div class="j0n4t-pg-modal-field">
+
+    const modal = document.createElement("div");
+    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
+    modal.innerHTML = `
+      <h3>📦 Export Selected Presets</h3>
+      <div class="j0n4t-pg-modal-row">
+        <div class="j0n4t-pg-modal-field" style="flex:1;">
           <label>File Format</label>
           <select id="j0n4t-pg-exp-format">
-          <option value="yaml">YAML (.yaml)</option>
-          <option value="json">JSON (.json)</option>
-          <option value="zip">ZIP Archive (.zip)</option>
+            <option value="zip">ZIP Archive (.zip)</option>
+            <option value="yaml">YAML (.yaml)</option>
+            <option value="json">JSON (.json)</option>
           </select>
         </div>
-        <div class="j0n4t-pg-modal-field">
+        <div class="j0n4t-pg-modal-field" style="flex:1;">
           <label>Data Content</label>
           <select id="j0n4t-pg-exp-mode">
-            <option value="preset-only">Nested Presets Only (Clean)</option>
-            <option value="full">Full Pool Data (With Images)</option>
+            <option value="full">Full Data (With Images)</option>
+            <option value="preset-only">Presets Only (Clean)</option>
           </select>
         </div>
-        <div class="j0n4t-pg-modal-actions">
-          <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-exp-cancel" style="background:#444;">Cancel</button>
-          <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-exp-confirm" style="background:#007acc;">Export File</button>
-        </div>
+      </div>
+      <div class="j0n4t-pg-modal-field">
+        <label>Select Presets & Groups to Export</label>
+        <div id="j0n4t-pg-tree-mount"></div>
+      </div>
+      <div class="j0n4t-pg-modal-actions">
+        <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-exp-cancel" style="background:#444;">Cancel</button>
+        <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-exp-confirm" style="background:#007acc;">Export Selected</button>
       </div>
     `;
 
+    overlay.appendChild(modal);
+
+    const tree = PresetGalleryAPI.buildPresetSelectorTree(pool);
+    modal.querySelector("#j0n4t-pg-tree-mount").appendChild(tree.element);
+
     const close = () => overlay.remove();
-    overlay.querySelector("#j0n4t-pg-exp-cancel").addEventListener("click", close);
+    modal.querySelector("#j0n4t-pg-exp-cancel").addEventListener("click", close);
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) close();
     });
 
-    overlay.querySelector("#j0n4t-pg-exp-confirm").addEventListener("click", () => {
-      const format = overlay.querySelector("#j0n4t-pg-exp-format").value;
-      const mode = overlay.querySelector("#j0n4t-pg-exp-mode").value;
+    modal.querySelector("#j0n4t-pg-exp-confirm").addEventListener("click", () => {
+      const selectedKeys = tree.getSelectedKeys();
+      if (!selectedKeys.length) {
+        alert("Please select at least one preset to export.");
+        return;
+      }
+      const format = modal.querySelector("#j0n4t-pg-exp-format").value;
+      const mode = modal.querySelector("#j0n4t-pg-exp-mode").value;
       close();
-      onExport(format, mode);
+      onExport(format, mode, selectedKeys);
     });
 
     document.body.appendChild(overlay);
   }
 
-  static async exportPool(format = "zip", mode = "full") {
-    const pool = PresetGalleryAPI.getPool();
+  static async exportPool(format = "zip", mode = "full", selectedKeys = null) {
+    let pool = PresetGalleryAPI.getPool();
+
+    if (selectedKeys && Array.isArray(selectedKeys)) {
+      const filtered = {};
+      for (const k of selectedKeys) {
+        if (pool[k]) filtered[k] = pool[k];
+      }
+      pool = filtered;
+    }
 
     if (format === "zip") {
       try {
@@ -556,12 +683,68 @@ class PresetGalleryAPI {
     URL.revokeObjectURL(url);
   }
 
+  static showImportModal(importedPool, onConfirm) {
+    const overlay = document.createElement("div");
+    overlay.className = "j0n4t-pg-modal-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
+
+    const currentPool = PresetGalleryAPI.getPool();
+    const duplicates = Object.keys(importedPool).filter((k) => k in currentPool);
+
+    modal.innerHTML = `
+      <h3>📥 Import Presets</h3>
+      <div class="j0n4t-pg-modal-field">
+        <label>Handling Duplicate Presets (${duplicates.length} detected)</label>
+        <select id="j0n4t-pg-dup-strategy">
+          <option value="overwrite">Overwrite existing presets</option>
+          <option value="skip">Skip duplicates</option>
+          <option value="keep_both">Keep both (Rename imported with _copy)</option>
+        </select>
+      </div>
+      <div class="j0n4t-pg-modal-field">
+        <label>Select Presets & Groups to Import</label>
+        <div id="j0n4t-pg-tree-mount"></div>
+      </div>
+      <div class="j0n4t-pg-modal-actions">
+        <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-imp-cancel" style="background:#444;">Cancel</button>
+        <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-imp-confirm" style="background:#007acc;">Import Selected</button>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+
+    const tree = PresetGalleryAPI.buildPresetSelectorTree(importedPool);
+    modal.querySelector("#j0n4t-pg-tree-mount").appendChild(tree.element);
+
+    const close = () => overlay.remove();
+    modal.querySelector("#j0n4t-pg-imp-cancel").addEventListener("click", close);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+
+    modal.querySelector("#j0n4t-pg-imp-confirm").addEventListener("click", () => {
+      const selectedKeys = tree.getSelectedKeys();
+      if (!selectedKeys.length) {
+        alert("Please select at least one preset to import.");
+        return;
+      }
+      const duplicateStrategy = modal.querySelector("#j0n4t-pg-dup-strategy").value;
+      close();
+      onConfirm({ selectedKeys, duplicateStrategy });
+    });
+
+    document.body.appendChild(overlay);
+  }
+
   static async importFile(file) {
+    let importedPool = {};
+
     if (file.name.toLowerCase().endsWith(".zip")) {
       try {
         const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(file);
-        const importedPool = {};
 
         const txtFiles = {};
         const imgFiles = {};
@@ -592,7 +775,6 @@ class PresetGalleryAPI {
             const base64 = await entry.async("base64");
             const mime = getMimeType(ext);
             const dataUrl = `data:${mime};base64,${base64}`;
-            // Create a thumbnail to save localStorage space
             filename = await createThumbnail(dataUrl);
           }
 
@@ -605,58 +787,84 @@ class PresetGalleryAPI {
             filename: filename,
           };
         }
-
-        const currentPool = PresetGalleryAPI.getPool();
-        const merged = { ...currentPool, ...importedPool };
-        PresetGalleryAPI.savePool(merged);
-        return { success: true };
       } catch (err) {
         alert("Failed to parse ZIP file: " + err.message);
         return { success: false };
       }
+    } else {
+      try {
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+
+        let parsedData = null;
+        if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
+          parsedData = YAMLUtils.parse(text);
+        } else {
+          try {
+            parsedData = JSON.parse(text);
+          } catch (err) {
+            parsedData = YAMLUtils.parse(text);
+          }
+        }
+
+        if (typeof parsedData !== "object" || parsedData === null) {
+          throw new Error("Invalid file structure");
+        }
+
+        importedPool = NestedPoolUtils.nestedToFlat(parsedData);
+
+        for (const [key, item] of Object.entries(importedPool)) {
+          if (item && item.filename && item.filename.startsWith("data:image/")) {
+            item.filename = await createThumbnail(item.filename);
+          }
+        }
+      } catch (err) {
+        alert("Failed to parse file: " + err.message);
+        return { success: false };
+      }
+    }
+
+    if (Object.keys(importedPool).length === 0) {
+      alert("No valid presets found in the imported file.");
+      return { success: false };
     }
 
     return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const text = e.target.result;
-          let parsedData = null;
+      PresetGalleryAPI.showImportModal(importedPool, async ({ selectedKeys, duplicateStrategy }) => {
+        const currentPool = PresetGalleryAPI.getPool();
 
-          if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
-            parsedData = YAMLUtils.parse(text);
-          } else {
-            try {
-              parsedData = JSON.parse(text);
-            } catch (err) {
-              parsedData = YAMLUtils.parse(text);
+        for (const key of selectedKeys) {
+          const item = importedPool[key];
+          if (!item) continue;
+
+          let targetKey = key;
+          if (targetKey in currentPool) {
+            if (duplicateStrategy === "skip") {
+              continue;
+            } else if (duplicateStrategy === "keep_both") {
+              let copyIndex = 1;
+              const parts = key.split("/");
+              const baseName = parts.pop();
+              const folderPrefix = parts.length ? parts.join("/") + "/" : "";
+
+              while (`${folderPrefix}${baseName}_copy_${copyIndex}` in currentPool) {
+                copyIndex++;
+              }
+              targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
+              item.tags = targetKey.includes("/") ? targetKey.split("/").slice(0, -1) : [];
             }
           }
 
-          if (typeof parsedData !== "object" || parsedData === null) {
-            throw new Error("Invalid file structure");
-          }
-
-          const flattenedImport = NestedPoolUtils.nestedToFlat(parsedData);
-          const currentPool = PresetGalleryAPI.getPool();
-          const merged = { ...currentPool, ...flattenedImport };
-
-          // Process imported images to create thumbnails for localStorage efficiency
-          for (const [key, item] of Object.entries(merged)) {
-            if (item && item.filename && item.filename.startsWith("data:image/")) {
-              // Create a thumbnail for each image to save localStorage space
-              item.filename = await createThumbnail(item.filename);
-            }
-          }
-
-          PresetGalleryAPI.savePool(merged);
-          resolve({ success: true });
-        } catch (err) {
-          alert("Failed to parse file: " + err.message);
-          resolve({ success: false });
+          currentPool[targetKey] = item;
         }
-      };
-      reader.readAsText(file);
+
+        PresetGalleryAPI.savePool(currentPool);
+        resolve({ success: true });
+      });
     });
   }
 }
@@ -949,12 +1157,23 @@ class PresetGalleryStyles {
 
       .j0n4t-pg-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(3px); z-index: 20000; display: flex; align-items: center; justify-content: center; }
       .j0n4t-pg-modal { background: #1f1f1f; border: 1px solid #007acc; border-radius: 8px; width: 320px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); font-family: sans-serif; display: flex; flex-direction: column; gap: 12px; color: #eee; }
+      .j0n4t-pg-modal.j0n4t-pg-modal-large { width: 420px; max-width: 90vw; }
       .j0n4t-pg-modal h3 { margin: 0; font-size: 13px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 6px; }
+      .j0n4t-pg-modal-row { display: flex; gap: 10px; width: 100%; }
       .j0n4t-pg-modal-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
       .j0n4t-pg-modal-field label { color: #aaa; font-weight: bold; }
       .j0n4t-pg-modal-field select { background: #111; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; }
       .j0n4t-pg-modal-field select:focus { border-color: #007acc; }
       .j0n4t-pg-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+      /* Preset Tree Selector Styles */
+      .j0n4t-pg-selector-container { border: 1px solid #333; background: #141414; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+      .j0n4t-pg-selector-controls { border-bottom: 1px solid #222; padding-bottom: 4px; }
+      .j0n4t-pg-selector-tree { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+      .j0n4t-pg-tree-group { display: flex; flex-direction: column; gap: 2px; }
+      .j0n4t-pg-tree-group-header { background: #1e1e1e; padding: 2px 6px; border-radius: 3px; }
+      .j0n4t-pg-tree-group-items { padding-left: 16px; display: flex; flex-direction: column; gap: 1px; }
+      .j0n4t-pg-tree-item { padding: 1px 0; }
     `;
     document.head.appendChild(styles);
   }
