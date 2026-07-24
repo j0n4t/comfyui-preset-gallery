@@ -738,6 +738,7 @@ export default class PresetBasket {
       });
       chip.addEventListener("dblclick", (e) => {
         e.stopPropagation();
+        this.closeChipMenu();
         this.explodeChip(styleKey, chip);
       });
       chip.addEventListener("dragstart", (e) => {
