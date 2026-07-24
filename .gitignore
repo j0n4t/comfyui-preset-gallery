@@ -1,5 +1,5 @@
 __pycache__
-/presets_pool/
+/presets.json
 
 # Playwright
 node_modules/

@@ -12,7 +12,6 @@ const loadJSZip = async () => {
   });
 };
 
-
 const parseDataURL = (dataUrl) => {
   if (!dataUrl || !dataUrl.startsWith("data:")) return null;
   const matches = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,(.+)$/i);
@@ -181,28 +180,57 @@ const NestedPoolUtils = {
   },
 };
 
-
 export default class PresetGalleryAPI {
-  static STORAGE_KEY = "comfy_preset_gallery_pool";
+  static API_ENDPOINT = "/preset_gallery/presets";
 
-  static getPool() {
+  static async fetchGallery() {
     try {
-      return JSON.parse(localStorage.getItem(PresetGalleryAPI.STORAGE_KEY) || "{}");
+      const res = await fetch(PresetGalleryAPI.API_ENDPOINT);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const serverPool = await res.json();
+
+      // Auto-migrate browser localStorage presets to server on first load
+      const localData = localStorage.getItem("comfy_preset_gallery_pool");
+      if (localData && Object.keys(serverPool).length === 0) {
+        try {
+          const localPool = JSON.parse(localData);
+          if (Object.keys(localPool).length > 0) {
+            await PresetGalleryAPI.savePool(localPool);
+            localStorage.removeItem("comfy_preset_gallery_pool");
+            return localPool;
+          }
+        } catch (e) {
+          console.error("[PresetGalleryAPI] Failed to migrate localStorage pool:", e);
+        }
+      }
+
+      return serverPool;
     } catch (error) {
-      return { error };
+      console.error("[PresetGalleryAPI] Error fetching gallery:", error);
+      return {};
     }
   }
 
-  static savePool(pool) {
-    localStorage.setItem(PresetGalleryAPI.STORAGE_KEY, JSON.stringify(pool));
+  static async getPool() {
+    return await PresetGalleryAPI.fetchGallery();
   }
 
-  static async fetchGallery() {
-    return PresetGalleryAPI.getPool();
+  static async savePool(pool) {
+    try {
+      const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pool),
+      });
+      return await res.json();
+    } catch (error) {
+      console.error("[PresetGalleryAPI] Error saving pool:", error);
+      return { success: false, error };
+    }
   }
 
   static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode }) {
-    const pool = PresetGalleryAPI.getPool();
+    const pool = await PresetGalleryAPI.getPool();
     const cleanFolder = folder ? folder.trim().toLowerCase().replace(/ /g, "_") : "";
     const cleanName = name.trim().toLowerCase().replace(/ /g, "_");
     const newKey = cleanFolder ? `${cleanFolder}/${cleanName}` : cleanName;
@@ -225,19 +253,19 @@ export default class PresetGalleryAPI {
       filename: finalImage,
     };
 
-    PresetGalleryAPI.savePool(pool);
+    await PresetGalleryAPI.savePool(pool);
     return { success: true, key: newKey };
   }
 
   static async deletePreset(uniqueKey) {
-    const pool = PresetGalleryAPI.getPool();
+    const pool = await PresetGalleryAPI.getPool();
     delete pool[uniqueKey];
-    PresetGalleryAPI.savePool(pool);
+    await PresetGalleryAPI.savePool(pool);
     return { success: true };
   }
 
   static async renameFolder(oldFolder, newFolder) {
-    const pool = PresetGalleryAPI.getPool();
+    const pool = await PresetGalleryAPI.getPool();
     const newPool = {};
     const prefix = `${oldFolder}/`;
 
@@ -253,13 +281,10 @@ export default class PresetGalleryAPI {
       }
     }
 
-    PresetGalleryAPI.savePool(newPool);
+    await PresetGalleryAPI.savePool(newPool);
     return { success: true };
   }
 
-  /**
-   * Builds the preset selection tree UI element
-   */
   static buildPresetSelectorTree(pool) {
     const container = document.createElement("div");
     container.className = "j0n4t-pg-selector-container";
@@ -277,7 +302,6 @@ export default class PresetGalleryAPI {
     const treeBox = document.createElement("div");
     treeBox.className = "j0n4t-pg-selector-tree";
 
-    // Group items by tags/folder
     const groups = {};
     for (const [key, item] of Object.entries(pool)) {
       const gKey = item.tags && item.tags.length ? item.tags.join("/") : "root_presets";
@@ -322,7 +346,6 @@ export default class PresetGalleryAPI {
 
     container.appendChild(treeBox);
 
-    // Wire up Selection Sync
     const masterCb = controls.querySelector("#j0n4t-pg-sel-all");
     const groupCbs = treeBox.querySelectorAll(".j0n4t-pg-group-cb");
     const itemCbs = treeBox.querySelectorAll(".j0n4t-pg-item-cb");
@@ -383,8 +406,8 @@ export default class PresetGalleryAPI {
     };
   }
 
-  static showExportModal(onExport) {
-    const pool = PresetGalleryAPI.getPool();
+  static async showExportModal(onExport) {
+    const pool = await PresetGalleryAPI.getPool();
     if (Object.keys(pool).length === 0) {
       alert("No presets available to export.");
       return;
@@ -451,7 +474,7 @@ export default class PresetGalleryAPI {
   }
 
   static async exportPool(format = "zip", mode = "full", selectedKeys = null) {
-    let pool = PresetGalleryAPI.getPool();
+    let pool = await PresetGalleryAPI.getPool();
 
     if (selectedKeys && Array.isArray(selectedKeys)) {
       const filtered = {};
@@ -535,14 +558,14 @@ export default class PresetGalleryAPI {
     URL.revokeObjectURL(url);
   }
 
-  static showImportModal(importedPool, onConfirm) {
+  static async showImportModal(importedPool, onConfirm) {
     const overlay = document.createElement("div");
     overlay.className = "j0n4t-pg-modal-overlay";
 
     const modal = document.createElement("div");
     modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
 
-    const currentPool = PresetGalleryAPI.getPool();
+    const currentPool = await PresetGalleryAPI.getPool();
     const duplicates = Object.keys(importedPool).filter((k) => k in currentPool);
 
     modal.innerHTML = `
@@ -683,7 +706,7 @@ export default class PresetGalleryAPI {
 
     return new Promise((resolve) => {
       PresetGalleryAPI.showImportModal(importedPool, async ({ selectedKeys, duplicateStrategy }) => {
-        const currentPool = PresetGalleryAPI.getPool();
+        const currentPool = await PresetGalleryAPI.getPool();
 
         for (const key of selectedKeys) {
           const item = importedPool[key];
@@ -710,7 +733,7 @@ export default class PresetGalleryAPI {
           currentPool[targetKey] = item;
         }
 
-        PresetGalleryAPI.savePool(currentPool);
+        await PresetGalleryAPI.savePool(currentPool);
         resolve({ success: true });
       });
     });
