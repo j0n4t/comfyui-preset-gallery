@@ -2,6 +2,40 @@ import AutocompleteManager from "./AutocompleteManager.js";
 import PresetUtils from "./PresetUtils.js";
 
 export default class PresetBasket {
+  static BASKET_CONTAINER_STYLES = /*css*/ `
+    .j0n4t-pg-basket-container { display: flex; flex-direction: column; gap: 4px; background: #15151580; border: 1px dashed #777; border-radius: 4px; padding: 0; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; resize: vertical; overflow-y: auto; overflow-x: hidden; min-height: 40px; }
+    .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
+    .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; padding: 4px; background: #222;  position: sticky; top: 0; z-index: 1; }
+    .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
+    .j0n4t-pg-basket-clear-btn:hover { background: #912e2e; }
+    .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; padding: 4px; }
+    .j0n4t-pg-raw-wrapper { position: relative; width: 100%; height: 100%; display: none; padding: 4px; box-sizing: border-box; }
+    .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block !important; }
+    .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool { display: none !important; }
+    .j0n4t-pg-raw-highlights, .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 48px; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; border-radius: 3px; margin: 0; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4; border: 1px solid transparent; letter-spacing: normal; word-spacing: normal; text-transform: none; text-indent: 0px; text-shadow: none; }
+    .j0n4t-pg-raw-highlights { position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px; pointer-events: none; color: transparent; overflow: hidden; background: transparent; z-index: 1; width: calc(100% - 8px); height: calc(100% - 8px); }
+    .j0n4t-pg-basket-raw-textarea { display: block; background: transparent; border-color: #444; color: transparent; caret-color: #fff; resize: none; position: relative; z-index: 2; }
+    .j0n4t-pg-raw-token { color: #569cd6; font-weight: bold; }
+    .j0n4t-pg-raw-token.plain-text { color: #cccccc; font-weight: normal; }
+  `;
+
+  static BASKET_CHIP_ETC_STYLES = /*css*/ `
+    .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
+    .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
+    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; }
+    .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.2); z-index: 0; pointer-events: none; }
+    .j0n4t-pg-basket-chip:active { cursor: grabbing; }
+    .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
+    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; z-index: 1; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
+    .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
+    .j0n4t-pg-basket-chip.inline-editing::before { display: none; }
+    .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
+    .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; }
+    .j0n4t-pg-basket-add-btn:hover { border-color: #007acc; color: #fff; background: #1a242db0; }
+    .j0n4t-pg-lora-weight { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 0 0 2px; text-align: center; margin: 0 2px; outline: none; }
+    .j0n4t-pg-lora-weight:focus { border-color: #007acc; }
+  `;
+
   constructor(container, pool, textarea, context) {
     this.container = container;
     this.pool = pool;
@@ -12,6 +46,9 @@ export default class PresetBasket {
     this.currentMatches = [];
     this.activeIndex = 0;
     this._updatingTextarea = false;
+
+    PresetUtils.injectStyles("j0n4t-pg-basket-container-styles", PresetBasket.BASKET_CONTAINER_STYLES);
+    PresetUtils.injectStyles("j0n4t-pg-basket-chip-etc-styles", PresetBasket.BASKET_CHIP_ETC_STYLES);
 
     this.initDragAndDrop();
     this.initRawInputSync();

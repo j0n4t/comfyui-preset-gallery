@@ -1,7 +1,6 @@
 import { app } from "../../../scripts/app.js";
 
 import AutocompleteManager from "./AutocompleteManager.js";
-import PresetGalleryStyles from "./PresetGalleryStyles.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetBasket from "./PresetBasket.js";
 import PresetEditor from "./PresetEditor.js";
@@ -12,6 +11,45 @@ const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
 
 class PresetGalleryApp {
+  static WRAP_STYLES = /*css*/ `
+    .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; }
+    .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views, .j0n4t-pg-wrap.hide-gallery-mode #j0n4t-pg-global-collapse, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-checkbox-wrap:has(#j0n4t-pg-group-toggle) { display: none !important; }
+  `;
+
+  static ACTION_TOPBAR_SEARCH_STYLES = /*css*/ `
+    .j0n4t-pg-action-btn { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #aaa; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 1px; }
+    .j0n4t-pg-action-btn:hover { background: #555; color: #fff; }
+    .j0n4t-pg-action-btn.del-btn:hover { background: #b23b3b; color: #fff; }
+    .j0n4t-pg-action-btn svg { width: 10px; height: 10px; fill: currentColor; }
+    .j0n4t-pg-top-bar { display: flex; gap: 6px; align-items: center; width: 100%; flex-shrink: 0; }
+    .j0n4t-pg-search-wrapper { position: relative; flex-grow: 1; display: flex; align-items: center; }
+    .j0n4t-pg-search { width: 100%; padding: 6px 24px 6px 6px; background: #1a1a1ab0; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; min-width: 0; }
+    .j0n4t-pg-search-clear { position: absolute; right: 6px; width: 14px; height: 14px; color: #777; cursor: pointer; display: none; align-items: center; justify-content: center; border-radius: 2px; transition: color 0.1s, background-color 0.1s; }
+    .j0n4t-pg-search-clear:hover { color: #fff; background: #b23b3b; }
+    .j0n4t-pg-search-clear svg { width: 10px; height: 10px; fill: currentColor; }
+  `;
+
+  static VIEWS_TOGGLE_GRID_STYLES = /*css*/ `
+    .j0n4t-pg-views, .j0n4t-pg-toggle-gallery-wrap { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a80; padding: 2px; border-radius: 4px; border: 1px solid #444; }
+    .j0n4t-pg-view-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 3px; cursor: pointer; color: #aaa; background: transparent; transition: 0.15s; }
+    .j0n4t-pg-view-btn:hover { background: #333; color: #fff; }
+    .j0n4t-pg-view-btn.active { background: #007acc; color: #fff; }
+    .j0n4t-pg-view-btn svg, .j0n4t-pg-btn svg { width: 14px; height: 14px; fill: currentColor; }
+    .j0n4t-pg-grid { display: grid; gap: 6px; flex-grow: 1; overflow-y: auto; min-height: 60px; height: 50%; max-height: 100vh; align-content: start; margin-top: 2px; resize: vertical; }
+    .j0n4t-pg-grid.view-small { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
+    .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .j0n4t-pg-grid.view-list { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 4px; }
+`;
+
+  static CONTROL_BAR_TOGGLE_CHECKBOX_STYLES = /*css*/ `
+    .j0n4t-pg-grid.hide-folders .j0n4t-pg-tag-badge { display: block !important; }
+    .j0n4t-pg-control-bar { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-shrink: 0; width: 100%; }
+    .j0n4t-pg-toggle { flex-grow: 1; background: #333; border: 1px solid #444; color: #bbb; padding: 4px; border-radius: 3px; cursor: pointer; font-size: 10px; text-align: center; user-select: none; white-space: nowrap; }
+    .j0n4t-pg-toggle:hover { background: #444; color: #fff; }
+    .j0n4t-pg-checkbox-wrap { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #aaa; user-select: none; cursor: pointer; padding: 3px 2px; height: 20px; box-sizing: border-box; white-space: nowrap; }
+    .j0n4t-pg-checkbox-wrap input { width: auto; margin: 0; cursor: pointer; }
+  `;
+
   constructor(node, widget) {
     this.node = node;
     this.widget = widget;
@@ -26,6 +64,11 @@ class PresetGalleryApp {
     );
     this.editor = new PresetEditor(this.dom, this);
     this.grid = new PresetGrid(this.dom, this);
+
+    PresetUtils.injectStyles('j0n4t-pg-wrap-styles', PresetGalleryApp.WRAP_STYLES);
+    PresetUtils.injectStyles('j0n4t-pg-action-topbar-search-styles', PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES);
+    PresetUtils.injectStyles('j0n4t-pg-views-toggle-grid-styles', PresetGalleryApp.VIEWS_TOGGLE_GRID_STYLES);
+    PresetUtils.injectStyles('j0n4t-pg-control-bar-toggle-checkbox-styles', PresetGalleryApp.CONTROL_BAR_TOGGLE_CHECKBOX_STYLES);
 
     this.bindEvents();
     this.editor.renderPreview();
@@ -342,7 +385,6 @@ class PresetGalleryApp {
 }
 
 // Registration
-PresetGalleryStyles.inject();
 
 app.registerExtension({
   name: "Comfy.PresetGallery",

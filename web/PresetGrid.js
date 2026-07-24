@@ -2,102 +2,148 @@ import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetUtils from "./PresetUtils.js";
 
 export default class PresetGrid {
-    constructor(dom, context) {
-        this.dom = dom;
-        this.context = context;
-        this.bindEvents();
-    }
+  static GROUP_HEADER_STYLES = /*css*/ `
+    .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; cursor: pointer; padding: 4px 0; position: relative; }
+    .j0n4t-pg-group-header::before { content: "▼"; font-size: 8px; color: #888; transition: transform 0.15s ease; }
+    .j0n4t-pg-group-header.collapsed::before { transform: rotate(-90deg); }
+    .j0n4t-pg-group-color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); transition: transform 0.15s ease, box-shadow 0.15s ease; position: relative; }
+    .j0n4t-pg-group-color-dot:hover { transform: scale(1.25); box-shadow: 0 0 4px rgba(255,255,255,0.4); }
+    .j0n4t-pg-group-color-picker { position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer; border: none; padding: 0; margin: 0; }
+    .j0n4t-pg-group-line { flex-grow: 1; height: 1px; background: #bdbdbd40; margin-right: 8px; }
+    .j0n4t-pg-group-header .j0n4t-pg-group-rename-tip { display:none }
+    .j0n4t-pg-group-header:hover .j0n4t-pg-group-rename-tip { display:block; font-size: 8px; color: #666; font-weight: normal; text-transform: none; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; padding-right: 4px; opacity: 1; }
+    .j0n4t-pg-group-header[data-group-raw="root_presets"]:hover .j0n4t-pg-group-rename-tip { display: none; }
+    .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header, .j0n4t-pg-grid.hide-folders .j0n4t-pg-global-collapse-btn { display: none !important; }
+  `;
 
-    switchView(viewName) {
-        ["small", "big", "list"].forEach((v) =>
-            this.dom.grid.classList.remove(`view-${v}`)
-        );
-        this.dom.viewsContainer
-            .querySelectorAll(".j0n4t-pg-view-btn")
-            .forEach((btn) =>
-                btn.classList.toggle("active", btn.dataset.view === viewName)
-            );
-        this.dom.grid.classList.add(`view-${viewName}`);
-        localStorage.setItem("comfy_preset_gallery_view", viewName);
-    }
+  static ITEM_THUMB_STYLES = /*css*/ `
+    .j0n4t-pg-item { cursor: pointer; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 4px; background: #1a1a1a80; transition: 0.1s; height: fit-content; box-sizing: border-box; user-select: none; position: relative; }
+    .j0n4t-pg-item:hover { background: #2a2a2a; border-color: #444; }
+    .j0n4t-pg-item.selected { border-color: #007acc; background: #252525; }
+    .j0n4t-pg-item.editing { border-color: #d1a119 !important; background: #2b271d !important; }
+    .j0n4t-pg-item.dragging { opacity: 0.4; }
+    .j0n4t-pg-hidden { display: none !important; }
+    .j0n4t-pg-thumb-box { width: 100%; height: 100px; border-radius: 2px; display: flex; align-items: center; justify-content: center; background: #111; color: #666; position: relative; overflow: hidden; pointer-events: none; }
+    .j0n4t-pg-grid.view-small .j0n4t-pg-thumb-box { height: 50px; }
+    .j0n4t-pg-img { width: 100%; height: 100%; object-fit: cover; }
+    .j0n4t-pg-icon { width: 20px; height: 20px; fill: currentColor; }
+    .j0n4t-pg-initials { position: absolute; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 0px 1px 2px rgba(0,0,0,0.9), 0px 0px 4px rgba(0,0,0,0.7); text-transform: uppercase; bottom: 4px; z-index: 2; pointer-events: none; letter-spacing: 0.5px; }
+    .j0n4t-pg-label { font-size: 10px; color: #ccc; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+    .j0n4t-pg-tag-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,122,204,0.85); color: #fff; font-size: 7.5px; font-weight: bold; padding: 1px 4px; border-radius: 2px; text-transform: uppercase; pointer-events: none; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; z-index: 3; }
+    .j0n4t-pg-corner-edit { position: absolute; top: 6px; right: 6px; background: #2a2a2a; color: #bbb; border-radius: 3px; width: 18px; height: 18px; display: none; align-items: center; justify-content: center; z-index: 4; border: 1px solid #444; transition: 0.15s; cursor: pointer; }
+    .j0n4t-pg-corner-edit:hover { background: #d1a119; color: #fff; border-color: #d1a119; }
+    .j0n4t-pg-corner-edit svg { width: 11px; height: 11px; fill: currentColor; }
+    .j0n4t-pg-item:hover .j0n4t-pg-corner-edit { display: flex; }
+  `;
 
-    executeFilterPipeline(query = "") {
-        const queryWords = query.toLowerCase().trim()
-            ? query.toLowerCase().trim().split(/\s+/)
-            : [];
-        this.dom.searchClear.style.display = query ? "flex" : "none";
+  static VIEW_LIST_OVERRIDES = /*css*/ `
+    .view-list .j0n4t-pg-item { display: flex; align-items: center; gap: 6px; text-align: left; padding: 2px 4px; }
+    .view-list .j0n4t-pg-thumb-box { display: none !important; }
+    .view-list .j0n4t-pg-label { margin-top: 0; font-size: 11px; flex-grow: 1; line-height: 1; }
+    .view-list .j0n4t-pg-tag-badge { position: relative; top: auto; left: auto; background: var(--item-color, #444); color: #bbb; max-width: none; font-size: 8px; padding: 1px 3px; }
+    .view-list .j0n4t-pg-corner-edit { position: static; width: auto; height: auto; }
+    .view-list .j0n4t-pg-corner-edit svg { width: 9px; height: 9px; }
+  `;
 
-        this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach((el) => {
-            el.classList.toggle(
+  constructor(dom, context) {
+    this.dom = dom;
+    this.context = context;
+    PresetUtils.injectStyles("j0n4t-pg-group-header-styles", PresetGrid.GROUP_HEADER_STYLES);
+    PresetUtils.injectStyles("j0n4t-pg-item-thumb-styles", PresetGrid.ITEM_THUMB_STYLES);
+    PresetUtils.injectStyles("j0n4t-pg-view-list-overrides-styles", PresetGrid.VIEW_LIST_OVERRIDES);
+    this.bindEvents();
+  }
+
+  switchView(viewName) {
+    ["small", "big", "list"].forEach((v) =>
+      this.dom.grid.classList.remove(`view-${v}`)
+    );
+    this.dom.viewsContainer
+      .querySelectorAll(".j0n4t-pg-view-btn")
+      .forEach((btn) =>
+        btn.classList.toggle("active", btn.dataset.view === viewName)
+      );
+    this.dom.grid.classList.add(`view-${viewName}`);
+    localStorage.setItem("comfy_preset_gallery_view", viewName);
+  }
+
+  executeFilterPipeline(query = "") {
+    const queryWords = query.toLowerCase().trim()
+      ? query.toLowerCase().trim().split(/\s+/)
+      : [];
+    this.dom.searchClear.style.display = query ? "flex" : "none";
+
+    this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach((el) => {
+      el.classList.toggle(
+        "j0n4t-pg-hidden",
+        queryWords.length &&
+        !queryWords.every((word) => el.dataset.searchBlob.includes(word))
+      );
+    });
+
+    if (this.dom.chkGroup.checked) {
+      this.dom.grid
+        .querySelectorAll(".j0n4t-pg-group-header")
+        .forEach((header) => {
+          let next = header.nextElementSibling,
+            hasVisibleChildren = false;
+          while (next && !next.classList.contains("j0n4t-pg-group-header")) {
+            const matches =
+              !queryWords.length ||
+              queryWords.every((word) =>
+                (next.dataset.searchBlob || "").includes(word)
+              );
+            if (matches) {
+              hasVisibleChildren = true;
+              next.classList.toggle(
                 "j0n4t-pg-hidden",
-                queryWords.length &&
-                !queryWords.every((word) => el.dataset.searchBlob.includes(word))
-            );
+                header.classList.contains("collapsed")
+              );
+            } else next.classList.add("j0n4t-pg-hidden");
+            next = next.nextElementSibling;
+          }
+          header.classList.toggle("j0n4t-pg-hidden", !hasVisibleChildren);
         });
-
-        if (this.dom.chkGroup.checked) {
-            this.dom.grid
-                .querySelectorAll(".j0n4t-pg-group-header")
-                .forEach((header) => {
-                    let next = header.nextElementSibling,
-                        hasVisibleChildren = false;
-                    while (next && !next.classList.contains("j0n4t-pg-group-header")) {
-                        const matches =
-                            !queryWords.length ||
-                            queryWords.every((word) =>
-                                (next.dataset.searchBlob || "").includes(word)
-                            );
-                        if (matches) {
-                            hasVisibleChildren = true;
-                            next.classList.toggle(
-                                "j0n4t-pg-hidden",
-                                header.classList.contains("collapsed")
-                            );
-                        } else next.classList.add("j0n4t-pg-hidden");
-                        next = next.nextElementSibling;
-                    }
-                    header.classList.toggle("j0n4t-pg-hidden", !hasVisibleChildren);
-                });
-        }
     }
+  }
 
-    compile(cache) {
-        let htmlBuffer = "",
-            lastGroup = null;
-        const collapsedList = this.context.getCollapsedFolders();
+  compile(cache) {
+    let htmlBuffer = "",
+      lastGroup = null;
+    const collapsedList = this.context.getCollapsedFolders();
 
-        const sortedKeys = Object.keys(cache).sort((a, b) => {
-            const groupA = cache[a].tags?.length
-                ? cache[a].tags.join(" > ")
-                : "root_presets";
-            const groupB = cache[b].tags?.length
-                ? cache[b].tags.join(" > ")
-                : "root_presets";
-            if (groupA === "root_presets" && groupB !== "root_presets") return -1;
-            if (groupB === "root_presets" && groupA !== "root_presets") return 1;
-            return groupA !== groupB
-                ? groupA.localeCompare(groupB)
-                : a.localeCompare(b);
-        });
+    const sortedKeys = Object.keys(cache).sort((a, b) => {
+      const groupA = cache[a].tags?.length
+        ? cache[a].tags.join(" > ")
+        : "root_presets";
+      const groupB = cache[b].tags?.length
+        ? cache[b].tags.join(" > ")
+        : "root_presets";
+      if (groupA === "root_presets" && groupB !== "root_presets") return -1;
+      if (groupB === "root_presets" && groupA !== "root_presets") return 1;
+      return groupA !== groupB
+        ? groupA.localeCompare(groupB)
+        : a.localeCompare(b);
+    });
 
-        sortedKeys.forEach((key) => {
-            const item = cache[key];
-            const cleanLabel = PresetUtils.toTitleCase(
-                PresetUtils.getPresetName(key)
-            ),
-                initials = PresetUtils.getPresetInitials(key);
-            const searchBlob =
-                `${key} ${initials} ${item.preset} ${(item.tags || []).join(" ")}`.toLowerCase();
-            const uiGroup = item.tags?.length
-                ? item.tags.map(PresetUtils.toTitleCase).join(" › ")
-                : "Root Presets";
-            const rawGroup = item.tags?.length ? item.tags.join("/") : "root_presets";
+    sortedKeys.forEach((key) => {
+      const item = cache[key];
+      const cleanLabel = PresetUtils.toTitleCase(
+        PresetUtils.getPresetName(key)
+      ),
+        initials = PresetUtils.getPresetInitials(key);
+      const searchBlob =
+        `${key} ${initials} ${item.preset} ${(item.tags || []).join(" ")}`.toLowerCase();
+      const uiGroup = item.tags?.length
+        ? item.tags.map(PresetUtils.toTitleCase).join(" › ")
+        : "Root Presets";
+      const rawGroup = item.tags?.length ? item.tags.join("/") : "root_presets";
 
-            if (uiGroup !== lastGroup) {
-                lastGroup = uiGroup;
-                const groupColor = PresetUtils.getGroupColor(rawGroup);
-                const hexColor = PresetUtils.getGroupHexColor(rawGroup);
-                htmlBuffer += `
+      if (uiGroup !== lastGroup) {
+        lastGroup = uiGroup;
+        const groupColor = PresetUtils.getGroupColor(rawGroup);
+        const hexColor = PresetUtils.getGroupHexColor(rawGroup);
+        htmlBuffer += `
             <div class="j0n4t-pg-group-header${collapsedList.includes(rawGroup) ? " collapsed" : ""}" data-group="${PresetUtils.escapeHTML(uiGroup)}" data-group-raw="${PresetUtils.escapeHTML(rawGroup)}">
                 <span class="j0n4t-pg-group-color-dot" style="background-color: ${groupColor};" title="Click to customize group color">
                     <input type="color" class="j0n4t-pg-group-color-picker" value="${hexColor}" title="Customize group color" />
@@ -106,199 +152,199 @@ export default class PresetGrid {
                 <div class="j0n4t-pg-group-line"></div>
                 <span class="j0n4t-pg-group-rename-tip">Right-click to rename</span>
             </div>`;
-            }
+      }
 
-            const thumb = item.filename
-                ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy">`
-                : `<div style="background-color: ${PresetUtils.getPresetColor(key)}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;">${PresetUtils.icons.file}</div>`;
-            const badge = item.tags?.length
-                ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${PresetUtils.getPresetColor(key)};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
-                : "";
+      const thumb = item.filename
+        ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy">`
+        : `<div style="background-color: ${PresetUtils.getPresetColor(key)}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;">${PresetUtils.icons.file}</div>`;
+      const badge = item.tags?.length
+        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${PresetUtils.getPresetColor(key)};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
+        : "";
 
-            htmlBuffer += `
+      htmlBuffer += `
        <div class="j0n4t-pg-item" data-style="${PresetUtils.escapeHTML(key)}" data-search-blob="${PresetUtils.escapeHTML(searchBlob)}" draggable="true" title="${PresetUtils.escapeHTML(cleanLabel)} [${PresetUtils.escapeHTML(key)}]\n${PresetUtils.escapeHTML(item.preset || "")}">
-          <div class="j0n4t-pg-corner-edit" title="Edit">${PresetUtils.icons.edit}</div>
           ${badge}
           <div class="j0n4t-pg-thumb-box">
             ${thumb}
             <div class="j0n4t-pg-initials">${PresetUtils.escapeHTML(initials)}</div>
           </div>
           <div class="j0n4t-pg-label">${PresetUtils.escapeHTML(cleanLabel)}</div>
+          <div class="j0n4t-pg-corner-edit" title="Edit">${PresetUtils.icons.edit}</div>
         </div>`;
+    });
+
+    this.dom.grid.innerHTML =
+      htmlBuffer ||
+      `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
+    this.dom.btnGlobalCollapse.innerText =
+      collapsedList.length >
+        this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
+        ? "↕️ Expand All"
+        : "↕️ Collapse All";
+    this.attachGridItemEvents();
+    this.switchView(localStorage.getItem("comfy_preset_gallery_view") || "big");
+    this.executeFilterPipeline(this.dom.search.value);
+    this.context.syncEditorHighlight();
+  }
+
+  attachGridItemEvents() {
+    this.dom.grid
+      .querySelectorAll(".j0n4t-pg-group-header")
+      .forEach((header) => {
+        const rawFolder = header.dataset.groupRaw;
+        const colorDot = header.querySelector(".j0n4t-pg-group-color-dot");
+        const colorPicker = header.querySelector(".j0n4t-pg-group-color-picker");
+        if (colorPicker) {
+          colorPicker.addEventListener("click", (e) => e.stopPropagation());
+          colorPicker.addEventListener("mousedown", (e) => e.stopPropagation());
+
+          colorPicker.addEventListener("input", (e) => {
+            e.stopPropagation();
+            const newColor = e.target.value;
+            if (colorDot) colorDot.style.backgroundColor = newColor;
+            PresetUtils.setGroupColor(rawFolder, newColor);
+          });
+
+          colorPicker.addEventListener("change", (e) => {
+            e.stopPropagation();
+            const newColor = e.target.value;
+            PresetUtils.setGroupColor(rawFolder, newColor);
+            this.compile(this.context.cache);
+          });
+        }
+
+        header.addEventListener("click", (e) => {
+          if (
+            e.target.closest(".j0n4t-pg-group-color-picker") ||
+            e.target.closest(".j0n4t-pg-group-color-dot")
+          )
+            return;
+          const isCollapsed = header.classList.toggle("collapsed");
+          let list = this.context.getCollapsedFolders();
+          if (isCollapsed && !list.includes(rawFolder)) {
+            list.push(rawFolder);
+          } else {
+            list = list.filter((i) => i !== rawFolder);
+          }
+          this.context.setCollapsedFolders(list);
+          this.dom.btnGlobalCollapse.innerText =
+            list.length >
+              this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
+              ? "↕️ Expand All"
+              : "↕️ Collapse All";
+          this.executeFilterPipeline(this.dom.search.value);
         });
-
-        this.dom.grid.innerHTML =
-            htmlBuffer ||
-            `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
-        this.dom.btnGlobalCollapse.innerText =
-            collapsedList.length >
-                this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
-                ? "↕️ Expand All"
-                : "↕️ Collapse All";
-        this.attachGridItemEvents();
-        this.switchView(localStorage.getItem("comfy_preset_gallery_view") || "big");
-        this.executeFilterPipeline(this.dom.search.value);
-        this.context.syncEditorHighlight();
-    }
-
-    attachGridItemEvents() {
-        this.dom.grid
-            .querySelectorAll(".j0n4t-pg-group-header")
-            .forEach((header) => {
-                const rawFolder = header.dataset.groupRaw;
-                const colorDot = header.querySelector(".j0n4t-pg-group-color-dot");
-                const colorPicker = header.querySelector(".j0n4t-pg-group-color-picker");
-                if (colorPicker) {
-                    colorPicker.addEventListener("click", (e) => e.stopPropagation());
-                    colorPicker.addEventListener("mousedown", (e) => e.stopPropagation());
-
-                    colorPicker.addEventListener("input", (e) => {
-                        e.stopPropagation();
-                        const newColor = e.target.value;
-                        if (colorDot) colorDot.style.backgroundColor = newColor;
-                        PresetUtils.setGroupColor(rawFolder, newColor);
-                    });
-
-                    colorPicker.addEventListener("change", (e) => {
-                        e.stopPropagation();
-                        const newColor = e.target.value;
-                        PresetUtils.setGroupColor(rawFolder, newColor);
-                        this.compile(this.context.cache);
-                    });
-                }
-
-                header.addEventListener("click", (e) => {
-                    if (
-                        e.target.closest(".j0n4t-pg-group-color-picker") ||
-                        e.target.closest(".j0n4t-pg-group-color-dot")
-                    )
-                        return;
-                    const isCollapsed = header.classList.toggle("collapsed");
-                    let list = this.context.getCollapsedFolders();
-                    if (isCollapsed && !list.includes(rawFolder)) {
-                        list.push(rawFolder);
-                    } else {
-                        list = list.filter((i) => i !== rawFolder);
-                    }
-                    this.context.setCollapsedFolders(list);
-                    this.dom.btnGlobalCollapse.innerText =
-                        list.length >
-                            this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
-                            ? "↕️ Expand All"
-                            : "↕️ Collapse All";
-                    this.executeFilterPipeline(this.dom.search.value);
-                });
-                header.addEventListener("contextmenu", async (e) => {
-                    if (rawFolder === "root_presets") return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const newName = prompt(
-                        `Rename folder "${rawFolder.replace(/_/g, " ")}" to:`,
-                        rawFolder.replace(/_/g, " ")
-                    )
-                        ?.trim()
-                        .toLowerCase()
-                        .replace(/ /g, "_");
-                    if (!newName || newName === rawFolder) return;
-                    const res = await PresetGalleryAPI.renameFolder(rawFolder, newName);
-                    if (res.success) {
-                        this.context.setCollapsedFolders(
-                            this.context.getCollapsedFolders().filter((i) => i !== rawFolder)
-                        );
-                        await this.context.loadGallery();
-                        this.context.updateWidgetValue(
-                            this.context
-                                .getSelectedArray()
-                                .map((i) =>
-                                    i.startsWith(`${rawFolder}/`)
-                                        ? i.replace(`${rawFolder}/`, `${newName}/`)
-                                        : i
-                                )
-                        );
-                    } else alert(`Rename failed`);
-                });
-            });
-
-        this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach((item) => {
-            item.addEventListener("dragstart", (e) => {
-                item.classList.add("dragging");
-                e.dataTransfer.effectAllowed = "copyMove";
-                e.dataTransfer.setData("text/plain", item.dataset.style);
-                e.dataTransfer.setData("source/grid", "true");
-            });
-            item.addEventListener("dragend", () => item.classList.remove("dragging"));
-            item
-                .querySelector(".j0n4t-pg-corner-edit")
-                .addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    this.context.openEditorForPreset(item.dataset.style);
-                });
-        });
-    }
-
-    syncSelection(activeList) {
-        this.dom.grid
-            .querySelectorAll(".j0n4t-pg-item")
-            .forEach((el) =>
-                el.classList.toggle("selected", activeList.includes(el.dataset.style))
-            );
-    }
-
-    bindEvents() {
-        this.dom.viewsContainer.addEventListener("click", (e) => {
-            const btn = e.target.closest(".j0n4t-pg-view-btn");
-            if (btn) this.switchView(btn.dataset.view);
-        });
-
-        this.dom.chkGroup.checked =
-            localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
-        this.dom.grid.classList.toggle("hide-folders", !this.dom.chkGroup.checked);
-        this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked
-            ? "block"
-            : "none";
-
-        this.dom.chkGroup.addEventListener("change", () => {
-            localStorage.setItem(
-                "comfy_preset_gallery_grouped",
-                String(this.dom.chkGroup.checked)
-            );
-            this.dom.grid.classList.toggle(
-                "hide-folders",
-                !this.dom.chkGroup.checked
-            );
-            this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked
-                ? "block"
-                : "none";
-            this.executeFilterPipeline(this.dom.search.value);
-        });
-
-        this.dom.btnGlobalCollapse.addEventListener("click", () => {
-            const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
-            const collapseAll =
-                !this.dom.btnGlobalCollapse.innerText.includes("Expand");
+        header.addEventListener("contextmenu", async (e) => {
+          if (rawFolder === "root_presets") return;
+          e.preventDefault();
+          e.stopPropagation();
+          const newName = prompt(
+            `Rename folder "${rawFolder.replace(/_/g, " ")}" to:`,
+            rawFolder.replace(/_/g, " ")
+          )
+            ?.trim()
+            .toLowerCase()
+            .replace(/ /g, "_");
+          if (!newName || newName === rawFolder) return;
+          const res = await PresetGalleryAPI.renameFolder(rawFolder, newName);
+          if (res.success) {
             this.context.setCollapsedFolders(
-                collapseAll ? [...headers].map((h) => h.dataset.groupRaw) : []
+              this.context.getCollapsedFolders().filter((i) => i !== rawFolder)
             );
-            this.dom.btnGlobalCollapse.innerText = collapseAll
-                ? "↕️ Expand All"
-                : "↕️ Collapse All";
-            headers.forEach((h) => h.classList.toggle("collapsed", collapseAll));
-            this.executeFilterPipeline(this.dom.search.value);
-        });
-
-        this.dom.grid.addEventListener("click", (e) => {
-            if (
-                e.target.closest(".j0n4t-pg-corner-edit") ||
-                e.target.closest(".j0n4t-pg-group-header")
-            )
-                return;
-            const item = e.target.closest(".j0n4t-pg-item");
-            if (!item || !this.context.widget.callback) return;
-            const key = item.dataset.style;
-            let sel = this.context.getSelectedArray();
+            await this.context.loadGallery();
             this.context.updateWidgetValue(
-                sel.includes(key) ? sel.filter((v) => v !== key) : [...sel, key]
+              this.context
+                .getSelectedArray()
+                .map((i) =>
+                  i.startsWith(`${rawFolder}/`)
+                    ? i.replace(`${rawFolder}/`, `${newName}/`)
+                    : i
+                )
             );
+          } else alert(`Rename failed`);
         });
-    }
+      });
+
+    this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach((item) => {
+      item.addEventListener("dragstart", (e) => {
+        item.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "copyMove";
+        e.dataTransfer.setData("text/plain", item.dataset.style);
+        e.dataTransfer.setData("source/grid", "true");
+      });
+      item.addEventListener("dragend", () => item.classList.remove("dragging"));
+      item
+        .querySelector(".j0n4t-pg-corner-edit")
+        .addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.context.openEditorForPreset(item.dataset.style);
+        });
+    });
+  }
+
+  syncSelection(activeList) {
+    this.dom.grid
+      .querySelectorAll(".j0n4t-pg-item")
+      .forEach((el) =>
+        el.classList.toggle("selected", activeList.includes(el.dataset.style))
+      );
+  }
+
+  bindEvents() {
+    this.dom.viewsContainer.addEventListener("click", (e) => {
+      const btn = e.target.closest(".j0n4t-pg-view-btn");
+      if (btn) this.switchView(btn.dataset.view);
+    });
+
+    this.dom.chkGroup.checked =
+      localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
+    this.dom.grid.classList.toggle("hide-folders", !this.dom.chkGroup.checked);
+    this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked
+      ? "block"
+      : "none";
+
+    this.dom.chkGroup.addEventListener("change", () => {
+      localStorage.setItem(
+        "comfy_preset_gallery_grouped",
+        String(this.dom.chkGroup.checked)
+      );
+      this.dom.grid.classList.toggle(
+        "hide-folders",
+        !this.dom.chkGroup.checked
+      );
+      this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked
+        ? "block"
+        : "none";
+      this.executeFilterPipeline(this.dom.search.value);
+    });
+
+    this.dom.btnGlobalCollapse.addEventListener("click", () => {
+      const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
+      const collapseAll =
+        !this.dom.btnGlobalCollapse.innerText.includes("Expand");
+      this.context.setCollapsedFolders(
+        collapseAll ? [...headers].map((h) => h.dataset.groupRaw) : []
+      );
+      this.dom.btnGlobalCollapse.innerText = collapseAll
+        ? "↕️ Expand All"
+        : "↕️ Collapse All";
+      headers.forEach((h) => h.classList.toggle("collapsed", collapseAll));
+      this.executeFilterPipeline(this.dom.search.value);
+    });
+
+    this.dom.grid.addEventListener("click", (e) => {
+      if (
+        e.target.closest(".j0n4t-pg-corner-edit") ||
+        e.target.closest(".j0n4t-pg-group-header")
+      )
+        return;
+      const item = e.target.closest(".j0n4t-pg-item");
+      if (!item || !this.context.widget.callback) return;
+      const key = item.dataset.style;
+      let sel = this.context.getSelectedArray();
+      this.context.updateWidgetValue(
+        sel.includes(key) ? sel.filter((v) => v !== key) : [...sel, key]
+      );
+    });
+  }
 }
