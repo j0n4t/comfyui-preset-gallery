@@ -31,7 +31,7 @@ const PresetUtils = {
         };
         return `#${f(0)}${f(8)}${f(4)}`;
     },
-    getInheritedGroupColor: (groupRaw) => {
+    getInheritedGroupColor: (groupRaw, pool = null) => {
         if (!groupRaw) return PresetUtils.getHashColor("");
         const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
         const parts = groupRaw.split("/");
@@ -40,14 +40,17 @@ const PresetUtils = {
             if (customColors[parentPath]) {
                 return customColors[parentPath];
             }
+            if (pool && pool[parentPath] && pool[parentPath].__color__) {
+                return pool[parentPath].__color__;
+            }
         }
         const topLevel = parts[0] || "";
         return PresetUtils.getHashColor(topLevel);
     },
 
-    getGroupColor: (groupRaw) => PresetUtils.getInheritedGroupColor(groupRaw),
-    getGroupHexColor: (groupRaw) => {
-        const color = PresetUtils.getGroupColor(groupRaw);
+    getGroupColor: (groupRaw, pool = null) => PresetUtils.getInheritedGroupColor(groupRaw, pool),
+    getGroupHexColor: (groupRaw, pool = null) => {
+        const color = PresetUtils.getGroupColor(groupRaw, pool);
         if (color.startsWith("#")) return color;
         const hslMatch = color.match(/hsl\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)%\s*,\s*(\d+(?:\.\d+)?)%\s*\)/i);
         if (hslMatch) {
@@ -55,19 +58,108 @@ const PresetUtils = {
         }
         return "#007acc";
     },
-    setGroupColor: (groupRaw, color) => {
+    setGroupColor: (groupRaw, color, pool = null) => {
         const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
         if (color) customColors[groupRaw] = color;
         else delete customColors[groupRaw];
         localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
+
+        if (pool) {
+            if (color) {
+                pool[groupRaw] = { ...(pool[groupRaw] || {}), __color__: color };
+            } else if (pool[groupRaw]) {
+                delete pool[groupRaw].__color__;
+            }
+        }
+    },
+    cleanOrphanedColors: (pool) => {
+        if (!pool || typeof pool !== "object") return;
+
+        const hasValidContent = (item) => {
+            if (!item || typeof item !== "object") return false;
+            const hasText = typeof item.preset === "string" && item.preset.trim().length > 0;
+            const hasImg = Boolean(item.filename);
+            return hasText || hasImg;
+        };
+
+        // 1. Collect all active parent groups from entries with valid content
+        const activeGroups = new Set();
+        for (const [key, item] of Object.entries(pool)) {
+            if (!key || !key.trim()) {
+                delete pool[key];
+                continue;
+            }
+
+            if (hasValidContent(item)) {
+                const parts = key.split("/");
+                for (let i = 1; i < parts.length; i++) {
+                    activeGroups.add(parts.slice(0, i).join("/"));
+                }
+            }
+        }
+
+        // 2. Remove entries without valid content unless they are active groups with __color__
+        for (const key of Object.keys(pool)) {
+            const item = pool[key];
+            if (!item) {
+                delete pool[key];
+                continue;
+            }
+
+            const validContent = hasValidContent(item);
+
+            if (!validContent) {
+                delete pool[key]; // Always strip empty metadata entries from the UI's pool
+            } else if (item.__color__ && !activeGroups.has(key)) {
+                delete item.__color__;
+            }
+        }
+
+        // 3. Sync and clean localStorage pg_group_colors
+        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
+        let changed = false;
+        for (const gKey of Object.keys(customColors)) {
+            if (!activeGroups.has(gKey)) {
+                delete customColors[gKey];
+                changed = true;
+            }
+        }
+        if (changed) {
+            localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
+        }
+    },
+    syncColorsFromPool: (pool) => {
+        if (!pool || typeof pool !== "object") return;
+        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
+        let changed = false;
+        for (const [key, item] of Object.entries(pool)) {
+            if (item && item.__color__) {
+                if (customColors[key] !== item.__color__) {
+                    customColors[key] = item.__color__;
+                    changed = true;
+                }
+            }
+        }
+        if (changed) {
+            localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
+        }
+    },
+    syncColorsToPool: (pool) => {
+        if (!pool || typeof pool !== "object") return;
+        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
+        for (const [groupRaw, color] of Object.entries(customColors)) {
+            if (color) {
+                pool[groupRaw] = { ...(pool[groupRaw] || {}), __color__: color };
+            }
+        }
     },
     getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
-    getPresetColor: (key) => {
+    getPresetColor: (key, pool = null) => {
         if (!key.includes("/")) {
             return PresetUtils.getHashColor(key);
         }
         const groupPath = key.substring(0, key.lastIndexOf("/"));
-        return PresetUtils.getInheritedGroupColor(groupPath);
+        return PresetUtils.getInheritedGroupColor(groupPath, pool);
     },
     getPresetName: (key) => key.split("/").pop(),
     getPresetTitle: (key, cache) =>
@@ -131,4 +223,4 @@ const PresetUtils = {
     },
 };
 
-export default PresetUtils; 
+export default PresetUtils;

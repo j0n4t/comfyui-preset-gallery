@@ -132,9 +132,29 @@ const YAMLUtils = {
 };
 
 const NestedPoolUtils = {
-  flatToNested(pool, presetOnly = true) {
+  flatToNested(pool, presetOnly = true, includeColors = true) {
     const root = {};
     for (const [key, item] of Object.entries(pool)) {
+      if (!item) continue;
+
+      if (!item.preset && item.__color__) {
+        if (!includeColors) continue;
+        const parts = key.split("/");
+        let curr = root;
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
+          if (!curr[part] || typeof curr[part] !== "object") {
+            curr[part] = {};
+          }
+          if (i === parts.length - 1) {
+            curr[part].__color__ = item.__color__;
+          } else {
+            curr = curr[part];
+          }
+        }
+        continue;
+      }
+
       const parts = key.split("/");
       let curr = root;
       for (let i = 0; i < parts.length - 1; i++) {
@@ -145,10 +165,13 @@ const NestedPoolUtils = {
         curr = curr[part];
       }
       const lastPart = parts[parts.length - 1];
+
       if (presetOnly) {
         curr[lastPart] = typeof item === "string" ? item : item.preset || "";
       } else {
-        curr[lastPart] = item;
+        const copy = typeof item === "object" ? { ...item } : { preset: String(item) };
+        if (!includeColors) delete copy.__color__;
+        curr[lastPart] = copy;
       }
     }
     return root;
@@ -156,8 +179,19 @@ const NestedPoolUtils = {
   nestedToFlat(obj, prefix = "") {
     let flat = {};
     for (const [key, val] of Object.entries(obj)) {
+      if (key === "__color__") {
+        if (prefix) {
+          flat[prefix] = { ...(flat[prefix] || {}), __color__: String(val) };
+        }
+        continue;
+      }
+
       const fullKey = prefix ? `${prefix}/${key}` : key;
+
       if (val !== null && typeof val === "object" && !("preset" in val)) {
+        if (val.__color__) {
+          flat[fullKey] = { ...(flat[fullKey] || {}), __color__: String(val.__color__) };
+        }
         Object.assign(flat, NestedPoolUtils.nestedToFlat(val, fullKey));
       } else {
         const tags = fullKey.includes("/") ? fullKey.split("/").slice(0, -1) : [];
@@ -168,11 +202,17 @@ const NestedPoolUtils = {
             filename: null,
           };
         } else if (typeof val === "object" && val !== null) {
-          flat[fullKey] = {
-            preset: val.preset || "",
-            tags: val.tags || tags,
-            filename: val.filename || null,
-          };
+          if ("preset" in val) {
+            const item = {
+              preset: val.preset || "",
+              tags: val.tags || tags,
+              filename: val.filename || null,
+            };
+            if (val.__color__) item.__color__ = val.__color__;
+            flat[fullKey] = item;
+          } else if ("__color__" in val) {
+            flat[fullKey] = { ...(flat[fullKey] || {}), __color__: String(val.__color__) };
+          }
         }
       }
     }
@@ -189,7 +229,9 @@ export default class PresetGalleryAPI {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const serverPool = await res.json();
 
-      // Auto-migrate browser localStorage presets to server on first load
+      PresetUtils.syncColorsFromPool(serverPool);
+      PresetUtils.cleanOrphanedColors(serverPool);
+
       const localData = localStorage.getItem("comfy_preset_gallery_pool");
       if (localData && Object.keys(serverPool).length === 0) {
         try {
@@ -217,10 +259,16 @@ export default class PresetGalleryAPI {
 
   static async savePool(pool) {
     try {
+      PresetUtils.cleanOrphanedColors(pool);
+
+      // Clone the pool to safely inject colors for the server without polluting the UI
+      const serverPayload = JSON.parse(JSON.stringify(pool));
+      PresetUtils.syncColorsToPool(serverPayload);
+
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pool),
+        body: JSON.stringify(serverPayload),
       });
       return await res.json();
     } catch (error) {
@@ -229,29 +277,64 @@ export default class PresetGalleryAPI {
     }
   }
 
+  static async setGroupColor(groupRaw, color) {
+    PresetUtils.setGroupColor(groupRaw, color);
+    const pool = await PresetGalleryAPI.getPool();
+    if (color) {
+      pool[groupRaw] = { ...(pool[groupRaw] || {}), __color__: color };
+    } else if (pool[groupRaw]) {
+      delete pool[groupRaw].__color__;
+    }
+    PresetUtils.cleanOrphanedColors(pool);
+    await PresetGalleryAPI.savePool(pool);
+    return { success: true };
+  }
+
   static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode }) {
     const pool = await PresetGalleryAPI.getPool();
-    const cleanFolder = folder ? folder.trim().toLowerCase().replace(/ /g, "_") : "";
-    const cleanName = name.trim().toLowerCase().replace(/ /g, "_");
-    const newKey = cleanFolder ? `${cleanFolder}/${cleanName}` : cleanName;
-    const tags = cleanFolder ? cleanFolder.split("/") : [];
 
-    if (mode === "edit" && editingKey && editingKey !== newKey) {
-      delete pool[editingKey];
+    let cleanFolder = folder ? folder.trim().toLowerCase().replace(/ /g, "_").replace(/^\/+|\/+$/g, "") : "";
+    if (["root", "root_presets", "none", "root presets"].includes(cleanFolder)) {
+      cleanFolder = "";
     }
 
-    let finalImage = pool[newKey]?.filename || null;
+    const cleanName = name ? name.trim().toLowerCase().replace(/ /g, "_").replace(/^\/+|\/+$/g, "") : "";
+    if (!cleanName) {
+      console.error("[PresetGalleryAPI] Cannot save preset with an empty name.");
+      return { success: false, error: "Preset name cannot be empty." };
+    }
+
+    const trimmedText = presetText ? presetText.trim() : "";
+
+    // Determine image status
+    let finalImage = pool[editingKey]?.filename || null;
     if (clearImage) {
       finalImage = null;
     } else if (imageData) {
       finalImage = await createThumbnail(imageData);
     }
 
+    // Require preset text or image content
+    if (!trimmedText && !finalImage) {
+      console.error("[PresetGalleryAPI] Cannot save preset with empty content.");
+      return { success: false, error: "Preset content or image cannot be empty." };
+    }
+
+    const newKey = cleanFolder ? `${cleanFolder}/${cleanName}` : cleanName;
+    const tags = cleanFolder ? cleanFolder.split("/").filter(Boolean) : [];
+
+    if (mode === "edit" && editingKey && editingKey !== newKey) {
+      delete pool[editingKey];
+    }
+
     pool[newKey] = {
-      preset: presetText,
+      ...(pool[newKey] || {}),
+      preset: trimmedText,
       tags: tags,
       filename: finalImage,
     };
+
+    PresetUtils.cleanOrphanedColors(pool);
 
     await PresetGalleryAPI.savePool(pool);
     return { success: true, key: newKey };
@@ -260,6 +343,9 @@ export default class PresetGalleryAPI {
   static async deletePreset(uniqueKey) {
     const pool = await PresetGalleryAPI.getPool();
     delete pool[uniqueKey];
+
+    PresetUtils.cleanOrphanedColors(pool);
+
     await PresetGalleryAPI.savePool(pool);
     return { success: true };
   }
@@ -274,12 +360,31 @@ export default class PresetGalleryAPI {
         const suffix = key.startsWith(prefix) ? key.slice(prefix.length) : "";
         const newKey = suffix ? `${newFolder}/${suffix}` : newFolder;
         const item = pool[key];
-        item.tags = newKey.includes("/") ? newKey.split("/").slice(0, -1) : [];
+        if (item.preset) {
+          item.tags = newKey.includes("/") ? newKey.split("/").slice(0, -1) : [];
+        }
         newPool[newKey] = item;
       } else {
         newPool[key] = pool[key];
       }
     }
+
+    const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
+    let colorsChanged = false;
+    for (const gKey of Object.keys(customColors)) {
+      if (gKey === oldFolder || gKey.startsWith(prefix)) {
+        const suffix = gKey.startsWith(prefix) ? gKey.slice(prefix.length) : "";
+        const newGKey = suffix ? `${newFolder}/${suffix}` : newFolder;
+        customColors[newGKey] = customColors[gKey];
+        delete customColors[gKey];
+        colorsChanged = true;
+      }
+    }
+    if (colorsChanged) {
+      localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
+    }
+
+    PresetUtils.cleanOrphanedColors(newPool);
 
     await PresetGalleryAPI.savePool(newPool);
     return { success: true };
@@ -304,6 +409,9 @@ export default class PresetGalleryAPI {
 
     const groups = {};
     for (const [key, item] of Object.entries(pool)) {
+      const hasContent = item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename);
+      if (!hasContent) continue;
+
       const gKey = item.tags && item.tags.length ? item.tags.join("/") : "root_presets";
       if (!groups[gKey]) groups[gKey] = [];
       groups[gKey].push({ key, item });
@@ -311,6 +419,7 @@ export default class PresetGalleryAPI {
 
     for (const [gKey, items] of Object.entries(groups)) {
       const gName = gKey === "root_presets" ? "Root Presets" : gKey.split("/").map(PresetUtils.toTitleCase).join(" › ");
+      const groupHex = gKey === "root_presets" ? "#007acc" : PresetUtils.getGroupHexColor(gKey, pool);
 
       const groupEl = document.createElement("div");
       groupEl.className = "j0n4t-pg-tree-group";
@@ -320,7 +429,7 @@ export default class PresetGalleryAPI {
       groupHeader.innerHTML = `
         <label class="j0n4t-pg-checkbox-wrap">
           <input type="checkbox" class="j0n4t-pg-group-cb" data-group="${PresetUtils.escapeHTML(gKey)}" checked />
-          <span><strong>${PresetUtils.escapeHTML(gName)}</strong> (${items.length})</span>
+          <span style="border-left:3px solid ${groupHex}; padding-left:6px;"><strong>${PresetUtils.escapeHTML(gName)}</strong> (${items.length})</span>
         </label>
       `;
       groupEl.appendChild(groupHeader);
@@ -438,6 +547,12 @@ export default class PresetGalleryAPI {
         </div>
       </div>
       <div class="j0n4t-pg-modal-field">
+        <label class="j0n4t-pg-checkbox-wrap">
+          <input type="checkbox" id="j0n4t-pg-exp-colors" checked />
+          <span><strong>Include Custom Group Colors (__color__)</strong></span>
+        </label>
+      </div>
+      <div class="j0n4t-pg-modal-field">
         <label>Select Presets & Groups to Export</label>
         <div id="j0n4t-pg-tree-mount"></div>
       </div>
@@ -466,20 +581,27 @@ export default class PresetGalleryAPI {
       }
       const format = modal.querySelector("#j0n4t-pg-exp-format").value;
       const mode = modal.querySelector("#j0n4t-pg-exp-mode").value;
+      const includeColors = modal.querySelector("#j0n4t-pg-exp-colors").checked;
       close();
-      onExport(format, mode, selectedKeys);
+      onExport(format, mode, selectedKeys, includeColors);
     });
 
     document.body.appendChild(overlay);
   }
 
-  static async exportPool(format = "zip", mode = "full", selectedKeys = null) {
+  static async exportPool(format = "zip", mode = "full", selectedKeys = null, includeColors = true) {
     let pool = await PresetGalleryAPI.getPool();
+    PresetUtils.syncColorsToPool(pool);
 
     if (selectedKeys && Array.isArray(selectedKeys)) {
       const filtered = {};
       for (const k of selectedKeys) {
         if (pool[k]) filtered[k] = pool[k];
+      }
+      if (includeColors) {
+        for (const [k, item] of Object.entries(pool)) {
+          if (item.__color__) filtered[k] = item;
+        }
       }
       pool = filtered;
     }
@@ -490,13 +612,19 @@ export default class PresetGalleryAPI {
         const zip = new JSZip();
 
         for (const [key, item] of Object.entries(pool)) {
-          zip.file(`${key}.txt`, item.preset || "");
+          if (item.preset) {
+            zip.file(`${key}.txt`, item.preset || "");
 
-          if (mode !== "preset-only" && item.filename) {
-            const parsed = parseDataURL(item.filename);
-            if (parsed) {
-              zip.file(`${key}.${parsed.ext}`, parsed.base64, { base64: true });
+            if (mode !== "preset-only" && item.filename) {
+              const parsed = parseDataURL(item.filename);
+              if (parsed) {
+                zip.file(`${key}.${parsed.ext}`, parsed.base64, { base64: true });
+              }
             }
+          }
+
+          if (includeColors && item.__color__) {
+            zip.file(`${key}/__color__.txt`, item.__color__);
           }
         }
 
@@ -518,7 +646,7 @@ export default class PresetGalleryAPI {
     let ext;
 
     if (mode === "preset-only") {
-      const nested = NestedPoolUtils.flatToNested(pool, true);
+      const nested = NestedPoolUtils.flatToNested(pool, true, includeColors);
       if (format === "yaml") {
         dataStr = YAMLUtils.stringify(nested);
         mimeType = "text/yaml";
@@ -531,14 +659,22 @@ export default class PresetGalleryAPI {
     } else {
       const exportData = {};
       for (const [key, item] of Object.entries(pool)) {
-        exportData[key] = {
-          preset: item.preset,
-          tags: item.tags || [],
-          filename: item.filename || null,
-        };
+        if (item.preset) {
+          const exportItem = {
+            preset: item.preset,
+            tags: item.tags || [],
+            filename: item.filename || null,
+          };
+          if (includeColors && item.__color__) {
+            exportItem.__color__ = item.__color__;
+          }
+          exportData[key] = exportItem;
+        } else if (includeColors && item.__color__) {
+          exportData[key] = { __color__: item.__color__ };
+        }
       }
       if (format === "yaml") {
-        const nestedFull = NestedPoolUtils.flatToNested(exportData, false);
+        const nestedFull = NestedPoolUtils.flatToNested(exportData, false, includeColors);
         dataStr = YAMLUtils.stringify(nestedFull);
         mimeType = "text/yaml";
         ext = "yaml";
@@ -566,7 +702,7 @@ export default class PresetGalleryAPI {
     modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
 
     const currentPool = await PresetGalleryAPI.getPool();
-    const duplicates = Object.keys(importedPool).filter((k) => k in currentPool);
+    const duplicates = Object.keys(importedPool).filter((k) => k in currentPool && importedPool[k].preset);
 
     modal.innerHTML = `
       <h3>📥 Import Presets</h3>
@@ -577,6 +713,12 @@ export default class PresetGalleryAPI {
           <option value="skip">Skip duplicates</option>
           <option value="keep_both">Keep both (Rename imported with _copy)</option>
         </select>
+      </div>
+      <div class="j0n4t-pg-modal-field">
+        <label class="j0n4t-pg-checkbox-wrap">
+          <input type="checkbox" id="j0n4t-pg-imp-colors" checked />
+          <span><strong>Import Custom Group Colors (__color__)</strong></span>
+        </label>
       </div>
       <div class="j0n4t-pg-modal-field">
         <label>Select Presets & Groups to Import</label>
@@ -606,8 +748,9 @@ export default class PresetGalleryAPI {
         return;
       }
       const duplicateStrategy = modal.querySelector("#j0n4t-pg-dup-strategy").value;
+      const importColors = modal.querySelector("#j0n4t-pg-imp-colors").checked;
       close();
-      onConfirm({ selectedKeys, duplicateStrategy });
+      onConfirm({ selectedKeys, duplicateStrategy, importColors });
     });
 
     document.body.appendChild(overlay);
@@ -628,6 +771,16 @@ export default class PresetGalleryAPI {
           if (zipEntry.dir) continue;
 
           const normalizedPath = relativePath.replace(/\\/g, "/").replace(/^[/\\]+/, "");
+
+          if (normalizedPath.endsWith("/__color__.txt") || normalizedPath === "__color__.txt") {
+            const groupKey = normalizedPath.replace(/\/?__color__\.txt$/i, "").toLowerCase().replace(/ /g, "_");
+            const colorVal = (await zipEntry.async("string")).trim();
+            if (groupKey) {
+              importedPool[groupKey] = { ...(importedPool[groupKey] || {}), __color__: colorVal };
+            }
+            continue;
+          }
+
           const lastDot = normalizedPath.lastIndexOf(".");
           if (lastDot === -1) continue;
 
@@ -654,9 +807,12 @@ export default class PresetGalleryAPI {
           }
 
           const cleanKey = key.toLowerCase().replace(/ /g, "_");
+          if (!cleanKey) continue;
+
           const tags = cleanKey.includes("/") ? cleanKey.split("/").slice(0, -1) : [];
 
           importedPool[cleanKey] = {
+            ...(importedPool[cleanKey] || {}),
             preset: presetText,
             tags: tags,
             filename: filename,
@@ -705,15 +861,24 @@ export default class PresetGalleryAPI {
     }
 
     return new Promise((resolve) => {
-      PresetGalleryAPI.showImportModal(importedPool, async ({ selectedKeys, duplicateStrategy }) => {
+      PresetGalleryAPI.showImportModal(importedPool, async ({ selectedKeys, duplicateStrategy, importColors }) => {
         const currentPool = await PresetGalleryAPI.getPool();
+
+        if (importColors) {
+          for (const [key, item] of Object.entries(importedPool)) {
+            if (item && item.__color__) {
+              currentPool[key] = { ...(currentPool[key] || {}), __color__: item.__color__ };
+              PresetUtils.setGroupColor(key, item.__color__, currentPool);
+            }
+          }
+        }
 
         for (const key of selectedKeys) {
           const item = importedPool[key];
-          if (!item) continue;
+          if (!item || (!item.preset && item.__color__)) continue;
 
           let targetKey = key;
-          if (targetKey in currentPool) {
+          if (targetKey in currentPool && currentPool[targetKey].preset) {
             if (duplicateStrategy === "skip") {
               continue;
             } else if (duplicateStrategy === "keep_both") {
@@ -722,7 +887,7 @@ export default class PresetGalleryAPI {
               const baseName = parts.pop();
               const folderPrefix = parts.length ? parts.join("/") + "/" : "";
 
-              while (`${folderPrefix}${baseName}_copy_${copyIndex}` in currentPool) {
+              while (`${folderPrefix}${baseName}_copy_${copyIndex}` in currentPool && currentPool[`${folderPrefix}${baseName}_copy_${copyIndex}`].preset) {
                 copyIndex++;
               }
               targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
@@ -733,6 +898,7 @@ export default class PresetGalleryAPI {
           currentPool[targetKey] = item;
         }
 
+        PresetUtils.cleanOrphanedColors(currentPool);
         await PresetGalleryAPI.savePool(currentPool);
         resolve({ success: true });
       });
