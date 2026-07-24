@@ -506,31 +506,35 @@ export default class PresetBasket {
     this.dropIndicator = null;
   }
 
-  explodeChip(targetKey) {
+  explodeChip(targetKey, chip = null) {
     const currentSelections = this.context.widget.value.split(",");
     const targetPreset = this.context.cache[targetKey];
-    if (!targetPreset) return;
-    const rawPreset = targetPreset.preset || [targetKey];
-    const updatedSelections = [];
+    if (targetPreset) {
+      const rawPreset = targetPreset.preset || [targetKey];
+      const updatedSelections = [];
 
-    for (const key of currentSelections) {
-      if (key.trim() === targetKey.trim()) {
-        for (const token of rawPreset.split(",")) {
-          updatedSelections.push(token.trim());
+      for (const key of currentSelections) {
+        if (key.trim() === targetKey.trim()) {
+          for (const token of rawPreset.split(",")) {
+            updatedSelections.push(token.trim());
+          }
+        } else {
+          updatedSelections.push(key.trim());
         }
-      } else {
-        updatedSelections.push(key.trim());
       }
+
+      const uniqueSelections = Array.from(new Set(updatedSelections));
+
+      this.context.updateWidgetValue(uniqueSelections);
+      this.context.syncUI(uniqueSelections.join(","));
+
+      if (this.textarea && this.container.classList.contains("raw-mode")) {
+        this.textarea.value = uniqueSelections.join(", ");
+      }
+    } else {
+      this.spawnInlineEditor(chip, targetKey);
     }
 
-    const uniqueSelections = Array.from(new Set(updatedSelections));
-
-    this.context.updateWidgetValue(uniqueSelections);
-    this.context.syncUI(uniqueSelections.join(","));
-
-    if (this.textarea && this.container.classList.contains("raw-mode")) {
-      this.textarea.value = uniqueSelections.join(", ");
-    }
   }
 
   getClosestChip(clientX, clientY) {
@@ -579,7 +583,8 @@ export default class PresetBasket {
     });
     chipElement.prepend(input);
     input.focus();
-    input.selectionStart = input.selectionEnd = input.value.length;
+    input.selectionStart = 0;
+    input.selectionEnd = input.value.length;
 
     const finishEdit = (save) => {
       const newVal = input.value.trim();
@@ -733,7 +738,7 @@ export default class PresetBasket {
       });
       chip.addEventListener("dblclick", (e) => {
         e.stopPropagation();
-        this.spawnInlineEditor(chip, styleKey);
+        this.explodeChip(styleKey, chip);
       });
       chip.addEventListener("dragstart", (e) => {
         chip.classList.add("dragging");
@@ -743,11 +748,6 @@ export default class PresetBasket {
       chip.addEventListener("dragend", () => {
         chip.classList.remove("dragging");
         this.removeDropIndicator();
-      });
-      chip.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.explodeChip(styleKey);
       });
       this.pool.appendChild(chip);
     });
