@@ -90,7 +90,7 @@ class PresetGalleryApp {
                 <div class="j0n4t-pg-basket-pool"></div>
                 <div class="j0n4t-pg-raw-wrapper">
                     <div class="j0n4t-pg-raw-highlights" id="j0n4t-pg-raw-highlights"></div>
-                    <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..."></textarea>
+                    <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..." spellcheck="false"></textarea>
                 </div>
             </div>
             <div class="j0n4t-pg-top-bar">
@@ -118,7 +118,7 @@ class PresetGalleryApp {
                 <div style="display:flex; gap:6px; align-items:stretch;">
                     <div id="j0n4t-pg-editor-preview" class="j0n4t-pg-editor-preview"></div>
                     <div style="display:flex; flex-direction:column; gap:6px; flex-grow:1;">
-                        <textarea id="j0n4t-pg-preset" placeholder="Keywords..."></textarea>
+                        <textarea id="j0n4t-pg-preset" placeholder="Keywords..." spellcheck="false"></textarea>
                         <div class="j0n4t-pg-row"><input type="text" id="j0n4t-pg-folder" placeholder="Folder" style="flex:1;" /><input type="text" id="j0n4t-pg-name" placeholder="Name" style="flex:1;" /></div>
                     </div>
                 </div>
