@@ -11,6 +11,7 @@ export default class PresetBasket {
     this.popupEl = null;
     this.currentMatches = [];
     this.activeIndex = 0;
+    this._updatingTextarea = false;
 
     this.initDragAndDrop();
     this.initRawInputSync();
@@ -388,18 +389,23 @@ export default class PresetBasket {
             ? ""
             : leftText.slice(0, leftText.lastIndexOf(",") + 1) + " ";
 
-        this.textarea.value =
-          prefix + match + "," + this.textarea.value.slice(cursor);
-        this.context.updateWidgetValue(
-          this.textarea.value
-            .split(",")
-            .map((i) => i.trim())
-            .filter(Boolean)
-        );
+        this._updatingTextarea = true;
+        try {
+          this.textarea.value =
+            prefix + match + ", " + this.textarea.value.slice(cursor);
+          this.context.updateWidgetValue(
+            this.textarea.value
+              .split(",")
+              .map((i) => i.trim())
+              .filter(Boolean)
+          );
 
-        this.textarea.focus();
-        this.textarea.selectionStart = this.textarea.selectionEnd =
-          prefix.length + match.length + 2;
+          this.textarea.focus();
+          this.textarea.selectionStart = this.textarea.selectionEnd =
+            prefix.length + match.length + 2;
+        } finally {
+          this._updatingTextarea = false;
+        }
       },
       onKeyDown: (e, activeMatch) => {
         if (
@@ -623,7 +629,9 @@ export default class PresetBasket {
   }
 
   render(activeList) {
-    this.textarea.value = activeList.join(", ");
+    if (!this._updatingTextarea) {
+      this.textarea.value = activeList.join(", ");
+    }
     this.updateRawHighlights();
     this.pool.innerHTML = "";
 
