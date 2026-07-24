@@ -33,24 +33,16 @@ const PresetUtils = {
     },
     getInheritedGroupColor: (groupRaw) => {
         if (!groupRaw) return PresetUtils.getHashColor("");
-
-        try {
-            const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-            const parts = groupRaw.split("/");
-            for (let i = parts.length; i > 0; i--) {
-                const parentPath = parts.slice(0, i).join("/");
-                if (customColors[parentPath]) {
-                    return customColors[parentPath];
-                }
+        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
+        const parts = groupRaw.split("/");
+        for (let i = parts.length; i > 0; i--) {
+            const parentPath = parts.slice(0, i).join("/");
+            if (customColors[parentPath]) {
+                return customColors[parentPath];
             }
-
-            const topLevel = parts[0] || "";
-            return PresetUtils.getHashColor(topLevel);
-        } catch (e) {
-            const parts = groupRaw.split("/");
-            const topLevel = parts[0] || "";
-            return PresetUtils.getHashColor(topLevel);
         }
+        const topLevel = parts[0] || "";
+        return PresetUtils.getHashColor(topLevel);
     },
 
     getGroupColor: (groupRaw) => PresetUtils.getInheritedGroupColor(groupRaw),
@@ -64,12 +56,10 @@ const PresetUtils = {
         return "#007acc";
     },
     setGroupColor: (groupRaw, color) => {
-        try {
-            const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-            if (color) customColors[groupRaw] = color;
-            else delete customColors[groupRaw];
-            localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
-        } catch (e) { }
+        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
+        if (color) customColors[groupRaw] = color;
+        else delete customColors[groupRaw];
+        localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
     },
     getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
     getPresetColor: (key) => {

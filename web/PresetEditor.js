@@ -1,5 +1,15 @@
 import AutocompleteManager from "./AutocompleteManager.js";
+import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetUtils from "./PresetUtils.js";
+
+
+const fileToDataURL = (file) =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 
 export default class PresetEditor {
     constructor(dom, context) {

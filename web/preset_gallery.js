@@ -116,13 +116,7 @@ class PresetGalleryApp {
   }
 
   getCollapsedFolders() {
-    try {
-      return (
-        JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || []
-      );
-    } catch (e) {
-      return [];
-    }
+    return JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || [];
   }
 
   setCollapsedFolders(list) {

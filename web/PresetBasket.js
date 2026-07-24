@@ -542,7 +542,10 @@ export default class PresetBasket {
       const newVal = input.value.trim();
       try {
         input.remove();
-      } catch (e) { }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        // do nothing, because dom is crazzy
+      }
 
       if (isNew) chipElement.remove();
       else {

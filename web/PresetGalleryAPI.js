@@ -1,3 +1,5 @@
+import PresetUtils from "./PresetUtils.js";
+
 const loadJSZip = async () => {
   if (window.JSZip) return window.JSZip;
   if (globalThis.JSZip) return globalThis.JSZip;
@@ -28,14 +30,6 @@ const getMimeType = (ext) => {
   if (e === "gif") return "image/gif";
   return "image/png";
 };
-
-const fileToDataURL = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 
 const createThumbnail = async (dataUrl) => {
   if (!dataUrl || !dataUrl.startsWith("data:image/")) return dataUrl;
@@ -194,8 +188,8 @@ export default class PresetGalleryAPI {
   static getPool() {
     try {
       return JSON.parse(localStorage.getItem(PresetGalleryAPI.STORAGE_KEY) || "{}");
-    } catch (e) {
-      return {};
+    } catch (error) {
+      return { error };
     }
   }
 
@@ -496,9 +490,9 @@ export default class PresetGalleryAPI {
       return;
     }
 
-    let dataStr = "";
-    let mimeType = "text/yaml";
-    let ext = "yaml";
+    let dataStr;
+    let mimeType;
+    let ext;
 
     if (mode === "preset-only") {
       const nested = NestedPoolUtils.flatToNested(pool, true);
@@ -610,7 +604,7 @@ export default class PresetGalleryAPI {
         for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
           if (zipEntry.dir) continue;
 
-          const normalizedPath = relativePath.replace(/\\/g, "/").replace(/^[\/\\]+/, "");
+          const normalizedPath = relativePath.replace(/\\/g, "/").replace(/^[/\\]+/, "");
           const lastDot = normalizedPath.lastIndexOf(".");
           if (lastDot === -1) continue;
 
@@ -662,11 +656,7 @@ export default class PresetGalleryAPI {
         if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
           parsedData = YAMLUtils.parse(text);
         } else {
-          try {
-            parsedData = JSON.parse(text);
-          } catch (err) {
-            parsedData = YAMLUtils.parse(text);
-          }
+          parsedData = JSON.parse(text);
         }
 
         if (typeof parsedData !== "object" || parsedData === null) {
@@ -675,7 +665,7 @@ export default class PresetGalleryAPI {
 
         importedPool = NestedPoolUtils.nestedToFlat(parsedData);
 
-        for (const [key, item] of Object.entries(importedPool)) {
+        for (const item of Object.values(importedPool)) {
           if (item && item.filename && item.filename.startsWith("data:image/")) {
             item.filename = await createThumbnail(item.filename);
           }
