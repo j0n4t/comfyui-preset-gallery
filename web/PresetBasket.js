@@ -784,6 +784,17 @@ export default class PresetBasket {
     });
     popup.appendChild(editBtn);
 
+    const swapBtn = document.createElement("div");
+    swapBtn.className = "j0n4t-pg-chip-popup-item";
+    swapBtn.title = "Swap Preset";
+    swapBtn.innerHTML = PresetUtils.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
+    swapBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.closeChipMenu();
+      this.spawnInlineEditor(chipElement, styleKey);
+    });
+    popup.appendChild(swapBtn);
+
     if (item) {
       const locateBtn = document.createElement("div");
       locateBtn.className = "j0n4t-pg-chip-popup-item";
