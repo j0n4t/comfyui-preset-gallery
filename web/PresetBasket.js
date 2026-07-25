@@ -687,7 +687,7 @@ export default class PresetBasket {
         className: "j0n4t-pg-basket-chip",
         draggable: true,
         title: item
-          ? `${cleanLabel} [${styleKey}] (right-click to explode)\n${item.preset}`
+          ? `${cleanLabel} [${styleKey}] (double-click to explode)\n${item.preset}`
           : styleKey,
       });
       chip.dataset.id = styleKey;
