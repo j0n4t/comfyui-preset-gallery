@@ -112,15 +112,16 @@ export default class AutocompleteManager {
     this.popupEl.style.minWidth = `${Math.max(200, rect.width / zoom)}px`;
     this.popupEl.innerHTML = "";
 
-    this.matches.forEach((match, idx) => {
+    this.matches.forEach(({ item, title }, idx) => {
       const row = document.createElement("div");
       row.className = `${this.itemClass}${idx === this.activeIndex ? " active" : ""}`;
-      row.innerHTML = this.renderItem(match);
+      if (title) row.title = title;
+      row.innerHTML = this.renderItem(item);
 
       row.addEventListener("mousedown", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.onSelect(match, e);
+        this.onSelect(item, e);
         this.close();
       });
       this.popupEl.appendChild(row);
@@ -148,7 +149,7 @@ export default class AutocompleteManager {
 
     if (["Tab", "Enter"].includes(e.key) && !e.ctrlKey) {
       e.preventDefault();
-      this.onSelect(activeMatch, e);
+      this.onSelect(activeMatch.item, e);
       this.close();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();

@@ -339,11 +339,11 @@ class PresetGalleryApp {
         query = query.trim().toLowerCase();
         if (!query) return [];
         return PresetUtils.getTopMatches(Object.keys(this.cache), query, (k) =>
-          PresetUtils.getSearchBlob(k, this.cache[k])
+          PresetUtils.getSearchBlob(k, this.cache[k]), this.cache
         );
       },
       renderItem: (match) =>
-        `<span title="${PresetUtils.getPresetTitle(match, this.cache)}">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
+        `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         const sel = this.getSelectedArray();
         if (!sel.includes(match)) this.updateWidgetValue([...sel, match]);

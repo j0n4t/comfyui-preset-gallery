@@ -162,10 +162,7 @@ const PresetUtils = {
         return PresetUtils.getInheritedGroupColor(groupPath, pool);
     },
     getPresetName: (key) => key.split("/").pop(),
-    getPresetTitle: (key, cache) =>
-        PresetUtils.escapeHTML(
-            `${PresetUtils.toTitleCase(PresetUtils.getPresetName(key))} [${key}]\n${cache[key]?.preset || ""}`
-        ),
+    getPresetTitle: (key, cache) => `${PresetUtils.toTitleCase(PresetUtils.getPresetName(key))} [${key}]\n${cache[key]?.preset || ""}`,
     getPresetInitials: (key) => {
         const raw = key.includes("/") ? PresetUtils.getPresetName(key) : key;
         return PresetUtils.toTitleCase(raw)
@@ -176,19 +173,20 @@ const PresetUtils = {
     },
     getSearchBlob: (key, item) =>
         `${PresetUtils.getPresetName(key)} ${key} ${PresetUtils.getPresetInitials(key)} ${item.preset || ""} ${(item.tags || []).join(" ")}`.toLowerCase(),
-    getTopMatches: (list, query, getSearchBlob = (i) => i) => {
+    getTopMatches: (list, query, getSearchBlob = (i) => i, cache = null) => {
         const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
         if (!queryWords.length) return [];
         const buckets = list.reduce(
             (acc, item) => {
                 const blob = getSearchBlob(item).toLowerCase();
                 if (!queryWords.every((word) => blob.includes(word))) return acc;
+                const title = cache ? PresetUtils.getPresetTitle(item, cache) : "";
                 let idx = blob.indexOf(queryWords.join(" "));
                 if (idx === -1) idx = blob.indexOf(queryWords[0]);
                 if (idx === 0) {
-                    if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx });
+                    if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx, title });
                 } else {
-                    if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx });
+                    if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx, title });
                 }
                 return acc;
             },
@@ -198,7 +196,7 @@ const PresetUtils = {
         const sortBucket = (arr) =>
             arr
                 .sort((a, b) => (a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item)))
-                .map((entry) => entry.item);
+                .map(({ item, title }) => ({ item, title }));
 
         return Array.from(new Set([...sortBucket(buckets.startsWith), ...sortBucket(buckets.fuzzy)]));
     },

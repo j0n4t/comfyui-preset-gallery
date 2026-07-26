@@ -413,11 +413,12 @@ export default class PresetBasket {
         return PresetUtils.getTopMatches(
           Object.keys(this.context.cache),
           currentToken,
-          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k])
+          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+          this.context.cache
         );
       },
       renderItem: (match) =>
-        `<span title="${PresetUtils.getPresetTitle(match, this.context.cache)}">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
+        `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         const cursor = this.textarea.selectionStart;
         const leftText = this.textarea.value.slice(0, cursor);
@@ -628,11 +629,12 @@ export default class PresetBasket {
         return PresetUtils.getTopMatches(
           Object.keys(this.context.cache),
           query,
-          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k])
+          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+          this.context.cache
         );
       },
       renderItem: (match) =>
-        `<span title="${PresetUtils.getPresetTitle(match, this.context.cache)}">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
+        `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         input.value = match;
         finishEdit(true);
