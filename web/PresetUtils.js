@@ -133,7 +133,7 @@ const PresetUtils = {
             .substring(0, 6);
     },
     getSearchBlob: (key, item) =>
-        `${key} ${PresetUtils.getPresetInitials(key)} ${item.preset || ""} ${(item.tags || []).join(" ")}`.toLowerCase(),
+        `${PresetUtils.getPresetName(key)} ${key} ${PresetUtils.getPresetInitials(key)} ${item.preset || ""} ${(item.tags || []).join(" ")}`.toLowerCase(),
     getTopMatches: (list, query, getSearchBlob = (i) => i, cache = null) => {
         const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
         if (!queryWords.length) return [];
