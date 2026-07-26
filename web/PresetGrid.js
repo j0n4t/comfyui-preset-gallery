@@ -140,15 +140,14 @@ export default class PresetGrid {
         ? item.tags.map(PresetUtils.toTitleCase).join(" › ")
         : "Root Presets";
       const rawGroup = item.tags?.length ? item.tags.join("/") : "root_presets";
+      const groupColor = cache[rawGroup] ? cache[rawGroup].__color__ : '#888888';
 
       if (uiGroup !== lastGroup) {
         lastGroup = uiGroup;
-        const groupColor = PresetUtils.getGroupColor(rawGroup);
-        const hexColor = PresetUtils.getGroupHexColor(rawGroup);
         htmlBuffer += `
             <div class="j0n4t-pg-group-header${collapsedList.includes(rawGroup) ? " collapsed" : ""}" data-group="${PresetUtils.escapeHTML(uiGroup)}" data-group-raw="${PresetUtils.escapeHTML(rawGroup)}">
                 <span class="j0n4t-pg-group-color-dot" style="background-color: ${groupColor};" title="Click to customize group color">
-                    <input type="color" class="j0n4t-pg-group-color-picker" value="${hexColor}" title="Customize group color" />
+                    <input type="color" class="j0n4t-pg-group-color-picker" value="${groupColor}" title="Customize group color" />
                 </span>
                 <span class="j0n4t-pg-group-title">${PresetUtils.escapeHTML(uiGroup)}</span>
                 <div class="j0n4t-pg-group-line"></div>
@@ -156,11 +155,13 @@ export default class PresetGrid {
             </div>`;
       }
 
+      if (!item.preset) return;
+
       const thumb = item.filename
         ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy">`
-        : `<div style="background-color: ${PresetUtils.getPresetColor(key)}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;">${PresetUtils.icons.file}</div>`;
+        : `<div style="background-color: ${groupColor}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;">${PresetUtils.icons.file}</div>`;
       const badge = item.tags?.length
-        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${PresetUtils.getPresetColor(key)};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
+        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
         : "";
 
       htmlBuffer += `
@@ -194,7 +195,6 @@ export default class PresetGrid {
       .querySelectorAll(".j0n4t-pg-group-header")
       .forEach((header) => {
         const rawFolder = header.dataset.groupRaw;
-        const colorDot = header.querySelector(".j0n4t-pg-group-color-dot");
         const colorPicker = header.querySelector(".j0n4t-pg-group-color-picker");
         const editBtn = header.querySelector(".j0n4t-pg-group-edit");
 
@@ -202,18 +202,11 @@ export default class PresetGrid {
           colorPicker.addEventListener("click", (e) => e.stopPropagation());
           colorPicker.addEventListener("mousedown", (e) => e.stopPropagation());
 
-          colorPicker.addEventListener("input", (e) => {
+          colorPicker.addEventListener("change", async (e) => {
             e.stopPropagation();
             const newColor = e.target.value;
-            if (colorDot) colorDot.style.backgroundColor = newColor;
-            PresetUtils.setGroupColor(rawFolder, newColor);
-          });
-
-          colorPicker.addEventListener("change", (e) => {
-            e.stopPropagation();
-            const newColor = e.target.value;
-            PresetUtils.setGroupColor(rawFolder, newColor);
-            this.compile(this.context.cache);
+            await PresetGalleryAPI.setGroupColor(rawFolder, newColor);
+            await this.context.loadGallery();
           });
         }
 
@@ -359,10 +352,7 @@ export default class PresetGrid {
       : "none";
 
     this.dom.chkGroup.addEventListener("change", () => {
-      localStorage.setItem(
-        "comfy_preset_gallery_grouped",
-        String(this.dom.chkGroup.checked)
-      );
+      localStorage.setItem("comfy_preset_gallery_grouped", String(this.dom.chkGroup.checked));
       this.dom.grid.classList.toggle(
         "hide-folders",
         !this.dom.chkGroup.checked

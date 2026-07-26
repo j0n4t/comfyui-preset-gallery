@@ -8,6 +8,66 @@ const PresetUtils = {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     },
+    parseDataURL: (dataUrl) => {
+        if (!dataUrl || !dataUrl.startsWith("data:")) return null;
+        const matches = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,(.+)$/i);
+        if (!matches) return null;
+        let ext = matches[1].toLowerCase();
+        if (ext === "jpeg") ext = "jpg";
+        return { ext, base64: matches[2] };
+    },
+
+    getMimeType: (ext) => {
+        const e = ext.toLowerCase();
+        if (e === "jpg" || e === "jpeg") return "image/jpeg";
+        if (e === "pn,g") return "image/png";
+        if (e === "webp") return "image/webp";
+        if (e === "gif") return "image/gif";
+        return "image/png";
+    },
+
+    createThumbnail: async (dataUrl) => {
+        if (!dataUrl || !dataUrl.startsWith("data:image/")) return dataUrl;
+
+        try {
+            const img = new Image();
+            img.src = dataUrl;
+
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+            });
+
+            const canvas = document.createElement("canvas");
+            const MAX_DIMENSION = 200;
+
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > MAX_DIMENSION) {
+                    height = Math.round((height * MAX_DIMENSION) / width);
+                    width = MAX_DIMENSION;
+                }
+            } else {
+                if (height > MAX_DIMENSION) {
+                    width = Math.round((width * MAX_DIMENSION) / height);
+                    height = MAX_DIMENSION;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            return canvas.toDataURL("image/jpeg", 0.7);
+        } catch (error) {
+            console.error("Error creating thumbnail:", error);
+            return dataUrl;
+        }
+    },
     toTitleCase: (str) =>
         str
             .replace(/_/g, " ")
@@ -33,13 +93,9 @@ const PresetUtils = {
     },
     getInheritedGroupColor: (groupRaw, pool = null) => {
         if (!groupRaw) return PresetUtils.getHashColor("");
-        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
         const parts = groupRaw.split("/");
         for (let i = parts.length; i > 0; i--) {
             const parentPath = parts.slice(0, i).join("/");
-            if (customColors[parentPath]) {
-                return customColors[parentPath];
-            }
             if (pool && pool[parentPath] && pool[parentPath].__color__) {
                 return pool[parentPath].__color__;
             }
@@ -58,100 +114,8 @@ const PresetUtils = {
         }
         return "#007acc";
     },
-    setGroupColor: (groupRaw, color, pool = null) => {
-        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-        if (color) customColors[groupRaw] = color;
-        else delete customColors[groupRaw];
-        localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
-
-        if (pool) {
-            if (color) {
-                pool[groupRaw] = { ...(pool[groupRaw] || {}), __color__: color };
-            } else if (pool[groupRaw]) {
-                delete pool[groupRaw].__color__;
-            }
-        }
-    },
-    cleanOrphanedColors: (pool) => {
-        if (!pool || typeof pool !== "object") return;
-
-        const hasValidContent = (item) => {
-            if (!item || typeof item !== "object") return false;
-            const hasText = typeof item.preset === "string" && item.preset.trim().length > 0;
-            const hasImg = Boolean(item.filename);
-            return hasText || hasImg;
-        };
-
-        const activeGroups = new Set();
-        for (const [key, item] of Object.entries(pool)) {
-            if (!key || !key.trim()) {
-                delete pool[key];
-                continue;
-            }
-
-            if (hasValidContent(item)) {
-                const parts = key.split("/");
-                for (let i = 1; i < parts.length; i++) {
-                    activeGroups.add(parts.slice(0, i).join("/"));
-                }
-            }
-        }
-
-        for (const key of Object.keys(pool)) {
-            const item = pool[key];
-            if (!item) {
-                delete pool[key];
-                continue;
-            }
-
-            const validContent = hasValidContent(item);
-
-            if (!validContent) {
-                delete pool[key];
-            } else if (item.__color__ && !activeGroups.has(key)) {
-                delete item.__color__;
-            }
-        }
-
-        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-        let changed = false;
-        for (const gKey of Object.keys(customColors)) {
-            if (!activeGroups.has(gKey)) {
-                delete customColors[gKey];
-                changed = true;
-            }
-        }
-        if (changed) {
-            localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
-        }
-    },
-    syncColorsFromPool: (pool) => {
-        if (!pool || typeof pool !== "object") return;
-        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-        let changed = false;
-        for (const [key, item] of Object.entries(pool)) {
-            if (item && item.__color__) {
-                if (customColors[key] !== item.__color__) {
-                    customColors[key] = item.__color__;
-                    changed = true;
-                }
-            }
-        }
-        if (changed) {
-            localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
-        }
-    },
-    syncColorsToPool: (pool) => {
-        if (!pool || typeof pool !== "object") return;
-        const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-        for (const [groupRaw, color] of Object.entries(customColors)) {
-            if (color) {
-                pool[groupRaw] = { ...(pool[groupRaw] || {}), __color__: color };
-            }
-        }
-    },
     getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
-    getPresetColor: (key, pool = null) => {
+    getPresetColor: (key, pool) => {
         if (!key.includes("/")) {
             return PresetUtils.getHashColor(key);
         }
@@ -204,7 +168,6 @@ const PresetUtils = {
         styles.textContent = css;
         document.head.appendChild(styles);
     },
-
     alert: (message) => {
         return new Promise((resolve) => {
             const overlay = document.createElement("div");
@@ -257,7 +220,6 @@ const PresetUtils = {
             document.body.appendChild(overlay);
         });
     },
-
     icons: {
         add: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
         close: `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,

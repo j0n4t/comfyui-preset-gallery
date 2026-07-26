@@ -1,4 +1,6 @@
+import NestedPoolUtils from "./NestedPoolUtils.js";
 import PresetUtils from "./PresetUtils.js";
+import YAMLUtils from "./YAMLUtils.js";
 
 const loadJSZip = async () => {
   if (window.JSZip) return window.JSZip;
@@ -12,214 +14,6 @@ const loadJSZip = async () => {
   });
 };
 
-const parseDataURL = (dataUrl) => {
-  if (!dataUrl || !dataUrl.startsWith("data:")) return null;
-  const matches = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,(.+)$/i);
-  if (!matches) return null;
-  let ext = matches[1].toLowerCase();
-  if (ext === "jpeg") ext = "jpg";
-  return { ext, base64: matches[2] };
-};
-
-const getMimeType = (ext) => {
-  const e = ext.toLowerCase();
-  if (e === "jpg" || e === "jpeg") return "image/jpeg";
-  if (e === "png") return "image/png";
-  if (e === "webp") return "image/webp";
-  if (e === "gif") return "image/gif";
-  return "image/png";
-};
-
-const createThumbnail = async (dataUrl) => {
-  if (!dataUrl || !dataUrl.startsWith("data:image/")) return dataUrl;
-
-  try {
-    const img = new Image();
-    img.src = dataUrl;
-
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-    });
-
-    const canvas = document.createElement("canvas");
-    const MAX_DIMENSION = 200;
-
-    let width = img.width;
-    let height = img.height;
-
-    if (width > height) {
-      if (width > MAX_DIMENSION) {
-        height = Math.round((height * MAX_DIMENSION) / width);
-        width = MAX_DIMENSION;
-      }
-    } else {
-      if (height > MAX_DIMENSION) {
-        width = Math.round((width * MAX_DIMENSION) / height);
-        height = MAX_DIMENSION;
-      }
-    }
-
-    canvas.width = width;
-    canvas.height = height;
-
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, width, height);
-
-    return canvas.toDataURL("image/jpeg", 0.7);
-  } catch (error) {
-    console.error("Error creating thumbnail:", error);
-    return dataUrl;
-  }
-};
-
-const YAMLUtils = {
-  stringify(obj, indent = 0) {
-    let yaml = "";
-    const spaces = " ".repeat(indent);
-    for (const [key, value] of Object.entries(obj)) {
-      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        yaml += `${spaces}${key}:\n${YAMLUtils.stringify(value, indent + 2)}`;
-      } else {
-        const strVal = String(value ?? "");
-        if (strVal.includes("\n") || strVal.includes(":") || strVal.includes("#") || strVal.startsWith(" ") || strVal === "") {
-          yaml += `${spaces}${key}: "${strVal.replace(/"/g, '\\"')}"\n`;
-        } else {
-          yaml += `${spaces}${key}: ${strVal}\n`;
-        }
-      }
-    }
-    return yaml;
-  },
-  parse(yamlStr) {
-    const lines = yamlStr.split(/\r?\n/);
-    const result = {};
-    const stack = [{ indent: -1, obj: result }];
-
-    for (let line of lines) {
-      const commentIdx = line.indexOf(" #");
-      if (commentIdx !== -1) line = line.slice(0, commentIdx);
-      if (!line.trim()) continue;
-
-      const indent = line.search(/\S/);
-      const trimmed = line.trim();
-      const colonIdx = trimmed.indexOf(":");
-      if (colonIdx === -1) continue;
-
-      const key = trimmed.slice(0, colonIdx).trim().replace(/^['"]|['"]$/g, "");
-      const valStr = trimmed.slice(colonIdx + 1).trim();
-
-      while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
-        stack.pop();
-      }
-
-      const currentParent = stack[stack.length - 1].obj;
-
-      if (valStr === "" || valStr === "null") {
-        const newObj = {};
-        currentParent[key] = newObj;
-        stack.push({ indent, obj: newObj });
-      } else {
-        let cleanVal = valStr;
-        if ((cleanVal.startsWith('"') && cleanVal.endsWith('"')) || (cleanVal.startsWith("'") && cleanVal.endsWith("'"))) {
-          cleanVal = cleanVal.slice(1, -1).replace(/\\"/g, '"');
-        }
-        currentParent[key] = cleanVal;
-      }
-    }
-    return result;
-  },
-};
-
-const NestedPoolUtils = {
-  flatToNested(pool, presetOnly = true, includeColors = true) {
-    const root = {};
-    for (const [key, item] of Object.entries(pool)) {
-      if (!item) continue;
-
-      if (!item.preset && item.__color__) {
-        if (!includeColors) continue;
-        const parts = key.split("/");
-        let curr = root;
-        for (let i = 0; i < parts.length; i++) {
-          const part = parts[i];
-          if (!curr[part] || typeof curr[part] !== "object") {
-            curr[part] = {};
-          }
-          if (i === parts.length - 1) {
-            curr[part].__color__ = item.__color__;
-          } else {
-            curr = curr[part];
-          }
-        }
-        continue;
-      }
-
-      const parts = key.split("/");
-      let curr = root;
-      for (let i = 0; i < parts.length - 1; i++) {
-        const part = parts[i];
-        if (!curr[part] || typeof curr[part] !== "object") {
-          curr[part] = {};
-        }
-        curr = curr[part];
-      }
-      const lastPart = parts[parts.length - 1];
-
-      if (presetOnly) {
-        curr[lastPart] = typeof item === "string" ? item : item.preset || "";
-      } else {
-        const copy = typeof item === "object" ? { ...item } : { preset: String(item) };
-        if (!includeColors) delete copy.__color__;
-        curr[lastPart] = copy;
-      }
-    }
-    return root;
-  },
-  nestedToFlat(obj, prefix = "") {
-    let flat = {};
-    for (const [key, val] of Object.entries(obj)) {
-      if (key === "__color__") {
-        if (prefix) {
-          flat[prefix] = { ...(flat[prefix] || {}), __color__: String(val) };
-        }
-        continue;
-      }
-
-      const fullKey = prefix ? `${prefix}/${key}` : key;
-
-      if (val !== null && typeof val === "object" && !("preset" in val)) {
-        if (val.__color__) {
-          flat[fullKey] = { ...(flat[fullKey] || {}), __color__: String(val.__color__) };
-        }
-        Object.assign(flat, NestedPoolUtils.nestedToFlat(val, fullKey));
-      } else {
-        const tags = fullKey.includes("/") ? fullKey.split("/").slice(0, -1) : [];
-        if (typeof val === "string") {
-          flat[fullKey] = {
-            preset: val,
-            tags: tags,
-            filename: null,
-          };
-        } else if (typeof val === "object" && val !== null) {
-          if ("preset" in val) {
-            const item = {
-              preset: val.preset || "",
-              tags: val.tags || tags,
-              filename: val.filename || null,
-            };
-            if (val.__color__) item.__color__ = val.__color__;
-            flat[fullKey] = item;
-          } else if ("__color__" in val) {
-            flat[fullKey] = { ...(flat[fullKey] || {}), __color__: String(val.__color__) };
-          }
-        }
-      }
-    }
-    return flat;
-  },
-};
-
 export default class PresetGalleryAPI {
   static API_ENDPOINT = "/preset_gallery/presets";
 
@@ -228,24 +22,6 @@ export default class PresetGalleryAPI {
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const serverPool = await res.json();
-
-      PresetUtils.syncColorsFromPool(serverPool);
-      PresetUtils.cleanOrphanedColors(serverPool);
-
-      const localData = localStorage.getItem("comfy_preset_gallery_pool");
-      if (localData && Object.keys(serverPool).length === 0) {
-        try {
-          const localPool = JSON.parse(localData);
-          if (Object.keys(localPool).length > 0) {
-            await PresetGalleryAPI.savePool(localPool);
-            localStorage.removeItem("comfy_preset_gallery_pool");
-            return localPool;
-          }
-        } catch (e) {
-          console.error("[PresetGalleryAPI] Failed to migrate localStorage pool:", e);
-        }
-      }
-
       return serverPool;
     } catch (error) {
       console.error("[PresetGalleryAPI] Error fetching gallery:", error);
@@ -259,20 +35,10 @@ export default class PresetGalleryAPI {
 
   static async savePool(pool) {
     try {
-      PresetUtils.cleanOrphanedColors(pool);
-
-      const serverPayloadRaw = JSON.parse(JSON.stringify(pool));
-      PresetUtils.syncColorsToPool(serverPayloadRaw);
-
-      const serverPayload = Object.keys(serverPayloadRaw).sort().reduce((acc, key) => {
-        acc[key] = serverPayloadRaw[key];
-        return acc;
-      }, {});
-
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(serverPayload),
+        body: JSON.stringify(pool),
       });
       return await res.json();
     } catch (error) {
@@ -282,14 +48,12 @@ export default class PresetGalleryAPI {
   }
 
   static async setGroupColor(groupRaw, color) {
-    PresetUtils.setGroupColor(groupRaw, color);
     const pool = await PresetGalleryAPI.getPool();
     if (color) {
       pool[groupRaw] = { ...(pool[groupRaw] || {}), __color__: color };
     } else if (pool[groupRaw]) {
       delete pool[groupRaw].__color__;
     }
-    PresetUtils.cleanOrphanedColors(pool);
     await PresetGalleryAPI.savePool(pool);
     return { success: true };
   }
@@ -314,7 +78,7 @@ export default class PresetGalleryAPI {
     if (clearImage) {
       finalImage = null;
     } else if (imageData) {
-      finalImage = await createThumbnail(imageData);
+      finalImage = await PresetUtils.createThumbnail(imageData);
     }
 
     if (!trimmedText && !finalImage) {
@@ -335,9 +99,6 @@ export default class PresetGalleryAPI {
       tags: tags,
       filename: finalImage,
     };
-
-    PresetUtils.cleanOrphanedColors(pool);
-
     await PresetGalleryAPI.savePool(pool);
     return { success: true, key: newKey };
   }
@@ -345,9 +106,6 @@ export default class PresetGalleryAPI {
   static async deletePreset(uniqueKey) {
     const pool = await PresetGalleryAPI.getPool();
     delete pool[uniqueKey];
-
-    PresetUtils.cleanOrphanedColors(pool);
-
     await PresetGalleryAPI.savePool(pool);
     return { success: true };
   }
@@ -370,24 +128,6 @@ export default class PresetGalleryAPI {
         newPool[key] = pool[key];
       }
     }
-
-    const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
-    let colorsChanged = false;
-    for (const gKey of Object.keys(customColors)) {
-      if (gKey === oldFolder || gKey.startsWith(prefix)) {
-        const suffix = gKey.startsWith(prefix) ? gKey.slice(prefix.length) : "";
-        const newGKey = suffix ? `${newFolder}/${suffix}` : newFolder;
-        customColors[newGKey] = customColors[gKey];
-        delete customColors[gKey];
-        colorsChanged = true;
-      }
-    }
-    if (colorsChanged) {
-      localStorage.setItem("pg_group_colors", JSON.stringify(customColors));
-    }
-
-    PresetUtils.cleanOrphanedColors(newPool);
-
     await PresetGalleryAPI.savePool(newPool);
     return { success: true };
   }
@@ -421,7 +161,7 @@ export default class PresetGalleryAPI {
 
     for (const [gKey, items] of Object.entries(groups)) {
       const gName = gKey === "root_presets" ? "Root Presets" : gKey.split("/").map(PresetUtils.toTitleCase).join(" › ");
-      const groupHex = gKey === "root_presets" ? "#007acc" : PresetUtils.getGroupHexColor(gKey, pool);
+      const groupHex = gKey === "root_presets" ? "#007acc" : pool[gKey].__color__;
 
       const groupEl = document.createElement("div");
       groupEl.className = "j0n4t-pg-tree-group";
@@ -593,7 +333,6 @@ export default class PresetGalleryAPI {
 
   static async exportPool(format = "zip", mode = "full", selectedKeys = null, includeColors = true) {
     let pool = await PresetGalleryAPI.getPool();
-    PresetUtils.syncColorsToPool(pool);
 
     if (selectedKeys && Array.isArray(selectedKeys)) {
       const filtered = {};
@@ -622,7 +361,7 @@ export default class PresetGalleryAPI {
             zip.file(`${key}.txt`, item.preset || "");
 
             if (mode !== "preset-only" && item.filename) {
-              const parsed = parseDataURL(item.filename);
+              const parsed = PresetUtils.parseDataURL(item.filename);
               if (parsed) {
                 zip.file(`${key}.${parsed.ext}`, parsed.base64, { base64: true });
               }
@@ -807,9 +546,9 @@ export default class PresetGalleryAPI {
           if (imgFiles[key]) {
             const { entry, ext } = imgFiles[key];
             const base64 = await entry.async("base64");
-            const mime = getMimeType(ext);
+            const mime = PresetUtils.getMimeType(ext);
             const dataUrl = `data:${mime};base64,${base64}`;
-            filename = await createThumbnail(dataUrl);
+            filename = await PresetUtils.createThumbnail(dataUrl);
           }
 
           const cleanKey = key.toLowerCase().replace(/ /g, "_");
@@ -852,7 +591,7 @@ export default class PresetGalleryAPI {
 
         for (const item of Object.values(importedPool)) {
           if (item && item.filename && item.filename.startsWith("data:image/")) {
-            item.filename = await createThumbnail(item.filename);
+            item.filename = await PresetUtils.createThumbnail(item.filename);
           }
         }
       } catch (err) {
@@ -874,7 +613,6 @@ export default class PresetGalleryAPI {
           for (const [key, item] of Object.entries(importedPool)) {
             if (item && item.__color__) {
               currentPool[key] = { ...(currentPool[key] || {}), __color__: item.__color__ };
-              PresetUtils.setGroupColor(key, item.__color__, currentPool);
             }
           }
         }
@@ -903,8 +641,6 @@ export default class PresetGalleryAPI {
 
           currentPool[targetKey] = item;
         }
-
-        PresetUtils.cleanOrphanedColors(currentPool);
         await PresetGalleryAPI.savePool(currentPool);
         resolve({ success: true });
       });

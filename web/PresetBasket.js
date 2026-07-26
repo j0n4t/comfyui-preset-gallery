@@ -174,7 +174,7 @@ export default class PresetBasket {
         let isPlainText = false;
 
         if (item) {
-          textColor = PresetUtils.getPresetColor(trimmed);
+          textColor = PresetUtils.getPresetColor(trimmed, this.context.cache);
         } else if (/^<(lora|lyco):.+?>$/i.test(trimmed)) {
           textColor = "#4fc1ff";
         } else {
@@ -469,10 +469,7 @@ export default class PresetBasket {
       localStorage.getItem("comfy_preset_gallery_raw_basket") === "true";
     dom.basketContainer.classList.toggle("raw-mode", dom.chkBasketRaw.checked);
     dom.chkBasketRaw.addEventListener("change", () => {
-      localStorage.setItem(
-        "comfy_preset_gallery_raw_basket",
-        String(dom.chkBasketRaw.checked)
-      );
+      localStorage.setItem("comfy_preset_gallery_raw_basket", String(dom.chkBasketRaw.checked));
       dom.basketContainer.classList.toggle(
         "raw-mode",
         dom.chkBasketRaw.checked
@@ -698,7 +695,7 @@ export default class PresetBasket {
       if (item?.filename) {
         chip.style.backgroundImage = `url("${item.filename}")`;
       } else {
-        chip.style.backgroundColor = PresetUtils.getPresetColor(styleKey);
+        chip.style.backgroundColor = PresetUtils.getPresetColor(styleKey, this.context.cache);
       }
 
       let inputHtml = "";
