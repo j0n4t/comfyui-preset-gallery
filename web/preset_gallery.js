@@ -285,7 +285,7 @@ class PresetGalleryApp {
       const res = await PresetGalleryAPI.importFile(file);
       if (res.success) {
         await this.loadGallery();
-        alert("Presets imported successfully!");
+        await PresetUtils.alert("Presets imported successfully!");
       }
       this.dom.inpJsonFile.value = "";
     });

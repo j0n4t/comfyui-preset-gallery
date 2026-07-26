@@ -82,7 +82,6 @@ const PresetUtils = {
             return hasText || hasImg;
         };
 
-        // 1. Collect all active parent groups from entries with valid content
         const activeGroups = new Set();
         for (const [key, item] of Object.entries(pool)) {
             if (!key || !key.trim()) {
@@ -98,7 +97,6 @@ const PresetUtils = {
             }
         }
 
-        // 2. Remove entries without valid content unless they are active groups with __color__
         for (const key of Object.keys(pool)) {
             const item = pool[key];
             if (!item) {
@@ -109,13 +107,12 @@ const PresetUtils = {
             const validContent = hasValidContent(item);
 
             if (!validContent) {
-                delete pool[key]; // Always strip empty metadata entries from the UI's pool
+                delete pool[key];
             } else if (item.__color__ && !activeGroups.has(key)) {
                 delete item.__color__;
             }
         }
 
-        // 3. Sync and clean localStorage pg_group_colors
         const customColors = JSON.parse(localStorage.getItem("pg_group_colors") || "{}");
         let changed = false;
         for (const gKey of Object.keys(customColors)) {
@@ -207,6 +204,60 @@ const PresetUtils = {
         styles.textContent = css;
         document.head.appendChild(styles);
     },
+
+    alert: (message) => {
+        return new Promise((resolve) => {
+            const overlay = document.createElement("div");
+            overlay.className = "j0n4t-pg-modal-overlay";
+            const modal = document.createElement("div");
+            modal.className = "j0n4t-pg-modal";
+            modal.innerHTML = `
+                <h3>⚠️ Notice</h3>
+                <div style="font-size: 11px; color: #ccc; line-height: 1.4;">${PresetUtils.escapeHTML(message)}</div>
+                <div class="j0n4t-pg-modal-actions">
+                    <button type="button" class="j0n4t-pg-btn" style="background:#007acc; width: 60px;">OK</button>
+                </div>
+            `;
+            overlay.appendChild(modal);
+            const close = () => {
+                overlay.remove();
+                resolve();
+            };
+            modal.querySelector("button").addEventListener("click", close);
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) close();
+            });
+            document.body.appendChild(overlay);
+        });
+    },
+    confirm: (message) => {
+        return new Promise((resolve) => {
+            const overlay = document.createElement("div");
+            overlay.className = "j0n4t-pg-modal-overlay";
+            const modal = document.createElement("div");
+            modal.className = "j0n4t-pg-modal";
+            modal.innerHTML = `
+                <h3>❓ Confirmation</h3>
+                <div style="font-size: 11px; color: #ccc; line-height: 1.4;">${PresetUtils.escapeHTML(message)}</div>
+                <div class="j0n4t-pg-modal-actions">
+                    <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-conf-cancel" style="background:#444;">Cancel</button>
+                    <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-conf-ok" style="background:#007acc;">Confirm</button>
+                </div>
+            `;
+            overlay.appendChild(modal);
+            const close = (result) => {
+                overlay.remove();
+                resolve(result);
+            };
+            modal.querySelector("#j0n4t-pg-conf-cancel").addEventListener("click", () => close(false));
+            modal.querySelector("#j0n4t-pg-conf-ok").addEventListener("click", () => close(true));
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) close(false);
+            });
+            document.body.appendChild(overlay);
+        });
+    },
+
     icons: {
         add: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
         close: `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,

@@ -168,7 +168,10 @@ export default class PresetEditor {
     let name = this.dom.inpName.value.trim().toLowerCase().replace(/ /g, "_");
     if (!name) {
       const pt = this.dom.inpPreset.value.trim();
-      if (!pt) return alert("Keywords or Name required to save.");
+      if (!pt) {
+        await PresetUtils.alert("Keywords or Name required to save.");
+        return;
+      }
       name =
         pt
           .split(/\s+/)
@@ -188,7 +191,7 @@ export default class PresetEditor {
     if (this.currentMode === "new") {
       if (
         this.context.cache[uniqueKey] &&
-        !confirm(`Overwrite "${uniqueKey}"?`)
+        !(await PresetUtils.confirm(`Overwrite "${uniqueKey}"?`))
       )
         return;
     }
@@ -217,7 +220,10 @@ export default class PresetEditor {
       mode: this.currentMode,
     });
 
-    if (!res.success) return alert(`Save failed.`);
+    if (!res.success) {
+      await PresetUtils.alert("Save failed.");
+      return;
+    }
 
     if (
       this.currentMode === "edit" &&
@@ -240,9 +246,11 @@ export default class PresetEditor {
   }
 
   async handleDelete() {
-    if (!this.editingKey || !this.context.cache[this.editingKey])
-      return alert("No valid target.");
-    if (!confirm(`Delete "${this.editingKey}"?`)) return;
+    if (!this.editingKey || !this.context.cache[this.editingKey]) {
+      await PresetUtils.alert("No valid target.");
+      return;
+    }
+    if (!(await PresetUtils.confirm(`Delete "${this.editingKey}"?`))) return;
 
     await PresetGalleryAPI.deletePreset(this.editingKey);
     await this.context.loadGallery();
@@ -264,10 +272,10 @@ export default class PresetEditor {
     ["inpName", "inpFolder", "inpPreset"].forEach((id) =>
       this.dom[id].addEventListener("input", markDirty)
     );
-    this.dom.editorPreview.addEventListener("click", (e) => {
+    this.dom.editorPreview.addEventListener("click", async (e) => {
       if (e.target.closest("#j0n4t-pg-rm-img-btn")) {
         e.stopPropagation();
-        if (confirm("Clear image?")) {
+        if (await PresetUtils.confirm("Clear image?")) {
           this.resetImageState();
           markDirty();
         }

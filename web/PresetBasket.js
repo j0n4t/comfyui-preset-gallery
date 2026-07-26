@@ -460,8 +460,8 @@ export default class PresetBasket {
 
   initBasketActions() {
     const { dom } = this.context;
-    dom.btnClearBasket.addEventListener("click", () => {
-      if (this.context.getSelectedArray().length && confirm("Empty basket?"))
+    dom.btnClearBasket.addEventListener("click", async () => {
+      if (this.context.getSelectedArray().length && await PresetUtils.confirm("Empty basket?"))
         this.context.updateWidgetValue([]);
     });
 

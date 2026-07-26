@@ -261,7 +261,6 @@ export default class PresetGalleryAPI {
     try {
       PresetUtils.cleanOrphanedColors(pool);
 
-      // Clone the pool to safely inject colors for the server without polluting the UI
       const serverPayloadRaw = JSON.parse(JSON.stringify(pool));
       PresetUtils.syncColorsToPool(serverPayloadRaw);
 
@@ -311,7 +310,6 @@ export default class PresetGalleryAPI {
 
     const trimmedText = presetText ? presetText.trim() : "";
 
-    // Determine image status
     let finalImage = pool[editingKey]?.filename || null;
     if (clearImage) {
       finalImage = null;
@@ -319,7 +317,6 @@ export default class PresetGalleryAPI {
       finalImage = await createThumbnail(imageData);
     }
 
-    // Require preset text or image content
     if (!trimmedText && !finalImage) {
       console.error("[PresetGalleryAPI] Cannot save preset with empty content.");
       return { success: false, error: "Preset content or image cannot be empty." };
@@ -523,7 +520,7 @@ export default class PresetGalleryAPI {
   static async showExportModal(onExport) {
     const pool = await PresetGalleryAPI.getPool();
     if (Object.keys(pool).length === 0) {
-      alert("No presets available to export.");
+      await PresetUtils.alert("No presets available to export.");
       return;
     }
 
@@ -578,10 +575,10 @@ export default class PresetGalleryAPI {
       if (e.target === overlay) close();
     });
 
-    modal.querySelector("#j0n4t-pg-exp-confirm").addEventListener("click", () => {
+    modal.querySelector("#j0n4t-pg-exp-confirm").addEventListener("click", async () => {
       const selectedKeys = tree.getSelectedKeys();
       if (!selectedKeys.length) {
-        alert("Please select at least one preset to export.");
+        await PresetUtils.alert("Please select at least one preset to export.");
         return;
       }
       const format = modal.querySelector("#j0n4t-pg-exp-format").value;
@@ -645,7 +642,7 @@ export default class PresetGalleryAPI {
         a.click();
         URL.revokeObjectURL(url);
       } catch (err) {
-        alert("ZIP export failed: " + err.message);
+        await PresetUtils.alert("ZIP export failed: " + err.message);
       }
       return;
     }
@@ -750,10 +747,10 @@ export default class PresetGalleryAPI {
       if (e.target === overlay) close();
     });
 
-    modal.querySelector("#j0n4t-pg-imp-confirm").addEventListener("click", () => {
+    modal.querySelector("#j0n4t-pg-imp-confirm").addEventListener("click", async () => {
       const selectedKeys = tree.getSelectedKeys();
       if (!selectedKeys.length) {
-        alert("Please select at least one preset to import.");
+        await PresetUtils.alert("Please select at least one preset to import.");
         return;
       }
       const duplicateStrategy = modal.querySelector("#j0n4t-pg-dup-strategy").value;
@@ -828,7 +825,7 @@ export default class PresetGalleryAPI {
           };
         }
       } catch (err) {
-        alert("Failed to parse ZIP file: " + err.message);
+        await PresetUtils.alert("Failed to parse ZIP file: " + err.message);
         return { success: false };
       }
     } else {
@@ -859,13 +856,13 @@ export default class PresetGalleryAPI {
           }
         }
       } catch (err) {
-        alert("Failed to parse file: " + err.message);
+        await PresetUtils.alert("Failed to parse file: " + err.message);
         return { success: false };
       }
     }
 
     if (Object.keys(importedPool).length === 0) {
-      alert("No valid presets found in the imported file.");
+      await PresetUtils.alert("No valid presets found in the imported file.");
       return { success: false };
     }
 

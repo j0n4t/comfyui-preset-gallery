@@ -267,7 +267,7 @@ export default class PresetGrid {
                     )
                 );
               } else {
-                alert(`Rename failed`);
+                await PresetUtils.alert("Rename failed");
               }
             };
 
