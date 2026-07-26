@@ -10,9 +10,11 @@ export default class PresetGrid {
     .j0n4t-pg-group-color-dot:hover { transform: scale(1.25); box-shadow: 0 0 4px rgba(255,255,255,0.4); }
     .j0n4t-pg-group-color-picker { position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer; border: none; padding: 0; margin: 0; }
     .j0n4t-pg-group-line { flex-grow: 1; height: 1px; background: #bdbdbd40; margin-right: 8px; }
-    .j0n4t-pg-group-header .j0n4t-pg-group-rename-tip { display:none }
-    .j0n4t-pg-group-header:hover .j0n4t-pg-group-rename-tip { display:block; font-size: 8px; color: #666; font-weight: normal; text-transform: none; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; padding-right: 4px; opacity: 1; }
-    .j0n4t-pg-group-header[data-group-raw="root_presets"]:hover .j0n4t-pg-group-rename-tip { display: none; }
+    .j0n4t-pg-group-edit { color: #bbb; border-radius: 3px; width: 10px; height: 10px; display: flex; align-items: center; justify-content: center; transition: 0.15s; cursor: pointer; margin-right: 4px; }
+    .j0n4t-pg-group-edit:hover { background: #d1a119; color: #fff; border-color: #d1a119; }
+    .j0n4t-pg-group-edit svg { width: 11px; height: 11px; fill: currentColor; }
+    .j0n4t-pg-group-header[data-group-raw="root_presets"] .j0n4t-pg-group-edit { display: none !important; }
+    .j0n4t-pg-group-input { background: #222; border: 1px solid #d1a119; color: #fff; font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 1px 4px; outline: none; border-radius: 2px; font-family: inherit; letter-spacing: 0.5px; flex-grow: 1; max-width: 200px; max-height: 12px; margin-right: 8px; }
     .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header, .j0n4t-pg-grid.hide-folders .j0n4t-pg-global-collapse-btn { display: none !important; }
   `;
 
@@ -148,9 +150,9 @@ export default class PresetGrid {
                 <span class="j0n4t-pg-group-color-dot" style="background-color: ${groupColor};" title="Click to customize group color">
                     <input type="color" class="j0n4t-pg-group-color-picker" value="${hexColor}" title="Customize group color" />
                 </span>
-                <span>${PresetUtils.escapeHTML(uiGroup)}</span>
+                <span class="j0n4t-pg-group-title">${PresetUtils.escapeHTML(uiGroup)}</span>
                 <div class="j0n4t-pg-group-line"></div>
-                <span class="j0n4t-pg-group-rename-tip">Right-click to rename</span>
+                <div class="j0n4t-pg-group-edit" title="Rename Group">${PresetUtils.icons.edit}</div>
             </div>`;
       }
 
@@ -194,6 +196,8 @@ export default class PresetGrid {
         const rawFolder = header.dataset.groupRaw;
         const colorDot = header.querySelector(".j0n4t-pg-group-color-dot");
         const colorPicker = header.querySelector(".j0n4t-pg-group-color-picker");
+        const editBtn = header.querySelector(".j0n4t-pg-group-edit");
+
         if (colorPicker) {
           colorPicker.addEventListener("click", (e) => e.stopPropagation());
           colorPicker.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -213,10 +217,90 @@ export default class PresetGrid {
           });
         }
 
+        if (editBtn) {
+          editBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (rawFolder === "root_presets") return;
+
+            const titleSpan = header.querySelector(".j0n4t-pg-group-title");
+            if (!titleSpan || header.querySelector(".j0n4t-pg-group-input")) return;
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "j0n4t-pg-group-input";
+            input.value = rawFolder.replace(/_/g, " ");
+
+            titleSpan.style.display = "none";
+            titleSpan.insertAdjacentElement("afterend", input);
+            input.focus();
+            input.select();
+
+            let saved = false;
+
+            const save = async () => {
+              if (saved) return;
+              saved = true;
+
+              const newName = input.value
+                .trim()
+                .toLowerCase()
+                .replace(/ /g, "_");
+
+              input.remove();
+              titleSpan.style.display = "";
+
+              if (!newName || newName === rawFolder) return;
+
+              const res = await PresetGalleryAPI.renameFolder(rawFolder, newName);
+              if (res.success) {
+                this.context.setCollapsedFolders(
+                  this.context.getCollapsedFolders().filter((i) => i !== rawFolder)
+                );
+                await this.context.loadGallery();
+                this.context.updateWidgetValue(
+                  this.context
+                    .getSelectedArray()
+                    .map((i) =>
+                      i.startsWith(`${rawFolder}/`)
+                        ? i.replace(`${rawFolder}/`, `${newName}/`)
+                        : i
+                    )
+                );
+              } else {
+                alert(`Rename failed`);
+              }
+            };
+
+            const cancel = () => {
+              if (saved) return;
+              saved = true;
+              input.remove();
+              titleSpan.style.display = "";
+            };
+
+            input.addEventListener("click", (ev) => ev.stopPropagation());
+            input.addEventListener("mousedown", (ev) => ev.stopPropagation());
+            input.addEventListener("keydown", (ev) => {
+              if (ev.key === "Enter") {
+                ev.preventDefault();
+                save();
+              } else if (ev.key === "Escape") {
+                ev.preventDefault();
+                cancel();
+              }
+            });
+            input.addEventListener("blur", () => {
+              save();
+            });
+          });
+        }
+
         header.addEventListener("click", (e) => {
           if (
             e.target.closest(".j0n4t-pg-group-color-picker") ||
-            e.target.closest(".j0n4t-pg-group-color-dot")
+            e.target.closest(".j0n4t-pg-group-color-dot") ||
+            e.target.closest(".j0n4t-pg-group-edit") ||
+            e.target.closest(".j0n4t-pg-group-input")
           )
             return;
           const isCollapsed = header.classList.toggle("collapsed");
@@ -233,35 +317,6 @@ export default class PresetGrid {
               ? "↕️ Expand All"
               : "↕️ Collapse All";
           this.executeFilterPipeline(this.dom.search.value);
-        });
-        header.addEventListener("contextmenu", async (e) => {
-          if (rawFolder === "root_presets") return;
-          e.preventDefault();
-          e.stopPropagation();
-          const newName = prompt(
-            `Rename folder "${rawFolder.replace(/_/g, " ")}" to:`,
-            rawFolder.replace(/_/g, " ")
-          )
-            ?.trim()
-            .toLowerCase()
-            .replace(/ /g, "_");
-          if (!newName || newName === rawFolder) return;
-          const res = await PresetGalleryAPI.renameFolder(rawFolder, newName);
-          if (res.success) {
-            this.context.setCollapsedFolders(
-              this.context.getCollapsedFolders().filter((i) => i !== rawFolder)
-            );
-            await this.context.loadGallery();
-            this.context.updateWidgetValue(
-              this.context
-                .getSelectedArray()
-                .map((i) =>
-                  i.startsWith(`${rawFolder}/`)
-                    ? i.replace(`${rawFolder}/`, `${newName}/`)
-                    : i
-                )
-            );
-          } else alert(`Rename failed`);
         });
       });
 
