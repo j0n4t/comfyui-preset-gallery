@@ -262,8 +262,13 @@ export default class PresetGalleryAPI {
       PresetUtils.cleanOrphanedColors(pool);
 
       // Clone the pool to safely inject colors for the server without polluting the UI
-      const serverPayload = JSON.parse(JSON.stringify(pool));
-      PresetUtils.syncColorsToPool(serverPayload);
+      const serverPayloadRaw = JSON.parse(JSON.stringify(pool));
+      PresetUtils.syncColorsToPool(serverPayloadRaw);
+
+      const serverPayload = Object.keys(serverPayloadRaw).sort().reduce((acc, key) => {
+        acc[key] = serverPayloadRaw[key];
+        return acc;
+      }, {});
 
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
         method: "POST",
@@ -605,6 +610,10 @@ export default class PresetGalleryAPI {
       }
       pool = filtered;
     }
+    pool = Object.keys(pool).sort().reduce((acc, key) => {
+      acc[key] = pool[key];
+      return acc;
+    }, {});
 
     if (format === "zip") {
       try {
