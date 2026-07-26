@@ -32,8 +32,9 @@ export default class PresetBasket {
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
     .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; }
     .j0n4t-pg-basket-add-btn:hover { border-color: #007acc; color: #fff; background: #1a242db0; }
-    .j0n4t-pg-lora-weight { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 0 0 2px; text-align: center; margin: 0 2px; outline: none; }
-    .j0n4t-pg-lora-weight:focus { border-color: #007acc; }
+    .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 0 0 2px; text-align: center; margin: 0 2px; outline: none; }
+    .j0n4t-pg-text-input:focus, .j0n4t-pg-bool-input:focus, .j0n4t-pg-num-input:focus { border-color: #007acc; }
+    .j0n4t-pg-bool-input { width: auto; }
   `;
 
   constructor(container, pool, textarea, context) {
@@ -700,41 +701,63 @@ export default class PresetBasket {
         chip.style.backgroundColor = PresetUtils.getPresetColor(styleKey);
       }
 
-      let loraInputHtml = "";
-      const loraMatch = styleKey.match(/^<(lora|lyco):(.+?)(?::(-?\d+(?:\.\d+)?))?>$/i);
-      if (loraMatch) {
-        const weight = loraMatch[3] || "1.0";
-        loraInputHtml = `<input type="number" step="0.05" class="j0n4t-pg-lora-weight lora-weight-input" value="${weight}" title="LoRA Weight" />`;
-        cleanLabel = loraMatch[2];
+      let inputHtml = "";
+      const tagMatch = styleKey.match(/^<(.+?)>$/);
+
+      if (tagMatch) {
+        const innerContent = tagMatch[1];
+        const parts = innerContent.split(/[:;]/);
+        if (parts.length >= 2) {
+          const value = parts.pop().trim();
+          cleanLabel = parts.pop().trim();
+          const isBoolean = /^(true|false)$/i.test(value);
+          const isNumeric = !isNaN(Number(value)) && value !== '';
+          if (isBoolean) {
+            const isChecked = value.toLowerCase() === "true" ? "checked" : "";
+            inputHtml = `<input type="checkbox" class="j0n4t-pg-bool-input bool-input" ${isChecked} title="${cleanLabel} toggle" />`;
+          } else if (isNumeric) {
+            inputHtml = `<input type="number" step="0.05" class="j0n4t-pg-num-input num-input" value="${value}" title="${cleanLabel} value" />`;
+          } else {
+            inputHtml = `<input type="text" class="j0n4t-pg-text-input text-input" value="${value}" title="${cleanLabel} text" />`;
+          }
+        }
       }
 
       chip.innerHTML = `
-                <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(styleKey)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
-                ${loraInputHtml}
-            `;
+        <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(styleKey)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
+        ${inputHtml}
+      `;
 
-      if (loraMatch) {
-        const loraInput = chip.querySelector(".lora-weight-input");
-        loraInput.addEventListener("mousedown", (e) => e.stopPropagation());
-        loraInput.addEventListener("dblclick", (e) => e.stopPropagation());
-
-        loraInput.addEventListener("change", (e) => {
-          const newWeight = parseFloat(e.target.value);
-          if (isNaN(newWeight)) return;
-
-          const newStyleKey = `<${loraMatch[1]}:${loraMatch[2]}:${newWeight}>`;
-          const selections = this.context.getSelectedArray();
-          const idx = selections.indexOf(styleKey);
-
-          if (idx !== -1) {
-            selections[idx] = newStyleKey;
-            this.context.updateWidgetValue(selections);
-          }
-        });
+      if (tagMatch) {
+        const dynamicInput = chip.querySelector("input");
+        if (dynamicInput) {
+          dynamicInput.addEventListener("mousedown", (e) => e.stopPropagation());
+          dynamicInput.addEventListener("dblclick", (e) => e.stopPropagation());
+          dynamicInput.addEventListener("change", (e) => {
+            let newValue;
+            if (e.target.type === "checkbox") {
+              newValue = e.target.checked.toString();
+            } else if (e.target.type === "number") {
+              newValue = parseFloat(e.target.value);
+              if (isNaN(newValue)) return;
+            } else {
+              newValue = e.target.value.trim();
+            }
+            const newStyleKey = styleKey.replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
+            const selections = this.context.getSelectedArray();
+            const idx = selections.indexOf(styleKey);
+            if (idx !== -1) {
+              selections[idx] = newStyleKey;
+              this.context.updateWidgetValue(selections);
+              styleKey = newStyleKey;
+            }
+          });
+        }
       }
 
       chip.addEventListener("click", (e) => {
-        if (e.target.closest(".lora-weight-input")) return;
+        if (e.target.closest("input")) return;
+
         e.stopPropagation();
         this.showChipMenu(chip, styleKey, item);
       });
