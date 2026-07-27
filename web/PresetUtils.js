@@ -139,6 +139,7 @@ const PresetUtils = {
         if (!queryWords.length) return [];
         const buckets = list.reduce(
             (acc, item) => {
+                if (cache && !cache[item].preset) return acc;
                 const blob = getSearchBlob(item).toLowerCase();
                 if (!queryWords.every((word) => blob.includes(word))) return acc;
                 const title = cache ? PresetUtils.getPresetTitle(item, cache) : "";
