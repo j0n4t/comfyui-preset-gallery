@@ -491,80 +491,44 @@ export default class PresetBasket {
         .map((key) => this.context.cache[key]?.preset || key)
         .filter(Boolean)
         .join(", ");
-
       if (!text) return;
-
-      // 1. Create overlay container
-      const overlay = Object.assign(document.createElement("div"), {
-        className: "j0n4t-pg-modal-overlay",
+      const overlay = document.createElement("div");
+      overlay.className = "j0n4t-pg-modal-overlay";
+      overlay.innerHTML = `
+        <div class="j0n4t-pg-modal-content">
+          <div class="j0n4t-pg-modal-header">
+            <span>Basket Output</span>
+            <button class="j0n4t-pg-modal-close" title="Close Modal">&times;</button>
+          </div>
+          <textarea class="j0n4t-pg-modal-textarea" readonly></textarea>
+          <button class="j0n4t-pg-modal-copy-btn">📋 Copy to Clipboard</button>
+        </div>
+      `;
+      const textarea = overlay.querySelector("textarea");
+      textarea.value = text;
+      overlay.addEventListener("click", (e) => {
+        if (e.target.matches(".j0n4t-pg-modal-close") || e.target === overlay) {
+          overlay.remove();
+        } else if (e.target.matches(".j0n4t-pg-modal-copy-btn")) {
+          const copyBtn = e.target;
+          navigator.clipboard.writeText(textarea.value).then(() => {
+            const origBg = copyBtn.style.background;
+            copyBtn.innerText = "✅ Copied!";
+            copyBtn.style.background = "#228b22";
+            copyBtn.style.borderColor = "#228b22";
+            setTimeout(() => {
+              copyBtn.innerText = "📋 Copy to Clipboard";
+              copyBtn.style.background = origBg;
+              copyBtn.style.borderColor = "";
+            }, 1500);
+          });
+        }
       });
-
-      // 2. Create inner modal window
-      const modal = Object.assign(document.createElement("div"), {
-        className: "j0n4t-pg-modal-content",
-      });
-
-      // 3. Create header & close button
-      const header = Object.assign(document.createElement("div"), {
-        className: "j0n4t-pg-modal-header",
-      });
-      const title = document.createElement("span");
-      title.innerText = "Basket Output";
-
-      const closeBtn = Object.assign(document.createElement("button"), {
-        className: "j0n4t-pg-modal-close",
-        innerHTML: "&times;", // You can also use PresetUtils.icons.close here
-        title: "Close Modal",
-      });
-      closeBtn.addEventListener("click", () => overlay.remove());
-
-      header.append(title, closeBtn);
-
-      // 4. Create textarea holding the output text
-      const textarea = Object.assign(document.createElement("textarea"), {
-        className: "j0n4t-pg-modal-textarea",
-        value: text,
-        readOnly: true,
-      });
-
-      // 5. Create a dedicated copy button inside the modal
-      const copyBtn = Object.assign(document.createElement("button"), {
-        className: "j0n4t-pg-modal-copy-btn",
-        innerText: "📋 Copy to Clipboard",
-      });
-
-      copyBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(textarea.value).then(() => {
-          const origBg = copyBtn.style.background;
-          copyBtn.innerText = "✅ Copied!";
-          copyBtn.style.background = "#228b22"; // Success green
-          copyBtn.style.borderColor = "#228b22";
-
-          setTimeout(() => {
-            copyBtn.innerText = "📋 Copy to Clipboard";
-            copyBtn.style.background = origBg;
-            copyBtn.style.borderColor = "";
-          }, 1500);
-        });
-      });
-
-      // 6. Assemble modal elements
-      modal.append(header, textarea, copyBtn);
-      overlay.appendChild(modal);
       document.body.appendChild(overlay);
-
-      // Select the textarea contents automatically for convenience
       setTimeout(() => {
         textarea.focus();
         textarea.select();
       }, 10);
-
-      // Close modal when clicking outside of it
-      overlay.addEventListener("mousedown", (e) => {
-        if (e.target === overlay) {
-          overlay.remove();
-        }
-      });
     });
 
     dom.basketContainer.addEventListener("dblclick", (e) => {
@@ -856,51 +820,33 @@ export default class PresetBasket {
       this.activeChipMenuEl.classList.remove("active-menu");
     }
     this.popupEl?.remove();
-
     chipElement.classList.add("active-menu");
     this.activeChipMenuEl = chipElement;
-
-    const popup = Object.assign(document.createElement("div"), {
-      className: "j0n4t-pg-chip-popup",
-    });
-
-    const editBtn = document.createElement("div");
-    editBtn.className = "j0n4t-pg-chip-popup-item";
-    editBtn.title = "Edit";
-    editBtn.innerHTML = PresetUtils.icons.edit;
-    editBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this.closeChipMenu();
-      if (item) {
-        this.context.openEditorForPreset(styleKey);
-      } else {
-        this.spawnInlineEditor(chipElement, styleKey);
+    const popup = document.createElement("div");
+    popup.className = "j0n4t-pg-chip-popup";
+    const swapIcon = PresetUtils.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
+    popup.innerHTML = `
+      <div class="j0n4t-pg-chip-popup-item" data-action="edit" title="Edit">${PresetUtils.icons.edit}</div>
+      <div class="j0n4t-pg-chip-popup-item" data-action="swap" title="Swap Preset">${swapIcon}</div>
+      ${item
+        ? `<div class="j0n4t-pg-chip-popup-item" data-action="locate" title="Locate in Gallery">${PresetUtils.icons.eye}</div>`
+        : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip">${PresetUtils.icons.add}</div>`
       }
-    });
-    popup.appendChild(editBtn);
-
-    const swapBtn = document.createElement("div");
-    swapBtn.className = "j0n4t-pg-chip-popup-item";
-    swapBtn.title = "Swap Preset";
-    swapBtn.innerHTML = PresetUtils.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
-    swapBtn.addEventListener("click", (e) => {
+      <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove">${PresetUtils.icons.close}</div>
+    `;
+    popup.addEventListener("click", (e) => {
+      const actionEl = e.target.closest("[data-action]");
+      if (!actionEl) return;
       e.stopPropagation();
       this.closeChipMenu();
-      this.spawnInlineEditor(chipElement, styleKey);
-    });
-    popup.appendChild(swapBtn);
-
-    if (item) {
-      const locateBtn = document.createElement("div");
-      locateBtn.className = "j0n4t-pg-chip-popup-item";
-      locateBtn.title = "Locate in Gallery";
-      locateBtn.innerHTML = PresetUtils.icons.eye;
-      locateBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.closeChipMenu();
-        const itemEl = this.context.dom.grid.querySelector(
-          `.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`
-        );
+      const action = actionEl.dataset.action;
+      if (action === "edit") {
+        if (item) this.context.openEditorForPreset(styleKey);
+        else this.spawnInlineEditor(chipElement, styleKey);
+      } else if (action === "swap") {
+        this.spawnInlineEditor(chipElement, styleKey);
+      } else if (action === "locate") {
+        const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`);
         if (itemEl) {
           this.context.dom.search.value = "";
           let prev = itemEl.previousElementSibling;
@@ -908,15 +854,10 @@ export default class PresetBasket {
             prev = prev.previousElementSibling;
           if (prev?.classList.contains("collapsed")) {
             prev.classList.remove("collapsed");
-            this.context.setCollapsedFolders(
-              this.context
-                .getCollapsedFolders()
-                .filter((f) => f !== prev.dataset.groupRaw)
-            );
+            this.context.setCollapsedFolders(this.context.getCollapsedFolders().filter((f) => f !== prev.dataset.groupRaw));
           }
           this.context.grid.executeFilterPipeline();
           itemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
           itemEl.style.transition = "border-color 0.15s, box-shadow 0.15s";
           const origColor = itemEl.style.borderColor;
           itemEl.style.borderColor = "#007acc";
@@ -926,62 +867,23 @@ export default class PresetBasket {
             itemEl.style.boxShadow = "";
           }, 800);
         }
-      });
-      popup.appendChild(locateBtn);
-    } else {
-      const createBtn = document.createElement("div");
-      createBtn.className = "j0n4t-pg-chip-popup-item";
-      createBtn.title = "Create Preset from Chip";
-      createBtn.innerHTML = PresetUtils.icons.add;
-      createBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.closeChipMenu();
+      } else if (action === "create") {
         this.context.setPanelCollapseState(false);
         this.context.editor.clearFields();
-
-        const presetText = item ? item.preset : styleKey;
-        this.context.editor.dom.inpPreset.value = presetText;
-
-        const cleanName = styleKey
-          .replace(/^<(lora|lyco):/i, "")
-          .replace(/>$/, "")
-          .split(":")[0]
-          .split("/")
-          .pop()
-          .replace(/[^a-zA-Z0-9\s-_]/g, "")
-          .trim()
-          .replace(/\s+/g, "_");
-
-        if (cleanName) {
-          this.context.editor.dom.inpName.value = cleanName;
-        }
+        this.context.editor.dom.inpPreset.value = item ? item.preset : styleKey;
+        const cleanName = styleKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop().replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
+        if (cleanName) this.context.editor.dom.inpName.value = cleanName;
         this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
-      });
-      popup.appendChild(createBtn);
-    }
-
-    const delBtn = document.createElement("div");
-    delBtn.className = "j0n4t-pg-chip-popup-item danger";
-    delBtn.title = "Remove";
-    delBtn.innerHTML = PresetUtils.icons.close;
-    delBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this.closeChipMenu();
-      this.context.updateWidgetValue(
-        this.context.getSelectedArray().filter((v) => v !== styleKey)
-      );
+      } else if (action === "del") {
+        this.context.updateWidgetValue(this.context.getSelectedArray().filter((v) => v !== styleKey));
+      }
     });
-    popup.appendChild(delBtn);
-
     popup.addEventListener("mousedown", (e) => e.stopPropagation());
-
     document.body.appendChild(popup);
     this.popupEl = popup;
-
     const rect = chipElement.getBoundingClientRect();
     popup.style.top = `${window.scrollY + rect.bottom + 4}px`;
     popup.style.left = `${window.scrollX + rect.left}px`;
-
     const closeHandler = (e) => {
       if (!popup.contains(e.target) && e.target !== chipElement) {
         this.closeChipMenu();
