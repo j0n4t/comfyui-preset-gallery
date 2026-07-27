@@ -17,6 +17,15 @@ export default class PresetBasket {
     .j0n4t-pg-basket-raw-textarea { display: block; background: transparent; border-color: #444; color: transparent; caret-color: #fff; resize: none; position: relative; z-index: 2; }
     .j0n4t-pg-raw-token { color: #569cd6; font-weight: bold; }
     .j0n4t-pg-raw-token.plain-text { color: #cccccc; font-weight: normal; }
+    .j0n4t-pg-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.75); display: flex; justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(2px); }
+    .j0n4t-pg-modal-content { background: #1e1e1e; border: 1px solid #444; border-radius: 6px; padding: 16px; width: 90%; max-width: 600px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.8); }
+    .j0n4t-pg-modal-header { display: flex; justify-content: space-between; align-items: center; color: #fff; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+    .j0n4t-pg-modal-close { cursor: pointer; color: #aaa; background: none; border: none; font-size: 18px; transition: color 0.2s; display: flex; align-items: center; justify-content: center; }
+    .j0n4t-pg-modal-close:hover { color: #ff4a4a; }
+    .j0n4t-pg-modal-textarea { width: 100%; height: 200px; background: #111; color: #e0e0e0; border: 1px solid #333; border-radius: 4px; padding: 10px; font-family: monospace; font-size: 12px; resize: vertical; outline: none; box-sizing: border-box; }
+    .j0n4t-pg-modal-textarea:focus { border-color: #007acc; }
+    .j0n4t-pg-modal-copy-btn { display: flex; align-items: center; justify-content: center; padding: 8px; background: #2d2d2d; color: #fff; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.2s; margin-top: 4px; }
+    .j0n4t-pg-modal-copy-btn:hover { background: #3d3d3d; border-color: #777; }
   `;
 
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
@@ -482,15 +491,79 @@ export default class PresetBasket {
         .map((key) => this.context.cache[key]?.preset || key)
         .filter(Boolean)
         .join(", ");
+
       if (!text) return;
-      navigator.clipboard.writeText(text).then(() => {
-        const origBg = dom.btnCopyBasket.style.background;
-        dom.btnCopyBasket.innerText = "✅ Copied!";
-        dom.btnCopyBasket.style.background = "#228b22";
-        setTimeout(() => {
-          dom.btnCopyBasket.innerText = "📋 Output";
-          dom.btnCopyBasket.style.background = origBg;
-        }, 1500);
+
+      // 1. Create overlay container
+      const overlay = Object.assign(document.createElement("div"), {
+        className: "j0n4t-pg-modal-overlay",
+      });
+
+      // 2. Create inner modal window
+      const modal = Object.assign(document.createElement("div"), {
+        className: "j0n4t-pg-modal-content",
+      });
+
+      // 3. Create header & close button
+      const header = Object.assign(document.createElement("div"), {
+        className: "j0n4t-pg-modal-header",
+      });
+      const title = document.createElement("span");
+      title.innerText = "Basket Output";
+
+      const closeBtn = Object.assign(document.createElement("button"), {
+        className: "j0n4t-pg-modal-close",
+        innerHTML: "&times;", // You can also use PresetUtils.icons.close here
+        title: "Close Modal",
+      });
+      closeBtn.addEventListener("click", () => overlay.remove());
+
+      header.append(title, closeBtn);
+
+      // 4. Create textarea holding the output text
+      const textarea = Object.assign(document.createElement("textarea"), {
+        className: "j0n4t-pg-modal-textarea",
+        value: text,
+        readOnly: true,
+      });
+
+      // 5. Create a dedicated copy button inside the modal
+      const copyBtn = Object.assign(document.createElement("button"), {
+        className: "j0n4t-pg-modal-copy-btn",
+        innerText: "📋 Copy to Clipboard",
+      });
+
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(textarea.value).then(() => {
+          const origBg = copyBtn.style.background;
+          copyBtn.innerText = "✅ Copied!";
+          copyBtn.style.background = "#228b22"; // Success green
+          copyBtn.style.borderColor = "#228b22";
+
+          setTimeout(() => {
+            copyBtn.innerText = "📋 Copy to Clipboard";
+            copyBtn.style.background = origBg;
+            copyBtn.style.borderColor = "";
+          }, 1500);
+        });
+      });
+
+      // 6. Assemble modal elements
+      modal.append(header, textarea, copyBtn);
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      // Select the textarea contents automatically for convenience
+      setTimeout(() => {
+        textarea.focus();
+        textarea.select();
+      }, 10);
+
+      // Close modal when clicking outside of it
+      overlay.addEventListener("mousedown", (e) => {
+        if (e.target === overlay) {
+          overlay.remove();
+        }
       });
     });
 
