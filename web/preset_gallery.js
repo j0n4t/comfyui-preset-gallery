@@ -86,7 +86,9 @@ class PresetGalleryApp {
                         <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
                     </div>
                 </div>
-                <div class="j0n4t-pg-basket-pool"></div>
+                <div class="j0n4t-pg-basket-pool-wrapper">
+                  <div class="j0n4t-pg-basket-pool"></div>
+                </div>
                 <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..." spellcheck="false"></textarea>
             </div>
             <div class="j0n4t-pg-top-bar">
