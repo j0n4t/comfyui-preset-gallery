@@ -129,12 +129,12 @@ export default class PresetBasket {
   initRawInputSync() {
     const sync = () => {
       this.updateRawHighlights();
-      this.context.updateWidgetValue(
-        this.textarea.value
-          .split(",")
-          .map((i) => i.trim())
-          .filter(Boolean)
-      );
+      const tokens = PresetUtils.parseTokens(this.textarea.value, this.context.cache);
+      const selections = tokens
+        .filter((t) => !t.isDelimiter && t.text.trim())
+        .map((t) => (t.key ? t.key : t.text.trim()));
+
+      this.context.updateWidgetValue([...new Set(selections)]);
     };
 
     this.textarea.addEventListener("input", () => this.updateRawHighlights());
@@ -162,44 +162,24 @@ export default class PresetBasket {
       return;
     }
 
-    const parts = val.split(/(\s*,\s*)/);
+    const tokens = PresetUtils.parseTokens(val, this.context.cache);
     let html = "";
 
-    parts.forEach((part) => {
-      if (/^\s*,\s*$/.test(part)) {
-        html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(part)}</span>`;
+    tokens.forEach((token) => {
+      if (token.isDelimiter || token.isPlainText) {
+        html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(token.text)}</span>`;
+      } else if (token.isLora) {
+        html += `<span class="j0n4t-pg-raw-token" style="color: #4fc1ff;">${PresetUtils.escapeHTML(token.text)}</span>`;
       } else {
-        const trimmed = part.trim();
-        if (!trimmed) {
-          html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(part)}</span>`;
-          return;
-        }
-
-        const leadingSpace = part.slice(0, part.indexOf(trimmed));
-        const trailingSpace = part.slice(part.indexOf(trimmed) + trimmed.length);
-
-        const item = this.context.cache[trimmed];
-        let textColor = "";
-        let isPlainText = false;
-
-        if (item) {
-          textColor = PresetUtils.getPresetColor(trimmed, this.context.cache);
-        } else if (/^<(lora|lyco):.+?>$/i.test(trimmed)) {
-          textColor = "#4fc1ff";
-        } else {
-          isPlainText = true;
-        }
-
-        const spanClass = isPlainText
-          ? "j0n4t-pg-raw-token plain-text"
-          : "j0n4t-pg-raw-token";
+        const itemKey = token.key;
+        const item = token.item;
+        const textColor = itemKey ? PresetUtils.getPresetColor(itemKey, this.context.cache) : "";
         const styleAttr = textColor ? ` style="color: ${textColor};"` : "";
-        const titleAttr = item && !isPlainText ? ` title="${PresetUtils.escapeHTML(`${PresetUtils.toTitleCase(PresetUtils.getPresetName(trimmed))} [${trimmed}]\n${PresetUtils.escapeHTML(item.preset || "")}`)}"` : "";
+        const titleAttr = item
+          ? ` title="${PresetUtils.escapeHTML(`${PresetUtils.toTitleCase(PresetUtils.getPresetName(itemKey))} [${itemKey}]\n${PresetUtils.escapeHTML(item.preset || "")}`)}"`
+          : "";
 
-        html +=
-          `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(leadingSpace)}</span>` +
-          `<span class="${spanClass}"${styleAttr}${titleAttr}>${PresetUtils.escapeHTML(trimmed)}</span>` +
-          `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(trailingSpace)}</span>`;
+        html += `<span class="j0n4t-pg-raw-token"${styleAttr}${titleAttr}>${PresetUtils.escapeHTML(token.text)}</span>`;
       }
     });
 
@@ -235,11 +215,11 @@ export default class PresetBasket {
   }
 
   /**
-* Get character position at x,y coordinates within the textarea
-* @param {number} x - X coordinate relative to textarea
-* @param {number} y - Y coordinate relative to textarea
-* @returns {number} Character index or -1 if not determinable
-*/
+   * Get character position at x,y coordinates within the textarea
+   * @param {number} x - X coordinate relative to textarea
+   * @param {number} y - Y coordinate relative to textarea
+   * @returns {number} Character index or -1 if not determinable
+   */
   getCharPositionAt(x, y) {
     const rect = this.textarea.getBoundingClientRect();
     const clientX = rect.left + x;
@@ -260,12 +240,10 @@ export default class PresetBasket {
     }
 
     if (pos !== -1) {
-      // Post‑process: ensure we are not inside a delimiter (comma/whitespace)
-      // that could have changed due to a race.
       return this._normalizeTokenPosition(pos);
     }
 
-    // Fallback: approximate based on metrics (should rarely be used)
+    // Fallback: approximate based on metrics
     const style = window.getComputedStyle(this.textarea);
     const paddingLeft = parseFloat(style.paddingLeft);
     const paddingRight = parseFloat(style.paddingRight);
@@ -273,35 +251,26 @@ export default class PresetBasket {
     const paddingBottom = parseFloat(style.paddingBottom);
     const borderLeft = parseFloat(style.borderLeftWidth);
     const borderRight = parseFloat(style.borderRightWidth);
-    const borderTop = parseFloat(style.borderTopWidth);
-    const borderBottom = parseFloat(style.borderBottomWidth);
 
-    // Adjust for padding and border
     const xPos = x - paddingLeft - borderLeft;
-    const yPos = y - paddingTop - borderTop;
+    const yPos = y - paddingTop - parseFloat(style.borderTopWidth);
 
     const innerWidth = this.textarea.clientWidth - paddingLeft - paddingRight - borderLeft - borderRight;
-    const innerHeight = this.textarea.clientHeight - paddingTop - paddingBottom - borderTop - borderBottom;
+    const innerHeight = this.textarea.clientHeight - paddingTop - paddingBottom - parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth);
 
     if (xPos < 0 || yPos < 0 || xPos > innerWidth || yPos > innerHeight) return -1;
 
-    // Get font metrics
     const fontSize = parseFloat(style.fontSize);
     const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.2;
-    const charWidth = fontSize * 0.6; // Approximate average character width (monospace)
+    const charWidth = fontSize * 0.6;
 
-    // Calculate characters per line and visible lines
     const charsPerLine = Math.max(1, Math.floor(innerWidth / charWidth));
     const linesCount = Math.max(1, Math.floor(innerHeight / lineHeight));
 
-    // Calculate column and row (zero-indexed)
     const col = Math.min(Math.round(xPos / charWidth), charsPerLine - 1);
     const row = Math.min(Math.floor(yPos / lineHeight), linesCount - 1);
 
-    // Calculate position
-    let calcPos = row * charsPerLine + col;
-
-    // Get text content and clamp
+    const calcPos = row * charsPerLine + col;
     const text = this.textarea.value;
     if (!text) return -1;
     return this._normalizeTokenPosition(Math.min(calcPos, text.length));
@@ -309,9 +278,6 @@ export default class PresetBasket {
 
   /**
    * Adjusts a raw character index to the nearest position that lies inside a token
-   * (i.e., not inside a comma or whitespace delimiter). This helps mitigate
-   * race conditions where the textarea's value changed slightly after the
-   * mouse event was processed.
    * @param {number} pos - Raw character index (0‑based)
    * @returns {number} Adjusted index, clamped to [0, text.length]
    */
@@ -319,17 +285,14 @@ export default class PresetBasket {
     const value = this.textarea.value;
     if (!value) return 0;
 
-    // Clamp to valid range
     if (pos < 0) return 0;
     if (pos > value.length) return value.length;
 
-    // If the position is already inside a non‑delimiter, return it.
     const ch = value[pos];
     if (ch !== ',' && !/\s/.test(ch)) {
       return pos;
     }
 
-    // Otherwise, scan left and right to find the nearest non‑delimiter.
     let left = pos - 1;
     while (left >= 0 && (value[left] === ',' || /\s/.test(value[left]))) {
       left--;
@@ -339,9 +302,8 @@ export default class PresetBasket {
       right++;
     }
 
-    // Choose the closer side; if tie, prefer left.
-    const leftDist = pos - (left + 1); // distance to the character after left delimiter
-    const rightDist = right - pos;     // distance to the character before right delimiter
+    const leftDist = pos - (left + 1);
+    const rightDist = right - pos;
     return leftDist <= rightDist ? left + 1 : right - 1;
   }
 
@@ -354,55 +316,19 @@ export default class PresetBasket {
     const value = this.textarea.value;
     if (!value || pos < 0 || pos > value.length) return null;
 
-    // Split by commas and spaces to find tokens
-    let currentPos = 0;
-    const parts = value.split(/(\s*,\s*)/);
-
-    for (const part of parts) {
-      const partEnd = currentPos + part.length;
-
-      // Check if position is within this part
-      if (pos >= currentPos && pos <= partEnd) {
-        const trimmed = part.trim();
-        if (!trimmed) {
-          currentPos = partEnd;
-          continue;
-        }
-
-        // Check if it's a comma separator
-        if (/^\s*,\s*$/.test(part)) {
-          currentPos = partEnd;
-          continue;
-        }
-
-        // Find where the trimmed text starts within this part
-        const trimmedStart = part.indexOf(trimmed);
-        const trimmedEnd = trimmedStart + trimmed.length;
-
-        // Check if position is within the trimmed text
-        const relativePos = pos - currentPos;
-        if (relativePos >= trimmedStart && relativePos <= trimmedEnd) {
-          // Found our token
-          const item = this.context.cache[trimmed];
-          let isPlainText = false;
-
-          if (!item && !(/^<(lora|lyco):.+?>$/i.test(trimmed))) {
-            isPlainText = true;
-          }
-
-          return {
-            key: trimmed,
-            item: item || null,
-            isPlainText: isPlainText,
-            start: currentPos + trimmedStart,
-            end: currentPos + trimmedEnd
-          };
-        }
+    const tokens = PresetUtils.parseTokens(value, this.context.cache);
+    for (const token of tokens) {
+      if (token.isDelimiter) continue;
+      if (pos >= token.start && pos <= token.end) {
+        return {
+          key: token.key || token.text,
+          item: token.item || null,
+          isPlainText: token.isPlainText,
+          start: token.start,
+          end: token.end
+        };
       }
-
-      currentPos = partEnd;
     }
-
     return null;
   }
 
@@ -437,20 +363,23 @@ export default class PresetBasket {
             ? ""
             : leftText.slice(0, leftText.lastIndexOf(",") + 1) + " ";
 
+        const insertedText = this.context.cache[match]?.preset || match;
+
         this._updatingTextarea = true;
         try {
           this.textarea.value =
-            prefix + match + ", " + this.textarea.value.slice(cursor);
-          this.context.updateWidgetValue(
-            this.textarea.value
-              .split(",")
-              .map((i) => i.trim())
-              .filter(Boolean)
-          );
+            prefix + insertedText + ", " + this.textarea.value.slice(cursor);
+
+          const tokens = PresetUtils.parseTokens(this.textarea.value, this.context.cache);
+          const selections = tokens
+            .filter((t) => !t.isDelimiter && t.text.trim())
+            .map((t) => (t.key ? t.key : t.text.trim()));
+
+          this.context.updateWidgetValue([...new Set(selections)]);
 
           this.textarea.focus();
           this.textarea.selectionStart = this.textarea.selectionEnd =
-            prefix.length + match.length + 2;
+            prefix.length + insertedText.length + 2;
         } finally {
           this._updatingTextarea = false;
         }
@@ -565,12 +494,14 @@ export default class PresetBasket {
       this.context.syncUI(uniqueSelections.join(","));
 
       if (this.textarea && this.container.classList.contains("raw-mode")) {
-        this.textarea.value = uniqueSelections.join(", ");
+        this.textarea.value = uniqueSelections
+          .map((key) => this.context.cache[key]?.preset || key)
+          .filter(Boolean)
+          .join(", ");
       }
     } else {
       this.spawnInlineEditor(chip, targetKey);
     }
-
   }
 
   getClosestChip(clientX, clientY) {
@@ -709,7 +640,10 @@ export default class PresetBasket {
 
   render(activeList) {
     if (!this._updatingTextarea) {
-      this.textarea.value = activeList.join(", ");
+      this.textarea.value = activeList
+        .map((key) => this.context.cache[key]?.preset || key)
+        .filter(Boolean)
+        .join(", ");
     }
     this.updateRawHighlights();
     this.basket.innerHTML = "";

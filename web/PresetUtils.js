@@ -16,6 +16,125 @@ const PresetUtils = {
         if (ext === "jpeg") ext = "jpg";
         return { ext, base64: matches[2] };
     },
+    /**
+     * Parse raw text into structured tokens considering multi-comma preset output strings.
+     * Guarantees exact 1:1 character sequence reconstruction.
+     * @param {string} val 
+     * @returns {Array<{start: number, end: number, text: string, key?: string, item?: Object, isLora?: boolean, isDelimiter?: boolean, isPlainText?: boolean}>}
+     */
+    parseTokens: (val, cache = null) => {
+        const tokens = [];
+        if (!val) return tokens;
+
+        // Collect candidate preset strings & keys
+        const candidates = [];
+        if (cache) {
+            for (const [key, item] of Object.entries(cache)) {
+                if (item?.preset && item.preset.trim()) {
+                    candidates.push({ matchStr: item.preset.trim(), key, item });
+                }
+                if (key && key.trim()) {
+                    candidates.push({ matchStr: key.trim(), key, item });
+                }
+            }
+        }
+
+        // Deduplicate candidates by matchStr (preferring candidate with item)
+        const candidateMap = new Map();
+        for (const cand of candidates) {
+            if (!candidateMap.has(cand.matchStr) || cand.item) {
+                candidateMap.set(cand.matchStr, cand);
+            }
+        }
+
+        // Sort by length descending so multi-comma preset strings match first
+        const sortedCandidates = Array.from(candidateMap.values()).sort(
+            (a, b) => b.matchStr.length - a.matchStr.length
+        );
+
+        let idx = 0;
+        while (idx < val.length) {
+            let matched = null;
+
+            // 1. Try matching cached presets
+            for (const cand of sortedCandidates) {
+                if (val.startsWith(cand.matchStr, idx)) {
+                    const nextChar = val[idx + cand.matchStr.length];
+                    // Boundary check: end of string, comma, or whitespace
+                    if (!nextChar || nextChar === ',' || /\s/.test(nextChar)) {
+                        matched = cand;
+                        break;
+                    }
+                }
+            }
+
+            // 2. Try matching lora / lyco tags
+            if (!matched) {
+                const loraMatch = val.slice(idx).match(/^<(lora|lyco):[^>]+>/i);
+                if (loraMatch) {
+                    matched = { matchStr: loraMatch[0], isLora: true };
+                }
+            }
+
+            if (matched) {
+                tokens.push({
+                    start: idx,
+                    end: idx + matched.matchStr.length,
+                    text: matched.matchStr,
+                    key: matched.key,
+                    item: matched.item,
+                    isLora: matched.isLora
+                });
+                idx += matched.matchStr.length;
+            } else {
+                // Handle comma delimiter
+                if (val[idx] === ',') {
+                    tokens.push({
+                        start: idx,
+                        end: idx + 1,
+                        text: ',',
+                        isDelimiter: true
+                    });
+                    idx += 1;
+                } else {
+                    // Consume plain text up to next comma or candidate/lora match
+                    let endPlain = idx + 1;
+                    while (endPlain < val.length) {
+                        if (val[endPlain] === ',') break;
+
+                        let foundNextMatch = false;
+                        if (val[endPlain] === '<' && /^<(lora|lyco):/i.test(val.slice(endPlain))) {
+                            foundNextMatch = true;
+                        } else {
+                            for (const cand of sortedCandidates) {
+                                if (val.startsWith(cand.matchStr, endPlain)) {
+                                    const nextChar = val[endPlain + cand.matchStr.length];
+                                    if (!nextChar || nextChar === ',' || /\s/.test(nextChar)) {
+                                        foundNextMatch = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (foundNextMatch) break;
+                        endPlain++;
+                    }
+
+                    const plainText = val.slice(idx, endPlain);
+                    tokens.push({
+                        start: idx,
+                        end: idx + plainText.length,
+                        text: plainText,
+                        isPlainText: true
+                    });
+                    idx = endPlain;
+                }
+            }
+        }
+
+        return tokens;
+    },
     getMimeType: (ext) => {
         const e = ext.toLowerCase();
         if (e === "jpg" || e === "jpeg") return "image/jpeg";
