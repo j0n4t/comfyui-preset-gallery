@@ -748,6 +748,11 @@ export default class PresetBasket {
         e.stopPropagation();
         this.showChipMenu(chip, styleKey, item, startIndex, endIndex);
       });
+      chip.addEventListener("dblclick", (e) => {
+        e.stopPropagation();
+        this.closeChipMenu();
+        this.spawnInlineEditor(chip, styleKey, startIndex, endIndex);
+      });
       chip.addEventListener("dragstart", (e) => {
         chip.classList.add("dragging");
         e.dataTransfer.setData("text/plain", styleKey);
