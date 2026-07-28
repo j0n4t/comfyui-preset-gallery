@@ -406,17 +406,9 @@ app.registerExtension({
         baseCallback?.apply(this, arguments);
       };
 
-      // Client-side prompt expansion prior to queue execution
       widget.serializeValue = function () {
         const raw = widget.value || "";
-        const keys = raw
-          .split(",")
-          .map((k) => k.trim())
-          .filter(Boolean);
-        const expanded = keys
-          .map((k) => galleryView.cache[k]?.preset || k)
-          .join(", ");
-        return expanded;
+        return PresetUtils.expandRecursively(raw, galleryView.cache);
       };
 
       galleryView.init();

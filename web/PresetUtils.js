@@ -1,4 +1,19 @@
 const PresetUtils = {
+    expandRecursively: (val, cache, seen = new Set()) => {
+        if (!val) return "";
+        const keys = val.split(",").map((k) => k.trim()).filter(Boolean);
+        const expanded = keys.map((key) => {
+            const item = cache?.[key];
+            if (item && item.preset) {
+                if (seen.has(key)) return key; // Prevent circular references
+                const newSeen = new Set(seen);
+                newSeen.add(key);
+                return PresetUtils.expandRecursively(item.preset, cache, newSeen);
+            }
+            return key;
+        });
+        return expanded.join(", ");
+    },
     escapeHTML: (str) => {
         if (str == null) return "";
         return String(str)
@@ -31,7 +46,14 @@ const PresetUtils = {
         if (cache) {
             for (const [key, item] of Object.entries(cache)) {
                 if (item?.preset && item.preset.trim()) {
-                    candidates.push({ matchStr: item.preset.trim(), key, item });
+                    // Match against the fully expanded string to find the biggest possible chip
+                    const expanded = PresetUtils.expandRecursively(item.preset.trim(), cache);
+                    candidates.push({ matchStr: expanded, key, item });
+
+                    // Also allow matching the unexpanded form if the user typed it manually
+                    if (expanded !== item.preset.trim()) {
+                        candidates.push({ matchStr: item.preset.trim(), key, item });
+                    }
                 }
                 if (key && key.trim()) {
                     candidates.push({ matchStr: key.trim(), key, item });

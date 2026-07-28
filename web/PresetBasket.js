@@ -109,25 +109,29 @@ export default class PresetBasket {
       if (!styleKey) return;
 
       let selections = this.context.getSelectedArray();
-      const sourceIndexStr = e.dataTransfer.getData("source/basket_index");
+      const sourceStartStr = e.dataTransfer.getData("source/basket_start");
+      const sourceEndStr = e.dataTransfer.getData("source/basket_end");
 
-      // Handle internal basket reordering
-      if (e.dataTransfer.getData("source/basket") && sourceIndexStr !== null && sourceIndexStr !== "") {
-        const srcIdx = parseInt(sourceIndexStr, 10);
-        if (!isNaN(srcIdx) && srcIdx >= 0 && srcIdx < selections.length) {
-          selections.splice(srcIdx, 1);
+      let movedItems = [styleKey];
+      if (e.dataTransfer.getData("source/basket") && sourceStartStr !== "" && sourceEndStr !== "") {
+        const start = parseInt(sourceStartStr, 10);
+        const end = parseInt(sourceEndStr, 10);
+        if (!isNaN(start) && !isNaN(end) && start < end) {
+          movedItems = selections.splice(start, end - start);
         }
       }
 
       const closest = this.getClosestChip(e.clientX, e.clientY);
       if (closest.element) {
-        const targetIndexStr = closest.element.dataset.index;
-        let insertionIndex = targetIndexStr !== undefined ? parseInt(targetIndexStr, 10) : selections.length;
-        if (e.clientX > closest.box.left + closest.box.width / 2)
-          insertionIndex += 1;
-        selections.splice(insertionIndex, 0, styleKey);
+        const targetStartStr = closest.element.dataset.start;
+        let insertionIndex = targetStartStr !== undefined ? parseInt(targetStartStr, 10) : selections.length;
+        if (e.clientX > closest.box.left + closest.box.width / 2) {
+          const targetEndStr = closest.element.dataset.end;
+          insertionIndex = targetEndStr !== undefined ? parseInt(targetEndStr, 10) : insertionIndex;
+        }
+        selections.splice(insertionIndex, 0, ...movedItems);
       } else {
-        selections.push(styleKey);
+        selections.push(...movedItems);
       }
 
       this.context.updateWidgetValue(selections);
@@ -344,7 +348,7 @@ export default class PresetBasket {
             ? ""
             : leftText.slice(0, leftText.lastIndexOf(",") + 1) + " ";
 
-        const insertedText = this.context.cache[match]?.preset || match;
+        const insertedText = PresetUtils.expandRecursively(match, this.context.cache);
 
         this._updatingTextarea = true;
         try {
@@ -355,9 +359,7 @@ export default class PresetBasket {
           const selections = tokens
             .filter((t) => !t.isDelimiter && t.text.trim())
             .map((t) => (t.key ? t.key : t.text.trim()));
-
           this.context.updateWidgetValue(selections);
-
           this.textarea.focus();
           this.textarea.selectionStart = this.textarea.selectionEnd =
             prefix.length + insertedText.length + 2;
@@ -396,11 +398,10 @@ export default class PresetBasket {
     });
 
     dom.btnCopyBasket.addEventListener("click", () => {
-      const text = this.context
-        .getSelectedArray()
-        .map((key) => this.context.cache[key]?.preset || key)
-        .filter(Boolean)
-        .join(", ");
+      const text = PresetUtils.expandRecursively(
+        this.context.getSelectedArray().join(", "),
+        this.context.cache
+      );
       if (!text) return;
       const overlay = document.createElement("div");
       overlay.className = "j0n4t-pg-modal-overlay";
@@ -452,37 +453,6 @@ export default class PresetBasket {
     this.dropIndicator = null;
   }
 
-  explodeChip(targetKey, chip = null, chipIndex = undefined) {
-    const currentSelections = this.context.getSelectedArray();
-    const targetPreset = this.context.cache[targetKey];
-    if (targetPreset) {
-      const rawPreset = targetPreset.preset || [targetKey];
-      const updatedSelections = [];
-
-      currentSelections.forEach((key, idx) => {
-        if ((chipIndex !== undefined && idx === chipIndex) || (chipIndex === undefined && key.trim() === targetKey.trim())) {
-          for (const token of rawPreset.split(",")) {
-            updatedSelections.push(token.trim());
-          }
-        } else {
-          updatedSelections.push(key.trim());
-        }
-      });
-
-      this.context.updateWidgetValue(updatedSelections);
-      this.context.syncUI(updatedSelections.join(","));
-
-      if (this.textarea && this.container.classList.contains("raw-mode")) {
-        this.textarea.value = updatedSelections
-          .map((key) => this.context.cache[key]?.preset || key)
-          .filter(Boolean)
-          .join(", ");
-      }
-    } else {
-      this.spawnInlineEditor(chip, targetKey, chipIndex);
-    }
-  }
-
   getClosestChip(clientX, clientY) {
     return [
       ...this.basket.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)"),
@@ -501,7 +471,7 @@ export default class PresetBasket {
     );
   }
 
-  spawnInlineEditor(chipElement, initialValue, chipIndex = undefined) {
+  spawnInlineEditor(chipElement, initialValue, startIndex = undefined, endIndex = undefined) {
     const isNew = !chipElement;
     if (isNew) {
       chipElement = Object.assign(document.createElement("div"), {
@@ -555,9 +525,9 @@ export default class PresetBasket {
           selections.push(newVal);
           this.context.updateWidgetValue(selections);
         } else if (!isNew && newVal !== initialValue) {
-          if (chipIndex !== undefined && chipIndex >= 0 && chipIndex < selections.length) {
-            if (newVal) selections[chipIndex] = newVal;
-            else selections.splice(chipIndex, 1);
+          if (startIndex !== undefined && endIndex !== undefined) {
+            const newValues = newVal.includes(",") ? newVal.split(",").map(s => s.trim()).filter(Boolean) : [newVal];
+            selections.splice(startIndex, endIndex - startIndex, ...newValues);
             this.context.updateWidgetValue(selections);
           } else {
             const idx = selections.indexOf(initialValue);
@@ -623,18 +593,82 @@ export default class PresetBasket {
     this.basket.appendChild(addBtn);
   }
 
+  getGroupedChips(activeList) {
+    const chips = [];
+    let i = 0;
+    while (i < activeList.length) {
+      let matched = null;
+      let matchedLen = 0;
+
+      for (let len = activeList.length - i; len >= 1; len--) {
+        const subArray = activeList.slice(i, i + len);
+        const joined = subArray.join(", ");
+
+        let foundKey = null;
+        let foundItem = null;
+
+        if (this.context.cache) {
+          for (const [key, item] of Object.entries(this.context.cache)) {
+            if (item?.preset && item.preset.trim()) {
+              const expanded = PresetUtils.expandRecursively(item.preset.trim(), this.context.cache);
+              if (expanded === joined || item.preset.trim() === joined) {
+                foundKey = key;
+                foundItem = item;
+                break;
+              }
+            }
+            if (key === joined || key.trim() === joined) {
+              foundKey = key;
+              foundItem = this.context.cache[key];
+              break;
+            }
+          }
+        }
+
+        if (foundKey || len === 1) {
+          matched = {
+            styleKey: foundKey || subArray[0],
+            item: foundItem || (foundKey ? this.context.cache[foundKey] : this.context.cache[subArray[0]]),
+            startIndex: i,
+            endIndex: i + len,
+            subArray
+          };
+          matchedLen = len;
+          break;
+        }
+      }
+
+      if (matched) {
+        chips.push(matched);
+        i += matchedLen;
+      } else {
+        chips.push({
+          styleKey: activeList[i],
+          item: this.context.cache[activeList[i]] || null,
+          startIndex: i,
+          endIndex: i + 1,
+          subArray: [activeList[i]]
+        });
+        i += 1;
+      }
+    }
+    return chips;
+  }
+
   render(activeList) {
     if (!this._updatingTextarea) {
-      this.textarea.value = activeList
-        .map((key) => this.context.cache[key]?.preset || key)
-        .filter(Boolean)
-        .join(", ");
+      this.textarea.value = PresetUtils.expandRecursively(
+        activeList.join(", "),
+        this.context.cache
+      );
     }
     this.updateRawHighlights();
     this.basket.innerHTML = "";
 
-    activeList.forEach((styleKey, index) => {
-      const item = this.context.cache[styleKey];
+    const chipsData = this.getGroupedChips(activeList);
+
+    chipsData.forEach((chipData, index) => {
+      const { styleKey, item, startIndex, endIndex } = chipData;
       let cleanLabel = item
         ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))
         : styleKey;
@@ -643,11 +677,13 @@ export default class PresetBasket {
         className: "j0n4t-pg-basket-chip",
         draggable: true,
         title: item
-          ? `${cleanLabel} [${styleKey}] (double-click to explode)\n${item.preset}`
+          ? `${cleanLabel} [${styleKey}]\n${item.preset}`
           : styleKey,
       });
       chip.dataset.id = styleKey;
       chip.dataset.index = index;
+      chip.dataset.start = startIndex;
+      chip.dataset.end = endIndex;
 
       if (item?.filename) {
         chip.style.backgroundImage = `url("${item.filename}")`;
@@ -699,10 +735,9 @@ export default class PresetBasket {
             }
             const newStyleKey = styleKey.replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
             const selections = this.context.getSelectedArray();
-            if (index < selections.length) {
-              selections[index] = newStyleKey;
+            if (startIndex < selections.length) {
+              selections[startIndex] = newStyleKey;
               this.context.updateWidgetValue(selections);
-              styleKey = newStyleKey;
             }
           });
         }
@@ -710,20 +745,15 @@ export default class PresetBasket {
 
       chip.addEventListener("click", (e) => {
         if (e.target.closest("input")) return;
-
         e.stopPropagation();
-        this.showChipMenu(chip, styleKey, item, index);
-      });
-      chip.addEventListener("dblclick", (e) => {
-        e.stopPropagation();
-        this.closeChipMenu();
-        this.explodeChip(styleKey, chip, index);
+        this.showChipMenu(chip, styleKey, item, startIndex, endIndex);
       });
       chip.addEventListener("dragstart", (e) => {
         chip.classList.add("dragging");
         e.dataTransfer.setData("text/plain", styleKey);
         e.dataTransfer.setData("source/basket", "true");
-        e.dataTransfer.setData("source/basket_index", String(index));
+        e.dataTransfer.setData("source/basket_start", String(startIndex));
+        e.dataTransfer.setData("source/basket_end", String(endIndex));
       });
       chip.addEventListener("dragend", () => {
         chip.classList.remove("dragging");
@@ -735,7 +765,7 @@ export default class PresetBasket {
     this.renderAddNewChipButton();
   }
 
-  showChipMenu(chipElement, styleKey, item, chipIndex = undefined) {
+  showChipMenu(chipElement, styleKey, item, startIndex, endIndex) {
     if (this.activeChipMenuEl) {
       this.activeChipMenuEl.classList.remove("active-menu");
     }
@@ -762,9 +792,9 @@ export default class PresetBasket {
       const action = actionEl.dataset.action;
       if (action === "edit") {
         if (item) this.context.openEditorForPreset(styleKey);
-        else this.spawnInlineEditor(chipElement, styleKey, chipIndex);
+        else this.spawnInlineEditor(chipElement, styleKey, startIndex, endIndex);
       } else if (action === "swap") {
-        this.spawnInlineEditor(chipElement, styleKey, chipIndex);
+        this.spawnInlineEditor(chipElement, styleKey, startIndex, endIndex);
       } else if (action === "locate") {
         const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`);
         if (itemEl) {
@@ -796,11 +826,9 @@ export default class PresetBasket {
         this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
       } else if (action === "del") {
         const selections = this.context.getSelectedArray();
-        if (chipIndex !== undefined && chipIndex >= 0 && chipIndex < selections.length) {
-          selections.splice(chipIndex, 1);
+        if (startIndex !== undefined && endIndex !== undefined) {
+          selections.splice(startIndex, endIndex - startIndex);
           this.context.updateWidgetValue(selections);
-        } else {
-          this.context.updateWidgetValue(selections.filter((v) => v !== styleKey));
         }
       }
     });
