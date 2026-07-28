@@ -12,17 +12,18 @@ export default class RawTextareaManager {
     .j0n4t-pg-raw-token.plain-text { color: #cccccc; font-weight: normal; }
   `;
 
-  constructor(textarea, context, onSync = null) {
+  constructor(textarea, context, ignorePreset = null, onSync = null) {
     this.textarea = textarea;
     this.context = context;
     this.onSync = onSync;
     this.highlightsEl = null;
+    this.ignorePreset = ignorePreset;
 
     PresetUtils.injectStyles("j0n4t-pg-raw-textarea-styles", RawTextareaManager.STYLES);
     this.initWrapper();
     this.initEvents();
     this.initAutocomplete();
-    this.updateHighlights();
+    this.updateHighlights(this.ignorePreset);
   }
 
   initWrapper() {
@@ -42,7 +43,8 @@ export default class RawTextareaManager {
     this.textarea.className = "j0n4t-pg-raw-textarea";
   }
 
-  updateHighlights() {
+  updateHighlights(ignorePreset = null) {
+    this.ignorePreset = ignorePreset;
     if (!this.highlightsEl) return;
     const val = this.textarea.value || "";
     if (!val) {
@@ -50,7 +52,7 @@ export default class RawTextareaManager {
       return;
     }
 
-    const tokens = PresetUtils.parseTokens(val, this.context.cache);
+    const tokens = PresetUtils.parseTokens(val, this.context.cache, this.ignorePreset);
     let html = "";
 
     tokens.forEach((token) => {
@@ -78,11 +80,11 @@ export default class RawTextareaManager {
 
   initEvents() {
     const sync = () => {
-      this.updateHighlights();
+      this.updateHighlights(this.ignorePreset);
       if (this.onSync) this.onSync(this.textarea.value);
     };
 
-    this.textarea.addEventListener("input", () => this.updateHighlights());
+    this.textarea.addEventListener("input", () => this.updateHighlights(this.ignorePreset));
     this.textarea.addEventListener("scroll", () => {
       if (this.highlightsEl) {
         this.highlightsEl.scrollTop = this.textarea.scrollTop;
@@ -198,7 +200,7 @@ export default class RawTextareaManager {
     const value = this.textarea.value;
     if (!value || pos < 0 || pos > value.length) return null;
 
-    const tokens = PresetUtils.parseTokens(value, this.context.cache);
+    const tokens = PresetUtils.parseTokens(value, this.context.cache, this.ignorePreset);
     for (const token of tokens) {
       if (token.isDelimiter) continue;
       if (pos >= token.start && pos <= token.end) {
@@ -250,7 +252,7 @@ export default class RawTextareaManager {
           prefix + insertedText + ", " + this.textarea.value.slice(cursor);
 
         if (this.onSync) this.onSync(this.textarea.value);
-        this.updateHighlights();
+        this.updateHighlights(this.ignorePreset);
         this.textarea.focus();
         this.textarea.selectionStart = this.textarea.selectionEnd =
           prefix.length + insertedText.length + 2;

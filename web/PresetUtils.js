@@ -37,7 +37,7 @@ const PresetUtils = {
      * @param {string} val 
      * @returns {Array<{start: number, end: number, text: string, key?: string, item?: Object, isLora?: boolean, isDelimiter?: boolean, isPlainText?: boolean}>}
      */
-    parseTokens: (val, cache = null) => {
+    parseTokens: (val, cache = null, ignorePreset = null) => {
         const tokens = [];
         if (!val) return tokens;
 
@@ -81,6 +81,7 @@ const PresetUtils = {
             // 1. Try matching cached presets
             for (const cand of sortedCandidates) {
                 if (val.startsWith(cand.matchStr, idx)) {
+                    if (cand.key === ignorePreset || cand.matchStr === ignorePreset) continue;
                     const nextChar = val[idx + cand.matchStr.length];
                     // Boundary check: end of string, comma, or whitespace
                     if (!nextChar || nextChar === ',' || /\s/.test(nextChar)) {

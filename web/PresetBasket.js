@@ -57,7 +57,7 @@ export default class PresetBasket {
     PresetUtils.injectStyles("j0n4t-pg-basket-container-styles", PresetBasket.BASKET_CONTAINER_STYLES);
     PresetUtils.injectStyles("j0n4t-pg-basket-chip-etc-styles", PresetBasket.BASKET_CHIP_ETC_STYLES);
 
-    this.rawManager = new RawTextareaManager(this.textarea, this.context, (val) => {
+    this.rawManager = new RawTextareaManager(this.textarea, this.context, null, (val) => {
       const tokens = PresetUtils.parseTokens(val, this.context.cache);
       const selections = tokens
         .filter((t) => !t.isDelimiter && t.text.trim())

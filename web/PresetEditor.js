@@ -66,12 +66,16 @@ export default class PresetEditor {
     PresetUtils.injectStyles("j0n4t-pg-modal-styles", PresetEditor.MODAL_STYLES);
     PresetUtils.injectStyles("j0n4t-pg-preset-tree-selector-styles", PresetEditor.PRESET_TREE_SELECTOR_STYLES);
 
-    this.rawPresetManager = new RawTextareaManager(this.dom.inpPreset, this.context, () => {
-      if (this.currentMode === "edit" && this.isSaved) {
-        this.isSaved = false;
-        this.updateBanner();
-      }
-    });
+    this.rawPresetManager = new RawTextareaManager(
+      this.dom.inpPreset,
+      this.context,
+      this.editingKey,
+      () => {
+        if (this.currentMode === "edit" && this.isSaved) {
+          this.isSaved = false;
+          this.updateBanner();
+        }
+      });
 
     this.bindEvents();
     this.initFolderAutocomplete();
@@ -163,7 +167,7 @@ export default class PresetEditor {
     this.dom.inpName.value = parts.pop() || "";
     this.dom.inpFolder.value = parts.join("/");
     this.dom.inpPreset.value = this.context.cache[styleKey].preset || "";
-    this.rawPresetManager.updateHighlights();
+    this.rawPresetManager.updateHighlights(styleKey);
 
     if (this.context.cache[styleKey].filename) {
       this.dom.editor.classList.replace("no-image", "has-image");
