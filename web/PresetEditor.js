@@ -94,7 +94,7 @@ export default class PresetEditor {
       (this.dom.inpFolder.value.trim()
         ? `${this.dom.inpFolder.value.trim()}/`
         : "") + (this.dom.inpName.value.trim() || "New");
-    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetUtils.getGroupColor(uniqueKey) || ""}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;">${PresetUtils.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetUtils.escapeHTML(PresetUtils.getPresetInitials(uniqueKey))}</div></div>`;
+    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetUtils.getPresetColor(uniqueKey, this.context.cache) || ""}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;">${PresetUtils.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetUtils.escapeHTML(PresetUtils.getPresetInitials(uniqueKey))}</div></div>`;
   }
 
   updateBanner() {

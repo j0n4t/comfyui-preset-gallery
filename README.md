@@ -44,4 +44,4 @@ Expand the **⚙️ Management Panel** to curate your collection:
 
 * **Save, Edit, Overwrite:** Create brand‑new items or edit existing items on your grid to update text parameters or subfolders.
 * **Image Assets:** Add, replace, or erase reference cover artwork (`.jpg`, `.png`, `.webp`) for any preset entry.
-* **Persistence:** Your preset pool is saved in browser `localStorage`, and you can import and export via `.yaml`, `.json` or `.zip` files.
+* **Persistence:** Your presets are saved in browser `localStorage`, and you can import and export via `.yaml`, `.json` or `.zip` files.

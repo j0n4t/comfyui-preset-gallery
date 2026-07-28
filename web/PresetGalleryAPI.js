@@ -1,4 +1,4 @@
-import NestedPoolUtils from "./NestedPoolUtils.js";
+import NestedPresetUtils from "./NestedPresetUtils.js";
 import PresetUtils from "./PresetUtils.js";
 import YAMLUtils from "./YAMLUtils.js";
 
@@ -21,45 +21,45 @@ export default class PresetGalleryAPI {
     try {
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const serverPool = await res.json();
-      return serverPool;
+      const serverPresets = await res.json();
+      return serverPresets;
     } catch (error) {
       console.error("[PresetGalleryAPI] Error fetching gallery:", error);
       return {};
     }
   }
 
-  static async getPool() {
+  static async getPresets() {
     return await PresetGalleryAPI.fetchGallery();
   }
 
-  static async savePool(pool) {
+  static async savePresets(presets) {
     try {
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pool),
+        body: JSON.stringify(presets),
       });
       return await res.json();
     } catch (error) {
-      console.error("[PresetGalleryAPI] Error saving pool:", error);
+      console.error("[PresetGalleryAPI] Error saving presets:", error);
       return { success: false, error };
     }
   }
 
   static async setGroupColor(groupRaw, color) {
-    const pool = await PresetGalleryAPI.getPool();
+    const presets = await PresetGalleryAPI.getPresets();
     if (color) {
-      pool[groupRaw] = { ...(pool[groupRaw] || {}), __color__: color };
-    } else if (pool[groupRaw]) {
-      delete pool[groupRaw].__color__;
+      presets[groupRaw] = { ...(presets[groupRaw] || {}), __color__: color };
+    } else if (presets[groupRaw]) {
+      delete presets[groupRaw].__color__;
     }
-    await PresetGalleryAPI.savePool(pool);
+    await PresetGalleryAPI.savePresets(presets);
     return { success: true };
   }
 
   static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode }) {
-    const pool = await PresetGalleryAPI.getPool();
+    const presets = await PresetGalleryAPI.getPresets();
 
     let cleanFolder = folder ? folder.trim().toLowerCase().replace(/ /g, "_").replace(/^\/+|\/+$/g, "") : "";
     if (["root", "root_presets", "none", "root presets"].includes(cleanFolder)) {
@@ -74,7 +74,7 @@ export default class PresetGalleryAPI {
 
     const trimmedText = presetText ? presetText.trim() : "";
 
-    let finalImage = pool[editingKey]?.filename || null;
+    let finalImage = presets[editingKey]?.filename || null;
     if (clearImage) {
       finalImage = null;
     } else if (imageData) {
@@ -90,49 +90,49 @@ export default class PresetGalleryAPI {
     const tags = cleanFolder ? cleanFolder.split("/").filter(Boolean) : [];
 
     if (mode === "edit" && editingKey && editingKey !== newKey) {
-      delete pool[editingKey];
+      delete presets[editingKey];
     }
 
-    pool[newKey] = {
-      ...(pool[newKey] || {}),
+    presets[newKey] = {
+      ...(presets[newKey] || {}),
       preset: trimmedText,
       tags: tags,
       filename: finalImage,
     };
-    await PresetGalleryAPI.savePool(pool);
+    await PresetGalleryAPI.savePresets(presets);
     return { success: true, key: newKey };
   }
 
   static async deletePreset(uniqueKey) {
-    const pool = await PresetGalleryAPI.getPool();
-    delete pool[uniqueKey];
-    await PresetGalleryAPI.savePool(pool);
+    const presets = await PresetGalleryAPI.getPresets();
+    delete presets[uniqueKey];
+    await PresetGalleryAPI.savePresets(presets);
     return { success: true };
   }
 
   static async renameFolder(oldFolder, newFolder) {
-    const pool = await PresetGalleryAPI.getPool();
-    const newPool = {};
+    const presets = await PresetGalleryAPI.getPresets();
+    const newPresets = {};
     const prefix = `${oldFolder}/`;
 
-    for (const key in pool) {
+    for (const key in presets) {
       if (key.startsWith(prefix) || key === oldFolder) {
         const suffix = key.startsWith(prefix) ? key.slice(prefix.length) : "";
         const newKey = suffix ? `${newFolder}/${suffix}` : newFolder;
-        const item = pool[key];
+        const item = presets[key];
         if (item.preset) {
           item.tags = newKey.includes("/") ? newKey.split("/").slice(0, -1) : [];
         }
-        newPool[newKey] = item;
+        newPresets[newKey] = item;
       } else {
-        newPool[key] = pool[key];
+        newPresets[key] = presets[key];
       }
     }
-    await PresetGalleryAPI.savePool(newPool);
+    await PresetGalleryAPI.savePresets(newPresets);
     return { success: true };
   }
 
-  static buildPresetSelectorTree(pool) {
+  static buildPresetSelectorTree(presets) {
     const container = document.createElement("div");
     container.className = "j0n4t-pg-selector-container";
 
@@ -150,7 +150,7 @@ export default class PresetGalleryAPI {
     treeBox.className = "j0n4t-pg-selector-tree";
 
     const groups = {};
-    for (const [key, item] of Object.entries(pool)) {
+    for (const [key, item] of Object.entries(presets)) {
       const hasContent = item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename);
       if (!hasContent) continue;
 
@@ -161,7 +161,7 @@ export default class PresetGalleryAPI {
 
     for (const [gKey, items] of Object.entries(groups)) {
       const gName = gKey === "root_presets" ? "Root Presets" : gKey.split("/").map(PresetUtils.toTitleCase).join(" › ");
-      const groupHex = gKey === "root_presets" ? "#007acc" : pool[gKey].__color__;
+      const groupHex = gKey === "root_presets" ? "#007acc" : presets[gKey].__color__;
 
       const groupEl = document.createElement("div");
       groupEl.className = "j0n4t-pg-tree-group";
@@ -258,8 +258,8 @@ export default class PresetGalleryAPI {
   }
 
   static async showExportModal(onExport) {
-    const pool = await PresetGalleryAPI.getPool();
-    if (Object.keys(pool).length === 0) {
+    const presets = await PresetGalleryAPI.getPresets();
+    if (Object.keys(presets).length === 0) {
       await PresetUtils.alert("No presets available to export.");
       return;
     }
@@ -306,7 +306,7 @@ export default class PresetGalleryAPI {
 
     overlay.appendChild(modal);
 
-    const tree = PresetGalleryAPI.buildPresetSelectorTree(pool);
+    const tree = PresetGalleryAPI.buildPresetSelectorTree(presets);
     modal.querySelector("#j0n4t-pg-tree-mount").appendChild(tree.element);
 
     const close = () => overlay.remove();
@@ -331,23 +331,23 @@ export default class PresetGalleryAPI {
     document.body.appendChild(overlay);
   }
 
-  static async exportPool(format = "zip", mode = "full", selectedKeys = null, includeColors = true) {
-    let pool = await PresetGalleryAPI.getPool();
+  static async exportPresets(format = "zip", mode = "full", selectedKeys = null, includeColors = true) {
+    let presets = await PresetGalleryAPI.getPresets();
 
     if (selectedKeys && Array.isArray(selectedKeys)) {
       const filtered = {};
       for (const k of selectedKeys) {
-        if (pool[k]) filtered[k] = pool[k];
+        if (presets[k]) filtered[k] = presets[k];
       }
       if (includeColors) {
-        for (const [k, item] of Object.entries(pool)) {
+        for (const [k, item] of Object.entries(presets)) {
           if (item.__color__) filtered[k] = item;
         }
       }
-      pool = filtered;
+      presets = filtered;
     }
-    pool = Object.keys(pool).sort().reduce((acc, key) => {
-      acc[key] = pool[key];
+    presets = Object.keys(presets).sort().reduce((acc, key) => {
+      acc[key] = presets[key];
       return acc;
     }, {});
 
@@ -356,7 +356,7 @@ export default class PresetGalleryAPI {
         const JSZip = await loadJSZip();
         const zip = new JSZip();
 
-        for (const [key, item] of Object.entries(pool)) {
+        for (const [key, item] of Object.entries(presets)) {
           if (item.preset) {
             zip.file(`${key}.txt`, item.preset || "");
 
@@ -377,7 +377,7 @@ export default class PresetGalleryAPI {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `presets_pool_${mode}.zip`;
+        a.download = `presets_${mode}.zip`;
         a.click();
         URL.revokeObjectURL(url);
       } catch (err) {
@@ -391,7 +391,7 @@ export default class PresetGalleryAPI {
     let ext;
 
     if (mode === "preset-only") {
-      const nested = NestedPoolUtils.flatToNested(pool, true, includeColors);
+      const nested = NestedPresetUtils.flatToNested(presets, true, includeColors);
       if (format === "yaml") {
         dataStr = YAMLUtils.stringify(nested);
         mimeType = "text/yaml";
@@ -403,7 +403,7 @@ export default class PresetGalleryAPI {
       }
     } else {
       const exportData = {};
-      for (const [key, item] of Object.entries(pool)) {
+      for (const [key, item] of Object.entries(presets)) {
         if (item.preset) {
           const exportItem = {
             preset: item.preset,
@@ -419,7 +419,7 @@ export default class PresetGalleryAPI {
         }
       }
       if (format === "yaml") {
-        const nestedFull = NestedPoolUtils.flatToNested(exportData, false, includeColors);
+        const nestedFull = NestedPresetUtils.flatToNested(exportData, false, includeColors);
         dataStr = YAMLUtils.stringify(nestedFull);
         mimeType = "text/yaml";
         ext = "yaml";
@@ -434,20 +434,20 @@ export default class PresetGalleryAPI {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `presets_pool_${mode}.${ext}`;
+    a.download = `presets_${mode}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  static async showImportModal(importedPool, onConfirm) {
+  static async showImportModal(importedPresets, onConfirm) {
     const overlay = document.createElement("div");
     overlay.className = "j0n4t-pg-modal-overlay";
 
     const modal = document.createElement("div");
     modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
 
-    const currentPool = await PresetGalleryAPI.getPool();
-    const duplicates = Object.keys(importedPool).filter((k) => k in currentPool && importedPool[k].preset);
+    const currentPresets = await PresetGalleryAPI.getPresets();
+    const duplicates = Object.keys(importedPresets).filter((k) => k in currentPresets && importedPresets[k].preset);
 
     modal.innerHTML = `
       <h3>📥 Import Presets</h3>
@@ -477,7 +477,7 @@ export default class PresetGalleryAPI {
 
     overlay.appendChild(modal);
 
-    const tree = PresetGalleryAPI.buildPresetSelectorTree(importedPool);
+    const tree = PresetGalleryAPI.buildPresetSelectorTree(importedPresets);
     modal.querySelector("#j0n4t-pg-tree-mount").appendChild(tree.element);
 
     const close = () => overlay.remove();
@@ -502,7 +502,7 @@ export default class PresetGalleryAPI {
   }
 
   static async importFile(file) {
-    let importedPool = {};
+    let importedPresets = {};
 
     if (file.name.toLowerCase().endsWith(".zip")) {
       try {
@@ -521,7 +521,7 @@ export default class PresetGalleryAPI {
             const groupKey = normalizedPath.replace(/\/?__color__\.txt$/i, "").toLowerCase().replace(/ /g, "_");
             const colorVal = (await zipEntry.async("string")).trim();
             if (groupKey) {
-              importedPool[groupKey] = { ...(importedPool[groupKey] || {}), __color__: colorVal };
+              importedPresets[groupKey] = { ...(importedPresets[groupKey] || {}), __color__: colorVal };
             }
             continue;
           }
@@ -556,8 +556,8 @@ export default class PresetGalleryAPI {
 
           const tags = cleanKey.includes("/") ? cleanKey.split("/").slice(0, -1) : [];
 
-          importedPool[cleanKey] = {
-            ...(importedPool[cleanKey] || {}),
+          importedPresets[cleanKey] = {
+            ...(importedPresets[cleanKey] || {}),
             preset: presetText,
             tags: tags,
             filename: filename,
@@ -587,9 +587,9 @@ export default class PresetGalleryAPI {
           throw new Error("Invalid file structure");
         }
 
-        importedPool = NestedPoolUtils.nestedToFlat(parsedData);
+        importedPresets = NestedPresetUtils.nestedToFlat(parsedData);
 
-        for (const item of Object.values(importedPool)) {
+        for (const item of Object.values(importedPresets)) {
           if (item && item.filename && item.filename.startsWith("data:image/")) {
             item.filename = await PresetUtils.createThumbnail(item.filename);
           }
@@ -600,29 +600,29 @@ export default class PresetGalleryAPI {
       }
     }
 
-    if (Object.keys(importedPool).length === 0) {
+    if (Object.keys(importedPresets).length === 0) {
       await PresetUtils.alert("No valid presets found in the imported file.");
       return { success: false };
     }
 
     return new Promise((resolve) => {
-      PresetGalleryAPI.showImportModal(importedPool, async ({ selectedKeys, duplicateStrategy, importColors }) => {
-        const currentPool = await PresetGalleryAPI.getPool();
+      PresetGalleryAPI.showImportModal(importedPresets, async ({ selectedKeys, duplicateStrategy, importColors }) => {
+        const currentPresets = await PresetGalleryAPI.getPresets();
 
         if (importColors) {
-          for (const [key, item] of Object.entries(importedPool)) {
+          for (const [key, item] of Object.entries(importedPresets)) {
             if (item && item.__color__) {
-              currentPool[key] = { ...(currentPool[key] || {}), __color__: item.__color__ };
+              currentPresets[key] = { ...(currentPresets[key] || {}), __color__: item.__color__ };
             }
           }
         }
 
         for (const key of selectedKeys) {
-          const item = importedPool[key];
+          const item = importedPresets[key];
           if (!item || (!item.preset && item.__color__)) continue;
 
           let targetKey = key;
-          if (targetKey in currentPool && currentPool[targetKey].preset) {
+          if (targetKey in currentPresets && currentPresets[targetKey].preset) {
             if (duplicateStrategy === "skip") {
               continue;
             } else if (duplicateStrategy === "keep_both") {
@@ -631,7 +631,7 @@ export default class PresetGalleryAPI {
               const baseName = parts.pop();
               const folderPrefix = parts.length ? parts.join("/") + "/" : "";
 
-              while (`${folderPrefix}${baseName}_copy_${copyIndex}` in currentPool && currentPool[`${folderPrefix}${baseName}_copy_${copyIndex}`].preset) {
+              while (`${folderPrefix}${baseName}_copy_${copyIndex}` in currentPresets && currentPresets[`${folderPrefix}${baseName}_copy_${copyIndex}`].preset) {
                 copyIndex++;
               }
               targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
@@ -639,9 +639,9 @@ export default class PresetGalleryAPI {
             }
           }
 
-          currentPool[targetKey] = item;
+          currentPresets[targetKey] = item;
         }
-        await PresetGalleryAPI.savePool(currentPool);
+        await PresetGalleryAPI.savePresets(currentPresets);
         resolve({ success: true });
       });
     });

@@ -46,9 +46,9 @@ export default class PresetBasket {
     .j0n4t-pg-bool-input { width: auto; }
   `;
 
-  constructor(container, pool, textarea, context) {
+  constructor(container, basket, textarea, context) {
     this.container = container;
-    this.pool = pool;
+    this.basket = basket;
     this.textarea = textarea;
     this.context = context;
     this.dropIndicator = null;
@@ -96,7 +96,7 @@ export default class PresetBasket {
           closest.element.before(this.dropIndicator);
         }
       } else {
-        this.pool.appendChild(this.dropIndicator);
+        this.basket.appendChild(this.dropIndicator);
         this.dropIndicator.style.height = "12px";
       }
     });
@@ -575,7 +575,7 @@ export default class PresetBasket {
 
   getClosestChip(clientX, clientY) {
     return [
-      ...this.pool.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)"),
+      ...this.basket.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)"),
     ].reduce(
       (closest, el) => {
         const box = el.getBoundingClientRect();
@@ -597,11 +597,11 @@ export default class PresetBasket {
       chipElement = Object.assign(document.createElement("div"), {
         className: "j0n4t-pg-basket-chip inline-editing",
       });
-      const addBtn = this.pool.querySelector(".j0n4t-pg-basket-add-btn");
+      const addBtn = this.basket.querySelector(".j0n4t-pg-basket-add-btn");
       if (addBtn) {
         addBtn.before(chipElement);
       } else {
-        this.pool.appendChild(chipElement);
+        this.basket.appendChild(chipElement);
       }
     } else {
       if (chipElement.classList.contains("inline-editing")) return;
@@ -704,7 +704,7 @@ export default class PresetBasket {
       e.stopPropagation();
       this.spawnInlineEditor(null, "");
     });
-    this.pool.appendChild(addBtn);
+    this.basket.appendChild(addBtn);
   }
 
   render(activeList) {
@@ -712,7 +712,7 @@ export default class PresetBasket {
       this.textarea.value = activeList.join(", ");
     }
     this.updateRawHighlights();
-    this.pool.innerHTML = "";
+    this.basket.innerHTML = "";
 
     activeList.forEach((styleKey) => {
       const item = this.context.cache[styleKey];
@@ -809,7 +809,7 @@ export default class PresetBasket {
         chip.classList.remove("dragging");
         this.removeDropIndicator();
       });
-      this.pool.appendChild(chip);
+      this.basket.appendChild(chip);
     });
 
     this.renderAddNewChipButton();

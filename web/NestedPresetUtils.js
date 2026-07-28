@@ -1,7 +1,7 @@
-const NestedPoolUtils = {
-    flatToNested(pool, presetOnly = true, includeColors = true) {
+const NestedPresetUtils = {
+    flatToNested(presets, presetOnly = true, includeColors = true) {
         const root = {};
-        for (const [key, item] of Object.entries(pool)) {
+        for (const [key, item] of Object.entries(presets)) {
             if (!item) continue;
 
             if (!item.preset && item.__color__) {
@@ -59,7 +59,7 @@ const NestedPoolUtils = {
                 if (val.__color__) {
                     flat[fullKey] = { ...(flat[fullKey] || {}), __color__: String(val.__color__) };
                 }
-                Object.assign(flat, NestedPoolUtils.nestedToFlat(val, fullKey));
+                Object.assign(flat, NestedPresetUtils.nestedToFlat(val, fullKey));
             } else {
                 const tags = fullKey.includes("/") ? fullKey.split("/").slice(0, -1) : [];
                 if (typeof val === "string") {
@@ -87,4 +87,4 @@ const NestedPoolUtils = {
     },
 };
 
-export default NestedPoolUtils;
+export default NestedPresetUtils;

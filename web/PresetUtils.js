@@ -16,7 +16,6 @@ const PresetUtils = {
         if (ext === "jpeg") ext = "jpg";
         return { ext, base64: matches[2] };
     },
-
     getMimeType: (ext) => {
         const e = ext.toLowerCase();
         if (e === "jpg" || e === "jpeg") return "image/jpeg";
@@ -25,25 +24,19 @@ const PresetUtils = {
         if (e === "gif") return "image/gif";
         return "image/png";
     },
-
     createThumbnail: async (dataUrl) => {
         if (!dataUrl || !dataUrl.startsWith("data:image/")) return dataUrl;
-
         try {
             const img = new Image();
             img.src = dataUrl;
-
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
                 img.onerror = reject;
             });
-
             const canvas = document.createElement("canvas");
             const MAX_DIMENSION = 200;
-
             let width = img.width;
             let height = img.height;
-
             if (width > height) {
                 if (width > MAX_DIMENSION) {
                     height = Math.round((height * MAX_DIMENSION) / width);
@@ -55,13 +48,10 @@ const PresetUtils = {
                     height = MAX_DIMENSION;
                 }
             }
-
             canvas.width = width;
             canvas.height = height;
-
             const ctx = canvas.getContext("2d");
             ctx.drawImage(img, 0, 0, width, height);
-
             return canvas.toDataURL("image/jpeg", 0.7);
         } catch (error) {
             console.error("Error creating thumbnail:", error);
@@ -81,47 +71,18 @@ const PresetUtils = {
         const hue = Math.abs((hash ^ (hash >>> 15)) % 360);
         return `hsl(${hue}, 65%, 35%)`;
     },
-    hslToHex: (h, s, l) => {
-        l /= 100;
-        const a = (s * Math.min(l, 1 - l)) / 100;
-        const f = (n) => {
-            const k = (n + h / 30) % 12;
-            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-            return Math.round(255 * color).toString(16).padStart(2, "0");
-        };
-        return `#${f(0)}${f(8)}${f(4)}`;
-    },
-    getInheritedGroupColor: (groupRaw, pool = null) => {
-        if (!groupRaw) return PresetUtils.getHashColor("");
-        const parts = groupRaw.split("/");
+    getPresetColor: (presetKey = "", cache = null) => {
+        const parts = presetKey.split("/");
         for (let i = parts.length; i > 0; i--) {
             const parentPath = parts.slice(0, i).join("/");
-            if (pool && pool[parentPath] && pool[parentPath].__color__) {
-                return pool[parentPath].__color__;
+            if (cache && cache[parentPath] && cache[parentPath].__color__) {
+                return cache[parentPath].__color__;
             }
         }
-        const topLevel = parts[0] || "";
+        const topLevel = parts[0];
         return PresetUtils.getHashColor(topLevel);
     },
-
-    getGroupColor: (groupRaw, pool = null) => PresetUtils.getInheritedGroupColor(groupRaw, pool),
-    getGroupHexColor: (groupRaw, pool = null) => {
-        const color = PresetUtils.getGroupColor(groupRaw, pool);
-        if (color.startsWith("#")) return color;
-        const hslMatch = color.match(/hsl\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)%\s*,\s*(\d+(?:\.\d+)?)%\s*\)/i);
-        if (hslMatch) {
-            return PresetUtils.hslToHex(parseFloat(hslMatch[1]), parseFloat(hslMatch[2]), parseFloat(hslMatch[3]));
-        }
-        return "#007acc";
-    },
     getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
-    getPresetColor: (key, pool) => {
-        if (!key.includes("/")) {
-            return PresetUtils.getHashColor(key);
-        }
-        const groupPath = key.substring(0, key.lastIndexOf("/"));
-        return PresetUtils.getInheritedGroupColor(groupPath, pool);
-    },
     getPresetName: (key) => key.split("/").pop(),
     getPresetTitle: (key, cache) => `${PresetUtils.toTitleCase(PresetUtils.getPresetName(key))} [${key}]\n${cache[key]?.preset || ""}`,
     getPresetInitials: (key) => {
@@ -154,12 +115,10 @@ const PresetUtils = {
             },
             { startsWith: [], fuzzy: [] }
         );
-
         const sortBucket = (arr) =>
             arr
                 .sort((a, b) => (a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item)))
                 .map(({ item, title }) => ({ item, title }));
-
         return Array.from(new Set([...sortBucket(buckets.startsWith), ...sortBucket(buckets.fuzzy)]));
     },
     injectStyles: (id, css) => {
