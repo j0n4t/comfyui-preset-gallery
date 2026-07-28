@@ -1,6 +1,7 @@
 import AutocompleteManager from "./AutocompleteManager.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetUtils from "./PresetUtils.js";
+import RawTextareaManager from "./RawTextareaManager.js";
 
 const fileToDataURL = (file) =>
   new Promise((resolve, reject) => {
@@ -15,7 +16,7 @@ export default class PresetEditor {
     .j0n4t-pg-editor { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #3d3d3d; padding-top: 8px; margin-top: 2px; box-sizing: border-box; flex-shrink: 0; }
     .j0n4t-pg-editor.collapsed { display: none !important; }
     .j0n4t-pg-editor-banner { font-size: 10px; font-weight: bold; padding: 4px 6px; border-radius: 3px; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
-    .j0n4t-pg-editor input, .j0n4t-pg-editor textarea { background: #1a1a1ab0; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
+    .j0n4t-pg-editor input { background: #1a1a1ab0; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; }
     .j0n4t-pg-editor textarea { resize: vertical; min-height: 48px; }
     .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
     .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; text-align: center; box-sizing: border-box; height: 24px; }
@@ -64,6 +65,13 @@ export default class PresetEditor {
     PresetUtils.injectStyles("j0n4t-pg-editor-preview-styles", PresetEditor.EDITOR_PREVIEW_STYLES);
     PresetUtils.injectStyles("j0n4t-pg-modal-styles", PresetEditor.MODAL_STYLES);
     PresetUtils.injectStyles("j0n4t-pg-preset-tree-selector-styles", PresetEditor.PRESET_TREE_SELECTOR_STYLES);
+
+    this.rawPresetManager = new RawTextareaManager(this.dom.inpPreset, this.context, () => {
+      if (this.currentMode === "edit" && this.isSaved) {
+        this.isSaved = false;
+        this.updateBanner();
+      }
+    });
 
     this.bindEvents();
     this.initFolderAutocomplete();
@@ -137,6 +145,7 @@ export default class PresetEditor {
     this.dom.inpName.value = "";
     this.dom.inpFolder.value = "";
     this.dom.inpPreset.value = "";
+    this.rawPresetManager.updateHighlights();
     this.resetImageState();
     this.updateBanner();
     this.context.syncEditorHighlight();
@@ -154,6 +163,7 @@ export default class PresetEditor {
     this.dom.inpName.value = parts.pop() || "";
     this.dom.inpFolder.value = parts.join("/");
     this.dom.inpPreset.value = this.context.cache[styleKey].preset || "";
+    this.rawPresetManager.updateHighlights();
 
     if (this.context.cache[styleKey].filename) {
       this.dom.editor.classList.replace("no-image", "has-image");

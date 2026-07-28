@@ -88,10 +88,7 @@ class PresetGalleryApp {
                     </div>
                 </div>
                 <div class="j0n4t-pg-basket-pool"></div>
-                <div class="j0n4t-pg-raw-wrapper">
-                    <div class="j0n4t-pg-raw-highlights" id="j0n4t-pg-raw-highlights"></div>
-                    <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..." spellcheck="false"></textarea>
-                </div>
+                <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..." spellcheck="false"></textarea>
             </div>
             <div class="j0n4t-pg-top-bar">
                 <div class="j0n4t-pg-search-wrapper"><input type="text" enterkeyhint="enter" class="j0n4t-pg-search" placeholder="Search..." /><div class="j0n4t-pg-search-clear">${PresetUtils.icons.close}</div></div>
