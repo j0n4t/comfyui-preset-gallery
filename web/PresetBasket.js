@@ -162,52 +162,6 @@ export default class PresetBasket {
         dom.chkBasketRaw.checked
       );
     });
-
-    dom.btnCopyBasket.addEventListener("click", () => {
-      const text = PresetUtils.expandRecursively(
-        this.context.getSelectedArray().join(", "),
-        this.context.cache
-      );
-      if (!text) return;
-      const overlay = document.createElement("div");
-      overlay.className = "j0n4t-pg-modal-overlay";
-      overlay.innerHTML = `
-        <div class="j0n4t-pg-modal-content">
-          <div class="j0n4t-pg-modal-header">
-            <span>Basket Output</span>
-            <button class="j0n4t-pg-modal-close" title="Close Modal">&times;</button>
-          </div>
-          <textarea class="j0n4t-pg-modal-textarea" readonly></textarea>
-          <button class="j0n4t-pg-modal-copy-btn">📋 Copy to Clipboard</button>
-        </div>
-      `;
-      const textarea = overlay.querySelector("textarea");
-      textarea.value = text;
-      overlay.addEventListener("click", (e) => {
-        if (e.target.matches(".j0n4t-pg-modal-close") || e.target === overlay) {
-          overlay.remove();
-        } else if (e.target.matches(".j0n4t-pg-modal-copy-btn")) {
-          const copyBtn = e.target;
-          navigator.clipboard.writeText(textarea.value).then(() => {
-            const origBg = copyBtn.style.background;
-            copyBtn.innerText = "✅ Copied!";
-            copyBtn.style.background = "#228b22";
-            copyBtn.style.borderColor = "#228b22";
-            setTimeout(() => {
-              copyBtn.innerText = "📋 Copy to Clipboard";
-              copyBtn.style.background = origBg;
-              copyBtn.style.borderColor = "";
-            }, 1500);
-          });
-        }
-      });
-      document.body.appendChild(overlay);
-      setTimeout(() => {
-        textarea.focus();
-        textarea.select();
-      }, 10);
-    });
-
     dom.basketContainer.addEventListener("dblclick", (e) => {
       e.stopPropagation();
       this.spawnInlineEditor(null, "");

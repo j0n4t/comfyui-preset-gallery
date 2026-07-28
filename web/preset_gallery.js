@@ -83,7 +83,6 @@ class PresetGalleryApp {
                     <div class="j0n4t-pg-basket-title">🧺 Presets Basket</div>
                     <div style="display: flex; gap: 4px; align-items: center;">
                         <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
-                        <button type="button" id="j0n4t-pg-basket-copy-btn" title="Copy expanded prompt output (useful for creating new presets)" style="font-size:9px; color:#fff; background:#444; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">📋 Output</button>
                         <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
                     </div>
                 </div>
@@ -145,7 +144,6 @@ class PresetGalleryApp {
       inpJsonFile: wrap.querySelector("#j0n4t-pg-json-file"),
       btnImport: wrap.querySelector("#j0n4t-pg-import-btn"),
       btnExport: wrap.querySelector("#j0n4t-pg-export-btn"),
-      btnCopyBasket: wrap.querySelector("#j0n4t-pg-basket-copy-btn"),
       btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn"),
       chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
       basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
