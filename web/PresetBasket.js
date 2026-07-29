@@ -475,7 +475,7 @@ export default class PresetBasket {
       chip.addEventListener("dblclick", (e) => {
         e.stopPropagation();
         this.closeChipMenu();
-        this.spawnInlineEditor(chip, styleKey, startIndex, endIndex);
+        this.spawnInlineEditor(chip, item?.preset || styleKey, startIndex, endIndex);
       });
       chip.addEventListener("dragstart", (e) => {
         chip.classList.add("dragging");
@@ -523,7 +523,7 @@ export default class PresetBasket {
         if (item) this.context.openEditorForPreset(styleKey);
         else this.spawnInlineEditor(chipElement, styleKey, startIndex, endIndex);
       } else if (action === "swap") {
-        this.spawnInlineEditor(chipElement, styleKey, startIndex, endIndex);
+        this.spawnInlineEditor(chipElement, this.context.cache[styleKey]?.preset || styleKey, startIndex, endIndex);
       } else if (action === "locate") {
         const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`);
         if (itemEl) {
