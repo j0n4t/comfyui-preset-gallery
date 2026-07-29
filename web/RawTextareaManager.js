@@ -58,7 +58,7 @@ export default class RawTextareaManager {
     tokens.forEach((token) => {
       if (token.isDelimiter || token.isPlainText) {
         html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(token.text)}</span>`;
-      } else if (token.isLora) {
+      } else if (token.isTag) {
         html += `<span class="j0n4t-pg-raw-token" style="color: #4fc1ff;">${PresetUtils.escapeHTML(token.text)}</span>`;
       } else {
         const itemKey = token.key;

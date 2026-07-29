@@ -1,7 +1,7 @@
 const PresetUtils = {
     expandRecursively: (val, cache, seen = new Set()) => {
         if (!val) return "";
-        const keys = val.split(",").map((k) => k.trim()).filter(Boolean);
+        const keys = val.split(/,(?![^<]*>)/).map((k) => k.trim()).filter(Boolean);
         const expanded = keys.map((key) => {
             const item = cache?.[key];
             if (item && item.preset) {
@@ -35,7 +35,7 @@ const PresetUtils = {
      * Parse raw text into structured tokens considering multi-comma preset output strings.
      * Guarantees exact 1:1 character sequence reconstruction.
      * @param {string} val 
-     * @returns {Array<{start: number, end: number, text: string, key?: string, item?: Object, isLora?: boolean, isDelimiter?: boolean, isPlainText?: boolean}>}
+     * @returns {Array<{start: number, end: number, text: string, key?: string, item?: Object, isTag?: boolean, isDelimiter?: boolean, isPlainText?: boolean}>}
      */
     parseTokens: (val, cache = null, ignorePreset = null) => {
         const tokens = [];
@@ -74,6 +74,18 @@ const PresetUtils = {
             (a, b) => b.matchStr.length - a.matchStr.length
         );
 
+        const isValidBoundary = (startIdx, endIdx) => {
+            for (let i = startIdx - 1; i >= 0; i--) {
+                if (val[i] === ',') break;
+                if (!/\s/.test(val[i])) return false;
+            }
+            for (let i = endIdx; i < val.length; i++) {
+                if (val[i] === ',') break;
+                if (!/\s/.test(val[i])) return false;
+            }
+            return true;
+        };
+
         let idx = 0;
         while (idx < val.length) {
             let matched = null;
@@ -82,20 +94,17 @@ const PresetUtils = {
             for (const cand of sortedCandidates) {
                 if (val.startsWith(cand.matchStr, idx)) {
                     if (cand.key === ignorePreset || cand.matchStr === ignorePreset) continue;
-                    const nextChar = val[idx + cand.matchStr.length];
-                    // Boundary check: end of string, comma, or whitespace
-                    if (!nextChar || nextChar === ',' || /\s/.test(nextChar)) {
+                    if (isValidBoundary(idx, idx + cand.matchStr.length)) {
                         matched = cand;
                         break;
                     }
                 }
             }
 
-            // 2. Try matching lora / lyco tags
             if (!matched) {
-                const loraMatch = val.slice(idx).match(/^<(lora|lyco):[^>]+>/i);
-                if (loraMatch) {
-                    matched = { matchStr: loraMatch[0], isLora: true };
+                const tagMatch = val.slice(idx).match(/^<[^<>]+>/i);
+                if (tagMatch) {
+                    matched = { matchStr: tagMatch[0], isTag: true };
                 }
             }
 
@@ -106,7 +115,7 @@ const PresetUtils = {
                     text: matched.matchStr,
                     key: matched.key,
                     item: matched.item,
-                    isLora: matched.isLora
+                    isTag: matched.isTag
                 });
                 idx += matched.matchStr.length;
             } else {
@@ -126,13 +135,13 @@ const PresetUtils = {
                         if (val[endPlain] === ',') break;
 
                         let foundNextMatch = false;
-                        if (val[endPlain] === '<' && /^<(lora|lyco):/i.test(val.slice(endPlain))) {
+                        if (val[endPlain] === '<' && /^<[^<>]+/i.test(val.slice(endPlain))) {
                             foundNextMatch = true;
                         } else {
                             for (const cand of sortedCandidates) {
                                 if (val.startsWith(cand.matchStr, endPlain)) {
-                                    const nextChar = val[endPlain + cand.matchStr.length];
-                                    if (!nextChar || nextChar === ',' || /\s/.test(nextChar)) {
+                                    if (cand.key === ignorePreset || cand.matchStr === ignorePreset) continue;
+                                    if (isValidBoundary(endPlain, endPlain + cand.matchStr.length)) {
                                         foundNextMatch = true;
                                         break;
                                     }

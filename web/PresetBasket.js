@@ -248,7 +248,7 @@ export default class PresetBasket {
           this.context.updateWidgetValue(selections);
         } else if (!isNew && newVal !== initialValue) {
           if (startIndex !== undefined && endIndex !== undefined) {
-            const newValues = newVal.includes(",") ? newVal.split(",").map(s => s.trim()).filter(Boolean) : [newVal];
+            const newValues = newVal.includes(",") ? newVal.split(/,(?![^<]*>)/).map(s => s.trim()).filter(Boolean) : [newVal];
             selections.splice(startIndex, endIndex - startIndex, ...newValues);
             this.context.updateWidgetValue(selections);
           } else {
@@ -346,7 +346,9 @@ export default class PresetBasket {
             }
           }
         }
-
+        if (!foundKey && joined.match(/^<[^<>]+>$/)) {
+          foundKey = joined;
+        }
         if (foundKey || len === 1) {
           matched = {
             styleKey: foundKey || subArray[0],
@@ -419,7 +421,7 @@ export default class PresetBasket {
       if (tagMatch) {
         const innerContent = tagMatch[1];
         const parts = innerContent.split(/[:;]/);
-        if (parts.length >= 2) {
+        if (parts[0].match(/lora|lyco/) || parts.length === 2) {
           const value = parts.pop().trim();
           cleanLabel = parts.pop().trim();
           const isBoolean = /^(true|false)$/i.test(value);
@@ -458,7 +460,7 @@ export default class PresetBasket {
             const newStyleKey = styleKey.replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
             const selections = this.context.getSelectedArray();
             if (startIndex < selections.length) {
-              selections[startIndex] = newStyleKey;
+              selections.splice(startIndex, endIndex - startIndex, newStyleKey);
               this.context.updateWidgetValue(selections);
             }
           });
