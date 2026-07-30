@@ -606,15 +606,21 @@ export default class PresetBasket {
             this.context.setCollapsedFolders(this.context.getCollapsedFolders().filter((f) => f !== prev.dataset.groupRaw));
           }
           this.context.grid.executeFilterPipeline();
-          itemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          itemEl.style.transition = "border-color 0.15s, box-shadow 0.15s";
-          const origColor = itemEl.style.borderColor;
-          itemEl.style.borderColor = "#007acc";
-          itemEl.style.boxShadow = "0 0 8px rgba(0, 122, 204, 0.75)";
+          if (this.context.dom.wrap.classList.contains("hide-gallery-mode")) {
+            this.context.dom.btnHideGallery.click();
+          }
           setTimeout(() => {
-            itemEl.style.borderColor = origColor;
-            itemEl.style.boxShadow = "";
-          }, 800);
+            itemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            itemEl.style.transition = "border-color 0.15s, box-shadow 0.15s";
+            const origColor = itemEl.style.borderColor;
+            itemEl.style.borderColor = "#007acc";
+            itemEl.style.boxShadow = "0 0 8px rgba(0, 122, 204, 0.75)";
+
+            setTimeout(() => {
+              itemEl.style.borderColor = origColor;
+              itemEl.style.boxShadow = "";
+            }, 800);
+          }, 10);
         }
       } else if (action === "create") {
         this.context.setPanelCollapseState(false);
