@@ -226,7 +226,7 @@ export default class PresetEditor {
       );
     }
 
-    if (!selections.includes(uniqueKey)) selections.push(uniqueKey);
+    if (!selections.includes(uniqueKey) && !selections.includes(this.dom.inpPreset.value.trim())) selections.push(uniqueKey);
 
     this.editingKey = uniqueKey;
     this.currentMode = "edit";
@@ -263,7 +263,7 @@ export default class PresetEditor {
     ["inpName", "inpFolder", "inpPreset"].forEach((id) =>
       this.dom[id].addEventListener("input", markDirty)
     );
-    
+
     this.dom.editorPreview.addEventListener("click", async (e) => {
       if (e.target.closest("#j0n4t-pg-rm-img-btn")) {
         e.stopPropagation();
@@ -278,13 +278,13 @@ export default class PresetEditor {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         if (e.target.closest("#j0n4t-pg-rm-img-btn")) {
-           e.stopPropagation();
-           if (await PresetUtils.confirm("Clear image?")) {
-               this.resetImageState();
-               markDirty();
-           }
+          e.stopPropagation();
+          if (await PresetUtils.confirm("Clear image?")) {
+            this.resetImageState();
+            markDirty();
+          }
         } else {
-           this.dom.inpFile.click();
+          this.dom.inpFile.click();
         }
       }
     });
