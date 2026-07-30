@@ -9,14 +9,11 @@ export default class PresetBasket {
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
     .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
     .j0n4t-pg-basket-clear-btn:hover, .j0n4t-pg-basket-clear-btn:focus-visible { background: #912e2e; outline: 2px solid #fff; }
-    .j0n4t-pg-basket-pool-wrapper { position: relative; width: 100%; height: 100%; display: block; box-sizing: border-box; }
+    .j0n4t-pg-basket-pool-wrapper { position: relative; margin: 4px; display: block; box-sizing: border-box; }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; padding: 4px; }
-    .j0n4t-pg-basket-container .j0n4t-pg-raw-wrapper { display: none; }
-    .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block !important; }
-    .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool-wrapper { display: none !important; }
-    .j0n4t-pg-basket-raw-textarea { width: 100%; height: 100%; min-height: 48px; font-family: monospace; font-size: 11px; padding: 4px; box-sizing: border-box; margin: 0; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.4; letter-spacing: normal; word-spacing: normal; text-transform: none; text-indent: 0px; text-shadow: none; outline: none; }
-    .j0n4t-pg-basket-raw-textarea:focus { border: 2px solid #007acc; }
-    .j0n4t-pg-basket-container .j0n4t-pg-raw-highlights, .j0n4t-pg-basket-container .j0n4t-pg-basket-raw-textarea { border: 0; }
+    .j0n4t-pg-basket-container .j0n4t-pg-raw-wrapper { display: none; width: auto; }
+    .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block; margin: 4px; }
+    .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool-wrapper { display: none; }
   `;
 
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
@@ -33,7 +30,7 @@ export default class PresetBasket {
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
     .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; outline: none; }
     .j0n4t-pg-basket-add-btn:hover, .j0n4t-pg-basket-add-btn:focus-visible { border-color: #007acc; color: #fff; background: #1a242db0; }
-    .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 0 0 2px; text-align: center; margin: 0 2px; outline: none; position: relative; z-index: 5; }
+    .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 0 0 2px; text-align: center; margin: 0 2px; outline: none; position: relative; }
     .j0n4t-pg-text-input:focus, .j0n4t-pg-bool-input:focus, .j0n4t-pg-num-input:focus { border-color: #007acc; }
     .j0n4t-pg-bool-input { width: auto; }
     .j0n4t-pg-chip-popup { position: absolute; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 21000; display: flex; flex-direction: column; padding: 2px 0; outline: none; }
