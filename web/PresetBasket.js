@@ -90,7 +90,7 @@ export default class PresetBasket {
       e.preventDefault();
 
       if (!this.dropIndicator) {
-        this.basket.insertAdjacentHTML('beforeend', '<div class="j0n4t-pg-basket-drop-indicator" style="position:absolute;"></div>');
+        this.basket.insertAdjacentHTML('beforeend', '<div class="j0n4t-pg-basket-drop-indicator"></div>');
         this.dropIndicator = this.basket.lastElementChild;
       }
 
