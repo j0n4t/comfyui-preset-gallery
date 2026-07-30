@@ -80,6 +80,7 @@ class PresetGalleryApp {
     this.widget = widget;
     this.cache = {};
     this.dom = this.buildDOMStructure();
+    this.lastGridHeight = 0;
 
     this.basket = new PresetBasket(
       this.dom.basketContainer,
@@ -326,10 +327,30 @@ class PresetGalleryApp {
     });
 
     this.dom.btnHideGallery.addEventListener("click", () => {
+      const gridH = this.dom.grid.offsetHeight;
       const isHidden = this.dom.wrap.classList.toggle("hide-gallery-mode");
       this.dom.btnHideGallery.classList.toggle("active", !isHidden);
       this.dom.btnHideGallery.setAttribute("aria-pressed", String(!isHidden));
       localStorage.setItem("comfy_preset_gallery_hidden", String(isHidden));
+
+      if (isHidden) {
+        if (gridH > 0) {
+          this.lastGridHeight = gridH;
+          const currentBasketH = this.dom.basketContainer.offsetHeight;
+          const newBasketH = currentBasketH + gridH;
+          this.dom.basketContainer.style.height = `${newBasketH}px`;
+          localStorage.setItem("comfy_preset_gallery_basket_h", String(newBasketH));
+        }
+      } else {
+        const takeBackH = this.lastGridHeight || 0;
+        if (takeBackH > 0) {
+          const currentBasketH = this.dom.basketContainer.offsetHeight;
+          const newBasketH = Math.max(40, currentBasketH - takeBackH);
+          this.dom.basketContainer.style.height = `${newBasketH}px`;
+          localStorage.setItem("comfy_preset_gallery_basket_h", String(newBasketH));
+          this.lastGridHeight = 0;
+        }
+      }
     });
 
     if (localStorage.getItem("comfy_preset_gallery_hidden") === "true") {
