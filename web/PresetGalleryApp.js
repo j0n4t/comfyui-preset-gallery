@@ -80,7 +80,6 @@ class PresetGalleryApp {
     this.widget = widget;
     this.cache = {};
     this.dom = this.buildDOMStructure();
-    this.lastGridHeight = 0;
 
     this.basket = new PresetBasket(
       this.dom.basketContainer,
@@ -207,47 +206,85 @@ class PresetGalleryApp {
     if (this.node.graph) this.node.graph._version++;
   }
 
+  initHeights() {
+    // Start with an initial total height (or restore from cache)
+    this.totalSharedHeight = parseInt(localStorage.getItem("pg_total_h")) || 600;
+    this.basketHeight = parseInt(localStorage.getItem("pg_basket_h")) || 150;
+    this.gridHeight = parseInt(localStorage.getItem("pg_grid_h")) || 450;
+    this.editorFixedSize = parseInt(localStorage.getItem("pg_editor_h")) || 206;
+
+    this.isProgrammaticResize = false;
+  }
+
+  saveHeights() {
+    localStorage.setItem("pg_total_h", this.totalSharedHeight.toString());
+    localStorage.setItem("pg_basket_h", this.basketHeight.toString());
+    localStorage.setItem("pg_grid_h", this.gridHeight.toString());
+    localStorage.setItem("pg_editor_h", this.editorFixedSize.toString());
+  }
+
+  rebalanceHeights() {
+    this.isProgrammaticResize = true;
+
+    const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
+    const isEditorCollapsed = this.dom.editor.classList.contains("collapsed");
+
+    // Dynamically lock in the editor's height when it is visible
+    if (!isEditorCollapsed && this.dom.editor.offsetHeight > 0) {
+      this.editorFixedSize = this.dom.editor.offsetHeight + 6; // +6px for gap padding
+    }
+
+    // 1. Editor, grid, and basket share the same overall total height
+    let availableHeight = this.totalSharedHeight;
+    if (!isEditorCollapsed) {
+      availableHeight -= this.editorFixedSize;
+    }
+
+    if (isGalleryHidden) {
+      // 2. When hiding the grid, add its height to the basket
+      this.dom.basketContainer.style.height = `${availableHeight}px`;
+      this.dom.grid.style.height = '0px';
+    } else {
+      // 3. The editor is always the same height, prioritize taking it from the grid
+      let finalBasketH = this.basketHeight;
+      let finalGridH = availableHeight - finalBasketH;
+
+      // Apply safe minimums, borrowing from basket if grid becomes squished
+      if (finalGridH < 60) {
+        const deficit = 60 - finalGridH;
+        finalGridH = 60;
+        finalBasketH = Math.max(40, finalBasketH - deficit);
+      }
+
+      this.dom.basketContainer.style.flexGrow = "0";
+      this.dom.grid.style.flexGrow = "0";
+      this.dom.basketContainer.style.height = `${finalBasketH}px`;
+      this.dom.grid.style.height = `${finalGridH}px`;
+
+      this.basketHeight = finalBasketH;
+      this.gridHeight = finalGridH;
+    }
+
+    this.saveHeights();
+
+    // Re-enable observer after DOM finishes painting
+    requestAnimationFrame(() => {
+      this.isProgrammaticResize = false;
+    });
+  }
+
   setPanelCollapseState(col, isInit = false) {
     const isCurrentlyCollapsed = this.dom.editor.classList.contains("collapsed");
     if (isCurrentlyCollapsed === col) return;
-
-    if (!isInit) {
-      const spaceDelta = (this.dom.editor.offsetHeight || 200) + 6;
-
-      if (col) {
-        this.lastEditorHeight = spaceDelta;
-        const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
-        if (!isGalleryHidden && this.dom.grid.offsetHeight > 0) {
-          const currentGridH = this.dom.grid.offsetHeight;
-          this.dom.grid.style.height = `${currentGridH + spaceDelta}px`;
-          this.dom.grid.style.flexGrow = "0";
-          localStorage.setItem("comfy_preset_gallery_grid_h", String(currentGridH + spaceDelta));
-        } else {
-          const currentBasketH = this.dom.basketContainer.offsetHeight;
-          this.dom.basketContainer.style.height = `${currentBasketH + spaceDelta}px`;
-          localStorage.setItem("comfy_preset_gallery_basket_h", String(currentBasketH + spaceDelta));
-        }
-      } else {
-        const takeBackHeight = this.lastEditorHeight || 200;
-        const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
-        if (!isGalleryHidden && this.dom.grid.offsetHeight > 0) {
-          const currentGridH = this.dom.grid.offsetHeight;
-          const newH = Math.max(60, currentGridH - takeBackHeight);
-          this.dom.grid.style.height = `${newH}px`;
-          localStorage.setItem("comfy_preset_gallery_grid_h", String(newH));
-        } else {
-          const currentBasketH = this.dom.basketContainer.offsetHeight;
-          const newH = Math.max(40, currentBasketH - takeBackHeight);
-          this.dom.basketContainer.style.height = `${newH}px`;
-          localStorage.setItem("comfy_preset_gallery_basket_h", String(newH));
-        }
-      }
-    }
 
     this.dom.editor.classList.toggle("collapsed", col);
     this.dom.toggle.innerText = col ? "⚙️ Management Panel" : "🔼 Hide Panel";
     this.dom.toggle.setAttribute("aria-expanded", String(!col));
     localStorage.setItem("comfy_preset_gallery_collapsed", String(col));
+
+    if (!isInit) {
+      this.rebalanceHeights();
+    }
   }
 
   syncEditorHighlight() {
@@ -326,31 +363,14 @@ class PresetGalleryApp {
       this.dom.inpJsonFile.value = "";
     });
 
+    this.initHeights();
+
     this.dom.btnHideGallery.addEventListener("click", () => {
-      const gridH = this.dom.grid.offsetHeight;
       const isHidden = this.dom.wrap.classList.toggle("hide-gallery-mode");
       this.dom.btnHideGallery.classList.toggle("active", !isHidden);
       this.dom.btnHideGallery.setAttribute("aria-pressed", String(!isHidden));
       localStorage.setItem("comfy_preset_gallery_hidden", String(isHidden));
-
-      if (isHidden) {
-        if (gridH > 0) {
-          this.lastGridHeight = gridH;
-          const currentBasketH = this.dom.basketContainer.offsetHeight;
-          const newBasketH = currentBasketH + gridH;
-          this.dom.basketContainer.style.height = `${newBasketH}px`;
-          localStorage.setItem("comfy_preset_gallery_basket_h", String(newBasketH));
-        }
-      } else {
-        const takeBackH = this.lastGridHeight || 0;
-        if (takeBackH > 0) {
-          const currentBasketH = this.dom.basketContainer.offsetHeight;
-          const newBasketH = Math.max(40, currentBasketH - takeBackH);
-          this.dom.basketContainer.style.height = `${newBasketH}px`;
-          localStorage.setItem("comfy_preset_gallery_basket_h", String(newBasketH));
-          this.lastGridHeight = 0;
-        }
-      }
+      this.rebalanceHeights();
     });
 
     if (localStorage.getItem("comfy_preset_gallery_hidden") === "true") {
@@ -358,29 +378,42 @@ class PresetGalleryApp {
       this.dom.btnHideGallery.classList.remove("active");
       this.dom.btnHideGallery.setAttribute("aria-pressed", "false");
     }
-    const savedBasketH = localStorage.getItem("comfy_preset_gallery_basket_h");
-    if (savedBasketH) {
-      this.dom.basketContainer.style.height = `${savedBasketH}px`;
-    }
-
-    const savedGridH = localStorage.getItem("comfy_preset_gallery_grid_h");
-    if (savedGridH) {
-      this.dom.grid.style.height = `${savedGridH}px`;
-      this.dom.grid.style.flexGrow = "0";
-    }
 
     this.resizeObserver = new ResizeObserver((entries) => {
+      if (this.isProgrammaticResize) return;
+
+      let changed = false;
+      const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
+      const editorH = this.dom.editor.classList.contains("collapsed") ? 0 : this.editorFixedSize;
+      const availableHeight = this.totalSharedHeight - editorH;
+
       for (const entry of entries) {
         const h = entry.target.offsetHeight;
         if (h === 0) continue;
 
         if (entry.target === this.dom.basketContainer) {
-          localStorage.setItem("comfy_preset_gallery_basket_h", String(h));
-        } else if (entry.target === this.dom.grid) {
-          localStorage.setItem("comfy_preset_gallery_grid_h", String(h));
-          entry.target.style.flexGrow = "0";
+          // If grid is hidden, basket occupies all availableHeight
+          const expectedH = isGalleryHidden ? availableHeight : this.basketHeight;
+          const diff = h - expectedH;
+
+          // 4. When user increases/decreases element height manually, add the difference to the total
+          if (Math.abs(diff) > 2) {
+            this.totalSharedHeight += diff;
+            this.basketHeight += diff; // Updates preferred basket height simultaneously
+            changed = true;
+          }
+        }
+        else if (entry.target === this.dom.grid && !isGalleryHidden) {
+          const diff = h - this.gridHeight;
+          if (Math.abs(diff) > 2) {
+            this.totalSharedHeight += diff;
+            this.gridHeight = h;
+            changed = true;
+          }
         }
       }
+
+      if (changed) this.saveHeights();
     });
 
     this.resizeObserver.observe(this.dom.basketContainer);
@@ -435,6 +468,7 @@ class PresetGalleryApp {
       localStorage.getItem("comfy_preset_gallery_collapsed") === "true",
       true
     );
+    this.rebalanceHeights();
     this.node.setSize([
       this.node.size[0] || MIN_NODE_WIDTH,
       this.node.size[1] || MIN_NODE_HEIGHT,
