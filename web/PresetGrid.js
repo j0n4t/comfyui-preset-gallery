@@ -224,7 +224,7 @@ export default class PresetGrid {
             titleSpan.style.display = "none";
             const inputHtml = `<input type="text" class="j0n4t-pg-group-input" tabindex="0" value="${rawFolder.replace(/_/g, " ")}" />`;
             titleSpan.insertAdjacentHTML("afterend", inputHtml);
-            
+
             const input = titleSpan.nextElementSibling;
             input.focus();
             input.select();
@@ -378,8 +378,8 @@ export default class PresetGrid {
         ? "↕️ Expand All"
         : "↕️ Collapse All";
       headers.forEach((h) => {
-          h.classList.toggle("collapsed", collapseAll);
-          h.setAttribute("aria-expanded", String(!collapseAll));
+        h.classList.toggle("collapsed", collapseAll);
+        h.setAttribute("aria-expanded", String(!collapseAll));
       });
       this.executeFilterPipeline(this.dom.search.value);
     });
@@ -406,6 +406,7 @@ export default class PresetGrid {
       const focusables = [...this.dom.grid.querySelectorAll(".j0n4t-pg-group-header:not(.j0n4t-pg-hidden), .j0n4t-pg-item:not(.j0n4t-pg-hidden)")];
 
       if (e.key === "Escape") {
+        e.stopPropagation();
         e.preventDefault();
         if (this.dom.search) {
           this.dom.search.focus();
@@ -416,6 +417,7 @@ export default class PresetGrid {
       }
 
       if (e.shiftKey && (e.key === "Enter" || e.key === " ")) {
+        e.stopPropagation();
         e.preventDefault();
         if (target.classList.contains("j0n4t-pg-item")) {
           this.context.openEditorForPreset(target.dataset.style);
@@ -427,12 +429,14 @@ export default class PresetGrid {
       }
 
       if (e.key === "Enter" || e.key === " ") {
+        e.stopPropagation();
         e.preventDefault();
         target.click();
         return;
       }
 
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        e.stopPropagation();
         e.preventDefault();
 
         const currentRect = target.getBoundingClientRect();

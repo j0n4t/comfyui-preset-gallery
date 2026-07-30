@@ -73,6 +73,7 @@ export default class PresetBasket {
   initDragAndDrop() {
     this.container.addEventListener("dragenter", (e) => {
       if (!this.container.classList.contains("raw-mode")) {
+        e.stopPropagation();
         e.preventDefault();
         this.container.classList.add("drag-over");
       }
@@ -84,6 +85,7 @@ export default class PresetBasket {
     });
     this.container.addEventListener("dragover", (e) => {
       if (this.container.classList.contains("raw-mode")) return;
+      e.stopPropagation();
       e.preventDefault();
 
       if (!this.dropIndicator) {
@@ -106,6 +108,7 @@ export default class PresetBasket {
     });
     this.container.addEventListener("drop", (e) => {
       if (this.container.classList.contains("raw-mode")) return;
+      e.stopPropagation();
       e.preventDefault();
       this.container.classList.remove("drag-over");
       this.removeDropIndicator();
@@ -216,6 +219,7 @@ export default class PresetBasket {
       if (e.key === "Enter" || e.key === " ") {
         const triggerable = e.target.closest(".j0n4t-pg-basket-add-btn, .j0n4t-pg-basket-chip");
         if (triggerable && !e.target.closest("input")) {
+          e.stopPropagation();
           e.preventDefault();
           triggerable.click();
         }
@@ -228,10 +232,12 @@ export default class PresetBasket {
 
         if (currentIndex !== -1) {
           if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+            e.stopPropagation();
             e.preventDefault();
             const nextEl = focusableElements[currentIndex + 1];
             if (nextEl) nextEl.focus();
           } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            e.stopPropagation();
             e.preventDefault();
             const prevEl = focusableElements[currentIndex - 1];
             if (prevEl) prevEl.focus();
@@ -242,6 +248,7 @@ export default class PresetBasket {
       if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         const chip = e.target.closest('.j0n4t-pg-basket-chip');
         if (!chip) return;
+        e.stopPropagation();
         e.preventDefault();
         const startIndex = parseInt(chip.dataset.start);
         const endIndex = parseInt(chip.dataset.end);
@@ -411,10 +418,12 @@ export default class PresetBasket {
       onKeyDown: (e) => {
         if (!manager.isOpen) {
           if (e.key === "Enter") {
+            e.stopPropagation();
             e.preventDefault();
             finishEdit(true);
             return true;
           } else if (e.key === "Escape") {
+            e.stopPropagation();
             e.preventDefault();
             finishEdit(false);
             return true;
@@ -627,6 +636,7 @@ export default class PresetBasket {
         const cleanName = styleKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop().replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
         if (cleanName) this.context.editor.dom.inpName.value = cleanName;
         this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
+        this.context.editor.dom.inpPreset.focus();
       } else if (action === "del") {
         const selections = this.context.getSelectedArray();
         if (startIndex !== undefined && endIndex !== undefined) {
@@ -641,20 +651,24 @@ export default class PresetBasket {
       const currentIndex = items.indexOf(document.activeElement);
 
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        e.stopPropagation();
         e.preventDefault();
         const nextIndex = (currentIndex + 1) % items.length;
         items[nextIndex].focus();
       } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        e.stopPropagation();
         e.preventDefault();
         const prevIndex = (currentIndex - 1 + items.length) % items.length;
         items[prevIndex].focus();
       } else if (e.key === "Enter" || e.key === " ") {
         const actionEl = e.target.closest("[data-action]");
         if (actionEl) {
+          e.stopPropagation();
           e.preventDefault();
           actionEl.click();
         }
       } else if (e.key === "Escape") {
+        e.stopPropagation();
         e.preventDefault();
         const parentChip = this.activeChipMenuEl;
         this.closeChipMenu();
