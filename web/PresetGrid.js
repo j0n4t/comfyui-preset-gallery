@@ -86,7 +86,7 @@ export default class PresetGrid {
       );
     });
 
-    if (this.dom.chkGroup.checked) {
+    if (this.dom.chkGroup.classList.contains("active")) {
       this.dom.grid
         .querySelectorAll(".j0n4t-pg-group-header")
         .forEach((header) => {
@@ -182,11 +182,12 @@ export default class PresetGrid {
     this.dom.grid.innerHTML =
       htmlBuffer ||
       `<div style="grid-column:1/-1; text-align:center; padding:20px; color:#666; font-size:11px;">No presets found</div>`;
-    this.dom.btnGlobalCollapse.innerText =
-      collapsedList.length >
-        this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
-        ? "↕️ Expand All"
-        : "↕️ Collapse All";
+    const totalHeaders = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length;
+    const isMajorityCollapsed = totalHeaders > 0 && collapsedList.length > totalHeaders / 2;
+
+    this.dom.btnGlobalCollapse.title = isMajorityCollapsed ? "Expand All" : "Collapse All";
+    this.dom.btnGlobalCollapse.setAttribute("aria-label", isMajorityCollapsed ? "Expand All" : "Collapse All");
+    this.dom.btnGlobalCollapse.classList.toggle("collapsed-state", isMajorityCollapsed);
     this.attachGridItemEvents();
     this.switchView(localStorage.getItem("comfy_preset_gallery_view") || "big");
     this.executeFilterPipeline(this.dom.search.value);
@@ -306,11 +307,6 @@ export default class PresetGrid {
             list = list.filter((i) => i !== rawFolder);
           }
           this.context.setCollapsedFolders(list);
-          this.dom.btnGlobalCollapse.innerText =
-            list.length >
-              this.dom.grid.querySelectorAll(".j0n4t-pg-group-header").length / 2
-              ? "↕️ Expand All"
-              : "↕️ Collapse All";
           this.executeFilterPipeline(this.dom.search.value);
         });
       });
@@ -348,35 +344,32 @@ export default class PresetGrid {
       if (btn) this.switchView(btn.dataset.view);
     });
 
-    this.dom.chkGroup.checked =
-      localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
-    this.dom.grid.classList.toggle("hide-folders", !this.dom.chkGroup.checked);
-    this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked
-      ? "block"
-      : "none";
+    const isGrouped = localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
+    this.dom.chkGroup.classList.toggle("active", isGrouped);
+    this.dom.chkGroup.setAttribute("aria-pressed", String(isGrouped));
+    this.dom.grid.classList.toggle("hide-folders", !isGrouped);
+    this.dom.btnGlobalCollapse.style.display = isGrouped ? "flex" : "none";
 
-    this.dom.chkGroup.addEventListener("change", () => {
-      localStorage.setItem("comfy_preset_gallery_grouped", String(this.dom.chkGroup.checked));
-      this.dom.grid.classList.toggle(
-        "hide-folders",
-        !this.dom.chkGroup.checked
-      );
-      this.dom.btnGlobalCollapse.style.display = this.dom.chkGroup.checked
-        ? "block"
-        : "none";
+    this.dom.chkGroup.addEventListener("click", () => {
+      const willGroup = !this.dom.chkGroup.classList.contains("active");
+      localStorage.setItem("comfy_preset_gallery_grouped", String(willGroup));
+      this.dom.chkGroup.classList.toggle("active", willGroup);
+      this.dom.chkGroup.setAttribute("aria-pressed", String(willGroup));
+      this.dom.grid.classList.toggle("hide-folders", !willGroup);
+      this.dom.btnGlobalCollapse.style.display = willGroup ? "flex" : "none";
       this.executeFilterPipeline(this.dom.search.value);
     });
 
     this.dom.btnGlobalCollapse.addEventListener("click", () => {
       const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
-      const collapseAll =
-        !this.dom.btnGlobalCollapse.innerText.includes("Expand");
+      const collapseAll = this.dom.btnGlobalCollapse.title === "Collapse All";
       this.context.setCollapsedFolders(
         collapseAll ? [...headers].map((h) => h.dataset.groupRaw) : []
       );
-      this.dom.btnGlobalCollapse.innerText = collapseAll
-        ? "↕️ Expand All"
-        : "↕️ Collapse All";
+      this.dom.btnGlobalCollapse.title = collapseAll ? "Expand All" : "Collapse All";
+      this.dom.btnGlobalCollapse.setAttribute("aria-label", collapseAll ? "Expand All" : "Collapse All");
+      this.dom.btnGlobalCollapse.classList.toggle("collapsed-state", collapseAll);
+
       headers.forEach((h) => {
         h.classList.toggle("collapsed", collapseAll);
         h.setAttribute("aria-expanded", String(!collapseAll));
@@ -488,6 +481,7 @@ export default class PresetGrid {
 
           if (isValid) {
             // Prioritize distance along the moving axis while favoring vertical/horizontal alignment
+
             const score = primaryDist + secondaryDist * 1.5;
             if (score < minScore) {
               minScore = score;

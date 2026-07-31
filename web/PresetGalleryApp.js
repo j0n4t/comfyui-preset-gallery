@@ -13,7 +13,7 @@ const MIN_NODE_WIDTH = 400;
 class PresetGalleryApp {
   static WRAP_STYLES = /*css*/ `
     .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; outline: none; }
-    .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-views, .j0n4t-pg-wrap.hide-gallery-mode #j0n4t-pg-global-collapse, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-checkbox-wrap:has(#j0n4t-pg-group-toggle) { display: none !important; }
+    .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-more-options-wrap { display: none; }
   `;
 
   static ACTION_TOPBAR_SEARCH_STYLES = /*css*/ `
@@ -21,7 +21,6 @@ class PresetGalleryApp {
     .j0n4t-pg-action-btn:hover, .j0n4t-pg-action-btn:focus-visible { background: #555; color: #fff; }
     .j0n4t-pg-action-btn.del-btn:hover, .j0n4t-pg-action-btn.del-btn:focus-visible { background: #b23b3b; color: #fff; }
     .j0n4t-pg-action-btn svg { width: 10px; height: 10px; fill: currentColor; }
-    .j0n4t-pg-top-bar { display: flex; gap: 6px; align-items: center; width: 100%; flex-shrink: 0; }
     .j0n4t-pg-search-wrapper { position: relative; flex-grow: 1; display: flex; align-items: center; }
     .j0n4t-pg-search { width: 100%; padding: 6px 24px 6px 6px; background: #1a1a1ab0; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; min-width: 0; outline: none; }
     .j0n4t-pg-search:focus { border-color: #007acc; }
@@ -30,26 +29,27 @@ class PresetGalleryApp {
     .j0n4t-pg-search-clear svg { width: 10px; height: 10px; fill: currentColor; }
   `;
 
-  static VIEWS_TOGGLE_GRID_STYLES = /*css*/ `
-    .j0n4t-pg-views, .j0n4t-pg-toggle-gallery-wrap { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a80; padding: 2px; border-radius: 4px; border: 1px solid #444; }
+  static GALLERY_STYLES = /*css*/ `
+    .j0n4t-pg-control-bar { display: flex; gap: 4px; align-items: center; margin-top: 2px; flex-shrink: 0; width: 100%; }
+    .j0n4t-pg-controls { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a80; padding: 2px; border-radius: 4px; border: 1px solid #444; }
     .j0n4t-pg-view-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 3px; cursor: pointer; color: #aaa; background: transparent; transition: 0.15s; outline: none; }
     .j0n4t-pg-view-btn:hover, .j0n4t-pg-view-btn:focus-visible { background: #333; color: #fff; }
     .j0n4t-pg-view-btn.active { background: #007acc; color: #fff; }
     .j0n4t-pg-view-btn svg, .j0n4t-pg-btn svg { width: 14px; height: 14px; fill: currentColor; }
+    .j0n4t-pg-view-btn svg.rotatable { transition: transform 0.2s ease; }
+    .j0n4t-pg-view-btn.collapsed-state svg.rotatable { transform: rotate(180deg); }
     .j0n4t-pg-grid { display: grid; gap: 6px; flex-grow: 1; overflow-y: auto; min-height: 60px; height: 50%; max-height: 100vh; align-content: start; margin-top: 2px; resize: vertical; outline: none; }
     .j0n4t-pg-grid.view-small { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
     .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
     .j0n4t-pg-grid.view-list { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 4px; }
-  `;
-
-  static CONTROL_BAR_TOGGLE_CHECKBOX_STYLES = /*css*/ `
     .j0n4t-pg-grid.hide-folders .j0n4t-pg-tag-badge { display: block !important; }
-    .j0n4t-pg-control-bar { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-shrink: 0; width: 100%; }
-    .j0n4t-pg-toggle { flex-grow: 1; background: #333; border: 1px solid #444; color: #bbb; padding: 4px; border-radius: 3px; cursor: pointer; font-size: 10px; text-align: center; user-select: none; white-space: nowrap; outline: none; }
-    .j0n4t-pg-toggle:hover, .j0n4t-pg-toggle:focus-visible { background: #444; color: #fff; border-color: #007acc; }
     .j0n4t-pg-checkbox-wrap { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #aaa; user-select: none; cursor: pointer; padding: 3px 2px; height: 20px; box-sizing: border-box; white-space: nowrap; outline: none; }
     .j0n4t-pg-checkbox-wrap input { width: auto; margin: 0; cursor: pointer; outline: none; }
     .j0n4t-pg-checkbox-wrap input:focus-visible { outline: 1px solid #007acc; outline-offset: 2px; }
+    .j0n4t-pg-more-options-wrap { position: relative; }
+    .j0n4t-pg-popup-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; padding: 4px; display: none; gap: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .j0n4t-pg-popup-menu.show { display: flex; }
+    .j0n4t-pg-popup-section { display: flex; gap: 2px; justify-content: center; background: #222; padding: 2px; border-radius: 3px; }
   `;
 
   static MODAL_STYLES = /*css*/ `
@@ -92,8 +92,7 @@ class PresetGalleryApp {
 
     PresetUtils.injectStyles('j0n4t-pg-wrap-styles', PresetGalleryApp.WRAP_STYLES);
     PresetUtils.injectStyles('j0n4t-pg-action-topbar-search-styles', PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES);
-    PresetUtils.injectStyles('j0n4t-pg-views-toggle-grid-styles', PresetGalleryApp.VIEWS_TOGGLE_GRID_STYLES);
-    PresetUtils.injectStyles('j0n4t-pg-control-bar-toggle-checkbox-styles', PresetGalleryApp.CONTROL_BAR_TOGGLE_CHECKBOX_STYLES);
+    PresetUtils.injectStyles('j0n4t-pg-gallery-styles', PresetGalleryApp.GALLERY_STYLES);
     PresetUtils.injectStyles('j0n4t-pg-modal-styles', PresetGalleryApp.MODAL_STYLES);
     PresetUtils.injectStyles('j0n4t-pg-preset-tree-selector-styles', PresetGalleryApp.PRESET_TREE_SELECTOR_STYLES);
 
@@ -106,49 +105,63 @@ class PresetGalleryApp {
     wrap.className = "j0n4t-pg-wrap";
     wrap.innerHTML = `
             <div class="j0n4t-pg-basket-container">
-                <div class="j0n4t-pg-basket-header">
-                    <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
-                    <div style="display: flex; gap: 4px; align-items: center;">
-                        <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
-                        <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" aria-label="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
+              <div class="j0n4t-pg-basket-header">
+                <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
+                <div style="display: flex; gap: 4px; align-items: center;">
+                  <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
+                  <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" aria-label="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
+                </div>
+              </div>
+              <div class="j0n4t-pg-basket-pool-wrapper">
+                <div class="j0n4t-pg-basket-pool" role="listbox" aria-label="Preset selections pool"></div>
+              </div>
+              <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..." spellcheck="false" aria-label="Raw text tokens"></textarea>
+            </div>
+
+            <div class="j0n4t-pg-control-bar">
+              <div class="j0n4t-pg-controls">
+                <div class="j0n4t-pg-view-btn" id="j0n4t-pg-toggle" tabindex="0" role="button" aria-expanded="false" title="Management Panel">${PresetUtils.icons.preset}</div>  
+              </div>
+              <div class="j0n4t-pg-search-wrapper"><input type="text" enterkeyhint="enter" class="j0n4t-pg-search" placeholder="Search..." aria-label="Search Presets" /><div class="j0n4t-pg-search-clear" tabindex="0" role="button" aria-label="Clear Search">${PresetUtils.icons.close}</div></div>
+              <div class="j0n4t-pg-controls">
+                <div class="j0n4t-pg-more-options-wrap">
+                  <div class="j0n4t-pg-view-btn" id="j0n4t-pg-more-options-btn" tabindex="0" role="button" aria-label="More Options" title="More Options">${PresetUtils.icons.more}</div>
+                  <div class="j0n4t-pg-popup-menu" id="j0n4t-pg-popup-menu">
+                    <div class="j0n4t-pg-popup-section j0n4t-pg-views" role="group" aria-label="View styles">
+                      <div class="j0n4t-pg-view-btn" data-view="small" tabindex="0" role="button" aria-pressed="false" aria-label="Small View" title="Small View">${PresetUtils.icons.small}</div>
+                      <div class="j0n4t-pg-view-btn" data-view="big" tabindex="0" role="button" aria-pressed="false" aria-label="Large View" title="Large View">${PresetUtils.icons.big}</div>
+                      <div class="j0n4t-pg-view-btn" data-view="list" tabindex="0" role="button" aria-pressed="false" aria-label="List View" title="List View">${PresetUtils.icons.list}</div>
                     </div>
+                    <div class="j0n4t-pg-popup-section" id="j0n4t-pg-group-controls">
+                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-global-collapse" tabindex="0" role="button" title="Collapse All" aria-label="Collapse All">${PresetUtils.icons.collapse}</div>
+                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-group-toggle" tabindex="0" role="button" title="Toggle Grouping" aria-label="Toggle Grouping" aria-pressed="false">${PresetUtils.icons.group}</div>
+                    </div>
+                  </div>
                 </div>
-                <div class="j0n4t-pg-basket-pool-wrapper">
-                  <div class="j0n4t-pg-basket-pool" role="listbox" aria-label="Preset selections pool"></div>
-                </div>
-                <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..." spellcheck="false" aria-label="Raw text tokens"></textarea>
+                <div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn" tabindex="0" role="button" aria-pressed="true" title="Toggle Gallery View" aria-label="Toggle Gallery Visibility">${PresetUtils.icons.eye}</div>
+              </div>
             </div>
-            <div class="j0n4t-pg-top-bar">
-                <div class="j0n4t-pg-search-wrapper"><input type="text" enterkeyhint="enter" class="j0n4t-pg-search" placeholder="Search..." aria-label="Search Presets" /><div class="j0n4t-pg-search-clear" tabindex="0" role="button" aria-label="Clear Search">${PresetUtils.icons.close}</div></div>
-                <div class="j0n4t-pg-views" role="group" aria-label="View styles">
-                    <div class="j0n4t-pg-view-btn" data-view="small" tabindex="0" role="button" aria-pressed="false" aria-label="Small View">${PresetUtils.icons.small}</div><div class="j0n4t-pg-view-btn" data-view="big" tabindex="0" role="button" aria-pressed="false" aria-label="Large View">${PresetUtils.icons.big}</div><div class="j0n4t-pg-view-btn" data-view="list" tabindex="0" role="button" aria-pressed="false" aria-label="List View">${PresetUtils.icons.list}</div>
-                </div>
-                <div class="j0n4t-pg-toggle-gallery-wrap" title="Toggle Gallery View"><div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn" tabindex="0" role="button" aria-pressed="true" aria-label="Toggle Gallery Visibility">${PresetUtils.icons.eye}</div></div>
-            </div>
-             <div class="j0n4t-pg-control-bar">
-                <div class="j0n4t-pg-toggle" id="j0n4t-pg-toggle" tabindex="0" role="button" aria-expanded="false">⚙️ Management Panel</div>
-                <button type="button" id="j0n4t-pg-global-collapse" style="background:#2a2a2a80; border:1px solid #444; color:#ccc; padding:4px 8px; border-radius:3px; cursor:pointer; font-size:10px;">↕️ Collapse All</button>
-                <label class="j0n4t-pg-checkbox-wrap"><input type="checkbox" id="j0n4t-pg-group-toggle" />Group</label>
-            </div>
+
             <div class="j0n4t-pg-editor collapsed no-image">
-                <div class="j0n4t-pg-row">
-                    <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Select an Item</div>
-                    <input type="file" id="j0n4t-pg-json-file" accept=".zip,.json,.yaml,.yml" style="display:none;" />
-                    <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import Presets (.zip, .yaml, .json)" aria-label="Import Presets">${PresetUtils.icons.import}</button>
-                    <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Presets (.zip, .yaml, .json)" aria-label="Export Presets">${PresetUtils.icons.export}</button>
-                    <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;">New</button>
-                    <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;">Save</button>
-                    <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;">Delete</button>
+              <div class="j0n4t-pg-row">
+                <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Select an Item</div>
+                <input type="file" id="j0n4t-pg-json-file" accept=".zip,.json,.yaml,.yml" style="display:none;" />
+                <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import Presets (.zip, .yaml, .json)" aria-label="Import Presets">${PresetUtils.icons.import}</button>
+                <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Presets (.zip, .yaml, .json)" aria-label="Export Presets">${PresetUtils.icons.export}</button>
+                <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;">New</button>
+                <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;">Save</button>
+                <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;">Delete</button>
+              </div>
+              <div style="display:flex; gap:6px; align-items:stretch;">
+                <div id="j0n4t-pg-editor-preview" class="j0n4t-pg-editor-preview" tabindex="0" role="button" aria-label="Edit Preview Image"></div>
+                <div style="display:flex; flex-direction:column; gap:6px; flex-grow:1;">
+                    <textarea id="j0n4t-pg-preset" placeholder="Keywords..." spellcheck="false" aria-label="Preset Keywords"></textarea>
+                    <div class="j0n4t-pg-row"><input type="text" id="j0n4t-pg-folder" placeholder="Folder" aria-label="Preset Folder" style="flex:1;" /><input type="text" id="j0n4t-pg-name" placeholder="Name" aria-label="Preset Name" style="flex:1;" /></div>
                 </div>
-                <div style="display:flex; gap:6px; align-items:stretch;">
-                    <div id="j0n4t-pg-editor-preview" class="j0n4t-pg-editor-preview" tabindex="0" role="button" aria-label="Edit Preview Image"></div>
-                    <div style="display:flex; flex-direction:column; gap:6px; flex-grow:1;">
-                        <textarea id="j0n4t-pg-preset" placeholder="Keywords..." spellcheck="false" aria-label="Preset Keywords"></textarea>
-                        <div class="j0n4t-pg-row"><input type="text" id="j0n4t-pg-folder" placeholder="Folder" aria-label="Preset Folder" style="flex:1;" /><input type="text" id="j0n4t-pg-name" placeholder="Name" aria-label="Preset Name" style="flex:1;" /></div>
-                    </div>
-                </div>
-                <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
+              </div>
+              <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
             </div>
+
             <div class="j0n4t-pg-grid" role="listbox" aria-label="Preset Gallery List"></div>
         `;
     return {
@@ -159,6 +172,8 @@ class PresetGalleryApp {
       editor: wrap.querySelector(".j0n4t-pg-editor"),
       banner: wrap.querySelector("#j0n4t-pg-banner"),
       toggle: wrap.querySelector("#j0n4t-pg-toggle"),
+      btnMoreOptions: wrap.querySelector("#j0n4t-pg-more-options-btn"),
+      popupMenu: wrap.querySelector("#j0n4t-pg-popup-menu"),
       viewsContainer: wrap.querySelector(".j0n4t-pg-views"),
       chkGroup: wrap.querySelector("#j0n4t-pg-group-toggle"),
       btnGlobalCollapse: wrap.querySelector("#j0n4t-pg-global-collapse"),
@@ -207,7 +222,6 @@ class PresetGalleryApp {
   }
 
   initHeights() {
-    // Start with an initial total height (or restore from cache)
     this.totalSharedHeight = parseInt(localStorage.getItem("pg_total_h")) || 600;
     this.basketHeight = parseInt(localStorage.getItem("pg_basket_h")) || 150;
     this.gridHeight = parseInt(localStorage.getItem("pg_grid_h")) || 450;
@@ -229,27 +243,22 @@ class PresetGalleryApp {
     const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
     const isEditorCollapsed = this.dom.editor.classList.contains("collapsed");
 
-    // Dynamically lock in the editor's height when it is visible
     if (!isEditorCollapsed && this.dom.editor.offsetHeight > 0) {
-      this.editorFixedSize = this.dom.editor.offsetHeight + 6; // +6px for gap padding
+      this.editorFixedSize = this.dom.editor.offsetHeight + 6;
     }
 
-    // 1. Editor, grid, and basket share the same overall total height
     let availableHeight = this.totalSharedHeight;
     if (!isEditorCollapsed) {
       availableHeight -= this.editorFixedSize;
     }
 
     if (isGalleryHidden) {
-      // 2. When hiding the grid, add its height to the basket
       this.dom.basketContainer.style.height = `${availableHeight}px`;
       this.dom.grid.style.height = '0px';
     } else {
-      // 3. The editor is always the same height, prioritize taking it from the grid
       let finalBasketH = this.basketHeight;
       let finalGridH = availableHeight - finalBasketH;
 
-      // Apply safe minimums, borrowing from basket if grid becomes squished
       if (finalGridH < 60) {
         const deficit = 60 - finalGridH;
         finalGridH = 60;
@@ -267,7 +276,6 @@ class PresetGalleryApp {
 
     this.saveHeights();
 
-    // Re-enable observer after DOM finishes painting
     requestAnimationFrame(() => {
       this.isProgrammaticResize = false;
     });
@@ -278,7 +286,8 @@ class PresetGalleryApp {
     if (isCurrentlyCollapsed === col) return;
 
     this.dom.editor.classList.toggle("collapsed", col);
-    this.dom.toggle.innerText = col ? "⚙️ Management Panel" : "🔼 Hide Panel";
+    this.dom.toggle.classList.toggle("active", !col);
+    this.dom.toggle.title = col ? "Management Panel" : "Hide Panel";
     this.dom.toggle.setAttribute("aria-expanded", String(!col));
     localStorage.setItem("comfy_preset_gallery_collapsed", String(col));
 
@@ -336,6 +345,21 @@ class PresetGalleryApp {
         !this.dom.editor.classList.contains("collapsed")
       )
     );
+
+    // More Options Popup logic
+    this.dom.btnMoreOptions.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.dom.popupMenu.classList.toggle("show");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (this.dom.popupMenu.classList.contains("show")) {
+        if (!this.dom.btnMoreOptions.contains(e.target) && !this.dom.popupMenu.contains(e.target)) {
+          this.dom.popupMenu.classList.remove("show");
+        }
+      }
+    });
+
     this.dom.search.addEventListener("input", () =>
       this.grid.executeFilterPipeline(this.dom.search.value)
     );
@@ -392,14 +416,12 @@ class PresetGalleryApp {
         if (h === 0) continue;
 
         if (entry.target === this.dom.basketContainer) {
-          // If grid is hidden, basket occupies all availableHeight
           const expectedH = isGalleryHidden ? availableHeight : this.basketHeight;
           const diff = h - expectedH;
 
-          // 4. When user increases/decreases element height manually, add the difference to the total
           if (Math.abs(diff) > 2) {
             this.totalSharedHeight += diff;
-            this.basketHeight += diff; // Updates preferred basket height simultaneously
+            this.basketHeight += diff;
             changed = true;
           }
         }
