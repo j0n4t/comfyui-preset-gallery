@@ -12,7 +12,7 @@ export default class AutocompleteManager {
     .j0n4t-pg-basket-chip.active-menu, .j0n4t-pg-basket-chip:focus { border-color: #007acc; background: #1a2c3d; box-shadow: 0 0 6px rgba(0, 122, 204, 0.6); }
     .j0n4t-pg-autocomplete-popup { z-index: 9999; max-width: 280px; }
     .j0n4t-pg-filter-autocomplete-popup { z-index: 10001; }
-    .j0n4t-pg-autocomplete-item, .j0n4t-pg-filter-autocomplete-item { padding: 6px 10px; font-size: 11px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .j0n4t-pg-autocomplete-item, .j0n4t-pg-filter-autocomplete-item { padding: 2px 5px; font-size: 9px; color: #ddd; cursor: pointer; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     .j0n4t-pg-autocomplete-item:last-child, .j0n4t-pg-filter-autocomplete-item:last-child { border-bottom: none; }
     .j0n4t-pg-autocomplete-item.active, .j0n4t-pg-filter-autocomplete-item.active { background: #007acc; color: #fff; }
     .j0n4t-pg-autocomplete-meta, .j0n4t-pg-filter-autocomplete-meta { font-size: 9px; color: #888; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
@@ -95,23 +95,7 @@ export default class AutocompleteManager {
       this.container.appendChild(this.popupEl);
     }
 
-    const rect = this.input.getBoundingClientRect();
-    const cRect = this.container.getBoundingClientRect();
-    const zoom = cRect.width / this.container.offsetWidth || 1;
-
-    const isBody = this.container === document.body;
-    const top = isBody
-      ? window.scrollY + rect.bottom
-      : (rect.bottom - cRect.top) / zoom;
-    const left = isBody
-      ? window.scrollX + rect.left
-      : (rect.left - cRect.left) / zoom;
-
-    this.popupEl.style.top = `${top + 2}px`;
-    this.popupEl.style.left = `${left}px`;
-    this.popupEl.style.minWidth = `${Math.max(200, rect.width / zoom)}px`;
     this.popupEl.innerHTML = "";
-
     this.matches.forEach(({ item, title }, idx) => {
       const row = document.createElement("div");
       row.className = `${this.itemClass}${idx === this.activeIndex ? " active" : ""}`;
@@ -126,6 +110,36 @@ export default class AutocompleteManager {
       });
       this.popupEl.appendChild(row);
     });
+
+    const rect = this.input.getBoundingClientRect();
+    const cRect = this.container.getBoundingClientRect();
+    const zoom = cRect.width / this.container.offsetWidth || 1;
+    const isBody = this.container === document.body;
+
+    const popupHeight = this.popupEl.offsetHeight;
+    const viewportHeight = window.innerHeight;
+
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const renderOnTop = spaceBelow < popupHeight && spaceAbove > spaceBelow;
+
+    let top;
+    if (isBody) {
+      top = renderOnTop
+        ? window.scrollY + rect.top - popupHeight - 2
+        : window.scrollY + rect.bottom + 2;
+    } else {
+      top = renderOnTop
+        ? (rect.top - cRect.top) / zoom - popupHeight - 2
+        : (rect.bottom - cRect.top) / zoom + 2;
+    }
+
+    const left = isBody
+      ? window.scrollX + rect.left
+      : (rect.left - cRect.left) / zoom;
+
+    this.popupEl.style.top = `${top}px`;
+    this.popupEl.style.left = `${left}px`;
   }
 
   highlight() {
