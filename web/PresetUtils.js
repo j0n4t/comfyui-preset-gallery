@@ -246,12 +246,12 @@ const PresetUtils = {
     },
     getSearchBlob: (key, item) =>
         `${PresetUtils.getPresetName(key)} ${key} ${PresetUtils.getPresetInitials(key)} ${item.preset || ""} ${(item.tags || []).join(" ")}`.toLowerCase(),
-    getTopMatches: (list, query, getSearchBlob = (i) => i, cache = null) => {
+    getTopMatches: (list, query, getSearchBlob = (i) => i, cache = null, ignorePreset = null) => {
         const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
         if (!queryWords.length) return [];
         const buckets = list.reduce(
             (acc, item) => {
-                if (cache && !cache[item].preset) return acc;
+                if (cache && !cache[item].preset || item === ignorePreset) return acc;
                 const blob = getSearchBlob(item).toLowerCase();
                 if (!queryWords.every((word) => blob.includes(word))) return acc;
                 const title = cache ? PresetUtils.getPresetTitle(item, cache) : "";

@@ -233,7 +233,8 @@ export default class RawTextareaManager {
           Object.keys(this.context.cache),
           currentToken,
           (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
-          this.context.cache
+          this.context.cache,
+          this.ignorePreset
         );
       },
       renderItem: (match) =>
