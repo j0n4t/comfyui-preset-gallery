@@ -47,7 +47,7 @@ class PresetGalleryApp {
     .j0n4t-pg-checkbox-wrap input { width: auto; margin: 0; cursor: pointer; outline: none; }
     .j0n4t-pg-checkbox-wrap input:focus-visible { outline: 1px solid #007acc; outline-offset: 2px; }
     .j0n4t-pg-more-options-wrap { position: relative; }
-    .j0n4t-pg-popup-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; padding: 4px; display: none; gap: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .j0n4t-pg-popup-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; padding: 4px; display: none; gap: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); min-width: fit-content; }
     .j0n4t-pg-popup-menu.show { display: flex; }
     .j0n4t-pg-popup-section { display: flex; gap: 2px; justify-content: center; background: #222; padding: 2px; border-radius: 3px; }
   `;
