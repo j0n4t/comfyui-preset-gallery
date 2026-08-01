@@ -89,6 +89,7 @@ export default class PresetEditor {
     const { banner, btnSave } = this.dom;
     if (this.currentMode === "new") {
       banner.innerText = "✨ Creating New Preset";
+      banner.title = "✨ Creating New Preset";
       banner.style.color = "#32d332";
       banner.style.background = "#228b2220";
       btnSave.innerText = "Save";
@@ -101,7 +102,8 @@ export default class PresetEditor {
       btnSave.innerText = this.isSaved ? "Saved!" : "Save";
       btnSave.style.background = this.isSaved ? "#27b427" : "#007acc";
     } else {
-      banner.innerText = "📝 Select Edit ✏️ on an Preset";
+      banner.innerText = "📝 Select an Item";
+      banner.title = "📝 Select an Item";
       banner.style.color = "#888";
       banner.style.background = "#33333330";
     }

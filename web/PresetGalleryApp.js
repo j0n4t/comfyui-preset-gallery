@@ -144,7 +144,7 @@ class PresetGalleryApp {
 
             <div class="j0n4t-pg-editor collapsed no-image">
               <div class="j0n4t-pg-row">
-                <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner">📝 Select an Item</div>
+                <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner" title="📝 Select an Item">📝 Select an Item</div>
                 <input type="file" id="j0n4t-pg-json-file" accept=".zip,.json,.yaml,.yml" style="display:none;" />
                 <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import Presets (.zip, .yaml, .json)" aria-label="Import Presets">${PresetUtils.icons.import}</button>
                 <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Presets (.zip, .yaml, .json)" aria-label="Export Presets">${PresetUtils.icons.export}</button>
