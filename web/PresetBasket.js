@@ -659,8 +659,15 @@ export default class PresetBasket {
     popup.addEventListener("mousedown", (e) => e.stopPropagation());
 
     const rect = chipElement.getBoundingClientRect();
-    popup.style.top = `${window.scrollY + rect.bottom + 4}px`;
-    popup.style.left = `${window.scrollX + rect.left}px`;
+    const topPos = window.scrollY + rect.top - popup.offsetHeight - 4;
+    let leftPos = window.scrollX + rect.left;
+    const popupWidth = popup.offsetWidth;
+    if (rect.left + popupWidth > window.innerWidth) {
+      leftPos = window.scrollX + rect.right - popupWidth;
+      leftPos = Math.max(window.scrollX + 8, leftPos);
+    }
+    popup.style.top = `${topPos}px`;
+    popup.style.left = `${leftPos}px`;
 
     const closeHandler = (e) => {
       if (!popup.contains(e.target) && e.target !== chipElement) {
