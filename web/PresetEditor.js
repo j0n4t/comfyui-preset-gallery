@@ -133,7 +133,7 @@ export default class PresetEditor {
     this.context.syncEditorHighlight();
   }
 
-  async openPreset(styleKey) {
+  async openPreset(styleKey, focus = false) {
     if (!this.context.cache[styleKey]) return;
     this.context.setPanelCollapseState(false);
     this.resetImageState();
@@ -154,7 +154,7 @@ export default class PresetEditor {
 
     this.updateBanner();
     this.context.syncEditorHighlight();
-    this.dom.inpPreset.focus();
+    if (focus) this.dom.inpPreset.focus();
   }
 
   async handleSave() {

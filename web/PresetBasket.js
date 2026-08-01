@@ -602,7 +602,7 @@ export default class PresetBasket {
       this.closeChipMenu();
       const action = actionEl.dataset.action;
       if (action === "edit") {
-        if (item) this.context.openEditorForPreset(styleKey);
+        if (item) this.context.openEditorForPreset(styleKey, true);
         else this.spawnInlineEditor(chipElement, styleKey, startIndex, endIndex);
       } else if (action === "swap") {
         this.spawnInlineEditor(chipElement, this.context.cache[styleKey]?.preset || styleKey, startIndex, endIndex);

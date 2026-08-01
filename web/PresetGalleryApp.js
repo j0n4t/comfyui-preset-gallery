@@ -308,8 +308,8 @@ class PresetGalleryApp {
       );
   }
 
-  openEditorForPreset(styleKey) {
-    this.editor.openPreset(styleKey);
+  openEditorForPreset(styleKey, focus) {
+    this.editor.openPreset(styleKey, focus);
   }
 
   async loadGallery() {
