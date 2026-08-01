@@ -37,7 +37,7 @@ export default class PresetEditor {
     this.context = context;
     this.editingKey = "";
     this.currentMode = "new";
-    this.isSaved = false;
+    this.isSaved = true;
 
     PresetUtils.injectStyles("j0n4t-pg-editor-btn-styles", PresetEditor.EDITOR_BTN_STYLES);
     PresetUtils.injectStyles("j0n4t-pg-editor-preview-styles", PresetEditor.EDITOR_PREVIEW_STYLES);
@@ -123,7 +123,7 @@ export default class PresetEditor {
   clearFields() {
     this.currentMode = "new";
     this.editingKey = "";
-    this.isSaved = false;
+    this.isSaved = true;
     this.dom.inpName.value = "";
     this.dom.inpFolder.value = "";
     this.dom.inpPreset.value = "";
@@ -255,7 +255,7 @@ export default class PresetEditor {
 
   bindEvents() {
     const markDirty = () => {
-      if (this.currentMode === "edit" && this.isSaved) {
+      if (this.isSaved) {
         this.isSaved = false;
         this.updateBanner();
       }
