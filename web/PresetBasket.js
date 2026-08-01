@@ -185,6 +185,12 @@ export default class PresetBasket {
       if (chip) {
         e.stopPropagation();
         this.showChipMenu(chip, chip.dataset.id, this.context.cache[chip.dataset.id], parseInt(chip.dataset.start), parseInt(chip.dataset.end));
+        if (!this.context.dom.wrap.classList.contains("hide-gallery-mode")) {
+          this.locatePreset(chip.dataset.id);
+        }
+        if (!this.context.dom.editor.classList.contains("collapsed") && this.context.editor.isSaved) {
+          this.context.openEditorForPreset(chip.dataset.id);
+        }
       }
     });
 
@@ -601,33 +607,7 @@ export default class PresetBasket {
       } else if (action === "swap") {
         this.spawnInlineEditor(chipElement, this.context.cache[styleKey]?.preset || styleKey, startIndex, endIndex);
       } else if (action === "locate") {
-        const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`);
-        if (itemEl) {
-          this.context.dom.search.value = "";
-          let prev = itemEl.previousElementSibling;
-          while (prev && !prev.classList.contains("j0n4t-pg-group-header"))
-            prev = prev.previousElementSibling;
-          if (prev?.classList.contains("collapsed")) {
-            prev.classList.remove("collapsed");
-            this.context.setCollapsedFolders(this.context.getCollapsedFolders().filter((f) => f !== prev.dataset.groupRaw));
-          }
-          this.context.grid.executeFilterPipeline();
-          if (this.context.dom.wrap.classList.contains("hide-gallery-mode")) {
-            this.context.dom.btnHideGallery.click();
-          }
-          setTimeout(() => {
-            itemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            itemEl.style.transition = "border-color 0.15s, box-shadow 0.15s";
-            const origColor = itemEl.style.borderColor;
-            itemEl.style.borderColor = "#007acc";
-            itemEl.style.boxShadow = "0 0 8px rgba(0, 122, 204, 0.75)";
-
-            setTimeout(() => {
-              itemEl.style.borderColor = origColor;
-              itemEl.style.boxShadow = "";
-            }, 800);
-          }, 10);
-        }
+        this.locatePreset(styleKey);
       } else if (action === "create") {
         this.context.setPanelCollapseState(false);
         this.context.editor.clearFields();
@@ -693,6 +673,36 @@ export default class PresetBasket {
       document.addEventListener("mousedown", closeHandler);
       popup.querySelector('[data-action]').focus();
     }, 10);
+  }
+
+  locatePreset(styleKey) {
+    const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`);
+    if (itemEl) {
+      this.context.dom.search.value = "";
+      let prev = itemEl.previousElementSibling;
+      while (prev && !prev.classList.contains("j0n4t-pg-group-header"))
+        prev = prev.previousElementSibling;
+      if (prev?.classList.contains("collapsed")) {
+        prev.classList.remove("collapsed");
+        this.context.setCollapsedFolders(this.context.getCollapsedFolders().filter((f) => f !== prev.dataset.groupRaw));
+      }
+      this.context.grid.executeFilterPipeline();
+      if (this.context.dom.wrap.classList.contains("hide-gallery-mode")) {
+        this.context.dom.btnHideGallery.click();
+      }
+      setTimeout(() => {
+        itemEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        itemEl.style.transition = "border-color 0.15s, box-shadow 0.15s";
+        const origColor = itemEl.style.borderColor;
+        itemEl.style.borderColor = "#007acc";
+        itemEl.style.boxShadow = "0 0 8px rgba(0, 122, 204, 0.75)";
+
+        setTimeout(() => {
+          itemEl.style.borderColor = origColor;
+          itemEl.style.boxShadow = "";
+        }, 800);
+      }, 10);
+    }
   }
 
   closeChipMenu() {
