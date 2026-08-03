@@ -222,6 +222,9 @@ const PresetUtils = {
         const hue = Math.abs((hash ^ (hash >>> 15)) % 360);
         return `hsl(${hue}, 65%, 35%)`;
     },
+    getAllPresetFolders: (cache) => Array.from(new Set(
+        Object.keys(cache).map(key => PresetUtils.getPresetFolder(key))
+    )),
     getPresetColor: (presetKey = "", cache = null) => {
         const parts = presetKey.split("/");
         for (let i = parts.length; i > 0; i--) {
@@ -244,8 +247,10 @@ const PresetUtils = {
             .join("")
             .substring(0, 6);
     },
+    getPresetFolder: (key) => key.split("/").slice(0, -1).join("/"),
+    getUiFolder: (key) => PresetUtils.getPresetFolder(key).split("/").join(" › "),
     getSearchBlob: (key, item) =>
-        `${PresetUtils.getPresetName(key)} ${key} ${PresetUtils.getPresetInitials(key)} ${item.preset || ""} ${(item.tags || []).join(" ")}`.toLowerCase(),
+        `${PresetUtils.getPresetName(key)} ${key} ${PresetUtils.getPresetInitials(key)} ${item.preset || ""}`.toLowerCase(),
     getTopMatches: (list, query, getSearchBlob = (i) => i, cache = null, ignorePreset = null) => {
         const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
         if (!queryWords.length) return [];

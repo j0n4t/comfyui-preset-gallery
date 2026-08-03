@@ -118,12 +118,8 @@ export default class PresetGrid {
     const collapsedList = this.context.getCollapsedFolders();
 
     const sortedKeys = Object.keys(cache).sort((a, b) => {
-      const groupA = cache[a].tags?.length
-        ? cache[a].tags.join(" > ")
-        : "root_presets";
-      const groupB = cache[b].tags?.length
-        ? cache[b].tags.join(" > ")
-        : "root_presets";
+      const groupA = PresetUtils.getUiFolder(a) || "root_presets";
+      const groupB = PresetUtils.getUiFolder(b) || "root_presets";
       if (groupA === "root_presets" && groupB !== "root_presets") return -1;
       if (groupB === "root_presets" && groupA !== "root_presets") return 1;
       return groupA !== groupB
@@ -133,16 +129,11 @@ export default class PresetGrid {
 
     sortedKeys.forEach((key) => {
       const item = cache[key];
-      const cleanLabel = PresetUtils.toTitleCase(
-        PresetUtils.getPresetName(key)
-      ),
-        initials = PresetUtils.getPresetInitials(key);
-      const searchBlob =
-        `${key} ${initials} ${item.preset} ${(item.tags || []).join(" ")}`.toLowerCase();
-      const uiGroup = item.tags?.length
-        ? item.tags.map(PresetUtils.toTitleCase).join(" › ")
-        : "Root Presets";
-      const rawGroup = item.tags?.length ? item.tags.join("/") : "root_presets";
+      const cleanLabel = PresetUtils.toTitleCase(PresetUtils.getPresetName(key));
+      const initials = PresetUtils.getPresetInitials(key);
+      const searchBlob = PresetUtils.getSearchBlob(key, item);
+      const rawGroup = PresetUtils.getPresetFolder(key) || "root_presets";
+      const uiGroup = PresetUtils.getUiFolder(key);
       const groupColor = cache[rawGroup] ? cache[rawGroup].__color__ : '#888888';
 
       if (uiGroup !== lastGroup) {
@@ -163,8 +154,8 @@ export default class PresetGrid {
       const thumb = item.filename
         ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy" alt="${PresetUtils.escapeHTML(cleanLabel)} preview">`
         : `<div style="background-color: ${groupColor}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;" aria-hidden="true">${PresetUtils.icons.file}</div>`;
-      const badge = item.tags?.length
-        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(item.tags[item.tags.length - 1]))}</div>`
+      const badge = PresetUtils.getPresetFolder(key)
+        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(PresetUtils.getPresetFolder(key).split("/").pop()))}</div>`
         : "";
 
       htmlBuffer += `

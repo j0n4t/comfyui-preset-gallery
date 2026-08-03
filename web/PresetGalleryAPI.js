@@ -34,11 +34,14 @@ export default class PresetGalleryAPI {
   }
 
   static async savePresets(presets) {
+    const sortedPresets = Object.entries(presets)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
     try {
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(presets),
+        body: JSON.stringify(sortedPresets),
       });
       return await res.json();
     } catch (error) {
@@ -87,7 +90,6 @@ export default class PresetGalleryAPI {
     }
 
     const newKey = cleanFolder ? `${cleanFolder}/${cleanName}` : cleanName;
-    const tags = cleanFolder ? cleanFolder.split("/").filter(Boolean) : [];
 
     if (mode === "edit" && editingKey && editingKey !== newKey) {
       delete presets[editingKey];
@@ -96,7 +98,6 @@ export default class PresetGalleryAPI {
     presets[newKey] = {
       ...(presets[newKey] || {}),
       preset: trimmedText,
-      tags: tags,
       filename: finalImage,
     };
     await PresetGalleryAPI.savePresets(presets);
@@ -120,9 +121,6 @@ export default class PresetGalleryAPI {
         const suffix = key.startsWith(prefix) ? key.slice(prefix.length) : "";
         const newKey = suffix ? `${newFolder}/${suffix}` : newFolder;
         const item = presets[key];
-        if (item.preset) {
-          item.tags = newKey.includes("/") ? newKey.split("/").slice(0, -1) : [];
-        }
         newPresets[newKey] = item;
       } else {
         newPresets[key] = presets[key];
@@ -150,11 +148,11 @@ export default class PresetGalleryAPI {
     treeBox.className = "j0n4t-pg-selector-tree";
 
     const groups = {};
-    for (const [key, item] of Object.entries(presets)) {
+    for (const [key, item] of Object.entries(presets).sort((a, b) => a[0].localeCompare(b[0]))) {
       const hasContent = item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename);
       if (!hasContent) continue;
 
-      const gKey = item.tags && item.tags.length ? item.tags.join("/") : "root_presets";
+      const gKey = PresetUtils.getPresetFolder(key) || "root_presets";
       if (!groups[gKey]) groups[gKey] = [];
       groups[gKey].push({ key, item });
     }
@@ -412,7 +410,6 @@ export default class PresetGalleryAPI {
         if (item.preset) {
           const exportItem = {
             preset: item.preset,
-            tags: item.tags || [],
             filename: item.filename || null,
           };
           if (includeColors && item.__color__) {
@@ -559,12 +556,9 @@ export default class PresetGalleryAPI {
           const cleanKey = key.toLowerCase().replace(/ /g, "_");
           if (!cleanKey) continue;
 
-          const tags = cleanKey.includes("/") ? cleanKey.split("/").slice(0, -1) : [];
-
           importedPresets[cleanKey] = {
             ...(importedPresets[cleanKey] || {}),
             preset: presetText,
-            tags: tags,
             filename: filename,
           };
         }
@@ -640,7 +634,6 @@ export default class PresetGalleryAPI {
                 copyIndex++;
               }
               targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
-              item.tags = targetKey.includes("/") ? targetKey.split("/").slice(0, -1) : [];
             }
           }
 

@@ -345,13 +345,7 @@ export default class PresetEditor {
       getMatches: (query) => {
         query = query.trim().toLowerCase().replace(/ /g, "_");
         if (!query) return [];
-        const allFolders = Array.from(
-          new Set(
-            Object.values(this.context.cache).flatMap((i) =>
-              i.tags?.length ? [i.tags.join("/")] : []
-            )
-          )
-        );
+        const allFolders = PresetUtils.getAllPresetFolders(this.context.cache);
         return PresetUtils.getTopMatches(allFolders, query, (f) =>
           f.replace(/_/g, " ")
         );

@@ -61,18 +61,15 @@ const NestedPresetUtils = {
                 }
                 Object.assign(flat, NestedPresetUtils.nestedToFlat(val, fullKey));
             } else {
-                const tags = fullKey.includes("/") ? fullKey.split("/").slice(0, -1) : [];
                 if (typeof val === "string") {
                     flat[fullKey] = {
                         preset: val,
-                        tags: tags,
                         filename: null,
                     };
                 } else if (typeof val === "object" && val !== null) {
                     if ("preset" in val) {
                         const item = {
                             preset: val.preset || "",
-                            tags: val.tags || tags,
                             filename: val.filename || null,
                         };
                         if (val.__color__) item.__color__ = val.__color__;
