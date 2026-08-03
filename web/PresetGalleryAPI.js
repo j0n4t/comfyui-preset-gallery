@@ -160,9 +160,14 @@ export default class PresetGalleryAPI {
     }
 
     for (const [gKey, items] of Object.entries(groups)) {
-      const gName = gKey === "root_presets" ? "Root Presets" : gKey.split("/").map(PresetUtils.toTitleCase).join(" › ");
-      const groupHex = gKey === "root_presets" ? "#007acc" : presets[gKey].__color__;
-
+      let gName;
+      let groupHex = "#007acc";
+      if (gKey === "root_presets") {
+        gName = "Root Presets";
+      } else {
+        gName = gKey.split("/").map(PresetUtils.toTitleCase).join(" › ");
+        if (presets[gKey] && presets[gKey].__color__) groupHex = presets[gKey].__color__;
+      }
       const groupEl = document.createElement("div");
       groupEl.className = "j0n4t-pg-tree-group";
 
