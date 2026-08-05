@@ -130,17 +130,21 @@ export default class PresetGalleryAPI {
     return { success: true };
   }
 
-  static buildPresetSelectorTree(presets) {
+  static buildPresetSelectorTree(presets, existingPresets = null) {
     const container = document.createElement("div");
     container.className = "j0n4t-pg-selector-container";
 
     const controls = document.createElement("div");
     controls.className = "j0n4t-pg-selector-controls";
+
     controls.innerHTML = `
-      <label class="j0n4t-pg-checkbox-wrap">
-        <input type="checkbox" id="j0n4t-pg-sel-all" checked />
-        <span><strong>Select / Deselect All</strong></span>
-      </label>
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
+        <label class="j0n4t-pg-checkbox-wrap" style="margin: 0;">
+          <input type="checkbox" id="j0n4t-pg-sel-all" checked />
+          <span><strong>Select / Deselect All</strong></span>
+        </label>
+        <button type="button" id="j0n4t-pg-toggle-collapse-all" style="background: transparent; border: 1px solid #777; color: inherit; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">Collapse All</button>
+      </div>
     `;
     container.appendChild(controls);
 
@@ -166,32 +170,161 @@ export default class PresetGalleryAPI {
         gName = gKey.split("/").map(PresetUtils.toTitleCase).join(" › ");
         if (presets[gKey] && presets[gKey].__color__) groupHex = presets[gKey].__color__;
       }
+
+      let newCount = 0;
+      let replacedCount = 0;
+      let sameCount = 0;
+
+      if (existingPresets) {
+        items.forEach(({ key, item }) => {
+          if (existingPresets[key]) {
+            const oldText = existingPresets[key].preset || "";
+            const newText = item.preset || "";
+            const oldImg = existingPresets[key].filename || null;
+            const newImg = item.filename || null;
+
+            if (oldText !== newText || oldImg !== newImg) {
+              replacedCount++;
+            } else {
+              sameCount++;
+            }
+          } else {
+            newCount++;
+          }
+        });
+      }
+
+      let statsHtml = "";
+      if (existingPresets) {
+        statsHtml = `
+          <div style="display: flex; gap: 4px; font-size: 0.75em; align-items: center; margin-left: auto;">
+            ${newCount > 0 ? `<span style="background: #2b8a3e; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;" title="New Presets">+${newCount} New</span>` : ""}
+            ${replacedCount > 0 ? `<span style="background: #e67700; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;" title="Modified Presets">~${replacedCount} Replaced</span>` : ""}
+            ${sameCount > 0 ? `<span style="background: #495057; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;" title="Unchanged Presets">=${sameCount} Same</span>` : ""}
+          </div>
+        `;
+      }
+
       const groupEl = document.createElement("div");
       groupEl.className = "j0n4t-pg-tree-group";
 
       const groupHeader = document.createElement("div");
       groupHeader.className = "j0n4t-pg-tree-group-header";
       groupHeader.innerHTML = `
-        <label class="j0n4t-pg-checkbox-wrap">
-          <input type="checkbox" class="j0n4t-pg-group-cb" data-group="${PresetUtils.escapeHTML(gKey)}" checked />
-          <span style="border-left:3px solid ${groupHex}; padding-left:6px;"><strong>${PresetUtils.escapeHTML(gName)}</strong> (${items.length})</span>
-        </label>
+        <div style="display: flex; align-items: center; width: 100%; padding-right: 4px;">
+          <span class="j0n4t-pg-collapse-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em;">▼</span>
+          <label class="j0n4t-pg-checkbox-wrap" style="margin: 0; display: flex; align-items: center;">
+            <input type="checkbox" class="j0n4t-pg-group-cb" data-group="${PresetUtils.escapeHTML(gKey)}" checked />
+            <span style="border-left:3px solid ${groupHex}; padding-left:6px; margin-right: 8px;"><strong>${PresetUtils.escapeHTML(gName)}</strong> (${items.length})</span>
+          </label>
+          ${statsHtml}
+        </div>
       `;
       groupEl.appendChild(groupHeader);
 
       const itemsBox = document.createElement("div");
       itemsBox.className = "j0n4t-pg-tree-group-items";
 
-      items.forEach(({ key }) => {
+      items.forEach(({ key, item }) => {
+        let diffHtml = "";
+        let hasDiff = false;
+        let isNew = false;
+        let isSame = false;
+
+        if (existingPresets) {
+          if (existingPresets[key]) {
+            const oldText = existingPresets[key].preset || "";
+            const newText = item.preset || "";
+            const oldImg = existingPresets[key].filename || null;
+            const newImg = item.filename || null;
+
+            if (oldText !== newText || oldImg !== newImg) {
+              hasDiff = true;
+
+              let textDiffHtml;
+              if (oldText !== newText) {
+                textDiffHtml = `
+                  <div style="color: #ff6b6b; margin-bottom: 4px;"><strong>- Current:</strong><br/>${PresetUtils.escapeHTML(oldText)}</div>
+                  <div style="color: #51cf66;"><strong>+ Imported:</strong><br/>${PresetUtils.escapeHTML(newText)}</div>
+                `;
+              } else {
+                textDiffHtml = `<div style="color: #888; font-style: italic;">(Text unchanged)</div>`;
+              }
+
+              let imgDiffHtml = "";
+              if (oldImg !== newImg) {
+                imgDiffHtml = `<div style="margin-top: 6px; color: #fcc419;"><strong>* Image/Thumbnail modified</strong></div>`;
+              }
+
+              diffHtml = `
+                <div class="j0n4t-pg-diff-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 28px; background: rgba(0,0,0,0.15); border-left: 2px solid #fcc419; font-family: monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
+                  ${textDiffHtml}
+                  ${imgDiffHtml}
+                </div>
+              `;
+            } else {
+              isSame = true;
+            }
+          } else {
+            isNew = true;
+          }
+        }
+
         const itemRow = document.createElement("div");
         itemRow.className = "j0n4t-pg-tree-item";
+        itemRow.style.display = "flex";
+        itemRow.style.flexDirection = "column";
+
+        let itemStatusTag = "";
+        let status = "new";
+
+        if (hasDiff) {
+          itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #fcc419; margin-left: 6px;">(Replaced)</span>`;
+          status = "replaced";
+        }
+        if (isNew) {
+          itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #51cf66; margin-left: 6px;">(New)</span>`;
+          status = "new";
+        }
+        if (isSame) {
+          status = "same";
+        }
+
+        const checkedAttr = isSame ? "" : "checked";
+
         itemRow.innerHTML = `
-          <label class="j0n4t-pg-checkbox-wrap">
-            <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetUtils.escapeHTML(gKey)}" value="${PresetUtils.escapeHTML(key)}" checked />
-            <span>${PresetUtils.escapeHTML(PresetUtils.getPresetName(key))}</span>
-          </label>
+          <div style="display: flex; align-items: center; width: 100%;">
+            ${hasDiff
+            ? `<span class="j0n4t-pg-diff-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em; color: #fcc419;" title="Toggle Diff">⊞</span>`
+            : `<span style="width: 20px; padding-right: 8px; display: inline-block;"></span>`
+          }
+            <label class="j0n4t-pg-checkbox-wrap" style="flex: 1; margin: 0;">
+              <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetUtils.escapeHTML(gKey)}" data-status="${status}" data-user-modified="false" value="${PresetUtils.escapeHTML(key)}" ${checkedAttr} />
+              <span>${PresetUtils.escapeHTML(PresetUtils.getPresetName(key))}</span>
+              ${itemStatusTag}
+            </label>
+          </div>
+          ${diffHtml}
         `;
+
+        if (hasDiff) {
+          const diffBtn = itemRow.querySelector(".j0n4t-pg-diff-btn");
+          const diffContainer = itemRow.querySelector(".j0n4t-pg-diff-container");
+          diffBtn.addEventListener("click", () => {
+            const isHidden = diffContainer.style.display === "none";
+            diffContainer.style.display = isHidden ? "block" : "none";
+            diffBtn.textContent = isHidden ? "⊟" : "⊞";
+          });
+        }
+
         itemsBox.appendChild(itemRow);
+      });
+
+      const collapseBtn = groupHeader.querySelector(".j0n4t-pg-collapse-btn");
+      collapseBtn.addEventListener("click", () => {
+        const isCollapsed = itemsBox.style.display === "none";
+        itemsBox.style.display = isCollapsed ? "" : "none";
+        collapseBtn.textContent = isCollapsed ? "▼" : "▶";
       });
 
       groupEl.appendChild(itemsBox);
@@ -201,8 +334,25 @@ export default class PresetGalleryAPI {
     container.appendChild(treeBox);
 
     const masterCb = controls.querySelector("#j0n4t-pg-sel-all");
+    const toggleAllBtn = controls.querySelector("#j0n4t-pg-toggle-collapse-all");
     const groupCbs = treeBox.querySelectorAll(".j0n4t-pg-group-cb");
     const itemCbs = treeBox.querySelectorAll(".j0n4t-pg-item-cb");
+
+    let isAllCollapsed = false;
+    toggleAllBtn.addEventListener("click", () => {
+      isAllCollapsed = !isAllCollapsed;
+      toggleAllBtn.textContent = isAllCollapsed ? "Expand All" : "Collapse All";
+
+      const groupBtns = treeBox.querySelectorAll(".j0n4t-pg-collapse-btn");
+      const itemBoxes = treeBox.querySelectorAll(".j0n4t-pg-tree-group-items");
+
+      groupBtns.forEach((btn, idx) => {
+        btn.textContent = isAllCollapsed ? "▶" : "▼";
+        if (itemBoxes[idx]) {
+          itemBoxes[idx].style.display = isAllCollapsed ? "none" : "";
+        }
+      });
+    });
 
     const updateGroupAndMasterStates = () => {
       let allItemsChecked = true;
@@ -233,7 +383,10 @@ export default class PresetGalleryAPI {
     };
 
     masterCb.addEventListener("change", () => {
-      itemCbs.forEach((cb) => (cb.checked = masterCb.checked));
+      itemCbs.forEach((cb) => {
+        cb.checked = masterCb.checked;
+        cb.dataset.userModified = "true";
+      });
       groupCbs.forEach((cb) => {
         cb.checked = masterCb.checked;
         cb.indeterminate = false;
@@ -244,19 +397,52 @@ export default class PresetGalleryAPI {
       gCb.addEventListener("change", () => {
         const gKey = gCb.dataset.group;
         const groupItems = treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`);
-        groupItems.forEach((cb) => (cb.checked = gCb.checked));
+        groupItems.forEach((cb) => {
+          cb.checked = gCb.checked;
+          cb.dataset.userModified = "true";
+        });
         updateGroupAndMasterStates();
       });
     });
 
     itemCbs.forEach((cb) => {
-      cb.addEventListener("change", updateGroupAndMasterStates);
+      cb.addEventListener("change", () => {
+        cb.dataset.userModified = "true";
+        updateGroupAndMasterStates();
+      });
     });
+
+    updateGroupAndMasterStates();
 
     return {
       element: container,
       getSelectedKeys: () =>
         Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map((cb) => cb.value),
+      applyDuplicateStrategy: (strategy) => {
+        let stateChanged = false;
+        itemCbs.forEach((cb) => {
+          if (cb.dataset.userModified === "true") return;
+
+          const status = cb.dataset.status;
+          if (status === "new") return;
+
+          let targetState = cb.checked;
+          if (strategy === "skip") {
+            targetState = false;
+          } else if (strategy === "overwrite") {
+            targetState = status === "replaced";
+          } else if (strategy === "keep_both") {
+            targetState = true;
+          }
+
+          if (cb.checked !== targetState) {
+            cb.checked = targetState;
+            stateChanged = true;
+          }
+        });
+
+        if (stateChanged) updateGroupAndMasterStates();
+      }
     };
   }
 
@@ -479,8 +665,11 @@ export default class PresetGalleryAPI {
 
     overlay.appendChild(modal);
 
-    const tree = PresetGalleryAPI.buildPresetSelectorTree(importedPresets);
+    const tree = PresetGalleryAPI.buildPresetSelectorTree(importedPresets, currentPresets);
     modal.querySelector("#j0n4t-pg-tree-mount").appendChild(tree.element);
+    modal.querySelector("#j0n4t-pg-dup-strategy").addEventListener("change", (e) => {
+      tree.applyDuplicateStrategy(e.target.value);
+    });
 
     const close = () => overlay.remove();
     modal.querySelector("#j0n4t-pg-imp-cancel").addEventListener("click", close);
