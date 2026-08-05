@@ -171,10 +171,7 @@ export default class PresetGalleryAPI {
         if (presets[gKey] && presets[gKey].__color__) groupHex = presets[gKey].__color__;
       }
 
-      let newCount = 0;
-      let replacedCount = 0;
-      let sameCount = 0;
-
+      let newCount = 0; let replacedCount = 0; let sameCount = 0;
       if (existingPresets) {
         items.forEach(({ key, item }) => {
           if (existingPresets[key]) {
@@ -182,12 +179,8 @@ export default class PresetGalleryAPI {
             const newText = item.preset || "";
             const oldImg = existingPresets[key].filename || null;
             const newImg = item.filename || null;
-
-            if (oldText !== newText || oldImg !== newImg) {
-              replacedCount++;
-            } else {
-              sameCount++;
-            }
+            if (oldText !== newText || oldImg !== newImg) replacedCount++;
+            else sameCount++;
           } else {
             newCount++;
           }
@@ -198,9 +191,9 @@ export default class PresetGalleryAPI {
       if (existingPresets) {
         statsHtml = `
           <div style="display: flex; gap: 4px; font-size: 0.75em; align-items: center; margin-left: auto;">
-            ${newCount > 0 ? `<span style="background: #2b8a3e; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;" title="New Presets">+${newCount} New</span>` : ""}
-            ${replacedCount > 0 ? `<span style="background: #e67700; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;" title="Modified Presets">~${replacedCount} Replaced</span>` : ""}
-            ${sameCount > 0 ? `<span style="background: #495057; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;" title="Unchanged Presets">=${sameCount} Same</span>` : ""}
+            ${newCount > 0 ? `<span style="background: #2b8a3e; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;">+${newCount} New</span>` : ""}
+            ${replacedCount > 0 ? `<span style="background: #e67700; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;">~${replacedCount} Replaced</span>` : ""}
+            ${sameCount > 0 ? `<span style="background: #495057; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;">=${sameCount} Same</span>` : ""}
           </div>
         `;
       }
@@ -213,9 +206,10 @@ export default class PresetGalleryAPI {
       groupHeader.innerHTML = `
         <div style="display: flex; align-items: center; width: 100%; padding-right: 4px;">
           <span class="j0n4t-pg-collapse-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em;">▼</span>
+          <span class="j0n4t-pg-edit-group-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Rename Folder">✎</span>
           <label class="j0n4t-pg-checkbox-wrap" style="margin: 0; display: flex; align-items: center;">
             <input type="checkbox" class="j0n4t-pg-group-cb" data-group="${PresetUtils.escapeHTML(gKey)}" checked />
-            <span style="border-left:3px solid ${groupHex}; padding-left:6px; margin-right: 8px;"><strong>${PresetUtils.escapeHTML(gName)}</strong> (${items.length})</span>
+            <span class="j0n4t-pg-group-name" style="border-left:3px solid ${groupHex}; padding-left:6px; margin-right: 8px;"><strong>${PresetUtils.escapeHTML(gName)}</strong> (${items.length})</span>
           </label>
           ${statsHtml}
         </div>
@@ -226,49 +220,66 @@ export default class PresetGalleryAPI {
       itemsBox.className = "j0n4t-pg-tree-group-items";
 
       items.forEach(({ key, item }) => {
-        let diffHtml = "";
-        let hasDiff = false;
-        let isNew = false;
-        let isSame = false;
+        let detailsHtml = "";
+        let hasDiff = false; let isNew = false; let isSame = false;
 
-        if (existingPresets) {
-          if (existingPresets[key]) {
-            const oldText = existingPresets[key].preset || "";
-            const newText = item.preset || "";
-            const oldImg = existingPresets[key].filename || null;
-            const newImg = item.filename || null;
+        if (existingPresets && existingPresets[key]) {
+          const oldText = existingPresets[key].preset || "";
+          const newText = item.preset || "";
+          const oldImg = existingPresets[key].filename || null;
+          const newImg = item.filename || null;
 
-            if (oldText !== newText || oldImg !== newImg) {
-              hasDiff = true;
-
-              let textDiffHtml;
-              if (oldText !== newText) {
-                textDiffHtml = `
-                  <div style="color: #ff6b6b; margin-bottom: 4px;"><strong>- Current:</strong><br/>${PresetUtils.escapeHTML(oldText)}</div>
-                  <div style="color: #51cf66;"><strong>+ Imported:</strong><br/>${PresetUtils.escapeHTML(newText)}</div>
-                `;
-              } else {
-                textDiffHtml = `<div style="color: #888; font-style: italic;">(Text unchanged)</div>`;
-              }
-
-              let imgDiffHtml = "";
-              if (oldImg !== newImg) {
-                imgDiffHtml = `<div style="margin-top: 6px; color: #fcc419;"><strong>* Image/Thumbnail modified</strong></div>`;
-              }
-
-              diffHtml = `
-                <div class="j0n4t-pg-diff-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 28px; background: rgba(0,0,0,0.15); border-left: 2px solid #fcc419; font-family: monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
-                  ${textDiffHtml}
-                  ${imgDiffHtml}
-                </div>
-              `;
-            } else {
-              isSame = true;
-            }
+          if (oldText !== newText || oldImg !== newImg) {
+            hasDiff = true;
+            let textDiffHtml = oldText !== newText
+              ? `<div style="color: #ff6b6b; margin-bottom: 4px;"><strong>- Current:</strong><br/>${PresetUtils.escapeHTML(oldText)}</div><div style="color: #51cf66;"><strong>+ Imported:</strong><br/>${PresetUtils.escapeHTML(newText)}</div>`
+              : `<div style="color: #888; font-style: italic;">(Text unchanged)</div>`;
+            let imgDiffHtml = oldImg !== newImg ? `<div style="margin-top: 6px; color: #fcc419;"><strong>* Image/Thumbnail modified</strong></div>` : "";
+            detailsHtml = `${textDiffHtml}${imgDiffHtml}`;
           } else {
-            isNew = true;
+            isSame = true;
           }
+        } else if (existingPresets) {
+          isNew = true;
         }
+
+        // Details for ALL items (even if not a diff)
+        if (!hasDiff) {
+          detailsHtml = `
+            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content:</strong><br/>${PresetUtils.escapeHTML(item.preset || "(Empty)")}</div>
+            ${item.filename ? `<div style="margin-top: 6px;"><img src="${item.filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
+          `;
+        }
+
+        const currentImgHtml = item.filename
+          ? `<div style="margin-bottom: 4px;"><span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${item.filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" /></div>`
+          : `<div style="margin-bottom: 4px; font-style: italic; color: #888; font-size: 0.85em;">No current image</div>`;
+
+        const detailsContainerHtml = `
+          <div class="j0n4t-pg-details-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.15); border-left: 2px solid ${hasDiff ? '#fcc419' : '#51cf66'}; font-family: monospace; white-space: pre-wrap; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
+            ${detailsHtml}
+          </div>
+        `;
+
+        const editContainerHtml = `
+          <div class="j0n4t-pg-edit-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.25); border-left: 2px solid #4dabf7; font-size: 0.85em; border-radius: 4px;">
+            <label style="display:block; margin-bottom:2px;">Name</label>
+            <input type="text" class="edit-name" value="${PresetUtils.escapeHTML(PresetUtils.getPresetName(key))}" style="width: 100%; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;" />
+            
+            <label style="display:block; margin-bottom:2px;">Preset Content</label>
+            <textarea class="edit-text" style="width: 100%; height: 80px; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;">${PresetUtils.escapeHTML(item.preset || "")}</textarea>
+            
+            <label style="display:block; margin-bottom:2px;">Current Picture</label>
+            <div class="edit-img-preview-wrap" style="margin-bottom: 8px;">
+              ${currentImgHtml}
+            </div>
+
+            <label style="display:block; margin-bottom:2px;">Update Image</label>
+            <input type="file" class="edit-image" accept="image/*" style="width: 100%; margin-bottom: 8px;" />
+            
+            <button type="button" class="edit-save" style="background: #007acc; color: white; border: none; padding: 4px 12px; cursor: pointer; border-radius: 3px;">Save Changes</button>
+          </div>
+        `;
 
         const itemRow = document.createElement("div");
         itemRow.className = "j0n4t-pg-tree-item";
@@ -276,48 +287,117 @@ export default class PresetGalleryAPI {
         itemRow.style.flexDirection = "column";
 
         let itemStatusTag = "";
-        let status = "new";
-
-        if (hasDiff) {
-          itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #fcc419; margin-left: 6px;">(Replaced)</span>`;
-          status = "replaced";
-        }
-        if (isNew) {
-          itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #51cf66; margin-left: 6px;">(New)</span>`;
-          status = "new";
-        }
-        if (isSame) {
-          status = "same";
-        }
+        let status = hasDiff ? "replaced" : (isNew ? "new" : "same");
+        if (hasDiff) itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #fcc419; margin-left: 6px;">(Replaced)</span>`;
+        if (isNew) itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #51cf66; margin-left: 6px;">(New)</span>`;
 
         const checkedAttr = isSame ? "" : "checked";
 
         itemRow.innerHTML = `
           <div style="display: flex; align-items: center; width: 100%;">
-            ${hasDiff
-            ? `<span class="j0n4t-pg-diff-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em; color: #fcc419;" title="Toggle Diff">⊞</span>`
-            : `<span style="width: 20px; padding-right: 8px; display: inline-block;"></span>`
-          }
+            <span class="j0n4t-pg-details-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em; color: ${hasDiff ? '#fcc419' : '#888'};" title="Toggle Details">⊞</span>
+            <span class="j0n4t-pg-edit-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Edit Item">✎</span>
             <label class="j0n4t-pg-checkbox-wrap" style="flex: 1; margin: 0;">
               <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetUtils.escapeHTML(gKey)}" data-status="${status}" data-user-modified="false" value="${PresetUtils.escapeHTML(key)}" ${checkedAttr} />
-              <span>${PresetUtils.escapeHTML(PresetUtils.getPresetName(key))}</span>
+              <span class="j0n4t-pg-item-name">${PresetUtils.escapeHTML(PresetUtils.getPresetName(key))}</span>
               ${itemStatusTag}
             </label>
           </div>
-          ${diffHtml}
+          ${detailsContainerHtml}
+          ${editContainerHtml}
         `;
 
-        if (hasDiff) {
-          const diffBtn = itemRow.querySelector(".j0n4t-pg-diff-btn");
-          const diffContainer = itemRow.querySelector(".j0n4t-pg-diff-container");
-          diffBtn.addEventListener("click", () => {
-            const isHidden = diffContainer.style.display === "none";
-            diffContainer.style.display = isHidden ? "block" : "none";
-            diffBtn.textContent = isHidden ? "⊟" : "⊞";
-          });
-        }
+        // Details Toggle
+        const detailsBtn = itemRow.querySelector(".j0n4t-pg-details-btn");
+        const detailsContainer = itemRow.querySelector(".j0n4t-pg-details-container");
+        detailsBtn.addEventListener("click", () => {
+          const isHidden = detailsContainer.style.display === "none";
+          detailsContainer.style.display = isHidden ? "block" : "none";
+          detailsBtn.textContent = isHidden ? "⊟" : "⊞";
+        });
+
+        // Edit Toggle & Save Logic
+        const editBtn = itemRow.querySelector(".j0n4t-pg-edit-btn");
+        const editContainer = itemRow.querySelector(".j0n4t-pg-edit-container");
+        const saveBtn = editContainer.querySelector(".edit-save");
+
+        editBtn.addEventListener("click", () => {
+          editContainer.style.display = editContainer.style.display === "none" ? "block" : "none";
+        });
+
+        saveBtn.addEventListener("click", async () => {
+          const newName = editContainer.querySelector(".edit-name").value.trim();
+          const newText = editContainer.querySelector(".edit-text").value.trim();
+          const fileInput = editContainer.querySelector(".edit-image");
+          const cb = itemRow.querySelector(".j0n4t-pg-item-cb");
+
+          const oldKey = cb.value;
+          const folder = PresetUtils.getPresetFolder(oldKey);
+          const cleanName = newName.toLowerCase().replace(/ /g, "_");
+          const newKey = (folder && folder !== "root_presets") ? `${folder}/${cleanName}` : cleanName;
+
+          // Mutate Presets object directly
+          presets[oldKey].preset = newText;
+          if (fileInput.files && fileInput.files[0]) {
+            const dataUrl = await new Promise((res) => {
+              const reader = new FileReader();
+              reader.onload = e => res(e.target.result);
+              reader.readAsDataURL(fileInput.files[0]);
+            });
+            presets[oldKey].filename = await PresetUtils.createThumbnail(dataUrl);
+
+            // Update the current picture preview container live
+            const imgWrap = editContainer.querySelector(".edit-img-preview-wrap");
+            imgWrap.innerHTML = `<span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${presets[oldKey].filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" />`;
+            fileInput.value = ""; // Reset file input
+          }
+
+          if (newKey !== oldKey) {
+            presets[newKey] = presets[oldKey];
+            delete presets[oldKey];
+            cb.value = newKey;
+            itemRow.querySelector(".j0n4t-pg-item-name").textContent = newName;
+          }
+
+          editContainer.style.display = "none";
+          cb.dataset.userModified = "true";
+          cb.checked = true; // Auto-check upon edit
+
+          // Refresh details view content
+          let updatedDetailsHtml = `
+            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content (Edited):</strong><br/>${PresetUtils.escapeHTML(newText)}</div>
+            ${presets[newKey || oldKey].filename ? `<div style="margin-top: 6px;"><img src="${presets[newKey || oldKey].filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
+          `;
+          detailsContainer.innerHTML = updatedDetailsHtml;
+        });
 
         itemsBox.appendChild(itemRow);
+      });
+
+      // Group Editor Hook
+      const groupEditBtn = groupHeader.querySelector(".j0n4t-pg-edit-group-btn");
+      groupEditBtn.addEventListener("click", () => {
+        const newGroupName = prompt("Rename Folder:", gName);
+        if (newGroupName && newGroupName.trim() !== "" && newGroupName !== gName) {
+          const cleanNewFolder = newGroupName.trim().toLowerCase().replace(/ /g, "_");
+
+          const checkboxes = itemsBox.querySelectorAll(".j0n4t-pg-item-cb");
+          checkboxes.forEach(cb => {
+            const oldKey = cb.value;
+            const itemName = PresetUtils.getPresetName(oldKey);
+            const newKey = cleanNewFolder ? `${cleanNewFolder}/${itemName}` : itemName;
+
+            if (presets[oldKey]) {
+              presets[newKey] = presets[oldKey];
+              delete presets[oldKey];
+            }
+            cb.value = newKey;
+            cb.dataset.group = cleanNewFolder;
+          });
+
+          groupHeader.querySelector(".j0n4t-pg-group-cb").dataset.group = cleanNewFolder;
+          groupHeader.querySelector(".j0n4t-pg-group-name").innerHTML = `<strong>${PresetUtils.escapeHTML(newGroupName)}</strong> (${items.length})`;
+        }
       });
 
       const collapseBtn = groupHeader.querySelector(".j0n4t-pg-collapse-btn");
@@ -342,15 +422,10 @@ export default class PresetGalleryAPI {
     toggleAllBtn.addEventListener("click", () => {
       isAllCollapsed = !isAllCollapsed;
       toggleAllBtn.textContent = isAllCollapsed ? "Expand All" : "Collapse All";
-
-      const groupBtns = treeBox.querySelectorAll(".j0n4t-pg-collapse-btn");
-      const itemBoxes = treeBox.querySelectorAll(".j0n4t-pg-tree-group-items");
-
-      groupBtns.forEach((btn, idx) => {
+      treeBox.querySelectorAll(".j0n4t-pg-collapse-btn").forEach((btn, idx) => {
         btn.textContent = isAllCollapsed ? "▶" : "▼";
-        if (itemBoxes[idx]) {
-          itemBoxes[idx].style.display = isAllCollapsed ? "none" : "";
-        }
+        const box = treeBox.querySelectorAll(".j0n4t-pg-tree-group-items")[idx];
+        if (box) box.style.display = isAllCollapsed ? "none" : "";
       });
     });
 
@@ -362,18 +437,8 @@ export default class PresetGalleryAPI {
         const gKey = gCb.dataset.group;
         const groupItems = treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`);
         const checkedCount = Array.from(groupItems).filter((c) => c.checked).length;
-
-        if (checkedCount === groupItems.length) {
-          gCb.checked = true;
-          gCb.indeterminate = false;
-        } else if (checkedCount === 0) {
-          gCb.checked = false;
-          gCb.indeterminate = false;
-        } else {
-          gCb.checked = false;
-          gCb.indeterminate = true;
-        }
-
+        gCb.checked = (checkedCount === groupItems.length && groupItems.length > 0);
+        gCb.indeterminate = (checkedCount > 0 && checkedCount < groupItems.length);
         if (checkedCount > 0) anyItemChecked = true;
         if (checkedCount < groupItems.length) allItemsChecked = false;
       });
@@ -383,64 +448,44 @@ export default class PresetGalleryAPI {
     };
 
     masterCb.addEventListener("change", () => {
-      itemCbs.forEach((cb) => {
-        cb.checked = masterCb.checked;
-        cb.dataset.userModified = "true";
-      });
-      groupCbs.forEach((cb) => {
-        cb.checked = masterCb.checked;
-        cb.indeterminate = false;
-      });
+      itemCbs.forEach((cb) => { cb.checked = masterCb.checked; cb.dataset.userModified = "true"; });
+      groupCbs.forEach((cb) => { cb.checked = masterCb.checked; cb.indeterminate = false; });
     });
 
     groupCbs.forEach((gCb) => {
       gCb.addEventListener("change", () => {
         const gKey = gCb.dataset.group;
-        const groupItems = treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`);
-        groupItems.forEach((cb) => {
-          cb.checked = gCb.checked;
-          cb.dataset.userModified = "true";
+        treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`).forEach(cb => {
+          cb.checked = gCb.checked; cb.dataset.userModified = "true";
         });
         updateGroupAndMasterStates();
       });
     });
 
     itemCbs.forEach((cb) => {
-      cb.addEventListener("change", () => {
-        cb.dataset.userModified = "true";
-        updateGroupAndMasterStates();
-      });
+      cb.addEventListener("change", () => { cb.dataset.userModified = "true"; updateGroupAndMasterStates(); });
     });
 
     updateGroupAndMasterStates();
 
     return {
       element: container,
-      getSelectedKeys: () =>
-        Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map((cb) => cb.value),
+      getSelectedKeys: () => Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map((cb) => cb.value),
+      getPresets: () => presets, // Return the mutable object so callers get the new keys and content!
       applyDuplicateStrategy: (strategy) => {
         let stateChanged = false;
         itemCbs.forEach((cb) => {
           if (cb.dataset.userModified === "true") return;
-
           const status = cb.dataset.status;
           if (status === "new") return;
 
           let targetState = cb.checked;
-          if (strategy === "skip") {
-            targetState = false;
-          } else if (strategy === "overwrite") {
-            targetState = status === "replaced";
-          } else if (strategy === "keep_both") {
-            targetState = true;
-          }
+          if (strategy === "skip") targetState = false;
+          else if (strategy === "overwrite") targetState = status === "replaced";
+          else if (strategy === "keep_both") targetState = true;
 
-          if (cb.checked !== targetState) {
-            cb.checked = targetState;
-            stateChanged = true;
-          }
+          if (cb.checked !== targetState) { cb.checked = targetState; stateChanged = true; }
         });
-
         if (stateChanged) updateGroupAndMasterStates();
       }
     };
@@ -513,15 +558,16 @@ export default class PresetGalleryAPI {
       const format = modal.querySelector("#j0n4t-pg-exp-format").value;
       const mode = modal.querySelector("#j0n4t-pg-exp-mode").value;
       const includeColors = modal.querySelector("#j0n4t-pg-exp-colors").checked;
+      const editedPresets = tree.getPresets();
       close();
-      onExport(format, mode, selectedKeys, includeColors);
+      onExport(format, mode, selectedKeys, includeColors, editedPresets);
     });
 
     document.body.appendChild(overlay);
   }
 
-  static async exportPresets(format = "zip", mode = "full", selectedKeys = null, includeColors = true) {
-    let presets = await PresetGalleryAPI.getPresets();
+  static async exportPresets(format = "zip", mode = "full", selectedKeys = null, includeColors = true, editedPresets) {
+    let presets = editedPresets;
 
     if (selectedKeys && Array.isArray(selectedKeys)) {
       const filtered = {};
@@ -686,7 +732,7 @@ export default class PresetGalleryAPI {
       const duplicateStrategy = modal.querySelector("#j0n4t-pg-dup-strategy").value;
       const importColors = modal.querySelector("#j0n4t-pg-imp-colors").checked;
       close();
-      onConfirm({ selectedKeys, duplicateStrategy, importColors });
+      onConfirm({ selectedKeys, duplicateStrategy, importColors, editedPresets: tree.getPresets() });
     });
 
     document.body.appendChild(overlay);
@@ -794,11 +840,11 @@ export default class PresetGalleryAPI {
     }
 
     return new Promise((resolve) => {
-      PresetGalleryAPI.showImportModal(importedPresets, async ({ selectedKeys, duplicateStrategy, importColors }) => {
+      PresetGalleryAPI.showImportModal(importedPresets, async ({ selectedKeys, duplicateStrategy, importColors, editedPresets }) => {
         const currentPresets = await PresetGalleryAPI.getPresets();
 
         if (importColors) {
-          for (const [key, item] of Object.entries(importedPresets)) {
+          for (const [key, item] of Object.entries(editedPresets)) {
             if (item && item.__color__) {
               currentPresets[key] = { ...(currentPresets[key] || {}), __color__: item.__color__ };
             }
