@@ -60,6 +60,8 @@ export default class RawTextareaManager {
         html += `<span class="j0n4t-pg-raw-token plain-text">${PresetUtils.escapeHTML(token.text)}</span>`;
       } else if (token.isTag) {
         html += `<span class="j0n4t-pg-raw-token" style="color: #4fc1ff;">${PresetUtils.escapeHTML(token.text)}</span>`;
+      } else if (token.isVar || /^\{[^{}]+\}$/.test(token.text)) {
+        html += `<span class="j0n4t-pg-raw-token" style="color: #d1a119; font-weight: bold;">${PresetUtils.escapeHTML(token.text)}</span>`;
       } else {
         const itemKey = token.key;
         const item = token.item;

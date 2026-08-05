@@ -1,18 +1,73 @@
 const PresetUtils = {
     expandRecursively: (val, cache, seen = new Set()) => {
         if (!val) return "";
-        const keys = val.split(/,(?![^<]*>)/).map((k) => k.trim()).filter(Boolean);
-        const expanded = keys.map((key) => {
-            const item = cache?.[key];
+        const expandText = (str) => {
+            if (!str) return "";
+            // Replace any inline {group} or {group:selected_value} occurrences within text
+            return str.replace(/\{([^{}:]+)(?::([^{}]+))?\}/g, (match, gName, sVal) => {
+                const groupName = gName.trim().toLowerCase().replace(/\s+/g, "_");
+                const selectedVal = sVal ? sVal.trim() : "";
+
+                if (selectedVal) {
+                    // Check if selectedVal maps to a cached preset key or path
+                    let selectedKey = selectedVal;
+                    if (cache && !cache[selectedKey]) {
+                        // Find matching key in cache under groupName or full key
+                        for (const k of Object.keys(cache)) {
+                            if (k.toLowerCase() === selectedVal.toLowerCase() || 
+                                PresetUtils.getPresetName(k).toLowerCase() === selectedVal.toLowerCase() ||
+                                (k.toLowerCase().startsWith(groupName + "/") && PresetUtils.getPresetName(k).toLowerCase() === selectedVal.toLowerCase())) {
+                                selectedKey = k;
+                                break;
+                            }
+                        }
+                    }
+                    const item = cache?.[selectedKey];
+                    if (item && item.preset) {
+                        if (seen.has(selectedKey)) return item.preset;
+                        const newSeen = new Set(seen);
+                        newSeen.add(selectedKey);
+                        return PresetUtils.expandRecursively(item.preset, cache, newSeen);
+                    }
+                    return selectedVal;
+                }
+
+                // If no value specified, pick a random matching preset from group
+                const matches = cache
+                    ? Object.keys(cache).filter((k) => {
+                        if (!cache[k]?.preset) return false;
+                        const folder = PresetUtils.getPresetFolder(k).toLowerCase();
+                        return folder === groupName || folder.startsWith(groupName + "/") || folder.endsWith("/" + groupName);
+                    })
+                    : [];
+                if (matches.length > 0) {
+                    const pickedKey = matches[Math.floor(Math.random() * matches.length)];
+                    if (seen.has(pickedKey)) return pickedKey;
+                    const newSeen = new Set(seen);
+                    newSeen.add(pickedKey);
+                    return PresetUtils.expandRecursively(cache[pickedKey].preset, cache, newSeen);
+                }
+                return match;
+            });
+        };
+
+        const expandToken = (tokenStr) => {
+            const trimmed = tokenStr.trim();
+            if (!trimmed) return "";
+            
+            const item = cache?.[trimmed];
             if (item && item.preset) {
-                if (seen.has(key)) return key; // Prevent circular references
+                if (seen.has(trimmed)) return trimmed; // Prevent circular references
                 const newSeen = new Set(seen);
-                newSeen.add(key);
-                return PresetUtils.expandRecursively(item.preset, cache, newSeen);
+                newSeen.add(trimmed);
+                return expandText(PresetUtils.expandRecursively(item.preset, cache, newSeen));
             }
-            return key;
-        });
-        return expanded.join(", ");
+            return expandText(trimmed);
+        };
+
+        const keys = val.split(/,(?![^<]*>)/).map((k) => k.trim()).filter(Boolean);
+        const expanded = keys.map(expandToken);
+        return expanded.filter(Boolean).join(", ");
     },
     escapeHTML: (str) => {
         if (str == null) return "";
@@ -102,9 +157,14 @@ const PresetUtils = {
             }
 
             if (!matched) {
-                const tagMatch = val.slice(idx).match(/^<[^<>]+>/i);
-                if (tagMatch) {
-                    matched = { matchStr: tagMatch[0], isTag: true };
+                const varMatch = val.slice(idx).match(/^\{[^{}]+(?::[^{}]+)?\}/i);
+                if (varMatch) {
+                    matched = { matchStr: varMatch[0], isVar: true };
+                } else {
+                    const tagMatch = val.slice(idx).match(/^<[^<>]+>/i);
+                    if (tagMatch) {
+                        matched = { matchStr: tagMatch[0], isTag: true };
+                    }
                 }
             }
 
@@ -136,6 +196,8 @@ const PresetUtils = {
 
                         let foundNextMatch = false;
                         if (val[endPlain] === '<' && /^<[^<>]+/i.test(val.slice(endPlain))) {
+                            foundNextMatch = true;
+                        } else if (val[endPlain] === '{' && /^\{[^{}]+(?::[^{}]+)?\}/.test(val.slice(endPlain))) {
                             foundNextMatch = true;
                         } else {
                             for (const cand of sortedCandidates) {

@@ -30,14 +30,24 @@ export default class PresetBasket {
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
     .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; outline: none; }
     .j0n4t-pg-basket-add-btn:hover, .j0n4t-pg-basket-add-btn:focus-visible { border-color: #007acc; color: #fff; background: #1a242db0; }
-    .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 0 0 2px; text-align: center; margin: 0 2px; outline: none; position: relative; }
-    .j0n4t-pg-text-input:focus, .j0n4t-pg-bool-input:focus, .j0n4t-pg-num-input:focus { border-color: #007acc; }
+    .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input, .j0n4t-pg-select-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 2px; text-align: center; margin: 0 2px; outline: none; position: relative; cursor: pointer; }
+    .j0n4t-pg-text-input:focus, .j0n4t-pg-bool-input:focus, .j0n4t-pg-num-input:focus, .j0n4t-pg-select-input:focus { border-color: #007acc; }
     .j0n4t-pg-bool-input { width: auto; }
+    .j0n4t-pg-select-input { width: auto; max-width: 110px; font-weight: 600; font-family: inherit; }
+    .j0n4t-pg-select-input option { background: #1a1a1a; color: #fff; }
     .j0n4t-pg-chip-popup { position: absolute; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 21000; display: flex; flex-direction: column; padding: 2px 0; outline: none; }
     .j0n4t-pg-chip-popup-item { padding: 4px 12px; font-size: 11px; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; outline: none; }
     .j0n4t-pg-chip-popup-item svg { width: 12px; height: 12px; fill: currentColor; }
     .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus-visible { background: #333; color: #fff; }
     .j0n4t-pg-chip-popup-item.danger:hover, .j0n4t-pg-chip-popup-item.danger:focus-visible { background: #912e2e; color: #fff; }
+    .j0n4t-pg-var-btn { background: none; border: none; font-size: 11px; cursor: pointer; padding: 0 2px; position: relative; z-index: 1; line-height: 1; opacity: 0.8; transition: opacity 0.15s; }
+    .j0n4t-pg-var-btn:hover { opacity: 1; }
+    .j0n4t-pg-var-popup { position: absolute; background: #1f1f1f; border: 1px solid #555; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 21000; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+    .j0n4t-pg-var-popup-row { display: flex; align-items: center; gap: 6px; }
+    .j0n4t-pg-var-popup-row label { font-size: 10px; color: #d1a119; font-weight: 600; min-width: 40px; text-transform: capitalize; }
+    .j0n4t-pg-var-popup-row select { flex: 1; height: 20px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 10px; border-radius: 2px; padding: 0 2px; font-weight: 600; font-family: inherit; outline: none; cursor: pointer; }
+    .j0n4t-pg-var-popup-row select:focus { border-color: #007acc; }
+    .j0n4t-pg-var-popup-row select option { background: #1a1a1a; color: #fff; }
   `;
 
   constructor(container, basket, textarea, context) {
@@ -178,6 +188,14 @@ export default class PresetBasket {
     this.basket.addEventListener("click", (e) => {
       const addBtn = e.target.closest('.j0n4t-pg-basket-add-btn');
       if (addBtn) return this.spawnInlineEditor(null, "");
+
+      const varBtn = e.target.closest('.j0n4t-pg-var-btn');
+      if (varBtn) {
+        e.stopPropagation();
+        const chip = varBtn.closest('.j0n4t-pg-basket-chip');
+        if (chip) this.showVarPopup(chip);
+        return;
+      }
 
       if (e.target.closest("input")) return;
 
@@ -474,7 +492,7 @@ export default class PresetBasket {
             }
           }
         }
-        if (!foundKey && joined.match(/^<[^<>]+>$/)) {
+        if (!foundKey && (joined.match(/^<[^<>]+>$/) || joined.match(/^\{[^{}]+(?::[^{}]+)?\}$/))) {
           foundKey = joined;
         }
         if (foundKey || len === 1) {
@@ -528,7 +546,18 @@ export default class PresetBasket {
       let inputHtml = "";
       const tagMatch = styleKey.match(/^<(.+?)>$/);
 
-      if (tagMatch) {
+      const varRegex = /\{([^{}:]+)(?::([^{}]+))?\}/g;
+      let varMatches = Array.from(styleKey.matchAll(varRegex));
+      if (varMatches.length === 0 && item && item.preset) {
+        varMatches = Array.from(item.preset.matchAll(varRegex));
+      }
+
+      if (varMatches.length > 0) {
+        // Strip variation tokens from the display label
+        const labelSource = item && item.preset ? item.preset : (styleKey || "");
+        if (cleanLabel === styleKey) cleanLabel = labelSource.replace(/\{[^{}:]+(?::[^{}]+)?\}/g, "").replace(/\s{2,}/g, " ").trim();
+        inputHtml = `<button class="j0n4t-pg-var-btn" title="Variations" aria-label="Variations">${PresetUtils.icons.more}</button>`;
+      } else if (tagMatch) {
         const innerContent = tagMatch[1];
         const parts = innerContent.split(/[:;]/);
         if (parts[0].match(/lora|lyco/) || parts.length === 2) {
@@ -556,6 +585,7 @@ export default class PresetBasket {
              draggable="true" 
              title="${PresetUtils.escapeHTML(item ? `${cleanLabel} [${styleKey}]\n${item.preset}` : styleKey)}"
              data-id="${PresetUtils.escapeHTML(styleKey)}"
+             data-preset="${PresetUtils.escapeHTML(item && item.preset ? item.preset : "")}"
              data-index="${index}"
              data-start="${startIndex}"
              data-end="${endIndex}"
@@ -723,5 +753,127 @@ export default class PresetBasket {
     }
     this.popupEl?.remove();
     this.popupEl = null;
+  }
+
+  closeVarPopup() {
+    if (this.varCloseHandler) {
+      document.removeEventListener("mousedown", this.varCloseHandler);
+      this.varCloseHandler = null;
+    }
+    this.varPopupEl?.remove();
+    this.varPopupEl = null;
+  }
+
+  showVarPopup(chipElement) {
+    this.closeVarPopup();
+    this.closeChipMenu();
+
+    const styleKey = chipElement.dataset.id;
+    const rawPreset = chipElement.dataset.preset || "";
+    const item = this.context.cache?.[styleKey];
+    const startIndex = parseInt(chipElement.dataset.start);
+    const endIndex = parseInt(chipElement.dataset.end);
+
+    const varRegex = /\{([^{}:]+)(?::([^{}]+))?\}/g;
+    const source = styleKey.match(/\{[^{}]+\}/) ? styleKey : (rawPreset || (item && item.preset ? item.preset : ""));
+    const varMatches = Array.from(source.matchAll(varRegex));
+    if (varMatches.length === 0) return;
+
+    let rowsHtml = "";
+    varMatches.forEach(varMatch => {
+      const groupRaw = varMatch[1].trim();
+      const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
+      const currentSelectedVal = varMatch[2] ? varMatch[2].trim() : "";
+      const matches = this.context.cache
+        ? Object.keys(this.context.cache).filter((k) => {
+          if (!this.context.cache[k]?.preset) return false;
+          const folder = PresetUtils.getPresetFolder(k).toLowerCase();
+          return folder === groupName || folder.startsWith(groupName + "/") || folder.endsWith("/" + groupName);
+        })
+        : [];
+
+      if (matches.length > 0) {
+        const optionsHtml = matches
+          .map((m) => {
+            const name = PresetUtils.getPresetName(m);
+            const isSelected = currentSelectedVal && (m === currentSelectedVal || name.toLowerCase() === currentSelectedVal.toLowerCase());
+            return `<option value="${PresetUtils.escapeHTML(name)}" ${isSelected ? "selected" : ""}>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(name))}</option>`;
+          })
+          .join("");
+        const randomSelected = !currentSelectedVal ? "selected" : "";
+        rowsHtml += `<div class="j0n4t-pg-var-popup-row">
+          <label>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}</label>
+          <select data-group="${PresetUtils.escapeHTML(groupRaw)}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
+        </div>`;
+      }
+    });
+
+    if (!rowsHtml) return;
+
+    const popupHtml = `<div class="j0n4t-pg-var-popup" tabindex="-1">${rowsHtml}</div>`;
+    document.body.insertAdjacentHTML("beforeend", popupHtml);
+    const popup = document.body.lastElementChild;
+    this.varPopupEl = popup;
+
+    // Position
+    const rect = chipElement.getBoundingClientRect();
+    const topPos = window.scrollY + rect.top - popup.offsetHeight - 4;
+    let leftPos = window.scrollX + rect.left;
+    const popupWidth = popup.offsetWidth;
+    if (rect.left + popupWidth > window.innerWidth) {
+      leftPos = window.scrollX + rect.right - popupWidth;
+      leftPos = Math.max(window.scrollX + 8, leftPos);
+    }
+    popup.style.top = `${topPos < window.scrollY ? window.scrollY + rect.bottom + 4 : topPos}px`;
+    popup.style.left = `${leftPos}px`;
+
+    // Handle select changes
+    popup.addEventListener("change", (e) => {
+      const selectEl = e.target.closest("select");
+      if (!selectEl) return;
+      const group = selectEl.dataset.group;
+      const selectedVal = selectEl.value;
+
+      const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::[^{}]+)?\\}`);
+      const replacement = selectedVal ? `{${group}:${selectedVal}}` : `{${group}}`;
+
+      let currentKey = chipElement.dataset.id;
+      let currentPreset = chipElement.dataset.preset || "";
+
+      let newStyleKey;
+      if (currentKey.match(regex)) {
+        newStyleKey = currentKey.replace(regex, replacement);
+      } else if (currentPreset.match(regex)) {
+        newStyleKey = currentPreset.replace(regex, replacement);
+      } else {
+        return;
+      }
+
+      // Update chip data for subsequent changes in the same popup session
+      chipElement.dataset.id = newStyleKey;
+      chipElement.dataset.preset = newStyleKey;
+
+      const selections = this.context.getSelectedArray();
+      if (startIndex < selections.length) {
+        selections.splice(startIndex, endIndex - startIndex, newStyleKey);
+        this.context.updateWidgetValue(selections);
+      }
+    });
+
+    popup.addEventListener("mousedown", (e) => e.stopPropagation());
+
+    const closeHandler = (e) => {
+      if (!popup.contains(e.target) && !chipElement.contains(e.target)) {
+        this.closeVarPopup();
+        document.removeEventListener("mousedown", closeHandler);
+      }
+    };
+    this.varCloseHandler = closeHandler;
+    setTimeout(() => {
+      document.addEventListener("mousedown", closeHandler);
+      const firstSelect = popup.querySelector("select");
+      if (firstSelect) firstSelect.focus();
+    }, 10);
   }
 }
