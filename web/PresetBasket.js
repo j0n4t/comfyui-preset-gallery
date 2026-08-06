@@ -42,9 +42,8 @@ export default class PresetBasket {
     .j0n4t-pg-chip-popup-item svg { width: 12px; height: 12px; fill: currentColor; }
     .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus-visible { background: #333; color: #fff; }
     .j0n4t-pg-chip-popup-item.danger:hover, .j0n4t-pg-chip-popup-item.danger:focus-visible { background: #912e2e; color: #fff; }
-    .j0n4t-pg-var-btn { background: none; border: none; font-size: 11px; cursor: pointer; padding: 0 2px; position: relative; z-index: 1; line-height: 1; opacity: 0.8; transition: opacity 0.15s; }
-    .j0n4t-pg-var-btn:hover { opacity: 1; }
-    .j0n4t-pg-var-popup-row { display: flex; align-items: center; gap: 6px; padding: 4px; }
+    .j0n4t-pg-var-more { font-size: 11px; }
+    .j0n4t-pg-var-popup-row { display: flex; align-items: center; padding: 4px; }
     .j0n4t-pg-var-popup-row label { font-size: 10px; color: #d1a119; font-weight: 600; min-width: 40px; text-transform: capitalize; }
     .j0n4t-pg-var-popup-row select { flex: 1; height: 20px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 10px; border-radius: 2px; padding: 0 2px; font-weight: 600; font-family: inherit; outline: none; cursor: pointer; }
     .j0n4t-pg-var-popup-row select:focus { border-color: #007acc; }
@@ -691,7 +690,7 @@ export default class PresetBasket {
         if (!item && chipExpanded) {
           cleanLabel = chipExpanded;
         }
-        inputHtml = `<button class="j0n4t-pg-var-btn" title="+ Variations" aria-label="Plus Variations">${PresetUtils.icons.more}</button>`;
+        inputHtml = `<span class="j0n4t-pg-var-more">${PresetUtils.icons.more}</span>`;
       } else if (tagMatch) {
         const innerContent = tagMatch[1];
         const parts = innerContent.split(/[:;]/);

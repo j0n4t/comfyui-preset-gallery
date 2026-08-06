@@ -418,7 +418,7 @@ class PresetGalleryApp {
           for (const group of selectedGroups) {
             const groupPresets = groupsMap.get(group) || [];
             if (groupPresets.length === 0) continue;
-            const numChips = Math.floor(Math.random() * 4);
+            const numChips = Math.floor(Math.random() * 2);
             for (let i = 0; i < numChips; i++) {
               const randomPreset = groupPresets[Math.floor(Math.random() * groupPresets.length)];
               if (!addedSet.has(randomPreset)) {
