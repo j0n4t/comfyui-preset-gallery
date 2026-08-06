@@ -1,4 +1,5 @@
 import { app } from "../../../scripts/app.js";
+import { api } from "../../../scripts/api.js";
 
 import AutocompleteManager from "./AutocompleteManager.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
@@ -79,6 +80,7 @@ class PresetGalleryApp {
     this.node = node;
     this.widget = widget;
     this.cache = {};
+    this.variantRolls = {}; // Keeps track of randomly rolled keys state for deterministic execution
     this.dom = this.buildDOMStructure();
 
     this.basket = new PresetBasket(
@@ -108,6 +110,7 @@ class PresetGalleryApp {
               <div class="j0n4t-pg-basket-header">
                 <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
                 <div style="display: flex; gap: 4px; align-items: center;">
+                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Re-roll variants" aria-label="Re-roll variants" style="font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">🎲</button>
                   <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
                   <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" aria-label="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
                 </div>
@@ -189,6 +192,7 @@ class PresetGalleryApp {
       btnImport: wrap.querySelector("#j0n4t-pg-import-btn"),
       btnExport: wrap.querySelector("#j0n4t-pg-export-btn"),
       btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn"),
+      btnRerollBasket: wrap.querySelector(".j0n4t-pg-basket-reroll-btn"),
       chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
       basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
       rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input"),
@@ -332,7 +336,7 @@ class PresetGalleryApp {
   bindEvents() {
     this.dom.wrap.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
-        const triggerable = e.target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-clear-btn");
+        const triggerable = e.target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
         if (triggerable) {
           e.preventDefault();
           triggerable.click();
@@ -385,6 +389,11 @@ class PresetGalleryApp {
         await PresetUtils.alert("Presets imported successfully!");
       }
       this.dom.inpJsonFile.value = "";
+    });
+
+    this.dom.btnRerollBasket.addEventListener("click", () => {
+      this.variantRolls = {};
+      this.syncUI(this.widget.value);
     });
 
     this.initHeights();
@@ -485,6 +494,12 @@ class PresetGalleryApp {
   async init() {
     await this.loadGallery();
     if (this.widget.value) await this.syncUI(this.widget.value);
+    
+    api.addEventListener("execution_start", () => {
+      this.variantRolls = {};
+      this.syncUI(this.widget.value);
+    });
+
     this.initFilterAutocomplete();
     this.setPanelCollapseState(
       localStorage.getItem("comfy_preset_gallery_collapsed") === "true",
@@ -522,7 +537,7 @@ app.registerExtension({
 
       widget.serializeValue = function () {
         const raw = widget.value || "";
-        return PresetUtils.expandRecursively(raw, galleryView.cache);
+        return PresetUtils.expandRecursively(raw, galleryView.cache, new Set(), { rolls: galleryView.variantRolls, counts: {} });
       };
 
       galleryView.init();

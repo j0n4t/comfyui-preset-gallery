@@ -1,5 +1,5 @@
 const PresetUtils = {
-    expandRecursively: (val, cache, seen = new Set()) => {
+    expandRecursively: (val, cache, seen = new Set(), rollState = null) => {
         if (!val) return "";
         const expandText = (str) => {
             if (!str) return "";
@@ -27,7 +27,7 @@ const PresetUtils = {
                         if (seen.has(selectedKey)) return item.preset;
                         const newSeen = new Set(seen);
                         newSeen.add(selectedKey);
-                        return PresetUtils.expandRecursively(item.preset, cache, newSeen);
+                        return PresetUtils.expandRecursively(item.preset, cache, newSeen, rollState);
                     }
                     return selectedVal;
                 }
@@ -41,11 +41,24 @@ const PresetUtils = {
                     })
                     : [];
                 if (matches.length > 0) {
-                    const pickedKey = matches[Math.floor(Math.random() * matches.length)];
+                    let pickedKey;
+                    if (rollState) {
+                        const occKey = groupName + "_" + (rollState.counts[groupName] || 0);
+                        rollState.counts[groupName] = (rollState.counts[groupName] || 0) + 1;
+                        pickedKey = rollState.rolls[occKey];
+                        // Roll a new value if undefined or no longer valid in cache
+                        if (!pickedKey || !matches.includes(pickedKey)) {
+                            pickedKey = matches[Math.floor(Math.random() * matches.length)];
+                            rollState.rolls[occKey] = pickedKey;
+                        }
+                    } else {
+                        pickedKey = matches[Math.floor(Math.random() * matches.length)];
+                    }
+
                     if (seen.has(pickedKey)) return pickedKey;
                     const newSeen = new Set(seen);
                     newSeen.add(pickedKey);
-                    return PresetUtils.expandRecursively(cache[pickedKey].preset, cache, newSeen);
+                    return PresetUtils.expandRecursively(cache[pickedKey].preset, cache, newSeen, rollState);
                 }
                 return match;
             });
@@ -60,7 +73,7 @@ const PresetUtils = {
                 if (seen.has(trimmed)) return trimmed; // Prevent circular references
                 const newSeen = new Set(seen);
                 newSeen.add(trimmed);
-                return expandText(PresetUtils.expandRecursively(item.preset, cache, newSeen));
+                return expandText(PresetUtils.expandRecursively(item.preset, cache, newSeen, rollState));
             }
             return expandText(trimmed);
         };

@@ -9,6 +9,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
     .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
     .j0n4t-pg-basket-clear-btn:hover, .j0n4t-pg-basket-clear-btn:focus-visible { background: #912e2e; outline: 2px solid #fff; }
+    .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus-visible { filter: grayscale(0) brightness(1) !important; transform: scale(1.1); }
     .j0n4t-pg-basket-pool-wrapper { position: relative; margin: 4px; display: block; box-sizing: border-box; }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; padding: 4px; }
     .j0n4t-pg-basket-container .j0n4t-pg-raw-wrapper { display: none; width: auto; }
@@ -48,6 +49,8 @@ export default class PresetBasket {
     .j0n4t-pg-var-popup-row select { flex: 1; height: 20px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 10px; border-radius: 2px; padding: 0 2px; font-weight: 600; font-family: inherit; outline: none; cursor: pointer; }
     .j0n4t-pg-var-popup-row select:focus { border-color: #007acc; }
     .j0n4t-pg-var-popup-row select option { background: #1a1a1a; color: #fff; }
+    .j0n4t-pg-var-reroll-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 13px; padding: 0 4px; outline: none; transition: 0.15s; }
+    .j0n4t-pg-var-reroll-btn:hover, .j0n4t-pg-var-reroll-btn:focus-visible { color: #fff; transform: scale(1.1); }
   `;
 
   constructor(container, basket, textarea, context) {
@@ -171,6 +174,8 @@ export default class PresetBasket {
         "raw-mode",
         dom.chkBasketRaw.checked
       );
+      this.context.variantRolls = {};
+      this.context.syncUI(this.context.widget.value);
     });
 
     this.basket.addEventListener("dblclick", (e) => {
@@ -349,6 +354,27 @@ export default class PresetBasket {
       },
       { distance: Infinity, element: null, box: null }
     );
+  }
+
+  reRollChipGroup(chipIndex, groupRaw) {
+    const activeList = this.context.getSelectedArray();
+    const chipsData = this.getGroupedChips(activeList);
+    const chipState = { rolls: this.context.variantRolls, counts: {} };
+    const targetGroup = groupRaw.trim().toLowerCase().replace(/\s+/g, "_");
+    
+    for(let i = 0; i < chipsData.length; i++) {
+        const beforeCounts = { ...chipState.counts };
+        PresetUtils.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
+        if (i === chipIndex) {
+            const start = beforeCounts[targetGroup] || 0;
+            const end = chipState.counts[targetGroup] || 0;
+            for(let k = start; k < end; k++) {
+                delete this.context.variantRolls[`${targetGroup}_${k}`];
+            }
+            break;
+        }
+    }
+    this.context.syncUI(this.context.widget.value);
   }
 
   spawnInlineEditor(chipElement, initialValue, startIndex = undefined, endIndex = undefined) {
@@ -539,19 +565,39 @@ export default class PresetBasket {
   }
 
   render(activeList) {
+    const rawModeRollState = { rolls: this.context.variantRolls, counts: {} };
+
     if (!this._updatingTextarea) {
       this.textarea.value = PresetUtils.expandRecursively(
         activeList.join(", "),
-        this.context.cache
+        this.context.cache,
+        new Set(),
+        rawModeRollState
       );
     }
     this.updateRawHighlights();
 
     let htmlBuffer = "";
     const chipsData = this.getGroupedChips(activeList);
+    const chipRollState = { rolls: this.context.variantRolls, counts: {} };
 
     chipsData.forEach((chipData, index) => {
       const { styleKey, item, startIndex, endIndex } = chipData;
+      
+      const beforeCounts = { ...chipRollState.counts };
+      const chipExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), chipRollState);
+      
+      let rolledInfo = [];
+      for (const group in chipRollState.counts) {
+          const start = beforeCounts[group] || 0;
+          const end = chipRollState.counts[group] || 0;
+          for(let k = start; k < end; k++) {
+              const rolledKey = this.context.variantRolls[`${group}_${k}`];
+              if (rolledKey) rolledInfo.push(`🎲 ${PresetUtils.toTitleCase(group.split("_")[0])}: ${PresetUtils.getPresetName(rolledKey)}`);
+          }
+      }
+      const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
+
       let cleanLabel = item
         ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))
         : styleKey;
@@ -566,8 +612,9 @@ export default class PresetBasket {
       }
 
       if (varMatches.length > 0) {
-        const labelSource = item && item.preset ? item.preset : (styleKey || "");
-        if (cleanLabel === styleKey) cleanLabel = labelSource.replace(/\{[^{}:]+(?::[^{}]+)?\}/g, "").replace(/\s{2,}/g, " ").trim();
+        if (!item && chipExpanded) {
+           cleanLabel = chipExpanded;
+        }
         inputHtml = `<button class="j0n4t-pg-var-btn" title="Variations" aria-label="Variations">${PresetUtils.icons.more}</button>`;
       } else if (tagMatch) {
         const innerContent = tagMatch[1];
@@ -591,11 +638,13 @@ export default class PresetBasket {
       const bgStyle = item?.filename
         ? `background-image: url("${item.filename}")`
         : `background-color: ${PresetUtils.getPresetColor(styleKey, this.context.cache)}`;
+        
+      const tooltipTitle = item ? `${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : styleKey;
 
       htmlBuffer += `
         <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
-             title="${PresetUtils.escapeHTML(item ? `${cleanLabel} [${styleKey}]\n${item.preset}` : styleKey)}"
+             title="${PresetUtils.escapeHTML(tooltipTitle)}${PresetUtils.escapeHTML(rolledText)}"
              data-id="${PresetUtils.escapeHTML(styleKey)}"
              data-preset="${PresetUtils.escapeHTML(item && item.preset ? item.preset : "")}"
              data-index="${index}"
@@ -651,6 +700,7 @@ export default class PresetBasket {
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}</label>
             <select data-group="${PresetUtils.escapeHTML(groupRaw)}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
+            <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetUtils.escapeHTML(groupRaw)}" title="Re-roll ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}" tabindex="0">🎲</button>
           </div>`;
         }
       });
@@ -686,6 +736,14 @@ export default class PresetBasket {
     this.popupEl = popup;
 
     popup.addEventListener("click", (e) => {
+      const rerollBtn = e.target.closest(".j0n4t-pg-var-reroll-btn");
+      if (rerollBtn) {
+          e.stopPropagation();
+          this.reRollChipGroup(parseInt(chipElement.dataset.index), rerollBtn.dataset.group);
+          this.closeChipMenu();
+          return;
+      }
+        
       const actionEl = e.target.closest("[data-action]");
       if (!actionEl) return;
       e.stopPropagation();
@@ -749,7 +807,7 @@ export default class PresetBasket {
     });
 
     popup.addEventListener("keydown", (e) => {
-      const items = Array.from(popup.querySelectorAll("[data-action], select"));
+      const items = Array.from(popup.querySelectorAll("[data-action], select, button"));
       const currentIndex = items.indexOf(document.activeElement);
 
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
@@ -763,7 +821,7 @@ export default class PresetBasket {
         const prevIndex = (currentIndex - 1 + items.length) % items.length;
         items[prevIndex].focus();
       } else if (e.key === "Enter" || e.key === " ") {
-        const actionEl = e.target.closest("[data-action]");
+        const actionEl = e.target.closest("[data-action], button");
         if (actionEl) {
           e.stopPropagation();
           e.preventDefault();
