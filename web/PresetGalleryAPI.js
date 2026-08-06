@@ -130,6 +130,37 @@ export default class PresetGalleryAPI {
     return { success: true };
   }
 
+  static getSelectionSummary(selectedKeys, presets, existingPresets = null) {
+    let summary = {
+      newCount: 0,
+      replacedCount: 0,
+      sameCount: 0,
+      total: selectedKeys.length
+    };
+
+    selectedKeys.forEach(key => {
+      const item = presets[key];
+      if (!item) return;
+
+      if (existingPresets && existingPresets[key]) {
+        const oldText = existingPresets[key].preset || "";
+        const newText = item.preset || "";
+        const oldImg = existingPresets[key].filename || null;
+        const newImg = item.filename || null;
+
+        if (oldText !== newText || oldImg !== newImg) {
+          summary.replacedCount++;
+        } else {
+          summary.sameCount++;
+        }
+      } else {
+        summary.newCount++;
+      }
+    });
+
+    return summary;
+  }
+
   static buildPresetSelectorTree(presets, existingPresets = null) {
     const container = document.createElement("div");
     container.className = "j0n4t-pg-selector-container";
@@ -559,14 +590,21 @@ export default class PresetGalleryAPI {
       const mode = modal.querySelector("#j0n4t-pg-exp-mode").value;
       const includeColors = modal.querySelector("#j0n4t-pg-exp-colors").checked;
       const editedPresets = tree.getPresets();
-      close();
-      onExport(format, mode, selectedKeys, includeColors, editedPresets);
+      const summary = PresetGalleryAPI.getSelectionSummary(selectedKeys, editedPresets);
+      if (await PresetUtils.confirm(
+        `📦 Export Summary (${format.toUpperCase()}):\n` +
+        `• Total Styles Exported: ${summary.total}\n` +
+        `• Mode: ${mode}`
+      )) {
+        close();
+        onExport({ format, mode, selectedKeys, includeColors, editedPresets });
+      }
     });
 
     document.body.appendChild(overlay);
   }
 
-  static async exportPresets(format = "zip", mode = "full", selectedKeys = null, includeColors = true, editedPresets) {
+  static async exportPresets({ format = "zip", mode = "full", selectedKeys = null, includeColors = true, editedPresets }) {
     let presets = editedPresets;
 
     if (selectedKeys && Array.isArray(selectedKeys)) {
@@ -731,8 +769,18 @@ export default class PresetGalleryAPI {
       }
       const duplicateStrategy = modal.querySelector("#j0n4t-pg-dup-strategy").value;
       const importColors = modal.querySelector("#j0n4t-pg-imp-colors").checked;
-      close();
-      onConfirm({ selectedKeys, duplicateStrategy, importColors, editedPresets: tree.getPresets() });
+      const editedPresets = tree.getPresets();
+      const summary = PresetGalleryAPI.getSelectionSummary(selectedKeys, editedPresets, currentPresets);
+      if (await PresetUtils.confirm(
+        `📊 Import Summary:\n` +
+        `• Total Selected: ${summary.total}\n` +
+        `• New Styles: ${summary.newCount}\n` +
+        `• Replaced Styles: ${summary.replacedCount}\n` +
+        `• Unchanged Styles: ${summary.sameCount}`
+      )) {
+        close();
+        onConfirm({ selectedKeys, duplicateStrategy, importColors, editedPresets });
+      }
     });
 
     document.body.appendChild(overlay);

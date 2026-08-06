@@ -370,8 +370,8 @@ class PresetGalleryApp {
     });
 
     this.dom.btnExport.addEventListener("click", () => {
-      PresetGalleryAPI.showExportModal((format, mode) => {
-        PresetGalleryAPI.exportPresets(format, mode);
+      PresetGalleryAPI.showExportModal((config) => {
+        PresetGalleryAPI.exportPresets(config);
       });
     });
 
