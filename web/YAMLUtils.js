@@ -2,15 +2,22 @@ const YAMLUtils = {
     stringify(obj, indent = 0) {
         let yaml = "";
         const spaces = " ".repeat(indent);
+        const needsQuotes = /[\n:#"{}@]|^\s|^$/;
+
         for (const [key, value] of Object.entries(obj)) {
+            let strKey = String(key);
+            if (needsQuotes.test(strKey)) {
+                strKey = `"${strKey.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            }
+
             if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-                yaml += `${spaces}${key}:\n${YAMLUtils.stringify(value, indent + 2)}`;
+                yaml += `${spaces}${strKey}:\n${YAMLUtils.stringify(value, indent + 2)}`;
             } else {
                 const strVal = String(value ?? "");
-                if (strVal.includes("\n") || strVal.includes(":") || strVal.includes("#") || strVal.startsWith(" ") || strVal === "") {
-                    yaml += `${spaces}${key}: "${strVal.replace(/"/g, '\\"')}"\n`;
+                if (needsQuotes.test(strVal)) {
+                    yaml += `${spaces}${strKey}: "${strVal.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"\n`;
                 } else {
-                    yaml += `${spaces}${key}: ${strVal}\n`;
+                    yaml += `${spaces}${strKey}: ${strVal}\n`;
                 }
             }
         }
@@ -31,7 +38,12 @@ const YAMLUtils = {
             const colonIdx = trimmed.indexOf(":");
             if (colonIdx === -1) continue;
 
-            const key = trimmed.slice(0, colonIdx).trim().replace(/^['"]|['"]$/g, "");
+            let rawKey = trimmed.slice(0, colonIdx).trim();
+            let key = rawKey;
+            if ((rawKey.startsWith('"') && rawKey.endsWith('"')) || (rawKey.startsWith("'") && rawKey.endsWith("'"))) {
+                key = rawKey.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+            }
+
             const valStr = trimmed.slice(colonIdx + 1).trim();
 
             while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
@@ -47,7 +59,7 @@ const YAMLUtils = {
             } else {
                 let cleanVal = valStr;
                 if ((cleanVal.startsWith('"') && cleanVal.endsWith('"')) || (cleanVal.startsWith("'") && cleanVal.endsWith("'"))) {
-                    cleanVal = cleanVal.slice(1, -1).replace(/\\"/g, '"');
+                    cleanVal = cleanVal.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
                 }
                 currentParent[key] = cleanVal;
             }
