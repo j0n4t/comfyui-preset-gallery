@@ -194,14 +194,6 @@ export default class PresetBasket {
       const addBtn = e.target.closest('.j0n4t-pg-basket-add-btn');
       if (addBtn) return this.spawnInlineEditor(null, "");
 
-      const varBtn = e.target.closest('.j0n4t-pg-var-btn');
-      if (varBtn) {
-        e.stopPropagation();
-        const chip = varBtn.closest('.j0n4t-pg-basket-chip');
-        if (chip) this.showChipMenu(chip, chip.dataset.id, this.context.cache[chip.dataset.id], parseInt(chip.dataset.start), parseInt(chip.dataset.end));
-        return;
-      }
-
       if (e.target.closest("input")) return;
 
       const chip = e.target.closest('.j0n4t-pg-basket-chip');
@@ -362,13 +354,13 @@ export default class PresetBasket {
     const chipState = { rolls: this.context.variantRolls, counts: {} };
     const targetGroup = groupRaw.trim().toLowerCase().replace(/\s+/g, "_");
     
-    for(let i = 0; i < chipsData.length; i++) {
+    for (let i = 0; i < chipsData.length; i++) {
         const beforeCounts = { ...chipState.counts };
         PresetUtils.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
         if (i === chipIndex) {
             const start = beforeCounts[targetGroup] || 0;
             const end = chipState.counts[targetGroup] || 0;
-            for(let k = start; k < end; k++) {
+            for (let k = start; k < end; k++) {
                 delete this.context.variantRolls[`${targetGroup}_${k}`];
             }
             break;
@@ -591,7 +583,7 @@ export default class PresetBasket {
       for (const group in chipRollState.counts) {
           const start = beforeCounts[group] || 0;
           const end = chipRollState.counts[group] || 0;
-          for(let k = start; k < end; k++) {
+        for (let k = start; k < end; k++) {
               const rolledKey = this.context.variantRolls[`${group}_${k}`];
               if (rolledKey) rolledInfo.push(`🎲 ${PresetUtils.toTitleCase(group.split("_")[0])}: ${PresetUtils.getPresetName(rolledKey)}`);
           }
@@ -615,7 +607,7 @@ export default class PresetBasket {
         if (!item && chipExpanded) {
            cleanLabel = chipExpanded;
         }
-        inputHtml = `<button class="j0n4t-pg-var-btn" title="Variations" aria-label="Variations">${PresetUtils.icons.more}</button>`;
+        inputHtml = `<button class="j0n4t-pg-var-btn" title="+ Variations" aria-label="Plus Variations">${PresetUtils.icons.more}</button>`;
       } else if (tagMatch) {
         const innerContent = tagMatch[1];
         const parts = innerContent.split(/[:;]/);
