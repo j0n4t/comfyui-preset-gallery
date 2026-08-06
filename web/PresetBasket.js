@@ -37,7 +37,7 @@ export default class PresetBasket {
     .j0n4t-pg-select-input { width: auto; max-width: 110px; font-weight: 600; font-family: inherit; }
     .j0n4t-pg-select-input option { background: #1a1a1a; color: #fff; }
     .j0n4t-pg-chip-popup { position: absolute; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 1000; display: flex; flex-direction: column; padding: 2px 0; outline: none; }
-    .j0n4t-pg-chip-popup-actions { display: flex;  flex-direction: row; justify-content: space-around; }
+    .j0n4t-pg-chip-popup-actions { display: flex;  flex-direction: row; justify-content: space-around; padding: 0 2px; }
     .j0n4t-pg-chip-popup-item { padding: 4px; font-size: 11px; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; outline: none; }
     .j0n4t-pg-chip-popup-item svg { width: 12px; height: 12px; fill: currentColor; }
     .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus-visible { background: #333; color: #fff; }
