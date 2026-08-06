@@ -405,7 +405,7 @@ class PresetGalleryApp {
             }
           }
         }
-        const availableGroups = Array.from(groupsMap.keys());
+        const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_"));
         if (availableGroups.length === 0) return;
         const newSelections = [];
         const addedSet = new Set();

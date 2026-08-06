@@ -120,6 +120,11 @@ export default class PresetGrid {
     const sortedKeys = Object.keys(cache).sort((a, b) => {
       const groupA = PresetUtils.getUiFolder(a) || "root_presets";
       const groupB = PresetUtils.getUiFolder(b) || "root_presets";
+      const isAHidden = groupA.startsWith("_");
+      const isBHidden = groupB.startsWith("_");
+      if (isAHidden !== isBHidden) {
+        return isAHidden ? 1 : -1;
+      }
       if (groupA === "root_presets" && groupB !== "root_presets") return -1;
       if (groupB === "root_presets" && groupA !== "root_presets") return 1;
       return groupA !== groupB

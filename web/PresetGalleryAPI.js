@@ -35,7 +35,14 @@ export default class PresetGalleryAPI {
 
   static async savePresets(presets) {
     const sortedPresets = Object.entries(presets)
-      .sort((a, b) => a[0].localeCompare(b[0]))
+      .sort((a, b) => {
+        const isAHidden = a[0].startsWith("_");
+        const isBHidden = b[0].startsWith("_");
+        if (isAHidden !== isBHidden) {
+          return isAHidden ? 1 : -1;
+        }
+        return a[0].localeCompare(b[0]);
+      })
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
     try {
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
@@ -287,7 +294,7 @@ export default class PresetGalleryAPI {
           : `<div style="margin-bottom: 4px; font-style: italic; color: #888; font-size: 0.85em;">No current image</div>`;
 
         const detailsContainerHtml = `
-          <div class="j0n4t-pg-details-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.15); border-left: 2px solid ${hasDiff ? '#fcc419' : '#51cf66'}; font-family: monospace; white-space: pre-wrap; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
+          <div class="j0n4t-pg-details-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.15); border-left: 2px solid ${hasDiff ? '#fcc419' : '#51cf66'}; font-family: monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
             ${detailsHtml}
           </div>
         `;

@@ -14,7 +14,7 @@ const PresetUtils = {
                     if (cache && !cache[selectedKey]) {
                         // Find matching key in cache under groupName or full key
                         for (const k of Object.keys(cache)) {
-                            if (k.toLowerCase() === selectedVal.toLowerCase() || 
+                            if (k.toLowerCase() === selectedVal.toLowerCase() ||
                                 PresetUtils.getPresetName(k).toLowerCase() === selectedVal.toLowerCase() ||
                                 (k.toLowerCase().startsWith(groupName + "/") && PresetUtils.getPresetName(k).toLowerCase() === selectedVal.toLowerCase())) {
                                 selectedKey = k;
@@ -67,7 +67,7 @@ const PresetUtils = {
         const expandToken = (tokenStr) => {
             const trimmed = tokenStr.trim();
             if (!trimmed) return "";
-            
+
             const item = cache?.[trimmed];
             if (item && item.preset) {
                 if (seen.has(trimmed)) return trimmed; // Prevent circular references
