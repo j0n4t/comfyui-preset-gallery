@@ -99,8 +99,8 @@ export default class AutocompleteManager {
       row.addEventListener("mousedown", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.onSelect(item, e);
-        this.close();
+        const keepOpen = this.onSelect(item, e);
+        if (!keepOpen) this.close();
       });
       this.popupEl.appendChild(row);
     });
@@ -157,8 +157,8 @@ export default class AutocompleteManager {
 
     if (["Tab", "Enter"].includes(e.key) && !e.ctrlKey) {
       e.preventDefault();
-      this.onSelect(activeMatch.item, e);
-      this.close();
+      const keepOpen = this.onSelect(activeMatch.item, e);
+      if (!keepOpen) this.close();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       this.activeIndex = (this.activeIndex + 1) % this.matches.length;

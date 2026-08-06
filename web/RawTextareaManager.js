@@ -219,46 +219,125 @@ export default class RawTextareaManager {
   }
 
   initAutocomplete() {
-    new AutocompleteManager({
+    const manager = new AutocompleteManager({
       input: this.textarea,
       container: document.body,
       getMatches: (text, cursor) => {
-        const lastCommaIndex = text.slice(0, cursor).lastIndexOf(",");
-        const currentToken = (
-          lastCommaIndex === -1
-            ? text.slice(0, cursor)
-            : text.slice(lastCommaIndex + 1, cursor)
-        ).trimStart();
-        if (!currentToken) return [];
+        const textBeforeCursor = text.substring(0, cursor);
+        const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
+        const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
+        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
 
-        return PresetUtils.getTopMatches(
-          Object.keys(this.context.cache),
-          currentToken,
-          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
-          this.context.cache,
-          this.ignorePreset
-        );
+        if (isInsideBrackets) {
+          const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
+          const colonIndex = bracketContent.indexOf(':');
+
+          if (colonIndex === -1) {
+            // Typing variant group name
+            const groupQuery = bracketContent.trim().toLowerCase();
+            const groupsSet = new Set();
+            for (const k of Object.keys(this.context.cache)) {
+              const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(k) : k.split('/')[0];
+              if (folder) groupsSet.add(folder);
+            }
+            const groups = Array.from(groupsSet);
+            const dummyCache = {};
+            groups.forEach(g => { dummyCache[g] = { preset: g }; });
+            return PresetUtils.getTopMatches(
+              groups,
+              groupQuery,
+              (g) => g,
+              dummyCache
+            );
+          } else {
+            // Typing preset name inside a specific variant group
+            const groupName = bracketContent.substring(0, colonIndex).trim().toLowerCase();
+            const presetQuery = bracketContent.substring(colonIndex + 1).trim().toLowerCase();
+
+            const presetMatches = Object.keys(this.context.cache).filter((k) => {
+              if (!this.context.cache[k]?.preset) return false;
+              const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(k) : k.split('/')[0];
+              return folder.toLowerCase() === groupName || folder.toLowerCase().startsWith(groupName + "/") || folder.toLowerCase().endsWith("/" + groupName);
+            });
+
+            return PresetUtils.getTopMatches(
+              presetMatches,
+              presetQuery,
+              (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+              this.context.cache
+            );
+          }
+        } else {
+          const lastCommaIndex = text.slice(0, cursor).lastIndexOf(",");
+          const currentToken = (
+            lastCommaIndex === -1
+              ? text.slice(0, cursor)
+              : text.slice(lastCommaIndex + 1, cursor)
+          ).trimStart();
+          if (!currentToken) return [];
+
+          return PresetUtils.getTopMatches(
+            Object.keys(this.context.cache),
+            currentToken,
+            (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+            this.context.cache,
+            this.ignorePreset
+          );
+        }
       },
       renderItem: (match) =>
         `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
       onSelect: (match) => {
+        const query = this.textarea.value;
         const cursor = this.textarea.selectionStart;
+        const textBeforeCursor = query.substring(0, cursor);
+        const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
+        const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
+        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
         const leftText = this.textarea.value.slice(0, cursor);
         const prefix =
           leftText.lastIndexOf(",") === -1
             ? ""
             : leftText.slice(0, leftText.lastIndexOf(",") + 1) + " ";
-
         const insertedText = PresetUtils.expandRecursively(match, this.context.cache);
+        if (isInsideBrackets) {
+          const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
+          const colonIndex = bracketContent.indexOf(':');
+          if (colonIndex === -1) {
+            // Group selected: insert group name with a trailing colon and keep popup open for preset suggestions
+            const before = query.substring(0, lastOpenBrace);
+            const after = query.substring(cursor);
+            this.textarea.value = `${before}{${match}:${after}`;
+            const newCursor = before.length + match.length + 2;
+            if (this.onSync) this.onSync(this.textarea.value);
+            this.updateHighlights(this.ignorePreset);
+            this.textarea.setSelectionRange(newCursor, newCursor);
+            this.textarea.focus();
+            manager.evaluate();
+            return true; // Keep popup open
+          } else {
+            // Preset selected inside group: complete the variant format and finish editing
+            const groupName = bracketContent.substring(0, colonIndex).trim();
+            const before = query.substring(0, lastOpenBrace);
+            const after = query.substring(cursor);
+            this.textarea.value = `${before}{${groupName}:${match}}${after}`;
+            if (this.onSync) this.onSync(this.textarea.value);
+            this.updateHighlights(this.ignorePreset);
+            this.textarea.focus();
+            this.textarea.selectionStart = this.textarea.selectionEnd =
+              prefix.length + insertedText.length + 2;
+            return false;
+          }
+        } else {
+          this.textarea.value =
+            prefix + insertedText + ", " + this.textarea.value.slice(cursor);
 
-        this.textarea.value =
-          prefix + insertedText + ", " + this.textarea.value.slice(cursor);
-
-        if (this.onSync) this.onSync(this.textarea.value);
-        this.updateHighlights(this.ignorePreset);
-        this.textarea.focus();
-        this.textarea.selectionStart = this.textarea.selectionEnd =
-          prefix.length + insertedText.length + 2;
+          if (this.onSync) this.onSync(this.textarea.value);
+          this.updateHighlights(this.ignorePreset);
+          this.textarea.focus();
+          this.textarea.selectionStart = this.textarea.selectionEnd =
+            prefix.length + insertedText.length + 2;
+        }
       },
       onKeyDown: (e, activeMatch) => {
         if (

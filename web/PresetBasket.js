@@ -439,21 +439,107 @@ export default class PresetBasket {
     const manager = new AutocompleteManager({
       input: input,
       container: document.body,
-      getMatches: (query) => {
-        query = query.trim().toLowerCase();
-        if (!query) return [];
-        return PresetUtils.getTopMatches(
-          Object.keys(this.context.cache),
-          query,
-          (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
-          this.context.cache
-        );
+      getMatches: (query, cursor) => {
+        const textBeforeCursor = query.substring(0, cursor);
+        const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
+        const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
+        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
+
+        if (isInsideBrackets) {
+          const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
+          const colonIndex = bracketContent.indexOf(':');
+
+          if (colonIndex === -1) {
+            // Typing variant group name
+            const groupQuery = bracketContent.trim().toLowerCase();
+            const groupsSet = new Set();
+            for (const k of Object.keys(this.context.cache)) {
+              const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(k) : k.split('/')[0];
+              if (folder) groupsSet.add(folder);
+            }
+            const groups = Array.from(groupsSet);
+            const dummyCache = {};
+            groups.forEach(g => { dummyCache[g] = { preset: g }; });
+            return PresetUtils.getTopMatches(
+              groups,
+              groupQuery,
+              (g) => g,
+              dummyCache
+            );
+          } else {
+            // Typing preset name inside a specific variant group
+            const groupName = bracketContent.substring(0, colonIndex).trim().toLowerCase();
+            const presetQuery = bracketContent.substring(colonIndex + 1).trim().toLowerCase();
+
+            const presetMatches = Object.keys(this.context.cache).filter((k) => {
+              if (!this.context.cache[k]?.preset) return false;
+              const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(k) : k.split('/')[0];
+              return folder.toLowerCase() === groupName || folder.toLowerCase().startsWith(groupName + "/") || folder.toLowerCase().endsWith("/" + groupName);
+            });
+
+            return PresetUtils.getTopMatches(
+              presetMatches,
+              presetQuery,
+              (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+              this.context.cache
+            );
+          }
+        } else {
+          // Standard autocomplete outside curly brackets
+          query = query.trim().toLowerCase();
+          if (!query) return [];
+          return PresetUtils.getTopMatches(
+            Object.keys(this.context.cache),
+            query,
+            (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]),
+            this.context.cache
+          );
+        }
       },
-      renderItem: (match) =>
-        `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
+      renderItem: (match) => {
+        const isPreset = this.context.cache && this.context.cache[match];
+        if (isPreset) {
+          return `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`;
+        } else {
+          return `<span>📁 ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
+        }
+      },
       onSelect: (match) => {
-        input.value = match;
-        finishEdit(true);
+        const query = input.value;
+        const cursor = input.selectionStart;
+        const textBeforeCursor = query.substring(0, cursor);
+        const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
+        const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
+        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
+
+        if (isInsideBrackets) {
+          const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
+          const colonIndex = bracketContent.indexOf(':');
+
+          if (colonIndex === -1) {
+            // Group selected: insert group name with a trailing colon and keep popup open for preset suggestions
+            const before = query.substring(0, lastOpenBrace);
+            const after = query.substring(cursor);
+            input.value = `${before}{${match}:${after}`;
+            const newCursor = before.length + match.length + 2;
+            input.setSelectionRange(newCursor, newCursor);
+            input.focus();
+            manager.evaluate();
+            return true; // Keep popup open
+          } else {
+            // Preset selected inside group: complete the variant format and finish editing
+            const groupName = bracketContent.substring(0, colonIndex).trim();
+            const before = query.substring(0, lastOpenBrace);
+            const after = query.substring(cursor);
+            input.value = `${before}{${groupName}:${match}}${after}`;
+            finishEdit(true);
+            return false;
+          }
+        } else {
+          input.value = match;
+          finishEdit(true);
+          return false;
+        }
       },
       onKeyDown: (e) => {
         if (!manager.isOpen) {
