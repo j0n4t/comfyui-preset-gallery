@@ -20,12 +20,12 @@ export default class PresetBasket {
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
     .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
     .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
-    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; }
+    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; max-width: 32%; }
     .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.2); z-index: 0; pointer-events: none; }
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
     .j0n4t-pg-basket-chip:focus-visible { border-width: 2px; border-color: #007acc; }
-    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
+    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
     .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
     .j0n4t-pg-basket-chip.inline-editing::before { display: none; }
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
@@ -76,6 +76,27 @@ export default class PresetBasket {
 
     this.initDragAndDrop();
     this.initBasketActions();
+  }
+
+  findPresetMatch(text) {
+    if (!text || !this.context.cache) return null;
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+
+    if (this.context.cache[trimmed]) {
+      return { key: trimmed, item: this.context.cache[trimmed] };
+    }
+
+    for (const [key, item] of Object.entries(this.context.cache)) {
+      if (!item) continue;
+      if (key.trim() === trimmed) {
+        return { key, item };
+      }
+      if (item.preset && item.preset.trim() === trimmed) {
+        return { key, item };
+      }
+    }
+    return null;
   }
 
   updateRawHighlights() {
@@ -196,12 +217,18 @@ export default class PresetBasket {
       const chip = e.target.closest('.j0n4t-pg-basket-chip');
       if (chip) {
         e.stopPropagation();
-        this.showChipMenu(chip, chip.dataset.id, this.context.cache[chip.dataset.id], parseInt(chip.dataset.start), parseInt(chip.dataset.end));
+        const styleKey = chip.dataset.id;
+        const evalId = chip.dataset.evalId || styleKey;
+
+        this.showChipMenu(chip, styleKey, this.context.cache[styleKey], parseInt(chip.dataset.start), parseInt(chip.dataset.end));
+
+        const targetKey = (this.context.cache && this.context.cache[evalId]) ? evalId : styleKey;
+
         if (!this.context.dom.wrap.classList.contains("hide-gallery-mode")) {
-          this.locatePreset(chip.dataset.id);
+          this.locatePreset(targetKey);
         }
         if (!this.context.dom.editor.classList.contains("collapsed") && this.context.editor.isSaved) {
-          this.context.openEditorForPreset(chip.dataset.id);
+          this.context.openEditorForPreset(targetKey);
         }
       }
     });
@@ -673,9 +700,30 @@ export default class PresetBasket {
       }
       const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
 
-      let cleanLabel = item
-        ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))
-        : styleKey;
+      const presetMatch = this.findPresetMatch(chipExpanded);
+      let cleanLabel, bgStyle, tooltipTitle, evalId;
+
+      if (presetMatch) {
+        evalId = presetMatch.key;
+        const matchItem = presetMatch.item;
+        cleanLabel = PresetUtils.toTitleCase(PresetUtils.getPresetName(evalId));
+        bgStyle = matchItem?.filename
+          ? `background-image: url("${matchItem.filename}")`
+          : `background-color: ${PresetUtils.getPresetColor(evalId, this.context.cache)}`;
+        tooltipTitle = `${cleanLabel} [${evalId}]\n${matchItem?.preset || evalId}`;
+      } else {
+        evalId = chipExpanded;
+        cleanLabel = chipExpanded || (item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : styleKey);
+        bgStyle = item?.filename
+          ? `background-image: url("${item.filename}")`
+          : `background-color: ${PresetUtils.getPresetColor(styleKey, this.context.cache)}`;
+
+        if (item) {
+          tooltipTitle = `${chipExpanded}\n\n${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}`;
+        } else {
+          tooltipTitle = `${chipExpanded}\n\n[${styleKey}]`;
+        }
+      }
 
       let inputHtml = "";
       const tagMatch = styleKey.match(/^<(.+?)>$/);
@@ -687,46 +735,38 @@ export default class PresetBasket {
       }
 
       if (varMatches.length > 0) {
-        if (!item && chipExpanded) {
-          cleanLabel = chipExpanded;
-        }
         inputHtml = `<span class="j0n4t-pg-var-more">${PresetUtils.icons.more}</span>`;
       } else if (tagMatch) {
         const innerContent = tagMatch[1];
         const parts = innerContent.split(/[:;]/);
         if (parts[0].match(/lora|lyco/) || parts.length === 2) {
           const value = parts.pop().trim();
-          cleanLabel = parts.pop().trim();
+          const tagLabel = parts.pop().trim();
           const isBoolean = /^(true|false)$/i.test(value);
           const isNumeric = !isNaN(Number(value)) && value !== '';
           if (isBoolean) {
             const isChecked = value.toLowerCase() === "true" ? "checked" : "";
-            inputHtml = `<input type="checkbox" class="j0n4t-pg-bool-input bool-input" tabindex="0" ${isChecked} title="${PresetUtils.escapeHTML(cleanLabel)} toggle" aria-label="${PresetUtils.escapeHTML(cleanLabel)} toggle" />`;
+            inputHtml = `<input type="checkbox" class="j0n4t-pg-bool-input bool-input" tabindex="0" ${isChecked} title="${PresetUtils.escapeHTML(tagLabel)} toggle" aria-label="${PresetUtils.escapeHTML(tagLabel)} toggle" />`;
           } else if (isNumeric) {
-            inputHtml = `<input type="number" step="0.05" class="j0n4t-pg-num-input num-input" tabindex="0" value="${PresetUtils.escapeHTML(value)}" title="${PresetUtils.escapeHTML(cleanLabel)} value" aria-label="${PresetUtils.escapeHTML(cleanLabel)} value" />`;
+            inputHtml = `<input type="number" step="0.05" class="j0n4t-pg-num-input num-input" tabindex="0" value="${PresetUtils.escapeHTML(value)}" title="${PresetUtils.escapeHTML(tagLabel)} value" aria-label="${PresetUtils.escapeHTML(tagLabel)} value" />`;
           } else {
-            inputHtml = `<input type="text" class="j0n4t-pg-text-input text-input" tabindex="0" value="${PresetUtils.escapeHTML(value)}" title="${PresetUtils.escapeHTML(cleanLabel)} text" aria-label="${PresetUtils.escapeHTML(cleanLabel)} text" />`;
+            inputHtml = `<input type="text" class="j0n4t-pg-text-input text-input" tabindex="0" value="${PresetUtils.escapeHTML(value)}" title="${PresetUtils.escapeHTML(tagLabel)} text" aria-label="${PresetUtils.escapeHTML(tagLabel)} text" />`;
           }
         }
       }
-
-      const bgStyle = item?.filename
-        ? `background-image: url("${item.filename}")`
-        : `background-color: ${PresetUtils.getPresetColor(styleKey, this.context.cache)}`;
-
-      const tooltipTitle = item ? `${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : styleKey;
 
       htmlBuffer += `
         <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
              title="${PresetUtils.escapeHTML(tooltipTitle)}${PresetUtils.escapeHTML(rolledText)}"
              data-id="${PresetUtils.escapeHTML(styleKey)}"
+             data-eval-id="${PresetUtils.escapeHTML(evalId)}"
              data-preset="${PresetUtils.escapeHTML(item && item.preset ? item.preset : "")}"
              data-index="${index}"
              data-start="${startIndex}"
              data-end="${endIndex}"
              style='${bgStyle}'>
-            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(styleKey)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
+            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chipExpanded || styleKey)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
             ${inputHtml}
         </div>
       `;
