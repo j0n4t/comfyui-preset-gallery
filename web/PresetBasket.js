@@ -174,8 +174,6 @@ export default class PresetBasket {
         "raw-mode",
         dom.chkBasketRaw.checked
       );
-      this.context.variantRolls = {};
-      this.context.syncUI(this.context.widget.value);
     });
 
     this.basket.addEventListener("dblclick", (e) => {
@@ -353,18 +351,18 @@ export default class PresetBasket {
     const chipsData = this.getGroupedChips(activeList);
     const chipState = { rolls: this.context.variantRolls, counts: {} };
     const targetGroup = groupRaw.trim().toLowerCase().replace(/\s+/g, "_");
-    
+
     for (let i = 0; i < chipsData.length; i++) {
-        const beforeCounts = { ...chipState.counts };
-        PresetUtils.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
-        if (i === chipIndex) {
-            const start = beforeCounts[targetGroup] || 0;
-            const end = chipState.counts[targetGroup] || 0;
-            for (let k = start; k < end; k++) {
-                delete this.context.variantRolls[`${targetGroup}_${k}`];
-            }
-            break;
+      const beforeCounts = { ...chipState.counts };
+      PresetUtils.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
+      if (i === chipIndex) {
+        const start = beforeCounts[targetGroup] || 0;
+        const end = chipState.counts[targetGroup] || 0;
+        for (let k = start; k < end; k++) {
+          delete this.context.variantRolls[`${targetGroup}_${k}`];
         }
+        break;
+      }
     }
     this.context.syncUI(this.context.widget.value);
   }
@@ -575,18 +573,18 @@ export default class PresetBasket {
 
     chipsData.forEach((chipData, index) => {
       const { styleKey, item, startIndex, endIndex } = chipData;
-      
+
       const beforeCounts = { ...chipRollState.counts };
       const chipExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), chipRollState);
-      
+
       let rolledInfo = [];
       for (const group in chipRollState.counts) {
-          const start = beforeCounts[group] || 0;
-          const end = chipRollState.counts[group] || 0;
+        const start = beforeCounts[group] || 0;
+        const end = chipRollState.counts[group] || 0;
         for (let k = start; k < end; k++) {
-              const rolledKey = this.context.variantRolls[`${group}_${k}`];
-              if (rolledKey) rolledInfo.push(`🎲 ${PresetUtils.toTitleCase(group.split("_")[0])}: ${PresetUtils.getPresetName(rolledKey)}`);
-          }
+          const rolledKey = this.context.variantRolls[`${group}_${k}`];
+          if (rolledKey) rolledInfo.push(`🎲 ${PresetUtils.toTitleCase(group.split("_")[0])}: ${PresetUtils.getPresetName(rolledKey)}`);
+        }
       }
       const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
 
@@ -605,7 +603,7 @@ export default class PresetBasket {
 
       if (varMatches.length > 0) {
         if (!item && chipExpanded) {
-           cleanLabel = chipExpanded;
+          cleanLabel = chipExpanded;
         }
         inputHtml = `<button class="j0n4t-pg-var-btn" title="+ Variations" aria-label="Plus Variations">${PresetUtils.icons.more}</button>`;
       } else if (tagMatch) {
@@ -630,7 +628,7 @@ export default class PresetBasket {
       const bgStyle = item?.filename
         ? `background-image: url("${item.filename}")`
         : `background-color: ${PresetUtils.getPresetColor(styleKey, this.context.cache)}`;
-        
+
       const tooltipTitle = item ? `${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : styleKey;
 
       htmlBuffer += `
@@ -730,12 +728,12 @@ export default class PresetBasket {
     popup.addEventListener("click", (e) => {
       const rerollBtn = e.target.closest(".j0n4t-pg-var-reroll-btn");
       if (rerollBtn) {
-          e.stopPropagation();
-          this.reRollChipGroup(parseInt(chipElement.dataset.index), rerollBtn.dataset.group);
-          this.closeChipMenu();
-          return;
+        e.stopPropagation();
+        this.reRollChipGroup(parseInt(chipElement.dataset.index), rerollBtn.dataset.group);
+        this.closeChipMenu();
+        return;
       }
-        
+
       const actionEl = e.target.closest("[data-action]");
       if (!actionEl) return;
       e.stopPropagation();

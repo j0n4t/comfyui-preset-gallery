@@ -1,5 +1,4 @@
 import { app } from "../../../scripts/app.js";
-import { api } from "../../../scripts/api.js";
 
 import AutocompleteManager from "./AutocompleteManager.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
@@ -494,11 +493,6 @@ class PresetGalleryApp {
   async init() {
     await this.loadGallery();
     if (this.widget.value) await this.syncUI(this.widget.value);
-    
-    api.addEventListener("execution_start", () => {
-      this.variantRolls = {};
-      this.syncUI(this.widget.value);
-    });
 
     this.initFilterAutocomplete();
     this.setPanelCollapseState(
