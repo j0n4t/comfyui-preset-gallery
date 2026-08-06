@@ -632,8 +632,15 @@ export default class PresetBasket {
         if (cachedMatch) {
           foundKey = cachedMatch.foundKey;
           foundItem = cachedMatch.foundItem;
-        } else if (len === 1 && (joined.match(/^<[^<>]+>$/) || joined.match(/^\{[^{}]+(?::[^{}]+)?\}$/))) {
-          foundKey = joined;
+        } else {
+          const generalizedJoined = joined.replace(/\{([^{}:]+):[^{}]+\}/g, '{$1}');
+          const generalizedMatch = lookupMap.get(generalizedJoined);
+          if (generalizedMatch) {
+            foundKey = generalizedMatch.foundKey;
+            foundItem = generalizedMatch.foundItem;
+          } else if (len === 1 && (joined.match(/^<[^<>]+>$/) || joined.match(/^\{[^{}]+(?::[^{}]+)?\}$/))) {
+            foundKey = joined;
+          }
         }
 
         if (foundKey || len === 1) {
@@ -684,10 +691,11 @@ export default class PresetBasket {
     const chipRollState = { rolls: this.context.variantRolls, counts: {} };
 
     chipsData.forEach((chipData, index) => {
-      const { styleKey, item, startIndex, endIndex } = chipData;
+      const { styleKey, item, startIndex, endIndex, subArray } = chipData;
+      const joinedStr = subArray.join(", ");
 
       const beforeCounts = { ...chipRollState.counts };
-      const chipExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), chipRollState);
+      const chipExpanded = PresetUtils.expandRecursively(joinedStr, this.context.cache, new Set(), chipRollState);
 
       let rolledInfo = [];
       for (const group in chipRollState.counts) {
@@ -700,7 +708,8 @@ export default class PresetBasket {
       }
       const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
 
-      const presetMatch = this.findPresetMatch(chipExpanded);
+      const baseExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), { rolls: {}, counts: {} });
+      const presetMatch = this.findPresetMatch(chipExpanded) || this.findPresetMatch(baseExpanded);
       let cleanLabel, bgStyle, tooltipTitle, evalId;
 
       if (presetMatch) {
@@ -713,7 +722,7 @@ export default class PresetBasket {
         tooltipTitle = `${cleanLabel} [${evalId}]\n${matchItem?.preset || evalId}`;
       } else {
         evalId = chipExpanded;
-        cleanLabel = item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : styleKey;
+        cleanLabel = item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : joinedStr;
         bgStyle = item?.filename
           ? `background-image: url("${item.filename}")`
           : `background-color: ${PresetUtils.getPresetColor(styleKey, this.context.cache)}`;
@@ -721,15 +730,15 @@ export default class PresetBasket {
         if (item) {
           tooltipTitle = `${chipExpanded}\n\n${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}`;
         } else {
-          tooltipTitle = `${chipExpanded}\n\n[${styleKey}]`;
+          tooltipTitle = `${chipExpanded}\n\n[${joinedStr}]`;
         }
       }
 
       let inputHtml = "";
-      const tagMatch = styleKey.match(/^<(.+?)>$/);
+      const tagMatch = joinedStr.match(/^<(.+?)>$/);
 
       const varRegex = /\{([^{}:]+)(?::([^{}]+))?\}/g;
-      let varMatches = Array.from(styleKey.matchAll(varRegex));
+      let varMatches = Array.from(joinedStr.matchAll(varRegex));
       if (varMatches.length === 0 && item && item.preset) {
         varMatches = Array.from(item.preset.matchAll(varRegex));
       }
@@ -759,14 +768,14 @@ export default class PresetBasket {
         <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
              title="${PresetUtils.escapeHTML(tooltipTitle)}${PresetUtils.escapeHTML(rolledText)}"
-             data-id="${PresetUtils.escapeHTML(styleKey)}"
+             data-id="${PresetUtils.escapeHTML(joinedStr)}"
              data-eval-id="${PresetUtils.escapeHTML(evalId)}"
              data-preset="${PresetUtils.escapeHTML(item && item.preset ? item.preset : "")}"
              data-index="${index}"
              data-start="${startIndex}"
              data-end="${endIndex}"
              style='${bgStyle}'>
-            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chipExpanded || styleKey)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
+            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chipExpanded || joinedStr)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
             ${inputHtml}
         </div>
       `;
