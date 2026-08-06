@@ -730,7 +730,7 @@ export default class PresetBasket {
         if (item) {
           tooltipTitle = `${chipExpanded}\n\n${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}`;
         } else {
-          tooltipTitle = `${chipExpanded}\n\n[${joinedStr}]`;
+          tooltipTitle = chipExpanded;
         }
       }
 
@@ -753,6 +753,7 @@ export default class PresetBasket {
           const tagLabel = parts.pop().trim();
           const isBoolean = /^(true|false)$/i.test(value);
           const isNumeric = !isNaN(Number(value)) && value !== '';
+          cleanLabel = tagLabel;
           if (isBoolean) {
             const isChecked = value.toLowerCase() === "true" ? "checked" : "";
             inputHtml = `<input type="checkbox" class="j0n4t-pg-bool-input bool-input" tabindex="0" ${isChecked} title="${PresetUtils.escapeHTML(tagLabel)} toggle" aria-label="${PresetUtils.escapeHTML(tagLabel)} toggle" />`;
