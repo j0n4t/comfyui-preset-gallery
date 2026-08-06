@@ -463,6 +463,32 @@ export default class PresetBasket {
 
   getGroupedChips(activeList) {
     const chips = [];
+    if (!activeList || activeList.length === 0) return chips;
+
+    // Optimized: Prebuild a lookup map once to eliminate O(N * M) nested iterations and redundant recursive expansions
+    const lookupMap = new Map();
+    if (this.context.cache) {
+      for (const [key, item] of Object.entries(this.context.cache)) {
+        if (item?.preset && item.preset.trim()) {
+          const trimmed = item.preset.trim();
+          const expanded = PresetUtils.expandRecursively(trimmed, this.context.cache);
+          if (expanded && !lookupMap.has(expanded)) {
+            lookupMap.set(expanded, { foundKey: key, foundItem: item });
+          }
+          if (trimmed && !lookupMap.has(trimmed)) {
+            lookupMap.set(trimmed, { foundKey: key, foundItem: item });
+          }
+        }
+        if (key && !lookupMap.has(key)) {
+          lookupMap.set(key, { foundKey: key, foundItem: item });
+        }
+        const trimmedKey = key ? key.trim() : "";
+        if (trimmedKey && !lookupMap.has(trimmedKey)) {
+          lookupMap.set(trimmedKey, { foundKey: key, foundItem: item });
+        }
+      }
+    }
+
     let i = 0;
     while (i < activeList.length) {
       let matched = null;
@@ -475,26 +501,14 @@ export default class PresetBasket {
         let foundKey = null;
         let foundItem = null;
 
-        if (this.context.cache) {
-          for (const [key, item] of Object.entries(this.context.cache)) {
-            if (item?.preset && item.preset.trim()) {
-              const expanded = PresetUtils.expandRecursively(item.preset.trim(), this.context.cache);
-              if (expanded === joined || item.preset.trim() === joined) {
-                foundKey = key;
-                foundItem = item;
-                break;
-              }
-            }
-            if (key === joined || key.trim() === joined) {
-              foundKey = key;
-              foundItem = this.context.cache[key];
-              break;
-            }
-          }
-        }
-        if (!foundKey && (joined.match(/^<[^<>]+>$/) || joined.match(/^\{[^{}]+(?::[^{}]+)?\}$/))) {
+        const cachedMatch = lookupMap.get(joined);
+        if (cachedMatch) {
+          foundKey = cachedMatch.foundKey;
+          foundItem = cachedMatch.foundItem;
+        } else if (len === 1 && (joined.match(/^<[^<>]+>$/) || joined.match(/^\{[^{}]+(?::[^{}]+)?\}$/))) {
           foundKey = joined;
         }
+
         if (foundKey || len === 1) {
           matched = {
             styleKey: foundKey || subArray[0],
