@@ -435,7 +435,7 @@ class PresetGalleryApp {
             break;
           }
         }
-        this.updateWidgetValue(newSelections);
+        this.updateWidgetValue(newSelections.sort((a, b) => a.localeCompare(b)));
       } else {
         this.variantRolls = {};
         this.syncUI(this.widget.value);
