@@ -109,7 +109,7 @@ class PresetGalleryApp {
               <div class="j0n4t-pg-basket-header">
                 <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
                 <div style="display: flex; gap: 4px; align-items: center;">
-                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Re-roll variants" aria-label="Re-roll variants" style="font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">🎲</button>
+                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?" style="font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">🎲</button>
                   <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
                   <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" aria-label="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
                 </div>
@@ -330,6 +330,7 @@ class PresetGalleryApp {
     this.grid.syncSelection(arr);
     this.basket.render(arr);
     this.syncEditorHighlight();
+    this.dom.btnRerollBasket.title = arr.length === 0 ? "Feeling lucky?" : "Re-roll variants";
   }
 
   bindEvents() {
@@ -391,8 +392,54 @@ class PresetGalleryApp {
     });
 
     this.dom.btnRerollBasket.addEventListener("click", () => {
-      this.variantRolls = {};
-      this.syncUI(this.widget.value);
+      const selections = this.getSelectedArray();
+      if (selections.length === 0) {
+        const cache = this.cache || {};
+        const groupsMap = new Map();
+        for (const [key, item] of Object.entries(cache)) {
+          if (item?.preset) {
+            const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(key) : key.split('/')[0];
+            if (folder) {
+              if (!groupsMap.has(folder)) groupsMap.set(folder, []);
+              groupsMap.get(folder).push(key);
+            }
+          }
+        }
+        const availableGroups = Array.from(groupsMap.keys());
+        if (availableGroups.length === 0) return;
+        const newSelections = [];
+        const addedSet = new Set();
+        const targetTotal = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+        while (newSelections.length < targetTotal) {
+          const numGroupsToPick = Math.floor(Math.random() * (7 - 3 + 1)) + 3;
+          const shuffledGroups = [...availableGroups].sort(() => 0.5 - Math.random());
+          const selectedGroups = shuffledGroups.slice(0, Math.min(numGroupsToPick, shuffledGroups.length));
+          let addedInIteration = false;
+          for (const group of selectedGroups) {
+            const groupPresets = groupsMap.get(group) || [];
+            if (groupPresets.length === 0) continue;
+            const numChips = Math.floor(Math.random() * 4);
+            for (let i = 0; i < numChips; i++) {
+              const randomPreset = groupPresets[Math.floor(Math.random() * groupPresets.length)];
+              if (!addedSet.has(randomPreset)) {
+                addedSet.add(randomPreset);
+                newSelections.push(randomPreset);
+                addedInIteration = true;
+                if (newSelections.length >= targetTotal) break;
+              }
+            }
+            if (newSelections.length >= targetTotal) break;
+          }
+          const totalPresetsCount = Object.keys(cache).length;
+          if (!addedInIteration || addedSet.size >= totalPresetsCount) {
+            break;
+          }
+        }
+        this.updateWidgetValue(newSelections);
+      } else {
+        this.variantRolls = {};
+        this.syncUI(this.widget.value);
+      }
     });
 
     this.initHeights();
