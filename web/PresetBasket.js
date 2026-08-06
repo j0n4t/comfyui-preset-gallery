@@ -20,7 +20,7 @@ export default class PresetBasket {
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
     .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
     .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
-    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; max-width: 32%; }
+    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; max-width: 90px; }
     .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.2); z-index: 0; pointer-events: none; }
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
@@ -713,7 +713,7 @@ export default class PresetBasket {
         tooltipTitle = `${cleanLabel} [${evalId}]\n${matchItem?.preset || evalId}`;
       } else {
         evalId = chipExpanded;
-        cleanLabel = chipExpanded || (item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : styleKey);
+        cleanLabel = item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : styleKey;
         bgStyle = item?.filename
           ? `background-image: url("${item.filename}")`
           : `background-color: ${PresetUtils.getPresetColor(styleKey, this.context.cache)}`;
