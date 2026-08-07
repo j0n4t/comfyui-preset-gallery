@@ -222,7 +222,17 @@ export default class PresetBasket {
 
         this.showChipMenu(chip, styleKey, this.context.cache[styleKey], parseInt(chip.dataset.start), parseInt(chip.dataset.end));
 
-        const targetKey = (this.context.cache && this.context.cache[evalId]) ? evalId : styleKey;
+        let targetKey = styleKey;
+        const presetVal = chip.dataset.preset;
+        
+        if (presetVal) {
+          const match = this.findPresetMatch(presetVal);
+          if (match) {
+            targetKey = match.key;
+          }
+        } else if (this.context.cache && this.context.cache[evalId]) {
+          targetKey = evalId;
+        }
 
         if (!this.context.dom.wrap.classList.contains("hide-gallery-mode")) {
           this.locatePreset(targetKey);
@@ -880,7 +890,15 @@ export default class PresetBasket {
       } else if (action === "swap") {
         this.spawnInlineEditor(chipElement, this.context.cache[styleKey]?.preset || styleKey, startIndex, endIndex);
       } else if (action === "locate") {
-        this.locatePreset(styleKey);
+        let locateKey = styleKey;
+        const presetVal = chipElement.dataset.preset;
+        if (presetVal) {
+          const presetMatch = this.findPresetMatch(presetVal);
+          if (presetMatch) {
+            locateKey = presetMatch.key;
+          }
+        }
+        this.locatePreset(locateKey);
       } else if (action === "create") {
         this.context.setPanelCollapseState(false);
         this.context.editor.clearFields();
