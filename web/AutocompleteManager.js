@@ -148,7 +148,7 @@ export default class AutocompleteManager {
   handleKeydown(e) {
     const activeMatch = this.matches[this.activeIndex];
 
-    if (this.onKeyDown && this.onKeyDown(e, activeMatch)) {
+    if (this.onKeyDown && this.onKeyDown(e, { activeMatch, manager: this })) {
       if (this.isOpen) this.close();
       return;
     }

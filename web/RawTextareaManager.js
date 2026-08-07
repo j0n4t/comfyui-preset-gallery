@@ -339,7 +339,7 @@ export default class RawTextareaManager {
             prefix.length + insertedText.length + 2;
         }
       },
-      onKeyDown: (e, activeMatch) => {
+      onKeyDown: (e, { activeMatch }) => {
         if (
           e.key === "ArrowRight" &&
           this.textarea.selectionStart === this.textarea.value.length &&
