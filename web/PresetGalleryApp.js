@@ -398,7 +398,7 @@ class PresetGalleryApp {
         const groupsMap = new Map();
         for (const [key, item] of Object.entries(cache)) {
           if (item?.preset) {
-            const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(key) : key.split('/')[0];
+            const folder = PresetUtils.getPresetFolder(key);
             if (folder) {
               if (!groupsMap.has(folder)) groupsMap.set(folder, []);
               groupsMap.get(folder).push(key);
@@ -435,7 +435,9 @@ class PresetGalleryApp {
             break;
           }
         }
-        this.updateWidgetValue(newSelections.sort((a, b) => a.localeCompare(b)));
+        newSelections.sort((a, b) => a.localeCompare(b));
+        if (cache["_/_default"]) newSelections.unshift("_/_default");
+        this.updateWidgetValue(newSelections);
       } else {
         this.variantRolls = {};
         this.syncUI(this.widget.value);
