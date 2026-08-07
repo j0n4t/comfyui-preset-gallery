@@ -1,4 +1,33 @@
 const PresetUtils = {
+    splitComma: (str) => {
+        if (!str) return [];
+        const tokens = [];
+        let current = "";
+        let depthParen = 0;
+        let depthAngle = 0;
+        let depthBrace = 0;
+
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === '(') depthParen++;
+            else if (char === ')') depthParen = Math.max(0, depthParen - 1);
+            else if (char === '<') depthAngle++;
+            else if (char === '>') depthAngle = Math.max(0, depthAngle - 1);
+            else if (char === '{') depthBrace++;
+            else if (char === '}') depthBrace = Math.max(0, depthBrace - 1);
+
+            if (char === ',' && depthParen === 0 && depthAngle === 0 && depthBrace === 0) {
+                tokens.push(current.trim());
+                current = "";
+            } else {
+                current += char;
+            }
+        }
+        if (current.trim()) {
+            tokens.push(current.trim());
+        }
+        return tokens.filter(Boolean);
+    },
     expandRecursively: (val, cache, seen = new Set(), rollState = null) => {
         if (!val) return "";
         const expandText = (str) => {
@@ -78,7 +107,7 @@ const PresetUtils = {
             return expandText(trimmed);
         };
 
-        const keys = val.split(/,(?![^<]*>)/).map((k) => k.trim()).filter(Boolean);
+        const keys = PresetUtils.splitComma(val);
         const expanded = keys.map(expandToken);
         return expanded.filter(Boolean).join(", ");
     },

@@ -30,10 +30,15 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
     .j0n4t-pg-basket-chip:focus-visible { border-width: 2px; border-color: #007acc; }
+    
+    .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
+    .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
+
     .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
     .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
     .j0n4t-pg-basket-chip.inline-editing::before { display: none; }
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
+    
     .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; outline: none; }
     .j0n4t-pg-basket-add-btn:hover, .j0n4t-pg-basket-add-btn:focus-visible { border-color: #007acc; color: #fff; background: #1a242db0; }
     .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input, .j0n4t-pg-select-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 2px; text-align: center; margin: 0 2px; outline: none; position: relative; cursor: pointer; }
@@ -48,6 +53,12 @@ export default class PresetBasket {
     .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus-visible { background: #333; color: #fff; }
     .j0n4t-pg-chip-popup-item.danger:hover, .j0n4t-pg-chip-popup-item.danger:focus-visible { background: #912e2e; color: #fff; }
     .j0n4t-pg-var-more { display: flex; font-size: 11px; }
+    
+    .j0n4t-pg-weight-btn { background: #333; color: #fff; border: 1px solid #555; border-radius: 3px; cursor: pointer; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; outline: none; font-size: 14px; line-height: 1; }
+    .j0n4t-pg-weight-btn:hover, .j0n4t-pg-weight-btn:focus-visible { background: #007acc; border-color: #007acc; }
+    .j0n4t-pg-weight-input { width: 44px; height: 20px; text-align: center; background: #111; color: #fff; border: 1px solid #555; border-radius: 2px; font-size: 11px; outline: none; font-family: monospace; }
+    .j0n4t-pg-weight-input:focus { border-color: #007acc; }
+
     .j0n4t-pg-var-popup-row { display: flex; align-items: center; padding: 4px; }
     .j0n4t-pg-var-popup-row label { font-size: 10px; color: #d1a119; font-weight: 600; min-width: 40px; text-transform: capitalize; }
     .j0n4t-pg-var-popup-row select { flex: 1; height: 20px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 10px; border-radius: 2px; padding: 0 2px; font-weight: 600; font-family: inherit; outline: none; cursor: pointer; }
@@ -239,7 +250,19 @@ export default class PresetBasket {
       if (chip) {
         e.stopPropagation();
         this.closeChipMenu();
-        this.spawnInlineEditor(chip, this.context.cache[chip.dataset.id]?.preset || chip.dataset.id, parseInt(chip.dataset.start), parseInt(chip.dataset.end));
+
+        const styleKey = chip.dataset.id;
+        const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+        let editVal = styleKey;
+
+        const rawPreset = chip.dataset.preset;
+        if (wMatch && rawPreset) {
+          editVal = `(${rawPreset}:${wMatch[2]})`;
+        } else if (rawPreset) {
+          editVal = rawPreset;
+        }
+
+        this.spawnInlineEditor(chip, editVal, parseInt(chip.dataset.start), parseInt(chip.dataset.end));
       } else {
         e.stopPropagation();
         this.spawnInlineEditor(null, "");
@@ -252,13 +275,22 @@ export default class PresetBasket {
 
       if (e.target.closest("input")) return;
 
+      const weightBadge = e.target.closest('.j0n4t-pg-basket-chip-weight');
       const chip = e.target.closest('.j0n4t-pg-basket-chip');
+
       if (chip) {
         e.stopPropagation();
         const styleKey = chip.dataset.id;
-        const evalId = chip.dataset.evalId || styleKey;
 
-        this.showChipMenu(chip, styleKey, this.context.cache[styleKey], parseInt(chip.dataset.start), parseInt(chip.dataset.end));
+        const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+        const coreKey = wMatch ? wMatch[1] : styleKey;
+        const cachedItem = this.context.cache?.[coreKey] || this.context.cache?.[styleKey];
+        const evalId = chip.dataset.evalId || coreKey;
+
+        this.showChipMenu(chip, styleKey, cachedItem, parseInt(chip.dataset.start), parseInt(chip.dataset.end), !!weightBadge);
+
+        // Prevent generic gallery locate behavior if specifically clicking the weight pill
+        if (weightBadge) return;
 
         let targetKey = styleKey;
         const presetVal = chip.dataset.preset;
@@ -268,6 +300,8 @@ export default class PresetBasket {
           if (match) targetKey = match.key;
         } else if (this.context.cache?.[evalId]) {
           targetKey = evalId;
+        } else if (this.context.cache?.[coreKey]) {
+          targetKey = coreKey;
         }
 
         if (!this.context.dom.wrap.classList.contains("hide-gallery-mode")) {
@@ -464,7 +498,9 @@ export default class PresetBasket {
       chipElement.classList.add("inline-editing");
       chipElement.draggable = false;
       const label = chipElement.querySelector(".j0n4t-pg-basket-chip-label");
+      const weight = chipElement.querySelector(".j0n4t-pg-basket-chip-weight");
       if (label) label.style.display = "none";
+      if (weight) weight.style.display = "none";
       chipElement.insertAdjacentHTML("afterbegin", inputHtml);
       input = chipElement.querySelector("input");
     }
@@ -487,7 +523,9 @@ export default class PresetBasket {
         chipElement.classList.remove("inline-editing");
         chipElement.draggable = true;
         const label = chipElement.querySelector(".j0n4t-pg-basket-chip-label");
+        const weight = chipElement.querySelector(".j0n4t-pg-basket-chip-weight");
         if (label) label.style.display = "";
+        if (weight) weight.style.display = "";
       }
 
       if (save) {
@@ -497,7 +535,7 @@ export default class PresetBasket {
           this.context.updateWidgetValue(selections);
         } else if (!isNew && newVal !== initialValue) {
           if (startIndex !== undefined && endIndex !== undefined) {
-            const newValues = newVal.includes(",") ? newVal.split(/,(?![^<]*>)/).map(s => s.trim()).filter(Boolean) : [newVal];
+            const newValues = newVal.includes(",") ? PresetUtils.splitComma(newVal) : [newVal];
             selections.splice(startIndex, endIndex - startIndex, ...newValues);
             this.context.updateWidgetValue(selections);
           } else {
@@ -647,9 +685,14 @@ export default class PresetBasket {
       for (let len = Math.min(activeList.length - i, 10); len >= 1; len--) {
         const subArray = activeList.slice(i, i + len);
         const joined = subArray.join(", ");
-        const cached = lookupMap.get(joined) || lookupMap.get(joined.replace(/\{([^{}:]+):[^{}]+\}/g, '{$1}'));
 
-        if (cached || len === 1 || joined.match(/^<[^<>]+>$/) || joined.match(/^\{[^{}]+(?::[^{}]+)?\}$/)) {
+        // Isolate core lookup key by pulling it from weight wrappers
+        const wMatch = joined.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+        const coreJoined = wMatch ? wMatch[1] : joined;
+
+        const cached = lookupMap.get(coreJoined) || lookupMap.get(coreJoined.replace(/\{([^{}:]+):[^{}]+\}/g, '{$1}'));
+
+        if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::[^{}]+)?\}$/)) {
           matched = {
             styleKey: cached?.foundKey || subArray[0],
             item: cached?.foundItem || (cached?.foundKey ? this.context.cache[cached.foundKey] : this.context.cache[subArray[0]]),
@@ -683,12 +726,16 @@ export default class PresetBasket {
     const rawModeRollState = { rolls: this.context.variantRolls, counts: {} };
 
     if (!this._updatingTextarea) {
-      this.textarea.value = PresetUtils.expandRecursively(
-        activeList.join(", "),
-        this.context.cache,
-        new Set(),
-        rawModeRollState
-      );
+      // Execute inner expansion for wrapped inputs to maintain deep-variant support inside weights.
+      const expandedList = activeList.map(itemStr => {
+        const wMatch = itemStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+        if (wMatch) {
+          const coreExpanded = PresetUtils.expandRecursively(wMatch[1], this.context.cache, new Set(), rawModeRollState);
+          return `(${coreExpanded}:${wMatch[2]})`;
+        }
+        return PresetUtils.expandRecursively(itemStr, this.context.cache, new Set(), rawModeRollState);
+      });
+      this.textarea.value = expandedList.join(", ");
     }
     this.updateRawHighlights();
 
@@ -700,8 +747,13 @@ export default class PresetBasket {
       const { styleKey, item, startIndex, endIndex, subArray } = chipData;
       const joinedStr = subArray.join(", ");
 
+      const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+      const weightVal = wMatch ? parseFloat(wMatch[2]) : null;
+      const coreStr = wMatch ? wMatch[1] : joinedStr;
+
       const beforeCounts = { ...chipRollState.counts };
-      const chipExpanded = PresetUtils.expandRecursively(joinedStr, this.context.cache, new Set(), chipRollState);
+      const chipExpandedCore = PresetUtils.expandRecursively(coreStr, this.context.cache, new Set(), chipRollState);
+      const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
 
       let rolledInfo = [];
       for (const group in chipRollState.counts) {
@@ -713,8 +765,9 @@ export default class PresetBasket {
         }
       }
       const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
+
       const baseExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), { rolls: {}, counts: {} });
-      const parsed = this.parseChipDetails(chipExpanded);
+      const parsed = this.parseChipDetails(chipExpandedCore);
       const baseParsed = this.parseChipDetails(item?.preset || baseExpanded);
       const presetMatch = parsed.presetMatch;
 
@@ -729,13 +782,13 @@ export default class PresetBasket {
           : `background-color: ${PresetUtils.getPresetColor(evalId, this.context.cache)}`;
         tooltipTitle = `${cleanLabel} [${evalId}]\n${matchItem?.preset || evalId}`;
       } else {
-        evalId = chipExpanded;
-        cleanLabel = item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : joinedStr;
+        evalId = chipExpandedCore;
+        cleanLabel = item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : coreStr;
         bgStyle = item?.filename
           ? `background-image: url("${item.filename}")`
           : `background-color: ${PresetUtils.getPresetColor(styleKey, this.context.cache)}`;
 
-        tooltipTitle = item ? `${chipExpanded}\n\n${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : chipExpanded;
+        tooltipTitle = item ? `${chipExpandedCore}\n\n${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : chipExpandedCore;
       }
 
       let inputHtml = "";
@@ -754,6 +807,12 @@ export default class PresetBasket {
         }
       }
 
+      let weightIconHtml = "";
+      if (weightVal !== null) {
+        const labelPrefix = weightVal > 0 ? `+${weightVal}` : `${weightVal}`;
+        weightIconHtml = `<div class="j0n4t-pg-basket-chip-weight" data-action="open-weight" title="Adjust Weight (Current: ${weightVal})">${labelPrefix}</div>`;
+      }
+
       htmlBuffer += `
         <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
@@ -765,6 +824,7 @@ export default class PresetBasket {
              data-start="${startIndex}"
              data-end="${endIndex}"
              style='${bgStyle}'>
+            ${weightIconHtml}
             <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chipExpanded || joinedStr)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
             ${inputHtml}
         </div>
@@ -782,15 +842,23 @@ export default class PresetBasket {
     const selections = this.context.getSelectedArray();
     if (!selections || selections.length === 0) return "";
     const cache = this.context.cache || {};
+
     const items = selections.map((key) => {
-      const item = cache[key];
+      const wMatch = key.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+      const coreKey = wMatch ? wMatch[1] : key;
+      const weightStr = wMatch ? wMatch[2] : null;
+
+      const item = cache[coreKey];
       if (!item) return key;
+
+      let res = coreKey;
       if (Array.isArray(item.variants) && item.variants.length > 1) {
-        const variantOptions = item.variants.map((v) => `${key}:${v}`).join("|");
-        return `{${variantOptions}}`;
+        const variantOptions = item.variants.map((v) => `${coreKey}:${v}`).join("|");
+        res = `{${variantOptions}}`;
       }
-      return key;
+      return weightStr ? `(${res}:${weightStr})` : res;
     });
+
     return items.join(", ");
   }
 
@@ -831,7 +899,7 @@ export default class PresetBasket {
     document.body.appendChild(overlay);
   }
 
-  showChipMenu(chipElement, styleKey, item, startIndex, endIndex) {
+  showChipMenu(chipElement, styleKey, item, startIndex, endIndex, focusWeight = false) {
     if (this.activeChipMenuEl) {
       this.activeChipMenuEl.classList.remove("active-menu");
     }
@@ -839,16 +907,19 @@ export default class PresetBasket {
     chipElement.classList.add("active-menu");
     this.activeChipMenuEl = chipElement;
 
+    const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+    let coreKey = wMatch ? wMatch[1] : styleKey;
+    let currentWeight = wMatch ? parseFloat(wMatch[2]) : 1.0;
+
     const rawPreset = chipElement.dataset.preset || "";
-    const source = styleKey.match(/\{[^{}]+\}/) ? styleKey : (rawPreset || item?.preset || "");
+    const source = coreKey.match(/\{[^{}]+\}/) ? coreKey : (rawPreset || item?.preset || "");
     const parsed = this.parseChipDetails(source);
 
     let varRowsHtml = "";
-    const groupCounts = {}; // Track occurrences for duplicate variables
+    const groupCounts = {};
 
     if (parsed.variants.length > 0) {
       parsed.variants.forEach(({ groupRaw, groupName, val: currentSelectedVal }) => {
-        // Assign a unique index per group type
         const gIndex = groupCounts[groupRaw] || 0;
         groupCounts[groupRaw] = gIndex + 1;
 
@@ -881,10 +952,26 @@ export default class PresetBasket {
     let varSectionHtml = varRowsHtml ? `<div>${varRowsHtml}</div>` : "";
     const swapIcon = PresetUtils.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
 
+    const weightSectionHtml = `
+      <div class="j0n4t-pg-weight-modifier" style="display: ${focusWeight ? 'flex' : 'none'}; justify-content: center; align-items: center; gap: 6px; padding: 4px; background: #222; border-bottom: 1px solid #444;">
+          <button class="j0n4t-pg-weight-btn" data-action="weight-minus" tabindex="0" title="Decrease weight">-</button>
+          <input type="number" step="0.05" class="j0n4t-pg-weight-input" value="${currentWeight}" tabindex="0" title="Set weight">
+          <button class="j0n4t-pg-weight-btn" data-action="weight-plus" tabindex="0" title="Increase weight">+</button>
+      </div>
+    `;
+
+    const weightToggleBtn = `
+      <div class="j0n4t-pg-chip-popup-item" data-action="toggle-weight" title="Adjust Weight" tabindex="0" role="menuitem">
+        <span style="font-family:monospace; font-weight:bold; line-height:1; font-size:12px;">+/-</span>
+      </div>
+    `;
+
     const popupHtml = `
       <div class="j0n4t-pg-chip-popup" tabindex="-1" role="menu">
+        ${weightSectionHtml}
         ${varSectionHtml}
         <div class="j0n4t-pg-chip-popup-actions">
+          ${weightToggleBtn}
           <div class="j0n4t-pg-chip-popup-item" data-action="swap" title="Swap Preset" tabindex="0" role="menuitem">${swapIcon}</div>
           <div class="j0n4t-pg-chip-popup-item" data-action="edit" title="Edit" tabindex="0" role="menuitem">${PresetUtils.icons.edit}</div>
           ${item
@@ -916,15 +1003,48 @@ export default class PresetBasket {
       const actionEl = e.target.closest("[data-action]");
       if (!actionEl) return;
       e.stopPropagation();
-      this.closeChipMenu();
+
       const action = actionEl.dataset.action;
+
+      if (action === "toggle-weight") {
+        const wMod = popup.querySelector('.j0n4t-pg-weight-modifier');
+        wMod.style.display = wMod.style.display === 'none' ? 'flex' : 'none';
+        if (wMod.style.display === 'flex') {
+          wMod.querySelector('input').focus();
+        }
+        return;
+      }
+
+      if (action === "weight-minus" || action === "weight-plus") {
+        const input = popup.querySelector('.j0n4t-pg-weight-input');
+        let val = parseFloat(input.value) || 1.0;
+        val += (action === "weight-plus" ? 0.05 : -0.05);
+        input.value = Number(val.toFixed(2));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return;
+      }
+
+      this.closeChipMenu();
       if (action === "edit") {
-        if (item) this.context.openEditorForPreset(styleKey, true);
-        else this.spawnInlineEditor(chipElement, styleKey, startIndex, endIndex);
+        if (item) this.context.openEditorForPreset(coreKey, true);
+        else {
+          let editVal = styleKey;
+          const rawPreset = chipElement.dataset.preset;
+          if (wMatch && rawPreset) {
+            editVal = `(${rawPreset}:${wMatch[2]})`;
+          } else if (rawPreset) {
+            editVal = rawPreset;
+          }
+          this.spawnInlineEditor(chipElement, editVal, startIndex, endIndex);
+        }
       } else if (action === "swap") {
-        this.spawnInlineEditor(chipElement, this.context.cache[styleKey]?.preset || styleKey, startIndex, endIndex);
+        let editVal = this.context.cache[coreKey]?.preset || coreKey;
+        if (wMatch && editVal) {
+          editVal = `(${editVal}:${currentWeight})`;
+        }
+        this.spawnInlineEditor(chipElement, editVal, startIndex, endIndex);
       } else if (action === "locate") {
-        let locateKey = styleKey;
+        let locateKey = coreKey;
         const presetVal = chipElement.dataset.preset;
         if (presetVal) {
           const presetMatch = this.findPresetMatch(presetVal);
@@ -934,9 +1054,9 @@ export default class PresetBasket {
       } else if (action === "create") {
         this.context.setPanelCollapseState(false);
         this.context.editor.clearFields();
-        this.context.editor.dom.inpPreset.value = item ? item.preset : styleKey;
+        this.context.editor.dom.inpPreset.value = item ? item.preset : coreKey;
         this.context.editor.rawPresetManager?.updateHighlights();
-        const cleanName = styleKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop().replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
+        const cleanName = coreKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop().replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
         if (cleanName) this.context.editor.dom.inpName.value = cleanName;
         this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
         this.context.editor.dom.inpPreset.focus();
@@ -950,6 +1070,26 @@ export default class PresetBasket {
     });
 
     popup.addEventListener("change", (e) => {
+      const weightInput = e.target.closest(".j0n4t-pg-weight-input");
+      if (weightInput) {
+        let val = parseFloat(weightInput.value);
+        if (isNaN(val)) return;
+
+        const currentStyleKey = chipElement.dataset.id;
+        const currentWMatch = currentStyleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+        const activeCoreKey = currentWMatch ? currentWMatch[1] : currentStyleKey;
+
+        let finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
+        chipElement.dataset.id = finalNewKey;
+
+        const selections = this.context.getSelectedArray();
+        if (startIndex < selections.length) {
+          selections.splice(startIndex, endIndex - startIndex, finalNewKey);
+          this.context.updateWidgetValue(selections);
+        }
+        return;
+      }
+
       const selectEl = e.target.closest("select");
       if (!selectEl) return;
       const group = selectEl.dataset.group;
@@ -994,17 +1134,21 @@ export default class PresetBasket {
     });
 
     popup.addEventListener("keydown", (e) => {
-      const items = Array.from(popup.querySelectorAll("[data-action], select, button"));
+      const items = Array.from(popup.querySelectorAll("[data-action], select, button, input"));
       const currentIndex = items.indexOf(document.activeElement);
 
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-        e.stopPropagation();
-        e.preventDefault();
-        items[(currentIndex + 1) % items.length].focus();
+        if (e.target.tagName !== 'INPUT') {
+          e.stopPropagation();
+          e.preventDefault();
+          items[(currentIndex + 1) % items.length].focus();
+        }
       } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-        e.stopPropagation();
-        e.preventDefault();
-        items[(currentIndex - 1 + items.length) % items.length].focus();
+        if (e.target.tagName !== 'INPUT') {
+          e.stopPropagation();
+          e.preventDefault();
+          items[(currentIndex - 1 + items.length) % items.length].focus();
+        }
       } else if (e.key === "Enter" || e.key === " ") {
         const actionEl = e.target.closest("[data-action], button");
         if (actionEl) {
@@ -1042,7 +1186,11 @@ export default class PresetBasket {
     this.closeHandler = closeHandler;
     setTimeout(() => {
       document.addEventListener("mousedown", closeHandler);
-      popup.querySelector("[data-action], select")?.focus();
+      if (focusWeight) {
+        popup.querySelector('.j0n4t-pg-weight-input')?.focus();
+      } else {
+        popup.querySelector("[data-action], select")?.focus();
+      }
     }, 10);
   }
 

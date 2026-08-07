@@ -214,10 +214,7 @@ class PresetGalleryApp {
 
   getSelectedArray() {
     return this.widget.value
-      ? this.widget.value
-        .split(",")
-        .map((v) => v.trim())
-        .filter(Boolean)
+      ? PresetUtils.splitComma(this.widget.value)
       : [];
   }
 
@@ -326,10 +323,7 @@ class PresetGalleryApp {
 
   async syncUI(val) {
     const arr = val
-      ? val
-        .split(",")
-        .map((v) => v.trim())
-        .filter(Boolean)
+      ? PresetUtils.splitComma(val)
       : [];
     this.grid.syncSelection(arr);
     this.basket.render(arr);
