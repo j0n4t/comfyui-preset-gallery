@@ -115,7 +115,7 @@ export default class AutocompleteManager {
 
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
-    const renderOnTop = spaceBelow < popupHeight && spaceAbove > spaceBelow;
+    const renderOnTop = spaceAbove >= popupHeight || spaceAbove > spaceBelow;
 
     let top;
     if (isBody) {
