@@ -9,6 +9,11 @@ export default class PresetBasket {
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
     .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
     .j0n4t-pg-basket-clear-btn:hover, .j0n4t-pg-basket-clear-btn:focus-visible { background: #912e2e; outline: 2px solid #fff; }
+    .j0n4t-pg-basket-copy-btn { display: flex; background: none; border: none; outline: none; padding: 0; }
+    .j0n4t-pg-basket-copy-btn:hover, .j0n4t-pg-basket-copy-btn:focus-visible { color: #007acc; transform: scale(1.1); }
+    .j0n4t-pg-var-reroll-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 13px; padding: 0 4px; outline: none; transition: 0.15s; }
+    .j0n4t-pg-var-reroll-btn:hover, .j0n4t-pg-var-reroll-btn:focus-visible { color: #fff; transform: scale(1.1); }
+    .j0n4t-pg-checkbox-wrap {height:auto; padding:0; margin-right:4px;}
     .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus-visible { filter: grayscale(0) brightness(1) !important; transform: scale(1.1); }
     .j0n4t-pg-basket-pool-wrapper { position: relative; margin: 4px; display: block; box-sizing: border-box; }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; padding: 4px; }
@@ -48,8 +53,6 @@ export default class PresetBasket {
     .j0n4t-pg-var-popup-row select { flex: 1; height: 20px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 10px; border-radius: 2px; padding: 0 2px; font-weight: 600; font-family: inherit; outline: none; cursor: pointer; }
     .j0n4t-pg-var-popup-row select:focus { border-color: #007acc; }
     .j0n4t-pg-var-popup-row select option { background: #1a1a1a; color: #fff; }
-    .j0n4t-pg-var-reroll-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 13px; padding: 0 4px; outline: none; transition: 0.15s; }
-    .j0n4t-pg-var-reroll-btn:hover, .j0n4t-pg-var-reroll-btn:focus-visible { color: #fff; transform: scale(1.1); }
   `;
 
   constructor(container, basket, textarea, context) {
@@ -213,6 +216,12 @@ export default class PresetBasket {
 
   initBasketActions() {
     const { dom } = this.context;
+
+    const copyBtn = dom.btnCopyBasket || this.container.querySelector(".j0n4t-pg-basket-copy-btn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => this.showCopyModal());
+    }
+
     dom.btnClearBasket.addEventListener("click", async () => {
       if (this.context.getSelectedArray().length && await PresetUtils.confirm("Empty basket?"))
         this.context.updateWidgetValue([]);
@@ -757,6 +766,62 @@ export default class PresetBasket {
 
     htmlBuffer += `<div class="j0n4t-pg-basket-add-btn" tabindex="0" role="button" title="Add new preset or keyword" aria-label="Add new keyword">+ Add</div>`;
     this.basket.innerHTML = htmlBuffer;
+  }
+
+  getCopyContent() {
+    if (this.container.classList.contains("raw-mode")) {
+      return this.textarea.value;
+    }
+    const selections = this.context.getSelectedArray();
+    if (!selections || selections.length === 0) return "";
+    const cache = this.context.cache || {};
+    const items = selections.map((key) => {
+      const item = cache[key];
+      if (!item) return key;
+      if (Array.isArray(item.variants) && item.variants.length > 1) {
+        const variantOptions = item.variants.map((v) => `${key}:${v}`).join("|");
+        return `{${variantOptions}}`;
+      }
+      return key;
+    });
+    return items.join(", ");
+  }
+
+  showCopyModal() {
+    const content = this.getCopyContent();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(content).catch(() => { });
+    }
+    const overlay = document.createElement("div");
+    overlay.className = "j0n4t-pg-modal-overlay";
+    const modal = document.createElement("div");
+    modal.className = "j0n4t-pg-modal";
+    modal.innerHTML = `
+    <h3>📋 Basket Contents</h3>
+    <textarea readonly style="width: 100%; height: 120px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; box-sizing: border-box; font-family: monospace; font-size: 11px; resize: vertical; margin: 8px 0;">${PresetUtils.escapeHTML(content)}</textarea>
+    <div class="j0n4t-pg-modal-actions">
+      <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-copy-btn" style="background:#007acc;">Copy</button>
+      <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-close-btn" style="background:#444;">Close</button>
+    </div>
+  `;
+    overlay.appendChild(modal);
+    const copyBtn = modal.querySelector("#j0n4t-pg-copy-btn");
+    const closeBtn = modal.querySelector("#j0n4t-pg-close-btn");
+    const close = () => overlay.remove();
+    copyBtn.addEventListener("click", () => {
+      const textarea = modal.querySelector("textarea");
+      textarea.select();
+      navigator.clipboard.writeText(textarea.value);
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => {
+        copyBtn.textContent = "Copy";
+      }, 1500);
+    });
+    closeBtn.addEventListener("click", close);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+    document.body.appendChild(overlay);
   }
 
   showChipMenu(chipElement, styleKey, item, startIndex, endIndex) {

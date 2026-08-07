@@ -105,22 +105,23 @@ class PresetGalleryApp {
     const wrap = document.createElement("div");
     wrap.className = "j0n4t-pg-wrap";
     wrap.innerHTML = `
-            <div class="j0n4t-pg-basket-container">
-              <div class="j0n4t-pg-basket-header">
-                <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
-                <div style="display: flex; gap: 4px; align-items: center;">
+      <div class="j0n4t-pg-basket-container">
+        <div class="j0n4t-pg-basket-header">
+          <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
+          <div style="display: flex; gap: 4px; align-items: center;">
+                  <button type="button" class="j0n4t-pg-basket-copy-btn" title="Copy basket content" aria-label="Copy basket content">${PresetUtils.icons.copy}</button>
                   <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?" style="font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">🎲</button>
                   <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
                   <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" aria-label="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
-                </div>
-              </div>
-              <div class="j0n4t-pg-basket-pool-wrapper">
-                <div class="j0n4t-pg-basket-pool" role="listbox" aria-label="Preset selections pool"></div>
-              </div>
-              <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..." spellcheck="false" aria-label="Raw text tokens"></textarea>
-            </div>
+          </div>
+        </div>
+        <div class="j0n4t-pg-basket-pool-wrapper">
+          <div class="j0n4t-pg-basket-pool" role="listbox" aria-label="Preset selections pool"></div>
+        </div>
+        <textarea class="j0n4t-pg-basket-raw-textarea" id="j0n4t-pg-raw-input" placeholder="Tokens..." spellcheck="false" aria-label="Raw text tokens"></textarea>
+      </div>
 
-            <div class="j0n4t-pg-control-bar">
+      <div class="j0n4t-pg-control-bar">
               <div class="j0n4t-pg-controls">
                 <div class="j0n4t-pg-view-btn" id="j0n4t-pg-toggle" tabindex="0" role="button" aria-expanded="false" title="Management Panel">${PresetUtils.icons.preset}</div>  
               </div>
@@ -166,7 +167,7 @@ class PresetGalleryApp {
             </div>
 
             <div class="j0n4t-pg-grid" role="listbox" aria-label="Preset Gallery List"></div>
-        `;
+  `;
     return {
       wrap,
       grid: wrap.querySelector(".j0n4t-pg-grid"),
@@ -192,6 +193,7 @@ class PresetGalleryApp {
       inpJsonFile: wrap.querySelector("#j0n4t-pg-json-file"),
       btnImport: wrap.querySelector("#j0n4t-pg-import-btn"),
       btnExport: wrap.querySelector("#j0n4t-pg-export-btn"),
+      btnCopyBasket: wrap.querySelector(".j0n4t-pg-basket-copy-btn"),
       btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn"),
       btnRerollBasket: wrap.querySelector(".j0n4t-pg-basket-reroll-btn"),
       chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
@@ -338,7 +340,7 @@ class PresetGalleryApp {
   bindEvents() {
     this.dom.wrap.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
-        const triggerable = e.target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
+        const triggerable = e.target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-copy-btn, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
         if (triggerable) {
           e.preventDefault();
           triggerable.click();
