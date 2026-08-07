@@ -415,7 +415,7 @@ export default class PresetBasket {
     );
   }
 
-  reRollChipGroup(chipIndex, groupRaw) {
+  reRollChipGroup(chipIndex, groupRaw, gIndex = null) {
     const activeList = this.context.getSelectedArray();
     const chipsData = this.getGroupedChips(activeList);
     const chipState = { rolls: this.context.variantRolls, counts: {} };
@@ -427,8 +427,15 @@ export default class PresetBasket {
       if (i === chipIndex) {
         const start = beforeCounts[targetGroup] || 0;
         const end = chipState.counts[targetGroup] || 0;
-        for (let k = start; k < end; k++) {
-          delete this.context.variantRolls[`${targetGroup}_${k}`];
+        if (gIndex !== null && gIndex !== undefined) {
+          const targetRollIndex = start + parseInt(gIndex, 10);
+          if (targetRollIndex < end) {
+            delete this.context.variantRolls[`${targetGroup}_${targetRollIndex}`];
+          }
+        } else {
+          for (let k = start; k < end; k++) {
+            delete this.context.variantRolls[`${targetGroup}_${k}`];
+          }
         }
         break;
       }
@@ -837,8 +844,14 @@ export default class PresetBasket {
     const parsed = this.parseChipDetails(source);
 
     let varRowsHtml = "";
+    const groupCounts = {}; // Track occurrences for duplicate variables
+
     if (parsed.variants.length > 0) {
       parsed.variants.forEach(({ groupRaw, groupName, val: currentSelectedVal }) => {
+        // Assign a unique index per group type
+        const gIndex = groupCounts[groupRaw] || 0;
+        groupCounts[groupRaw] = gIndex + 1;
+
         const matches = this.context.cache
           ? Object.keys(this.context.cache).filter((k) => {
             if (!this.context.cache[k]?.preset) return false;
@@ -858,8 +871,8 @@ export default class PresetBasket {
           const randomSelected = !currentSelectedVal ? "selected" : "";
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}</label>
-            <select data-group="${PresetUtils.escapeHTML(groupRaw)}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
-            <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetUtils.escapeHTML(groupRaw)}" title="Re-roll ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}" tabindex="0">🎲</button>
+            <select data-group="${PresetUtils.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
+            <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetUtils.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}" tabindex="0">🎲</button>
           </div>`;
         }
       });
@@ -891,7 +904,11 @@ export default class PresetBasket {
       const rerollBtn = e.target.closest(".j0n4t-pg-var-reroll-btn");
       if (rerollBtn) {
         e.stopPropagation();
-        this.reRollChipGroup(parseInt(chipElement.dataset.index), rerollBtn.dataset.group);
+        this.reRollChipGroup(
+          parseInt(chipElement.dataset.index),
+          rerollBtn.dataset.group,
+          rerollBtn.dataset.gindex
+        );
         this.closeChipMenu();
         return;
       }
@@ -936,20 +953,32 @@ export default class PresetBasket {
       const selectEl = e.target.closest("select");
       if (!selectEl) return;
       const group = selectEl.dataset.group;
+      const gIndex = parseInt(selectEl.dataset.gindex, 10);
       const selectedVal = selectEl.value;
 
       const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::[^{}]+)?\\}`);
+      const regex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::[^{}]+)?\\}`, 'g');
       const replacement = selectedVal ? `{${group}:${selectedVal}}` : `{${group}}`;
 
       const currentKey = chipElement.dataset.id;
       const currentPreset = chipElement.dataset.preset || "";
+      const replaceNth = (str) => {
+        let matchCount = 0;
+        return str.replace(regex, (match) => {
+          if (matchCount === gIndex) {
+            matchCount++;
+            return replacement;
+          }
+          matchCount++;
+          return match;
+        });
+      };
 
       let newStyleKey;
       if (currentKey.match(regex)) {
-        newStyleKey = currentKey.replace(regex, replacement);
+        newStyleKey = replaceNth(currentKey);
       } else if (currentPreset.match(regex)) {
-        newStyleKey = currentPreset.replace(regex, replacement);
+        newStyleKey = replaceNth(currentPreset);
       } else {
         return;
       }
