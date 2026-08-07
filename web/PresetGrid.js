@@ -78,11 +78,26 @@ export default class PresetGrid {
       : [];
     this.dom.searchClear.style.display = query ? "flex" : "none";
 
+    const hideBtn = this.dom.btnHideHidden;
+    const showHidden = hideBtn ? hideBtn.classList.contains("active") : false;
+    const shouldHideHidden = !showHidden;
+
+    const isHiddenPreset = (el, rawGroup) => {
+      const styleKey = el.dataset.style || "";
+      const presetName = PresetUtils.getPresetName(styleKey);
+      const folder = rawGroup || PresetUtils.getPresetFolder(styleKey) || "";
+      return styleKey.startsWith("_") || presetName.startsWith("_") || folder.startsWith("_");
+    };
+
     this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach((el) => {
+      const matchesQuery =
+        !queryWords.length ||
+        queryWords.every((word) => el.dataset.searchBlob.includes(word));
+      const isHidden = isHiddenPreset(el);
+
       el.classList.toggle(
         "j0n4t-pg-hidden",
-        queryWords.length &&
-        !queryWords.every((word) => el.dataset.searchBlob.includes(word))
+        !matchesQuery || (shouldHideHidden && isHidden)
       );
     });
 
@@ -90,15 +105,18 @@ export default class PresetGrid {
       this.dom.grid
         .querySelectorAll(".j0n4t-pg-group-header")
         .forEach((header) => {
+          const rawGroup = header.dataset.groupRaw || "";
           let next = header.nextElementSibling,
             hasVisibleChildren = false;
           while (next && !next.classList.contains("j0n4t-pg-group-header")) {
-            const matches =
+            const matchesQuery =
               !queryWords.length ||
               queryWords.every((word) =>
                 (next.dataset.searchBlob || "").includes(word)
               );
-            if (matches) {
+            const isHidden = isHiddenPreset(next, rawGroup);
+
+            if (matchesQuery && !(shouldHideHidden && isHidden)) {
               hasVisibleChildren = true;
               next.classList.toggle(
                 "j0n4t-pg-hidden",
@@ -356,6 +374,21 @@ export default class PresetGrid {
       this.executeFilterPipeline(this.dom.search.value);
     });
 
+    const hideBtn = this.dom.btnHideHidden;
+    if (hideBtn) {
+      const isShowActive = localStorage.getItem("comfy_preset_gallery_show_hidden") === "true";
+      hideBtn.classList.toggle("active", isShowActive);
+      hideBtn.setAttribute("aria-pressed", String(isShowActive));
+
+      hideBtn.addEventListener("click", () => {
+        const willShow = !hideBtn.classList.contains("active");
+        localStorage.setItem("comfy_preset_gallery_show_hidden", String(willShow));
+        hideBtn.classList.toggle("active", willShow);
+        hideBtn.setAttribute("aria-pressed", String(willShow));
+        this.executeFilterPipeline(this.dom.search.value);
+      });
+    }
+
     this.dom.btnGlobalCollapse.addEventListener("click", () => {
       const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
       const collapseAll = this.dom.btnGlobalCollapse.title === "Collapse All";
@@ -476,8 +509,6 @@ export default class PresetGrid {
           }
 
           if (isValid) {
-            // Prioritize distance along the moving axis while favoring vertical/horizontal alignment
-
             const score = primaryDist + secondaryDist * 1.5;
             if (score < minScore) {
               minScore = score;

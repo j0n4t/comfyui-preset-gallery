@@ -137,6 +137,7 @@ class PresetGalleryApp {
                     <div class="j0n4t-pg-popup-section" id="j0n4t-pg-group-controls">
                       <div class="j0n4t-pg-view-btn" id="j0n4t-pg-global-collapse" tabindex="0" role="button" title="Collapse All" aria-label="Collapse All">${PresetUtils.icons.collapse}</div>
                       <div class="j0n4t-pg-view-btn" id="j0n4t-pg-group-toggle" tabindex="0" role="button" title="Toggle Grouping" aria-label="Toggle Grouping" aria-pressed="false">${PresetUtils.icons.group}</div>
+                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-hide-hidden" tabindex="0" role="button" title="Toggle Hidden Presets" aria-label="Toggle Hidden Presets" aria-pressed="false">${PresetUtils.icons.hidden}</div>
                     </div>
                   </div>
                 </div>
@@ -179,6 +180,7 @@ class PresetGalleryApp {
       viewsContainer: wrap.querySelector(".j0n4t-pg-views"),
       chkGroup: wrap.querySelector("#j0n4t-pg-group-toggle"),
       btnGlobalCollapse: wrap.querySelector("#j0n4t-pg-global-collapse"),
+      btnHideHidden: wrap.querySelector("#j0n4t-pg-hide-hidden"),
       editorPreview: wrap.querySelector("#j0n4t-pg-editor-preview"),
       inpName: wrap.querySelector("#j0n4t-pg-name"),
       inpFolder: wrap.querySelector("#j0n4t-pg-folder"),
