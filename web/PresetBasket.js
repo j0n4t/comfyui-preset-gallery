@@ -698,10 +698,9 @@ export default class PresetBasket {
       }
       const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
 
-      // const baseExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), { rolls: {}, counts: {} });
       const parsed = this.parseChipDetails(chipExpanded);
       const baseParsed = this.parseChipDetails(item.preset);
-      const presetMatch = parsed.presetMatch || baseParsed.presetMatch;
+      const presetMatch = parsed.presetMatch;
 
       let cleanLabel, bgStyle, tooltipTitle, evalId;
 
