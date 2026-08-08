@@ -13,7 +13,7 @@ const MIN_NODE_WIDTH = 400;
 
 class PresetGalleryApp {
   static WRAP_STYLES = /*css*/ `
-    .j0n4t-pg-wrap { display: flex; flex: auto; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 640px; min-height: 100%; font-family: sans-serif; position: relative; outline: none; overflow: hidden; resize: vertical; }
+    .j0n4t-pg-wrap { display: flex; flex: auto; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; min-height: 100%; font-family: sans-serif; position: relative; outline: none; overflow: hidden; resize: vertical; }
     .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-more-options-wrap { display: none; }
     .j0n4t-pg-basket-container { display: flex; flex-direction: column; min-height: 80px;  resize: vertical; background: #15151580; border: 1px dashed #777; border-radius: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative;  overflow-y: auto; overflow-x: hidden; }
     .j0n4t-pg-basket-pool-wrapper { flex: 1 1 auto; overflow-y: auto; position: relative; margin: 4px; display: block; box-sizing: border-box; }
@@ -115,7 +115,7 @@ class PresetGalleryApp {
           <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
           <div style="display: flex; gap: 4px; align-items: center;">
                   <button type="button" class="j0n4t-pg-basket-copy-btn" title="Copy basket content" aria-label="Copy basket content">${PresetUtils.icons.copy}</button>
-                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?" style="font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">🎲</button>
+                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?" style="display:flex; font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">${PresetUtils.icons.dice}</button>
                   <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
                   <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" aria-label="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
           </div>

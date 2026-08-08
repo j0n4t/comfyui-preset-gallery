@@ -1,4 +1,5 @@
-import AutocompleteManager from "./AutocompleteManager.js";
+import ChipMenuManager from "./ChipMenuManager.js";
+import InlineEditorManager from "./InlineEditorManager.js";
 import ModalUtils from "./ModalUtils.js";
 import PresetUtils from "./PresetUtils.js";
 import RawTextareaManager from "./RawTextareaManager.js";
@@ -72,10 +73,11 @@ export default class PresetBasket {
     this.textarea = textarea;
     this.context = context;
     this.dropIndicator = null;
-    this.popupEl = null;
     this.currentMatches = [];
     this.activeIndex = 0;
     this._updatingTextarea = false;
+    this.inlineEditorManager = new InlineEditorManager(this.context, this.basket);
+    this.chipMenuManager = new ChipMenuManager(this.context, this);
 
     PresetUtils.injectStyles("j0n4t-pg-basket-container-styles", PresetBasket.BASKET_CONTAINER_STYLES);
     PresetUtils.injectStyles("j0n4t-pg-basket-chip-etc-styles", PresetBasket.BASKET_CHIP_ETC_STYLES);
@@ -249,7 +251,7 @@ export default class PresetBasket {
       const chip = e.target.closest('.j0n4t-pg-basket-chip');
       if (chip) {
         e.stopPropagation();
-        this.closeChipMenu();
+        this.chipMenuManager.close();
 
         const styleKey = chip.dataset.id;
         const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
@@ -262,16 +264,16 @@ export default class PresetBasket {
           editVal = rawPreset;
         }
 
-        this.spawnInlineEditor(chip, editVal, parseInt(chip.dataset.start), parseInt(chip.dataset.end));
+        this.inlineEditorManager.spawn(chip, editVal, parseInt(chip.dataset.start), parseInt(chip.dataset.end));
       } else {
         e.stopPropagation();
-        this.spawnInlineEditor(null, "");
+        this.inlineEditorManager.spawn(null, "");
       }
     });
 
     this.basket.addEventListener("click", (e) => {
       const addBtn = e.target.closest('.j0n4t-pg-basket-add-btn');
-      if (addBtn) return this.spawnInlineEditor(null, "");
+      if (addBtn) return this.inlineEditorManager.spawn(null, "");
 
       if (e.target.closest("input")) return;
 
@@ -287,7 +289,7 @@ export default class PresetBasket {
         const cachedItem = this.context.cache?.[coreKey] || this.context.cache?.[styleKey];
         const evalId = chip.dataset.evalId || coreKey;
 
-        this.showChipMenu(chip, styleKey, cachedItem, parseInt(chip.dataset.start), parseInt(chip.dataset.end), !!weightBadge);
+        this.chipMenuManager.show(chip, styleKey, cachedItem, parseInt(chip.dataset.start), parseInt(chip.dataset.end), !!weightBadge);
 
         // Prevent generic gallery locate behavior if specifically clicking the weight pill
         if (weightBadge) return;
@@ -475,185 +477,6 @@ export default class PresetBasket {
       }
     }
     this.context.syncUI(this.context.widget.value);
-  }
-
-  spawnInlineEditor(chipElement, initialValue, startIndex = undefined, endIndex = undefined) {
-    const isNew = !chipElement;
-    const inputHtml = `<input type="text" class="j0n4t-pg-inline-edit" enterkeyhint="enter" value="${PresetUtils.escapeHTML(initialValue || '')}" tabindex="0" />`;
-    let input;
-
-    if (isNew) {
-      const addBtn = this.basket.querySelector(".j0n4t-pg-basket-add-btn");
-      const newChipHtml = `<div class="j0n4t-pg-basket-chip inline-editing">${inputHtml}</div>`;
-      if (addBtn) {
-        addBtn.insertAdjacentHTML("beforebegin", newChipHtml);
-        chipElement = addBtn.previousElementSibling;
-      } else {
-        this.basket.insertAdjacentHTML("beforeend", newChipHtml);
-        chipElement = this.basket.lastElementChild;
-      }
-      input = chipElement.querySelector("input");
-    } else {
-      if (chipElement.classList.contains("inline-editing")) return;
-      chipElement.classList.add("inline-editing");
-      chipElement.draggable = false;
-      const label = chipElement.querySelector(".j0n4t-pg-basket-chip-label");
-      const weight = chipElement.querySelector(".j0n4t-pg-basket-chip-weight");
-      if (label) label.style.display = "none";
-      if (weight) weight.style.display = "none";
-      chipElement.insertAdjacentHTML("afterbegin", inputHtml);
-      input = chipElement.querySelector("input");
-    }
-
-    input.focus();
-    input.selectionStart = 0;
-    input.selectionEnd = input.value.length;
-
-    const finishEdit = (save) => {
-      const newVal = input.value.trim();
-      try {
-        input.remove();
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (e) {
-        // DOM element might already be detached
-      }
-
-      if (isNew) chipElement.remove();
-      else {
-        chipElement.classList.remove("inline-editing");
-        chipElement.draggable = true;
-        const label = chipElement.querySelector(".j0n4t-pg-basket-chip-label");
-        const weight = chipElement.querySelector(".j0n4t-pg-basket-chip-weight");
-        if (label) label.style.display = "";
-        if (weight) weight.style.display = "";
-      }
-
-      if (save) {
-        const selections = this.context.getSelectedArray();
-        if (isNew && newVal) {
-          selections.push(newVal);
-          this.context.updateWidgetValue(selections);
-        } else if (!isNew && newVal !== initialValue) {
-          if (startIndex !== undefined && endIndex !== undefined) {
-            const newValues = newVal.includes(",") ? PresetUtils.splitComma(newVal) : [newVal];
-            selections.splice(startIndex, endIndex - startIndex, ...newValues);
-            this.context.updateWidgetValue(selections);
-          } else {
-            const idx = selections.indexOf(initialValue);
-            if (idx !== -1) {
-              if (newVal) selections[idx] = newVal;
-              else selections.splice(idx, 1);
-              this.context.updateWidgetValue(selections);
-            }
-          }
-        }
-      }
-    };
-
-    new AutocompleteManager({
-      input: input,
-      container: document.body,
-      getMatches: (query, cursor) => {
-        const textBeforeCursor = query.substring(0, cursor);
-        const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
-        const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
-        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
-
-        if (isInsideBrackets) {
-          const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
-          const colonIndex = bracketContent.indexOf(':');
-
-          if (colonIndex === -1) {
-            const groupQuery = bracketContent.trim().toLowerCase();
-            const groupsSet = new Set();
-            for (const k of Object.keys(this.context.cache)) {
-              const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(k) : k.split('/')[0];
-              if (folder) groupsSet.add(folder);
-            }
-            const groups = Array.from(groupsSet);
-            const dummyCache = {};
-            groups.forEach(g => { dummyCache[g] = { preset: g }; });
-            return PresetUtils.getTopMatches(groups, groupQuery, (g) => g, dummyCache);
-          } else {
-            const groupName = bracketContent.substring(0, colonIndex).trim().toLowerCase();
-            const presetQuery = bracketContent.substring(colonIndex + 1).trim().toLowerCase();
-
-            const presetMatches = Object.keys(this.context.cache).filter((k) => {
-              if (!this.context.cache[k]?.preset) return false;
-              const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(k) : k.split('/')[0];
-              return folder.toLowerCase() === groupName || folder.toLowerCase().startsWith(groupName + "/") || folder.toLowerCase().endsWith("/" + groupName);
-            });
-
-            return PresetUtils.getTopMatches(presetMatches, presetQuery, (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]), this.context.cache);
-          }
-        } else {
-          query = query.trim().toLowerCase();
-          if (!query) return [];
-          return PresetUtils.getTopMatches(Object.keys(this.context.cache), query, (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]), this.context.cache);
-        }
-      },
-      renderItem: (match) => {
-        const isPreset = this.context.cache && this.context.cache[match];
-        if (isPreset) {
-          return `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`;
-        } else {
-          return `<span>📁 ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
-        }
-      },
-      onSelect: (match) => {
-        const query = input.value;
-        const cursor = input.selectionStart;
-        const textBeforeCursor = query.substring(0, cursor);
-        const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
-        const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
-        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
-
-        if (isInsideBrackets) {
-          const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
-          const colonIndex = bracketContent.indexOf(':');
-
-          if (colonIndex === -1) {
-            const before = query.substring(0, lastOpenBrace);
-            const after = query.substring(cursor);
-            input.value = `${before}{${match}:${after}`;
-            const newCursor = before.length + match.length + 2;
-            input.setSelectionRange(newCursor, newCursor);
-            input.focus();
-            return true;
-          } else {
-            const groupName = bracketContent.substring(0, colonIndex).trim();
-            const before = query.substring(0, lastOpenBrace);
-            const after = query.substring(cursor);
-            input.value = `${before}{${groupName}:${match}}${after}`;
-            finishEdit(true);
-            return false;
-          }
-        } else {
-          input.value = match;
-          finishEdit(true);
-          return false;
-        }
-      },
-      onKeyDown: (e, { manager }) => {
-        if (!manager.isOpen) {
-          if (e.key === "Enter") {
-            e.stopPropagation();
-            e.preventDefault();
-            finishEdit(true);
-            return true;
-          } else if (e.key === "Escape") {
-            e.stopPropagation();
-            e.preventDefault();
-            finishEdit(false);
-            return true;
-          }
-        }
-      },
-      onBlur: () => {
-        finishEdit(false);
-        return true;
-      },
-    });
   }
 
   getGroupedChips(activeList) {
@@ -893,301 +716,6 @@ export default class PresetBasket {
     });
   }
 
-  showChipMenu(chipElement, styleKey, item, startIndex, endIndex, focusWeight = false) {
-    if (this.activeChipMenuEl) {
-      this.activeChipMenuEl.classList.remove("active-menu");
-    }
-    this.popupEl?.remove();
-    chipElement.classList.add("active-menu");
-    this.activeChipMenuEl = chipElement;
-
-    const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-    let coreKey = wMatch ? wMatch[1] : styleKey;
-    let currentWeight = wMatch ? parseFloat(wMatch[2]) : 1.0;
-
-    const rawPreset = chipElement.dataset.preset || "";
-    const source = coreKey.match(/\{[^{}]+\}/) ? coreKey : (rawPreset || item?.preset || "");
-    const parsed = this.parseChipDetails(source);
-
-    let varRowsHtml = "";
-    const groupCounts = {};
-
-    if (parsed.variants.length > 0) {
-      parsed.variants.forEach(({ groupRaw, groupName, val: currentSelectedVal }) => {
-        const gIndex = groupCounts[groupRaw] || 0;
-        groupCounts[groupRaw] = gIndex + 1;
-
-        const matches = this.context.cache
-          ? Object.keys(this.context.cache).filter((k) => {
-            if (!this.context.cache[k]?.preset) return false;
-            const folder = PresetUtils.getPresetFolder(k).toLowerCase();
-            return folder === groupName || folder.startsWith(groupName + "/") || folder.endsWith("/" + groupName);
-          })
-          : [];
-
-        if (matches.length > 0) {
-          const optionsHtml = matches
-            .map((m) => {
-              const name = PresetUtils.getPresetName(m);
-              const isSelected = currentSelectedVal && (m === currentSelectedVal || name.toLowerCase() === currentSelectedVal.toLowerCase());
-              return `<option value="${PresetUtils.escapeHTML(name)}" ${isSelected ? "selected" : ""}>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(name))}</option>`;
-            })
-            .join("");
-          const randomSelected = !currentSelectedVal ? "selected" : "";
-          varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
-            <label>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}</label>
-            <select data-group="${PresetUtils.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
-            <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetUtils.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}" tabindex="0">🎲</button>
-          </div>`;
-        }
-      });
-    }
-
-    let varSectionHtml = varRowsHtml ? `<div class="j0n4t-pg-var-popup-container">${varRowsHtml}</div>` : "";
-    const swapIcon = PresetUtils.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
-
-    const weightSectionHtml = `
-      <div class="j0n4t-pg-weight-modifier" style="display: ${focusWeight ? 'flex' : 'none'}; justify-content: center; align-items: center; gap: 6px; padding: 4px; background: #222; border-bottom: 1px solid #444;">
-          <button class="j0n4t-pg-weight-btn" data-action="weight-minus" tabindex="0" title="Decrease weight">-</button>
-          <input type="number" step="0.05" class="j0n4t-pg-weight-input" value="${currentWeight}" tabindex="0" title="Set weight">
-          <button class="j0n4t-pg-weight-btn" data-action="weight-plus" tabindex="0" title="Increase weight">+</button>
-      </div>
-    `;
-
-    const weightToggleBtn = `
-      <div class="j0n4t-pg-chip-popup-item" data-action="toggle-weight" title="Adjust Weight" tabindex="0" role="menuitem">
-        <span style="font-family:monospace; font-weight:bold; line-height:1; font-size:12px;">+/-</span>
-      </div>
-    `;
-
-    const popupHtml = `
-      <div class="j0n4t-pg-chip-popup" tabindex="-1" role="menu">
-        ${weightSectionHtml}
-        ${varSectionHtml}
-        <div class="j0n4t-pg-chip-popup-actions">
-          ${weightToggleBtn}
-          <div class="j0n4t-pg-chip-popup-item" data-action="swap" title="Swap Preset" tabindex="0" role="menuitem">${swapIcon}</div>
-          <div class="j0n4t-pg-chip-popup-item" data-action="edit" title="Edit" tabindex="0" role="menuitem">${PresetUtils.icons.edit}</div>
-          ${item
-        ? `<div class="j0n4t-pg-chip-popup-item" data-action="locate" title="Locate in Gallery" tabindex="0" role="menuitem">${PresetUtils.icons.eye}</div>`
-        : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip" tabindex="0" role="menuitem">${PresetUtils.icons.add}</div>`
-      }
-          <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove" tabindex="0" role="menuitem">${PresetUtils.icons.close}</div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', popupHtml);
-    const popup = document.body.lastElementChild;
-    this.popupEl = popup;
-
-    popup.addEventListener("click", (e) => {
-      const rerollBtn = e.target.closest(".j0n4t-pg-var-reroll-btn");
-      if (rerollBtn) {
-        e.stopPropagation();
-        this.reRollChipGroup(
-          parseInt(chipElement.dataset.index),
-          rerollBtn.dataset.group,
-          rerollBtn.dataset.gindex
-        );
-        this.closeChipMenu();
-        return;
-      }
-
-      const actionEl = e.target.closest("[data-action]");
-      if (!actionEl) return;
-      e.stopPropagation();
-
-      const action = actionEl.dataset.action;
-
-      if (action === "toggle-weight") {
-        const wMod = popup.querySelector('.j0n4t-pg-weight-modifier');
-        wMod.style.display = wMod.style.display === 'none' ? 'flex' : 'none';
-        if (wMod.style.display === 'flex') {
-          wMod.querySelector('input').focus();
-        }
-        return;
-      }
-
-      if (action === "weight-minus" || action === "weight-plus") {
-        const input = popup.querySelector('.j0n4t-pg-weight-input');
-        let val = parseFloat(input.value) || 1.0;
-        val += (action === "weight-plus" ? 0.05 : -0.05);
-        input.value = Number(val.toFixed(2));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        return;
-      }
-
-      this.closeChipMenu();
-      if (action === "edit") {
-        if (item) this.context.openEditorForPreset(coreKey, true);
-        else {
-          let editVal = styleKey;
-          const rawPreset = chipElement.dataset.preset;
-          if (wMatch && rawPreset) {
-            editVal = `(${rawPreset}:${wMatch[2]})`;
-          } else if (rawPreset) {
-            editVal = rawPreset;
-          }
-          this.spawnInlineEditor(chipElement, editVal, startIndex, endIndex);
-        }
-      } else if (action === "swap") {
-        let editVal = this.context.cache[coreKey]?.preset || coreKey;
-        if (wMatch && editVal) {
-          editVal = `(${editVal}:${currentWeight})`;
-        }
-        this.spawnInlineEditor(chipElement, editVal, startIndex, endIndex);
-      } else if (action === "locate") {
-        let locateKey = coreKey;
-        const presetVal = chipElement.dataset.preset;
-        if (presetVal) {
-          const presetMatch = this.findPresetMatch(presetVal);
-          if (presetMatch) locateKey = presetMatch.key;
-        }
-        this.locatePreset(locateKey);
-      } else if (action === "create") {
-        this.context.setPanelCollapseState(false);
-        this.context.editor.clearFields();
-        this.context.editor.dom.inpPreset.value = item ? item.preset : coreKey;
-        this.context.editor.rawPresetManager?.updateHighlights();
-        const cleanName = coreKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop().replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
-        if (cleanName) this.context.editor.dom.inpName.value = cleanName;
-        this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
-        this.context.editor.dom.inpPreset.focus();
-      } else if (action === "del") {
-        const selections = this.context.getSelectedArray();
-        if (startIndex !== undefined && endIndex !== undefined) {
-          selections.splice(startIndex, endIndex - startIndex);
-          this.context.updateWidgetValue(selections);
-        }
-      }
-    });
-
-    popup.addEventListener("change", (e) => {
-      const weightInput = e.target.closest(".j0n4t-pg-weight-input");
-      if (weightInput) {
-        let val = parseFloat(weightInput.value);
-        if (isNaN(val)) return;
-
-        const currentStyleKey = chipElement.dataset.id;
-        const currentWMatch = currentStyleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-        const activeCoreKey = currentWMatch ? currentWMatch[1] : currentStyleKey;
-
-        let finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
-        chipElement.dataset.id = finalNewKey;
-
-        const selections = this.context.getSelectedArray();
-        if (startIndex < selections.length) {
-          selections.splice(startIndex, endIndex - startIndex, finalNewKey);
-          this.context.updateWidgetValue(selections);
-        }
-        return;
-      }
-
-      const selectEl = e.target.closest("select");
-      if (!selectEl) return;
-      const group = selectEl.dataset.group;
-      const gIndex = parseInt(selectEl.dataset.gindex, 10);
-      const selectedVal = selectEl.value;
-
-      const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::[^{}]+)?\\}`, 'g');
-      const replacement = selectedVal ? `{${group}:${selectedVal}}` : `{${group}}`;
-
-      const currentKey = chipElement.dataset.id;
-      const currentPreset = chipElement.dataset.preset || "";
-      const replaceNth = (str) => {
-        let matchCount = 0;
-        return str.replace(regex, (match) => {
-          if (matchCount === gIndex) {
-            matchCount++;
-            return replacement;
-          }
-          matchCount++;
-          return match;
-        });
-      };
-
-      let newStyleKey;
-      if (currentKey.match(regex)) {
-        newStyleKey = replaceNth(currentKey);
-      } else if (currentPreset.match(regex)) {
-        newStyleKey = replaceNth(currentPreset);
-      } else {
-        return;
-      }
-
-      chipElement.dataset.id = newStyleKey;
-      chipElement.dataset.preset = newStyleKey;
-
-      const selections = this.context.getSelectedArray();
-      if (startIndex < selections.length) {
-        selections.splice(startIndex, endIndex - startIndex, newStyleKey);
-        this.context.updateWidgetValue(selections);
-      }
-    });
-
-    popup.addEventListener("keydown", (e) => {
-      const items = Array.from(popup.querySelectorAll("[data-action], select, button, input"));
-      const currentIndex = items.indexOf(document.activeElement);
-
-      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-        if (e.target.tagName !== 'INPUT') {
-          e.stopPropagation();
-          e.preventDefault();
-          items[(currentIndex + 1) % items.length].focus();
-        }
-      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-        if (e.target.tagName !== 'INPUT') {
-          e.stopPropagation();
-          e.preventDefault();
-          items[(currentIndex - 1 + items.length) % items.length].focus();
-        }
-      } else if (e.key === "Enter" || e.key === " ") {
-        const actionEl = e.target.closest("[data-action], button");
-        if (actionEl) {
-          e.stopPropagation();
-          e.preventDefault();
-          actionEl.click();
-        }
-      } else if (e.key === "Escape") {
-        e.stopPropagation();
-        e.preventDefault();
-        const parentChip = this.activeChipMenuEl;
-        this.closeChipMenu();
-        parentChip?.focus();
-      }
-    });
-
-    popup.addEventListener("mousedown", (e) => e.stopPropagation());
-
-    const rect = chipElement.getBoundingClientRect();
-    const topPos = window.scrollY + rect.top - popup.offsetHeight - 4;
-    let leftPos = window.scrollX + rect.left;
-    const popupWidth = popup.offsetWidth;
-    if (rect.left + popupWidth > window.innerWidth) {
-      leftPos = Math.max(window.scrollX + 8, window.scrollX + rect.right - popupWidth);
-    }
-    popup.style.top = `${topPos < window.scrollY ? window.scrollY + rect.bottom + 4 : topPos}px`;
-    popup.style.left = `${leftPos}px`;
-
-    const closeHandler = (e) => {
-      if (!popup.contains(e.target) && e.target !== chipElement) {
-        this.closeChipMenu();
-        document.removeEventListener("mousedown", closeHandler);
-      }
-    };
-    this.closeHandler = closeHandler;
-    setTimeout(() => {
-      document.addEventListener("mousedown", closeHandler);
-      if (focusWeight) {
-        popup.querySelector('.j0n4t-pg-weight-input')?.focus();
-      } else {
-        popup.querySelector("[data-action], select")?.focus();
-      }
-    }, 10);
-  }
-
   locatePreset(styleKey) {
     const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`);
     if (itemEl) {
@@ -1216,18 +744,5 @@ export default class PresetBasket {
         }, 800);
       }, 10);
     }
-  }
-
-  closeChipMenu() {
-    if (this.closeHandler) {
-      document.removeEventListener("mousedown", this.closeHandler);
-      this.closeHandler = null;
-    }
-    if (this.activeChipMenuEl) {
-      this.activeChipMenuEl.classList.remove("active-menu");
-      this.activeChipMenuEl = null;
-    }
-    this.popupEl?.remove();
-    this.popupEl = null;
   }
 }
