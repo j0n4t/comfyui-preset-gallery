@@ -1,3 +1,4 @@
+import ModalUtils from "./ModalUtils.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetUtils from "./PresetUtils.js";
 
@@ -276,7 +277,7 @@ export default class PresetGrid {
                     )
                 );
               } else {
-                await PresetUtils.alert("Rename failed");
+                await ModalUtils.alert("Rename failed");
               }
             };
 

@@ -1,4 +1,5 @@
 import AutocompleteManager from "./AutocompleteManager.js";
+import ModalUtils from "./ModalUtils.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetUtils from "./PresetUtils.js";
 import RawTextareaManager from "./RawTextareaManager.js";
@@ -162,7 +163,7 @@ export default class PresetEditor {
     if (!name) {
       const pt = this.dom.inpPreset.value.trim();
       if (!pt) {
-        await PresetUtils.alert("Keywords or Name required to save.");
+        await ModalUtils.alert("Keywords or Name required to save.");
         return;
       }
       name =
@@ -184,7 +185,7 @@ export default class PresetEditor {
     if (this.currentMode === "new") {
       if (
         this.context.cache[uniqueKey] &&
-        !(await PresetUtils.confirm(`Overwrite "${uniqueKey}"?`))
+        !(await ModalUtils.confirm(`Overwrite "${uniqueKey}"?`))
       )
         return;
     }
@@ -214,7 +215,7 @@ export default class PresetEditor {
     });
 
     if (!res.success) {
-      await PresetUtils.alert("Save failed.");
+      await ModalUtils.alert("Save failed.");
       return;
     }
 
@@ -240,10 +241,10 @@ export default class PresetEditor {
 
   async handleDelete() {
     if (!this.editingKey || !this.context.cache[this.editingKey]) {
-      await PresetUtils.alert("No valid target.");
+      await ModalUtils.alert("No valid target.");
       return;
     }
-    if (!(await PresetUtils.confirm(`Delete "${this.editingKey}"?`))) return;
+    if (!(await ModalUtils.confirm(`Delete "${this.editingKey}"?`))) return;
 
     await PresetGalleryAPI.deletePreset(this.editingKey);
     await this.context.loadGallery();
@@ -269,7 +270,7 @@ export default class PresetEditor {
     this.dom.editorPreview.addEventListener("click", async (e) => {
       if (e.target.closest("#j0n4t-pg-rm-img-btn")) {
         e.stopPropagation();
-        if (await PresetUtils.confirm("Clear image?")) {
+        if (await ModalUtils.confirm("Clear image?")) {
           this.resetImageState();
           markDirty();
         }
@@ -281,7 +282,7 @@ export default class PresetEditor {
         e.preventDefault();
         if (e.target.closest("#j0n4t-pg-rm-img-btn")) {
           e.stopPropagation();
-          if (await PresetUtils.confirm("Clear image?")) {
+          if (await ModalUtils.confirm("Clear image?")) {
             this.resetImageState();
             markDirty();
           }

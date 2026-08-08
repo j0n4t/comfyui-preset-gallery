@@ -1,4 +1,5 @@
 import AutocompleteManager from "./AutocompleteManager.js";
+import ModalUtils from "./ModalUtils.js";
 import PresetUtils from "./PresetUtils.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 
@@ -233,7 +234,7 @@ export default class PresetBasket {
     }
 
     dom.btnClearBasket.addEventListener("click", async () => {
-      if (this.context.getSelectedArray().length && await PresetUtils.confirm("Empty basket?"))
+      if (this.context.getSelectedArray().length && await ModalUtils.confirm("Empty basket?"))
         this.context.updateWidgetValue([]);
     });
 
@@ -861,41 +862,35 @@ export default class PresetBasket {
     return items.join(", ");
   }
 
-  showCopyModal() {
+  async showCopyModal() {
     const content = this.getCopyContent();
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(content).catch(() => { });
     }
-    const overlay = document.createElement("div");
-    overlay.className = "j0n4t-pg-modal-overlay";
-    const modal = document.createElement("div");
-    modal.className = "j0n4t-pg-modal";
-    modal.innerHTML = `
-    <h3>📋 Basket Contents</h3>
-    <textarea readonly style="width: 100%; height: 120px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; box-sizing: border-box; font-family: monospace; font-size: 11px; resize: vertical; margin: 8px 0;">${PresetUtils.escapeHTML(content)}</textarea>
-    <div class="j0n4t-pg-modal-actions">
-      <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-copy-btn" style="background:#007acc;">Copy</button>
-      <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-close-btn" style="background:#444;">Close</button>
-    </div>
-  `;
-    overlay.appendChild(modal);
-    const copyBtn = modal.querySelector("#j0n4t-pg-copy-btn");
-    const closeBtn = modal.querySelector("#j0n4t-pg-close-btn");
-    const close = () => overlay.remove();
-    copyBtn.addEventListener("click", () => {
-      const textarea = modal.querySelector("textarea");
-      textarea.select();
-      navigator.clipboard.writeText(textarea.value);
-      copyBtn.textContent = "Copied!";
-      setTimeout(() => {
-        copyBtn.textContent = "Copy";
-      }, 1500);
+    ModalUtils.show({
+      title: "📋 Basket Contents",
+      content: `<textarea readonly style="width: 100%; height: 120px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; box-sizing: border-box; font-family: monospace; font-size: 11px; resize: vertical; margin: 8px 0;">${PresetUtils.escapeHTML(content)}</textarea>`,
+      buttons: [
+        {
+          text: "Copy",
+          className: "",
+          isDefault: true,
+          callback: () => {
+            const textarea = document.querySelector(".j0n4t-pg-modal textarea");
+            if (textarea) {
+              textarea.select();
+              navigator.clipboard.writeText(textarea.value);
+              const copyBtn = document.querySelector(".j0n4t-pg-modal .j0n4t-pg-btn");
+              if (copyBtn) {
+                copyBtn.textContent = "Copied!";
+                setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+              }
+            }
+          }
+        },
+        { text: "Close", closeOnFinish: true }
+      ]
     });
-    closeBtn.addEventListener("click", close);
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) close();
-    });
-    document.body.appendChild(overlay);
   }
 
   showChipMenu(chipElement, styleKey, item, startIndex, endIndex, focusWeight = false) {

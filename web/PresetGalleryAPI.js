@@ -1,3 +1,4 @@
+import ModalUtils from "./ModalUtils.js";
 import NestedPresetUtils from "./NestedPresetUtils.js";
 import PresetUtils from "./PresetUtils.js";
 import YAMLUtils from "./YAMLUtils.js";
@@ -532,7 +533,7 @@ export default class PresetGalleryAPI {
   static async showExportModal(onExport) {
     const presets = await PresetGalleryAPI.getPresets();
     if (Object.keys(presets).length === 0) {
-      await PresetUtils.alert("No presets available to export.");
+      await ModalUtils.alert("No presets available to export.");
       return;
     }
 
@@ -590,7 +591,7 @@ export default class PresetGalleryAPI {
     modal.querySelector("#j0n4t-pg-exp-confirm").addEventListener("click", async () => {
       const selectedKeys = tree.getSelectedKeys();
       if (!selectedKeys.length) {
-        await PresetUtils.alert("Please select at least one preset to export.");
+        await ModalUtils.alert("Please select at least one preset to export.");
         return;
       }
       const format = modal.querySelector("#j0n4t-pg-exp-format").value;
@@ -598,7 +599,7 @@ export default class PresetGalleryAPI {
       const includeColors = modal.querySelector("#j0n4t-pg-exp-colors").checked;
       const editedPresets = tree.getPresets();
       const summary = PresetGalleryAPI.getSelectionSummary(selectedKeys, editedPresets);
-      if (await PresetUtils.confirm(
+      if (await ModalUtils.confirm(
         `📦 Export Summary (${format.toUpperCase()}):\n` +
         `• Total Styles Exported: ${summary.total}\n` +
         `• Mode: ${mode}`
@@ -661,7 +662,7 @@ export default class PresetGalleryAPI {
         a.click();
         URL.revokeObjectURL(url);
       } catch (err) {
-        await PresetUtils.alert("ZIP export failed: " + err.message);
+        await ModalUtils.alert("ZIP export failed: " + err.message);
       }
       return;
     }
@@ -771,14 +772,14 @@ export default class PresetGalleryAPI {
     modal.querySelector("#j0n4t-pg-imp-confirm").addEventListener("click", async () => {
       const selectedKeys = tree.getSelectedKeys();
       if (!selectedKeys.length) {
-        await PresetUtils.alert("Please select at least one preset to import.");
+        await ModalUtils.alert("Please select at least one preset to import.");
         return;
       }
       const duplicateStrategy = modal.querySelector("#j0n4t-pg-dup-strategy").value;
       const importColors = modal.querySelector("#j0n4t-pg-imp-colors").checked;
       const editedPresets = tree.getPresets();
       const summary = PresetGalleryAPI.getSelectionSummary(selectedKeys, editedPresets, currentPresets);
-      if (await PresetUtils.confirm(
+      if (await ModalUtils.confirm(
         `📊 Import Summary:\n` +
         `• Total Selected: ${summary.total}\n` +
         `• New Styles: ${summary.newCount}\n` +
@@ -800,15 +801,12 @@ export default class PresetGalleryAPI {
       try {
         const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(file);
-
         const txtFiles = {};
         const imgFiles = {};
 
         for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
           if (zipEntry.dir) continue;
-
           const normalizedPath = relativePath.replace(/\\/g, "/").replace(/^[/\\]+/, "");
-
           if (normalizedPath.endsWith("/__color__.txt") || normalizedPath === "__color__.txt") {
             const groupKey = normalizedPath.replace(/\/?__color__\.txt$/i, "").toLowerCase().replace(/ /g, "_");
             const colorVal = (await zipEntry.async("string")).trim();
@@ -817,13 +815,10 @@ export default class PresetGalleryAPI {
             }
             continue;
           }
-
           const lastDot = normalizedPath.lastIndexOf(".");
           if (lastDot === -1) continue;
-
           const ext = normalizedPath.slice(lastDot + 1).toLowerCase();
           const keyPath = normalizedPath.slice(0, lastDot);
-
           if (ext === "txt") {
             txtFiles[keyPath] = zipEntry;
           } else if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) {
@@ -834,7 +829,6 @@ export default class PresetGalleryAPI {
         for (const [key, txtEntry] of Object.entries(txtFiles)) {
           const presetText = await txtEntry.async("string");
           let filename = null;
-
           if (imgFiles[key]) {
             const { entry, ext } = imgFiles[key];
             const base64 = await entry.async("base64");
@@ -842,10 +836,8 @@ export default class PresetGalleryAPI {
             const dataUrl = `data:${mime};base64,${base64}`;
             filename = await PresetUtils.createThumbnail(dataUrl);
           }
-
           const cleanKey = key.toLowerCase().replace(/ /g, "_");
           if (!cleanKey) continue;
-
           importedPresets[cleanKey] = {
             ...(importedPresets[cleanKey] || {}),
             preset: presetText,
@@ -853,7 +845,7 @@ export default class PresetGalleryAPI {
           };
         }
       } catch (err) {
-        await PresetUtils.alert("Failed to parse ZIP file: " + err.message);
+        await ModalUtils.alert("Failed to parse ZIP file: " + err.message);
         return { success: false };
       }
     } else {
@@ -864,40 +856,35 @@ export default class PresetGalleryAPI {
           reader.onerror = reject;
           reader.readAsText(file);
         });
-
         let parsedData = null;
         if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
           parsedData = YAMLUtils.parse(text);
         } else {
           parsedData = JSON.parse(text);
         }
-
         if (typeof parsedData !== "object" || parsedData === null) {
           throw new Error("Invalid file structure");
         }
-
         importedPresets = NestedPresetUtils.nestedToFlat(parsedData);
-
         for (const item of Object.values(importedPresets)) {
           if (item && item.filename && item.filename.startsWith("data:image/")) {
             item.filename = await PresetUtils.createThumbnail(item.filename);
           }
         }
       } catch (err) {
-        await PresetUtils.alert("Failed to parse file: " + err.message);
+        await ModalUtils.alert("Failed to parse file: " + err.message);
         return { success: false };
       }
     }
 
     if (Object.keys(importedPresets).length === 0) {
-      await PresetUtils.alert("No valid presets found in the imported file.");
+      await ModalUtils.alert("No valid presets found in the imported file.");
       return { success: false };
     }
 
     return new Promise((resolve) => {
       PresetGalleryAPI.showImportModal(importedPresets, async ({ selectedKeys, duplicateStrategy, importColors, editedPresets }) => {
         const currentPresets = await PresetGalleryAPI.getPresets();
-
         if (importColors) {
           for (const [key, item] of Object.entries(editedPresets)) {
             if (item && item.__color__) {
@@ -905,11 +892,9 @@ export default class PresetGalleryAPI {
             }
           }
         }
-
         for (const key of selectedKeys) {
           const item = importedPresets[key];
           if (!item || (!item.preset && item.__color__)) continue;
-
           let targetKey = key;
           if (targetKey in currentPresets && currentPresets[targetKey].preset) {
             if (duplicateStrategy === "skip") {
@@ -919,14 +904,12 @@ export default class PresetGalleryAPI {
               const parts = key.split("/");
               const baseName = parts.pop();
               const folderPrefix = parts.length ? parts.join("/") + "/" : "";
-
               while (`${folderPrefix}${baseName}_copy_${copyIndex}` in currentPresets && currentPresets[`${folderPrefix}${baseName}_copy_${copyIndex}`].preset) {
                 copyIndex++;
               }
               targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
             }
           }
-
           currentPresets[targetKey] = item;
         }
         await PresetGalleryAPI.savePresets(currentPresets);

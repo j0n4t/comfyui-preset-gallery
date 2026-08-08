@@ -1,6 +1,7 @@
 import { app } from "../../../scripts/app.js";
 
 import AutocompleteManager from "./AutocompleteManager.js";
+import ModalUtils from "./ModalUtils.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetBasket from "./PresetBasket.js";
 import PresetEditor from "./PresetEditor.js";
@@ -324,7 +325,7 @@ class PresetGalleryApp {
       const res = await PresetGalleryAPI.importFile(file);
       if (res.success) {
         await this.loadGallery();
-        await PresetUtils.alert("Presets imported successfully!");
+        await ModalUtils.alert("Presets imported successfully!");
       }
       this.dom.inpJsonFile.value = "";
     });
