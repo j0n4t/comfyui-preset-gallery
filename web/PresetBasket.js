@@ -4,7 +4,6 @@ import RawTextareaManager from "./RawTextareaManager.js";
 
 export default class PresetBasket {
   static BASKET_CONTAINER_STYLES = /*css*/ `
-    .j0n4t-pg-basket-container { display: flex; flex-direction: column; background: #15151580; border: 1px dashed #777; border-radius: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative; resize: vertical; overflow-y: auto; overflow-x: hidden; min-height: 40px; }
     .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
     .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
@@ -15,7 +14,6 @@ export default class PresetBasket {
     .j0n4t-pg-var-reroll-btn:hover, .j0n4t-pg-var-reroll-btn:focus-visible { color: #fff; transform: scale(1.1); }
     .j0n4t-pg-checkbox-wrap {height:auto; padding:0; margin-right:4px;}
     .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus-visible { filter: grayscale(0) brightness(1) !important; transform: scale(1.1); }
-    .j0n4t-pg-basket-pool-wrapper { position: relative; margin: 4px; display: block; box-sizing: border-box; }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; padding: 4px; }
     .j0n4t-pg-basket-container .j0n4t-pg-raw-wrapper { display: none; width: auto; }
     .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block; margin: 4px; }

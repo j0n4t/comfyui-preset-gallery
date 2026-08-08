@@ -12,8 +12,12 @@ const MIN_NODE_WIDTH = 400;
 
 class PresetGalleryApp {
   static WRAP_STYLES = /*css*/ `
-    .j0n4t-pg-wrap { display: flex; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 100%; font-family: sans-serif; position: relative; outline: none; }
+    .j0n4t-pg-wrap { display: flex; flex: auto; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; height: 640px; min-height: 100%; font-family: sans-serif; position: relative; outline: none; overflow: hidden; resize: vertical; }
     .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-more-options-wrap { display: none; }
+    .j0n4t-pg-basket-container { display: flex; flex-direction: column; min-height: 80px;  resize: vertical; background: #15151580; border: 1px dashed #777; border-radius: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative;  overflow-y: auto; overflow-x: hidden; }
+    .j0n4t-pg-basket-pool-wrapper { flex: 1 1 auto; overflow-y: auto; position: relative; margin: 4px; display: block; box-sizing: border-box; }
+    .j0n4t-pg-basket-raw-textarea { flex: 1 1 auto; resize: none; }
+    .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-basket-container { flex: 1 1 100%; resize: none; }
   `;
 
   static ACTION_TOPBAR_SEARCH_STYLES = /*css*/ `
@@ -38,7 +42,7 @@ class PresetGalleryApp {
     .j0n4t-pg-view-btn svg, .j0n4t-pg-btn svg { width: 14px; height: 14px; fill: currentColor; }
     .j0n4t-pg-view-btn svg.rotatable { transition: transform 0.2s ease; }
     .j0n4t-pg-view-btn.collapsed-state svg.rotatable { transform: rotate(180deg); }
-    .j0n4t-pg-grid { display: grid; gap: 6px; flex-grow: 1; overflow-y: auto; min-height: 60px; height: 50%; max-height: 100vh; align-content: start; margin-top: 2px; resize: vertical; outline: none; }
+    .j0n4t-pg-grid { display: grid; gap: 6px; flex: 1 1 auto; overflow-y: auto; min-height: 60px; align-content: start; margin-top: 2px; outline: none; }
     .j0n4t-pg-grid.view-small { grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); }
     .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
     .j0n4t-pg-grid.view-list { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 4px; }
@@ -225,67 +229,7 @@ class PresetGalleryApp {
     if (this.node.graph) this.node.graph._version++;
   }
 
-  initHeights() {
-    this.totalSharedHeight = parseInt(localStorage.getItem("pg_total_h")) || 600;
-    this.basketHeight = parseInt(localStorage.getItem("pg_basket_h")) || 150;
-    this.gridHeight = parseInt(localStorage.getItem("pg_grid_h")) || 450;
-    this.editorFixedSize = parseInt(localStorage.getItem("pg_editor_h")) || 206;
-
-    this.isProgrammaticResize = false;
-  }
-
-  saveHeights() {
-    localStorage.setItem("pg_total_h", this.totalSharedHeight.toString());
-    localStorage.setItem("pg_basket_h", this.basketHeight.toString());
-    localStorage.setItem("pg_grid_h", this.gridHeight.toString());
-    localStorage.setItem("pg_editor_h", this.editorFixedSize.toString());
-  }
-
-  rebalanceHeights() {
-    this.isProgrammaticResize = true;
-
-    const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
-    const isEditorCollapsed = this.dom.editor.classList.contains("collapsed");
-
-    if (!isEditorCollapsed && this.dom.editor.offsetHeight > 0) {
-      this.editorFixedSize = this.dom.editor.offsetHeight + 6;
-    }
-
-    let availableHeight = this.totalSharedHeight;
-    if (!isEditorCollapsed) {
-      availableHeight -= this.editorFixedSize;
-    }
-
-    if (isGalleryHidden) {
-      this.dom.basketContainer.style.height = `${availableHeight}px`;
-      this.dom.grid.style.height = '0px';
-    } else {
-      let finalBasketH = this.basketHeight;
-      let finalGridH = availableHeight - finalBasketH;
-
-      if (finalGridH < 60) {
-        const deficit = 60 - finalGridH;
-        finalGridH = 60;
-        finalBasketH = Math.max(40, finalBasketH - deficit);
-      }
-
-      this.dom.basketContainer.style.flexGrow = "0";
-      this.dom.grid.style.flexGrow = "0";
-      this.dom.basketContainer.style.height = `${finalBasketH}px`;
-      this.dom.grid.style.height = `${finalGridH}px`;
-
-      this.basketHeight = finalBasketH;
-      this.gridHeight = finalGridH;
-    }
-
-    this.saveHeights();
-
-    requestAnimationFrame(() => {
-      this.isProgrammaticResize = false;
-    });
-  }
-
-  setPanelCollapseState(col, isInit = false) {
+  setPanelCollapseState(col) {
     const isCurrentlyCollapsed = this.dom.editor.classList.contains("collapsed");
     if (isCurrentlyCollapsed === col) return;
 
@@ -294,10 +238,6 @@ class PresetGalleryApp {
     this.dom.toggle.title = col ? "Management Panel" : "Hide Panel";
     this.dom.toggle.setAttribute("aria-expanded", String(!col));
     localStorage.setItem("comfy_preset_gallery_collapsed", String(col));
-
-    if (!isInit) {
-      this.rebalanceHeights();
-    }
   }
 
   syncEditorHighlight() {
@@ -442,14 +382,11 @@ class PresetGalleryApp {
       }
     });
 
-    this.initHeights();
-
     this.dom.btnHideGallery.addEventListener("click", () => {
       const isHidden = this.dom.wrap.classList.toggle("hide-gallery-mode");
       this.dom.btnHideGallery.classList.toggle("active", !isHidden);
       this.dom.btnHideGallery.setAttribute("aria-pressed", String(!isHidden));
       localStorage.setItem("comfy_preset_gallery_hidden", String(isHidden));
-      this.rebalanceHeights();
     });
 
     if (localStorage.getItem("comfy_preset_gallery_hidden") === "true") {
@@ -457,44 +394,6 @@ class PresetGalleryApp {
       this.dom.btnHideGallery.classList.remove("active");
       this.dom.btnHideGallery.setAttribute("aria-pressed", "false");
     }
-
-    this.resizeObserver = new ResizeObserver((entries) => {
-      if (this.isProgrammaticResize) return;
-
-      let changed = false;
-      const isGalleryHidden = this.dom.wrap.classList.contains("hide-gallery-mode");
-      const editorH = this.dom.editor.classList.contains("collapsed") ? 0 : this.editorFixedSize;
-      const availableHeight = this.totalSharedHeight - editorH;
-
-      for (const entry of entries) {
-        const h = entry.target.offsetHeight;
-        if (h === 0) continue;
-
-        if (entry.target === this.dom.basketContainer) {
-          const expectedH = isGalleryHidden ? availableHeight : this.basketHeight;
-          const diff = h - expectedH;
-
-          if (Math.abs(diff) > 2) {
-            this.totalSharedHeight += diff;
-            this.basketHeight += diff;
-            changed = true;
-          }
-        }
-        else if (entry.target === this.dom.grid && !isGalleryHidden) {
-          const diff = h - this.gridHeight;
-          if (Math.abs(diff) > 2) {
-            this.totalSharedHeight += diff;
-            this.gridHeight = h;
-            changed = true;
-          }
-        }
-      }
-
-      if (changed) this.saveHeights();
-    });
-
-    this.resizeObserver.observe(this.dom.basketContainer);
-    this.resizeObserver.observe(this.dom.grid);
   }
 
   initFilterAutocomplete() {
@@ -546,7 +445,6 @@ class PresetGalleryApp {
       localStorage.getItem("comfy_preset_gallery_collapsed") === "true",
       true
     );
-    this.rebalanceHeights();
     this.node.setSize([
       this.node.size[0] || MIN_NODE_WIDTH,
       this.node.size[1] || MIN_NODE_HEIGHT,
