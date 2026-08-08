@@ -4,10 +4,13 @@ const YAMLUtils = {
         const spaces = " ".repeat(indent);
         const needsQuotes = /[\n:#"{}@]|^\s|^$/;
 
+        const escapeString = (str) =>
+            `"${str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
+
         for (const [key, value] of Object.entries(obj)) {
             let strKey = String(key);
             if (needsQuotes.test(strKey)) {
-                strKey = `"${strKey.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+                strKey = escapeString(strKey);
             }
 
             if (value !== null && typeof value === "object" && !Array.isArray(value)) {
@@ -15,7 +18,7 @@ const YAMLUtils = {
             } else {
                 const strVal = String(value ?? "");
                 if (needsQuotes.test(strVal)) {
-                    yaml += `${spaces}${strKey}: "${strVal.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"\n`;
+                    yaml += `${spaces}${strKey}: ${escapeString(strVal)}\n`;
                 } else {
                     yaml += `${spaces}${strKey}: ${strVal}\n`;
                 }
@@ -41,7 +44,7 @@ const YAMLUtils = {
             let rawKey = trimmed.slice(0, colonIdx).trim();
             let key = rawKey;
             if ((rawKey.startsWith('"') && rawKey.endsWith('"')) || (rawKey.startsWith("'") && rawKey.endsWith("'"))) {
-                key = rawKey.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                key = rawKey.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
             }
 
             const valStr = trimmed.slice(colonIdx + 1).trim();
@@ -59,7 +62,7 @@ const YAMLUtils = {
             } else {
                 let cleanVal = valStr;
                 if ((cleanVal.startsWith('"') && cleanVal.endsWith('"')) || (cleanVal.startsWith("'") && cleanVal.endsWith("'"))) {
-                    cleanVal = cleanVal.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                    cleanVal = cleanVal.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
                 }
                 currentParent[key] = cleanVal;
             }
