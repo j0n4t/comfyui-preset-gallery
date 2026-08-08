@@ -30,7 +30,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
     .j0n4t-pg-basket-chip:focus-visible { border-width: 2px; border-color: #007acc; }
-    
+
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
 
@@ -38,7 +38,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
     .j0n4t-pg-basket-chip.inline-editing::before { display: none; }
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
-    
+
     .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; outline: none; }
     .j0n4t-pg-basket-add-btn:hover, .j0n4t-pg-basket-add-btn:focus-visible { border-color: #007acc; color: #fff; background: #1a242db0; }
     .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input, .j0n4t-pg-select-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 2px; text-align: center; margin: 0 2px; outline: none; position: relative; cursor: pointer; }
@@ -53,12 +53,13 @@ export default class PresetBasket {
     .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus-visible { background: #333; color: #fff; }
     .j0n4t-pg-chip-popup-item.danger:hover, .j0n4t-pg-chip-popup-item.danger:focus-visible { background: #912e2e; color: #fff; }
     .j0n4t-pg-var-more { display: flex; font-size: 11px; }
-    
+
     .j0n4t-pg-weight-btn { background: #333; color: #fff; border: 1px solid #555; border-radius: 3px; cursor: pointer; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; outline: none; font-size: 14px; line-height: 1; }
     .j0n4t-pg-weight-btn:hover, .j0n4t-pg-weight-btn:focus-visible { background: #007acc; border-color: #007acc; }
     .j0n4t-pg-weight-input { width: 44px; height: 20px; text-align: center; background: #111; color: #fff; border: 1px solid #555; border-radius: 2px; font-size: 11px; outline: none; font-family: monospace; }
     .j0n4t-pg-weight-input:focus { border-color: #007acc; }
 
+    .j0n4t-pg-var-popup-container {display: flex; flex-direction: column; max-height: 50vh; max-width: 80vw; overflow: scroll; }
     .j0n4t-pg-var-popup-row { display: flex; align-items: center; padding: 4px; }
     .j0n4t-pg-var-popup-row label { font-size: 10px; color: #d1a119; font-weight: 600; min-width: 40px; text-transform: capitalize; }
     .j0n4t-pg-var-popup-row select { flex: 1; height: 20px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 10px; border-radius: 2px; padding: 0 2px; font-weight: 600; font-family: inherit; outline: none; cursor: pointer; }
@@ -949,7 +950,7 @@ export default class PresetBasket {
       });
     }
 
-    let varSectionHtml = varRowsHtml ? `<div>${varRowsHtml}</div>` : "";
+    let varSectionHtml = varRowsHtml ? `<div class="j0n4t-pg-var-popup-container">${varRowsHtml}</div>` : "";
     const swapIcon = PresetUtils.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
 
     const weightSectionHtml = `
