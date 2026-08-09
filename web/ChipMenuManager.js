@@ -272,12 +272,21 @@ export default class ChipMenuManager {
     popup.addEventListener("mousedown", (e) => e.stopPropagation());
 
     const rect = chipElement.getBoundingClientRect();
-    const topPos = window.scrollY + rect.top - popup.offsetHeight - 4;
-    let leftPos = window.scrollX + rect.left;
     const popupWidth = popup.offsetWidth;
-    if (rect.left + popupWidth > window.innerWidth) {
+    const topPos = window.scrollY + rect.top - popup.offsetHeight - 4;
+
+    const spaceLeft = rect.right;
+    const spaceRight = window.innerWidth - rect.left;
+
+    let leftPos;
+    if (spaceLeft > spaceRight && rect.right >= popupWidth) {
+      leftPos = Math.max(window.scrollX + 8, window.scrollX + rect.right - popupWidth);
+    } else if (rect.left + popupWidth <= window.innerWidth) {
+      leftPos = window.scrollX + rect.left;
+    } else {
       leftPos = Math.max(window.scrollX + 8, window.scrollX + rect.right - popupWidth);
     }
+
     popup.style.top = `${topPos < window.scrollY ? window.scrollY + rect.bottom + 4 : topPos}px`;
     popup.style.left = `${leftPos}px`;
 
