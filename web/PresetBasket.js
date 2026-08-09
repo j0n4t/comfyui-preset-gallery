@@ -233,7 +233,6 @@ export default class PresetBasket {
 
         this.chipMenuManager.show(chip, styleKey, cachedItem, parseInt(chip.dataset.start), parseInt(chip.dataset.end), !!weightBadge);
 
-        // Prevent generic gallery locate behavior if specifically clicking the weight pill
         if (weightBadge) return;
 
         let targetKey = styleKey;
@@ -425,7 +424,6 @@ export default class PresetBasket {
     const rawModeRollState = { rolls: this.context.variantRolls, counts: {} };
 
     if (!this._updatingTextarea) {
-      // Execute inner expansion for wrapped inputs to maintain deep-variant support inside weights.
       const expandedList = activeList.map(itemStr => {
         const wMatch = itemStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         if (wMatch) {
@@ -443,128 +441,27 @@ export default class PresetBasket {
     const chipRollState = { rolls: this.context.variantRolls, counts: {} };
 
     chipsData.forEach((chipData, index) => {
-      const { styleKey, item, startIndex, endIndex, subArray } = chipData;
-      const joinedStr = subArray.join(", ");
-
-      const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-      const weightVal = wMatch ? parseFloat(wMatch[2]) : null;
-      const coreStr = wMatch ? wMatch[1] : joinedStr;
-
-      const beforeCounts = { ...chipRollState.counts };
-      const chipExpandedCore = PresetUtils.expandRecursively(coreStr, this.context.cache, new Set(), chipRollState);
-      const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
-
-      let rolledInfo = [];
-      for (const group in chipRollState.counts) {
-        const start = beforeCounts[group] || 0;
-        const end = chipRollState.counts[group] || 0;
-        for (let k = start; k < end; k++) {
-          const rolledKey = this.context.variantRolls[`${group}_${k}`];
-          if (rolledKey) rolledInfo.push(`🎲 ${PresetUtils.toTitleCase(group.split("_")[0])}: ${PresetUtils.getPresetName(rolledKey)}`);
-        }
-      }
-      const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
-
-      const baseExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), { rolls: {}, counts: {} });
-      const parsed = PresetUtils.parseChipDetails(chipExpandedCore, this.context.cache);
-      const baseParsed = PresetUtils.parseChipDetails(item?.preset || baseExpanded, this.context.cache);
-
-      let presetMatch = parsed.presetMatch;
-
-      // Recover the preset match for pure variant chips that lost their identity due to deep expansion
-      if (!presetMatch) {
-        const coreParsed = PresetUtils.parseChipDetails(coreStr, this.context.cache);
-
-        // Ensure the chip is strictly a single variant tag like {wear} or {wear:hat}
-        if (coreParsed.variants.length === 1 && coreParsed.variants[0].full === coreStr) {
-          const variant = coreParsed.variants[0];
-          let resolvedKey = null;
-
-          if (variant.val) {
-            // 1. Handle explicitly chosen variants (e.g., {wear:hat})
-            let selectedKey = variant.val;
-            if (this.context.cache && !this.context.cache[selectedKey]) {
-              for (const k of Object.keys(this.context.cache)) {
-                if (k.toLowerCase() === variant.val.toLowerCase() ||
-                  PresetUtils.getPresetName(k).toLowerCase() === variant.val.toLowerCase() ||
-                  (k.toLowerCase().startsWith(variant.groupName + "/") && PresetUtils.getPresetName(k).toLowerCase() === variant.val.toLowerCase())) {
-                  selectedKey = k;
-                  break;
-                }
-              }
-            }
-            if (this.context.cache?.[selectedKey]) {
-              resolvedKey = selectedKey;
-            }
-          } else {
-            // 2. Handle randomly rolled variants (e.g., {wear}) using the roll state sequence
-            const rollIndex = beforeCounts[variant.groupName] || 0;
-            resolvedKey = this.context.variantRolls[`${variant.groupName}_${rollIndex}`];
-          }
-
-          // If a key was resolved from the cache, override the missing presetMatch
-          if (resolvedKey && this.context.cache?.[resolvedKey]) {
-            presetMatch = { key: resolvedKey, item: this.context.cache[resolvedKey] };
-          }
-        }
-      }
-
-      let cleanLabel, bgStyle, tooltipTitle, evalId;
-
-      if (presetMatch) {
-        evalId = presetMatch.key;
-        const matchItem = presetMatch.item;
-        cleanLabel = PresetUtils.toTitleCase(PresetUtils.getPresetName(evalId));
-        bgStyle = matchItem?.filename
-          ? `background-image: url("${matchItem.filename}")`
-          : `background-color: ${PresetUtils.getPresetColor(evalId, this.context.cache)}`;
-        tooltipTitle = `${cleanLabel} [${evalId}]\n${matchItem?.preset || evalId}`;
-      } else {
-        evalId = chipExpandedCore;
-        cleanLabel = item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : coreStr;
-        bgStyle = item?.filename
-          ? `background-image: url("${item.filename}")`
-          : `background-color: ${PresetUtils.getPresetColor(styleKey, this.context.cache)}`;
-
-        tooltipTitle = item ? `${chipExpandedCore}\n\n${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : chipExpandedCore;
-      }
-
-      let inputHtml = "";
-      if (baseParsed.variants.length > 0) {
-        inputHtml = `<span class="j0n4t-pg-var-more">${PresetUtils.icons.more}</span>`;
-      } else if (parsed.tag) {
-        const { label, val, isBoolean, isNumeric } = parsed.tag;
-        cleanLabel = label;
-        if (isBoolean) {
-          const isChecked = val.toLowerCase() === "true" ? "checked" : "";
-          inputHtml = `<input type="checkbox" class="j0n4t-pg-bool-input bool-input" tabindex="0" ${isChecked} title="${PresetUtils.escapeHTML(label)} toggle" aria-label="${PresetUtils.escapeHTML(label)} toggle" />`;
-        } else if (isNumeric) {
-          inputHtml = `<input type="number" step="0.05" class="j0n4t-pg-num-input num-input" tabindex="0" value="${PresetUtils.escapeHTML(val)}" title="${PresetUtils.escapeHTML(label)} value" aria-label="${PresetUtils.escapeHTML(label)} value" />`;
-        } else {
-          inputHtml = `<input type="text" class="j0n4t-pg-text-input text-input" tabindex="0" value="${PresetUtils.escapeHTML(val)}" title="${PresetUtils.escapeHTML(label)} text" aria-label="${PresetUtils.escapeHTML(label)} text" />`;
-        }
-      }
-
-      let weightIconHtml = "";
-      if (weightVal !== null) {
-        const labelPrefix = weightVal > 0 ? `+${weightVal}` : `${weightVal}`;
-        weightIconHtml = `<div class="j0n4t-pg-basket-chip-weight" data-action="open-weight" title="Adjust Weight (Current: ${weightVal})">${labelPrefix}</div>`;
-      }
+      const chip = PresetUtils.parseBasketChip(
+        chipData,
+        this.context.cache,
+        this.context.variantRolls,
+        chipRollState
+      );
 
       htmlBuffer += `
         <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
-             title="${PresetUtils.escapeHTML(tooltipTitle)}${PresetUtils.escapeHTML(rolledText)}"
-             data-id="${PresetUtils.escapeHTML(joinedStr)}"
-             data-eval-id="${PresetUtils.escapeHTML(evalId)}"
-             data-preset="${PresetUtils.escapeHTML(item?.preset || "")}"
+             title="${PresetUtils.escapeHTML(chip.tooltipTitle)}"
+             data-id="${PresetUtils.escapeHTML(chip.joinedStr)}"
+             data-eval-id="${PresetUtils.escapeHTML(chip.evalId)}"
+             data-preset="${PresetUtils.escapeHTML(chip.item?.preset || "")}"
              data-index="${index}"
-             data-start="${startIndex}"
-             data-end="${endIndex}"
-             style='${bgStyle}'>
-            ${weightIconHtml}
-            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chipExpanded || joinedStr)}">${PresetUtils.escapeHTML(cleanLabel)}</div>
-            ${inputHtml}
+             data-start="${chip.startIndex}"
+             data-end="${chip.endIndex}"
+             style='${chip.bgStyle}'>
+            ${chip.weightIconHtml}
+            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chip.chipExpanded || chip.joinedStr)}">${PresetUtils.escapeHTML(chip.cleanLabel)}</div>
+            ${chip.inputHtml}
         </div>
       `;
     });

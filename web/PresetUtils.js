@@ -28,29 +28,47 @@ const PresetUtils = {
         }
         return tokens.filter(Boolean);
     },
+
+    getGroupMatches: (groupName, cache = {}) => {
+        if (!cache || !groupName) return [];
+        const lowerGroup = groupName.toLowerCase();
+        return Object.keys(cache).filter((k) => {
+            if (!cache[k]?.preset) return false;
+            const folder = PresetUtils.getPresetFolder(k).toLowerCase();
+            return folder === lowerGroup || folder.startsWith(lowerGroup + "/") || folder.endsWith("/" + lowerGroup);
+        });
+    },
+
+    resolveVariantKey: (groupName, val, cache = {}) => {
+        if (!val) return null;
+        if (cache[val]) return val;
+        const lowerVal = val.toLowerCase();
+        const lowerGroup = groupName ? groupName.toLowerCase() : "";
+
+        for (const k of Object.keys(cache)) {
+            const lowerK = k.toLowerCase();
+            const presetName = PresetUtils.getPresetName(k).toLowerCase();
+            if (
+                lowerK === lowerVal ||
+                presetName === lowerVal ||
+                (lowerGroup && lowerK.startsWith(lowerGroup + "/") && presetName === lowerVal)
+            ) {
+                return k;
+            }
+        }
+        return null;
+    },
+
     expandRecursively: (val, cache, seen = new Set(), rollState = null) => {
         if (!val) return "";
         const expandText = (str) => {
             if (!str) return "";
-            // Replace any inline {group} or {group:selected_value} occurrences within text
             return str.replace(/\{([^{}:]+)(?::([^{}]+))?\}/g, (match, gName, sVal) => {
                 const groupName = gName.trim().toLowerCase().replace(/\s+/g, "_");
                 const selectedVal = sVal ? sVal.trim() : "";
 
                 if (selectedVal) {
-                    // Check if selectedVal maps to a cached preset key or path
-                    let selectedKey = selectedVal;
-                    if (cache && !cache[selectedKey]) {
-                        // Find matching key in cache under groupName or full key
-                        for (const k of Object.keys(cache)) {
-                            if (k.toLowerCase() === selectedVal.toLowerCase() ||
-                                PresetUtils.getPresetName(k).toLowerCase() === selectedVal.toLowerCase() ||
-                                (k.toLowerCase().startsWith(groupName + "/") && PresetUtils.getPresetName(k).toLowerCase() === selectedVal.toLowerCase())) {
-                                selectedKey = k;
-                                break;
-                            }
-                        }
-                    }
+                    const selectedKey = PresetUtils.resolveVariantKey(groupName, selectedVal, cache) || selectedVal;
                     const item = cache?.[selectedKey];
                     if (item && item.preset) {
                         if (seen.has(selectedKey)) return item.preset;
@@ -61,21 +79,13 @@ const PresetUtils = {
                     return selectedVal;
                 }
 
-                // If no value specified, pick a random matching preset from group
-                const matches = cache
-                    ? Object.keys(cache).filter((k) => {
-                        if (!cache[k]?.preset) return false;
-                        const folder = PresetUtils.getPresetFolder(k).toLowerCase();
-                        return folder === groupName || folder.startsWith(groupName + "/") || folder.endsWith("/" + groupName);
-                    })
-                    : [];
+                const matches = PresetUtils.getGroupMatches(groupName, cache);
                 if (matches.length > 0) {
                     let pickedKey;
                     if (rollState) {
                         const occKey = groupName + "_" + (rollState.counts[groupName] || 0);
                         rollState.counts[groupName] = (rollState.counts[groupName] || 0) + 1;
                         pickedKey = rollState.rolls[occKey];
-                        // Roll a new value if undefined or no longer valid in cache
                         if (!pickedKey || !matches.includes(pickedKey)) {
                             pickedKey = matches[Math.floor(Math.random() * matches.length)];
                             rollState.rolls[occKey] = pickedKey;
@@ -99,7 +109,7 @@ const PresetUtils = {
 
             const item = cache?.[trimmed];
             if (item && item.preset) {
-                if (seen.has(trimmed)) return trimmed; // Prevent circular references
+                if (seen.has(trimmed)) return trimmed;
                 const newSeen = new Set(seen);
                 newSeen.add(trimmed);
                 return expandText(PresetUtils.expandRecursively(item.preset, cache, newSeen, rollState));
@@ -111,11 +121,11 @@ const PresetUtils = {
         const expanded = keys.map(expandToken);
         return expanded.filter(Boolean).join(", ");
     },
+
     parseChipDetails: (text, cache) => {
         if (!text) return { variants: [], tag: null, presetMatch: null, trimmed: "" };
         const trimmed = text.trim();
 
-        // Parse variants: {group:val} or {group}
         const varRegex = /\{([^{}:]+)(?::([^{}]+))?\}/g;
         const variants = Array.from(trimmed.matchAll(varRegex)).map((m) => ({
             full: m[0],
@@ -124,7 +134,6 @@ const PresetUtils = {
             val: m[2] ? m[2].trim() : "",
         }));
 
-        // Parse tag inputs: <label:value>
         const tagMatch = trimmed.match(/^<(.+?)>$/);
         let tag = null;
         if (tagMatch) {
@@ -142,6 +151,112 @@ const PresetUtils = {
         }
 
         return { variants, tag, presetMatch: PresetUtils.findPresetMatch(trimmed, cache), trimmed };
+    },
+
+    parseBasketChip: (chipData, cache = {}, variantRolls = {}, chipRollState = { rolls: {}, counts: {} }) => {
+        const { styleKey, item, startIndex, endIndex, subArray } = chipData;
+        const joinedStr = subArray.join(", ");
+
+        const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+        const weightVal = wMatch ? parseFloat(wMatch[2]) : null;
+        const coreStr = wMatch ? wMatch[1] : joinedStr;
+
+        const beforeCounts = { ...chipRollState.counts };
+        const chipExpandedCore = PresetUtils.expandRecursively(coreStr, cache, new Set(), chipRollState);
+        const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
+
+        const rolledInfo = [];
+        for (const group in chipRollState.counts) {
+            const start = beforeCounts[group] || 0;
+            const end = chipRollState.counts[group] || 0;
+            for (let k = start; k < end; k++) {
+                const rolledKey = variantRolls[`${group}_${k}`];
+                if (rolledKey) {
+                    rolledInfo.push(`🎲 ${PresetUtils.toTitleCase(group.split("_")[0])}: ${PresetUtils.getPresetName(rolledKey)}`);
+                }
+            }
+        }
+        const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
+
+        const baseExpanded = PresetUtils.expandRecursively(styleKey, cache, new Set(), { rolls: {}, counts: {} });
+        const parsed = PresetUtils.parseChipDetails(chipExpandedCore, cache);
+        const baseParsed = PresetUtils.parseChipDetails(item?.preset || baseExpanded, cache);
+
+        let presetMatch = parsed.presetMatch;
+
+        if (!presetMatch) {
+            const coreParsed = PresetUtils.parseChipDetails(coreStr, cache);
+            if (coreParsed.variants.length === 1 && coreParsed.variants[0].full === coreStr) {
+                const variant = coreParsed.variants[0];
+                let resolvedKey;
+
+                if (variant.val) {
+                    resolvedKey = PresetUtils.resolveVariantKey(variant.groupName, variant.val, cache);
+                } else {
+                    const rollIndex = beforeCounts[variant.groupName] || 0;
+                    resolvedKey = variantRolls[`${variant.groupName}_${rollIndex}`];
+                }
+
+                if (resolvedKey && cache[resolvedKey]) {
+                    presetMatch = { key: resolvedKey, item: cache[resolvedKey] };
+                }
+            }
+        }
+
+        let cleanLabel, bgStyle, tooltipTitle, evalId;
+
+        if (presetMatch) {
+            evalId = presetMatch.key;
+            const matchItem = presetMatch.item;
+            cleanLabel = PresetUtils.toTitleCase(PresetUtils.getPresetName(evalId));
+            bgStyle = matchItem?.filename
+                ? `background-image: url("${matchItem.filename}")`
+                : `background-color: ${PresetUtils.getPresetColor(evalId, cache)}`;
+            tooltipTitle = `${cleanLabel} [${evalId}]\n${matchItem?.preset || evalId}`;
+        } else {
+            evalId = chipExpandedCore;
+            cleanLabel = item ? PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey)) : coreStr;
+            bgStyle = item?.filename
+                ? `background-image: url("${item.filename}")`
+                : `background-color: ${PresetUtils.getPresetColor(styleKey, cache)}`;
+            tooltipTitle = item ? `${chipExpandedCore}\n\n${PresetUtils.toTitleCase(PresetUtils.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : chipExpandedCore;
+        }
+
+        let inputHtml = "";
+        if (baseParsed.variants.length > 0) {
+            inputHtml = `<span class="j0n4t-pg-var-more">${PresetUtils.icons.more}</span>`;
+        } else if (parsed.tag) {
+            const { label, val, isBoolean, isNumeric } = parsed.tag;
+            cleanLabel = label;
+            if (isBoolean) {
+                const isChecked = val.toLowerCase() === "true" ? "checked" : "";
+                inputHtml = `<input type="checkbox" class="j0n4t-pg-bool-input bool-input" tabindex="0" ${isChecked} title="${PresetUtils.escapeHTML(label)} toggle" aria-label="${PresetUtils.escapeHTML(label)} toggle" />`;
+            } else if (isNumeric) {
+                inputHtml = `<input type="number" step="0.05" class="j0n4t-pg-num-input num-input" tabindex="0" value="${PresetUtils.escapeHTML(val)}" title="${PresetUtils.escapeHTML(label)} value" aria-label="${PresetUtils.escapeHTML(label)} value" />`;
+            } else {
+                inputHtml = `<input type="text" class="j0n4t-pg-text-input text-input" tabindex="0" value="${PresetUtils.escapeHTML(val)}" title="${PresetUtils.escapeHTML(label)} text" aria-label="${PresetUtils.escapeHTML(label)} text" />`;
+            }
+        }
+
+        let weightIconHtml = "";
+        if (weightVal !== null) {
+            const labelPrefix = weightVal > 0 ? `+${weightVal}` : `${weightVal}`;
+            weightIconHtml = `<div class="j0n4t-pg-basket-chip-weight" data-action="open-weight" title="Adjust Weight (Current: ${weightVal})">${labelPrefix}</div>`;
+        }
+
+        return {
+            joinedStr,
+            evalId,
+            cleanLabel,
+            bgStyle,
+            tooltipTitle: `${tooltipTitle}${rolledText}`,
+            chipExpanded,
+            item,
+            startIndex,
+            endIndex,
+            inputHtml,
+            weightIconHtml
+        };
     },
 
     getGroupedChips(activeList, cache) {
@@ -174,7 +289,6 @@ const PresetUtils = {
                 const subArray = activeList.slice(i, i + len);
                 const joined = subArray.join(", ");
 
-                // Isolate core lookup key by pulling it from weight wrappers
                 const wMatch = joined.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
                 const coreJoined = wMatch ? wMatch[1] : joined;
 
@@ -245,26 +359,17 @@ const PresetUtils = {
         if (ext === "jpeg") ext = "jpg";
         return { ext, base64: matches[2] };
     },
-    /**
-     * Parse raw text into structured tokens considering multi-comma preset output strings.
-     * Guarantees exact 1:1 character sequence reconstruction.
-     * @param {string} val 
-     * @returns {Array<{start: number, end: number, text: string, key?: string, item?: Object, isTag?: boolean, isDelimiter?: boolean, isPlainText?: boolean}>}
-     */
     parseTokens: (val, cache = null, ignorePreset = null) => {
         const tokens = [];
         if (!val) return tokens;
 
-        // Collect candidate preset strings & keys
         const candidates = [];
         if (cache) {
             for (const [key, item] of Object.entries(cache)) {
                 if (item?.preset && item.preset.trim()) {
-                    // Match against the fully expanded string to find the biggest possible chip
                     const expanded = PresetUtils.expandRecursively(item.preset.trim(), cache);
                     candidates.push({ matchStr: expanded, key, item });
 
-                    // Also allow matching the unexpanded form if the user typed it manually
                     if (expanded !== item.preset.trim()) {
                         candidates.push({ matchStr: item.preset.trim(), key, item });
                     }
@@ -275,7 +380,6 @@ const PresetUtils = {
             }
         }
 
-        // Deduplicate candidates by matchStr (preferring candidate with item)
         const candidateMap = new Map();
         for (const cand of candidates) {
             if (!candidateMap.has(cand.matchStr) || cand.item) {
@@ -283,7 +387,6 @@ const PresetUtils = {
             }
         }
 
-        // Sort by length descending so multi-comma preset strings match first
         const sortedCandidates = Array.from(candidateMap.values()).sort(
             (a, b) => b.matchStr.length - a.matchStr.length
         );
@@ -304,7 +407,6 @@ const PresetUtils = {
         while (idx < val.length) {
             let matched = null;
 
-            // 1. Try matching cached presets
             for (const cand of sortedCandidates) {
                 if (val.startsWith(cand.matchStr, idx)) {
                     if (cand.key === ignorePreset || cand.matchStr === ignorePreset) continue;
@@ -338,7 +440,6 @@ const PresetUtils = {
                 });
                 idx += matched.matchStr.length;
             } else {
-                // Handle comma delimiter
                 if (val[idx] === ',') {
                     tokens.push({
                         start: idx,
@@ -348,7 +449,6 @@ const PresetUtils = {
                     });
                     idx += 1;
                 } else {
-                    // Consume plain text up to next comma or candidate/lora match
                     let endPlain = idx + 1;
                     while (endPlain < val.length) {
                         if (val[endPlain] === ',') break;
@@ -391,7 +491,7 @@ const PresetUtils = {
     getMimeType: (ext) => {
         const e = ext.toLowerCase();
         if (e === "jpg" || e === "jpeg") return "image/jpeg";
-        if (e === "pn,g") return "image/png";
+        if (e === "png") return "image/png";
         if (e === "webp") return "image/webp";
         if (e === "gif") return "image/gif";
         return "image/png";

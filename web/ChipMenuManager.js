@@ -33,13 +33,7 @@ export default class ChipMenuManager {
         const gIndex = groupCounts[groupRaw] || 0;
         groupCounts[groupRaw] = gIndex + 1;
 
-        const matches = this.context.cache
-          ? Object.keys(this.context.cache).filter((k) => {
-            if (!this.context.cache[k]?.preset) return false;
-            const folder = PresetUtils.getPresetFolder(k).toLowerCase();
-            return folder === groupName || folder.startsWith(groupName + "/") || folder.endsWith("/" + groupName);
-          })
-          : [];
+        const matches = PresetUtils.getGroupMatches(groupName, this.context.cache);
 
         if (matches.length > 0) {
           const optionsHtml = matches
