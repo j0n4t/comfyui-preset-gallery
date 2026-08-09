@@ -376,7 +376,7 @@ class PresetGalleryApp {
           }
         }
         newSelections.sort((a, b) => a.localeCompare(b));
-        if (cache["_/_default"]) newSelections.unshift("_/_default");
+        if (cache["_/combo/_default"]) newSelections.unshift("_/combo/_default");
         this.updateWidgetValue(newSelections);
       } else {
         this.variantRolls = {};
