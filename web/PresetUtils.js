@@ -153,6 +153,38 @@ const PresetUtils = {
         return { variants, tag, presetMatch: PresetUtils.findPresetMatch(trimmed, cache), trimmed };
     },
 
+    resolvePresetTitle: (token, cache, variantRolls, countsTracker) => {
+        if (!token) return "";
+        const parsed = PresetUtils.parseChipDetails(token, cache);
+
+        if (parsed.presetMatch) {
+            return PresetUtils.toTitleCase(PresetUtils.getPresetName(parsed.presetMatch.key));
+        }
+        if (parsed.tag) {
+            return parsed.tag.label;
+        }
+        if (parsed.variants.length > 0) {
+            return token.replace(/\{([^{}:]+)(?::([^{}]+))?\}/g, (full, g1, sVal) => {
+                const groupRaw = g1.trim();
+                const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
+                const val = sVal ? sVal.trim() : "";
+
+                const resolvedKey = val
+                    ? PresetUtils.resolveVariantKey(groupName, val, cache)
+                    : (() => {
+                        const rollIndex = countsTracker[groupName] || 0;
+                        countsTracker[groupName] = rollIndex + 1;
+                        return variantRolls[`${groupName}_${rollIndex}`];
+                    })();
+
+                return resolvedKey
+                    ? PresetUtils.toTitleCase(PresetUtils.getPresetName(resolvedKey))
+                    : PresetUtils.toTitleCase(groupRaw);
+            });
+        }
+        return token;
+    },
+
     parseBasketChip: (chipData, cache = {}, variantRolls = {}, chipRollState = { rolls: {}, counts: {} }) => {
         const { styleKey, item, startIndex, endIndex, subArray } = chipData;
         const joinedStr = subArray.join(", ");
@@ -162,14 +194,14 @@ const PresetUtils = {
         const coreStr = wMatch ? wMatch[1] : joinedStr;
 
         const beforeCounts = { ...chipRollState.counts };
+
         const chipExpandedCore = PresetUtils.expandRecursively(coreStr, cache, new Set(), chipRollState);
         const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
 
         const rolledInfo = [];
-        for (const group in chipRollState.counts) {
+        for (const [group, endCount] of Object.entries(chipRollState.counts)) {
             const start = beforeCounts[group] || 0;
-            const end = chipRollState.counts[group] || 0;
-            for (let k = start; k < end; k++) {
+            for (let k = start; k < endCount; k++) {
                 const rolledKey = variantRolls[`${group}_${k}`];
                 if (rolledKey) {
                     rolledInfo.push(`🎲 ${PresetUtils.toTitleCase(group.split("_")[0])}: ${PresetUtils.getPresetName(rolledKey)}`);
@@ -185,17 +217,13 @@ const PresetUtils = {
         let presetMatch = parsed.presetMatch;
 
         if (!presetMatch) {
-            const coreParsed = PresetUtils.parseChipDetails(coreStr, cache);
-            if (coreParsed.variants.length === 1 && coreParsed.variants[0].full === coreStr) {
-                const variant = coreParsed.variants[0];
-                let resolvedKey;
-
-                if (variant.val) {
-                    resolvedKey = PresetUtils.resolveVariantKey(variant.groupName, variant.val, cache);
-                } else {
-                    const rollIndex = beforeCounts[variant.groupName] || 0;
-                    resolvedKey = variantRolls[`${variant.groupName}_${rollIndex}`];
-                }
+            const varMatch = coreStr.match(/^\{([^{}:]+)(?::([^{}]+))?\}$/);
+            if (varMatch) {
+                const groupName = varMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
+                const val = varMatch[2] ? varMatch[2].trim() : "";
+                const resolvedKey = val
+                    ? PresetUtils.resolveVariantKey(groupName, val, cache)
+                    : variantRolls[`${groupName}_${beforeCounts[groupName] || 0}`];
 
                 if (resolvedKey && cache[resolvedKey]) {
                     presetMatch = { key: resolvedKey, item: cache[resolvedKey] };
@@ -228,13 +256,16 @@ const PresetUtils = {
         } else if (parsed.tag) {
             const { label, val, isBoolean, isNumeric } = parsed.tag;
             cleanLabel = label;
+            const escLabel = PresetUtils.escapeHTML(label);
+            const escVal = PresetUtils.escapeHTML(val);
+
             if (isBoolean) {
                 const isChecked = val.toLowerCase() === "true" ? "checked" : "";
-                inputHtml = `<input type="checkbox" class="j0n4t-pg-bool-input bool-input" tabindex="0" ${isChecked} title="${PresetUtils.escapeHTML(label)} toggle" aria-label="${PresetUtils.escapeHTML(label)} toggle" />`;
+                inputHtml = `<input type="checkbox" class="j0n4t-pg-bool-input bool-input" tabindex="0" ${isChecked} title="${escLabel} toggle" aria-label="${escLabel} toggle" />`;
             } else if (isNumeric) {
-                inputHtml = `<input type="number" step="0.05" class="j0n4t-pg-num-input num-input" tabindex="0" value="${PresetUtils.escapeHTML(val)}" title="${PresetUtils.escapeHTML(label)} value" aria-label="${PresetUtils.escapeHTML(label)} value" />`;
+                inputHtml = `<input type="number" step="0.05" class="j0n4t-pg-num-input num-input" tabindex="0" value="${escVal}" title="${escLabel} value" aria-label="${escLabel} value" />`;
             } else {
-                inputHtml = `<input type="text" class="j0n4t-pg-text-input text-input" tabindex="0" value="${PresetUtils.escapeHTML(val)}" title="${PresetUtils.escapeHTML(label)} text" aria-label="${PresetUtils.escapeHTML(label)} text" />`;
+                inputHtml = `<input type="text" class="j0n4t-pg-text-input text-input" tabindex="0" value="${escVal}" title="${escLabel} text" aria-label="${escLabel} text" />`;
             }
         }
 
@@ -242,6 +273,15 @@ const PresetUtils = {
         if (weightVal !== null) {
             const labelPrefix = weightVal > 0 ? `+${weightVal}` : `${weightVal}`;
             weightIconHtml = `<div class="j0n4t-pg-basket-chip-weight" data-action="open-weight" title="Adjust Weight (Current: ${weightVal})">${labelPrefix}</div>`;
+        }
+
+        let segmentedLabels = null;
+        const tokens = coreStr.split(/\s+/).filter(Boolean);
+        if (tokens.length > 1 && tokens.some(t => /[{<]/.test(t))) {
+            const countsTracker = { ...beforeCounts };
+            segmentedLabels = tokens.map(token =>
+                PresetUtils.resolvePresetTitle(token, cache, variantRolls, countsTracker)
+            );
         }
 
         return {
@@ -255,7 +295,8 @@ const PresetUtils = {
             startIndex,
             endIndex,
             inputHtml,
-            weightIconHtml
+            weightIconHtml,
+            segmentedLabels
         };
     },
 

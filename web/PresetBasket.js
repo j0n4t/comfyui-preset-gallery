@@ -25,12 +25,13 @@ export default class PresetBasket {
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
     .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
     .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
-    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; max-width: 90px; }
+    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; }
     .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.2); z-index: 0; pointer-events: none; }
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
     .j0n4t-pg-basket-chip:focus-visible { border-width: 2px; border-color: #007acc; }
-
+    .j0n4t-pg-basket-chip-segments { display: flex; gap: 4px; width: 100%; align-items: center; }
+    .j0n4t-pg-basket-chip-segment { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 3px; padding: 1px 5px; flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
 
@@ -448,6 +449,13 @@ export default class PresetBasket {
         chipRollState
       );
 
+      let labelContent = PresetUtils.escapeHTML(chip.cleanLabel);
+      if ((!chip.item || chipData.styleKey.startsWith("_/combo")) && chip.segmentedLabels) {
+        labelContent = `<div class="j0n4t-pg-basket-chip-segments">` +
+          chip.segmentedLabels.map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetUtils.escapeHTML(p)}</span>`).join('') +
+          `</div>`;
+      }
+
       htmlBuffer += `
         <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
@@ -460,7 +468,9 @@ export default class PresetBasket {
              data-end="${chip.endIndex}"
              style='${chip.bgStyle}'>
             ${chip.weightIconHtml}
-            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chip.chipExpanded || chip.joinedStr)}">${PresetUtils.escapeHTML(chip.cleanLabel)}</div>
+            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chip.chipExpanded || chip.joinedStr)}">
+                ${labelContent}
+            </div>
             ${chip.inputHtml}
         </div>
       `;
