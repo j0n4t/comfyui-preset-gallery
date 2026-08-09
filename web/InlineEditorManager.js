@@ -43,6 +43,7 @@ export default class InlineEditorManager {
       const newVal = input.value.trim();
       try {
         input.remove();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         // DOM element might already be detached
       }
