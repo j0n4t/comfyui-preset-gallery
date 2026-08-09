@@ -468,7 +468,46 @@ export default class PresetBasket {
       const baseExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), { rolls: {}, counts: {} });
       const parsed = PresetUtils.parseChipDetails(chipExpandedCore, this.context.cache);
       const baseParsed = PresetUtils.parseChipDetails(item?.preset || baseExpanded, this.context.cache);
-      const presetMatch = parsed.presetMatch;
+
+      let presetMatch = parsed.presetMatch;
+
+      // Recover the preset match for pure variant chips that lost their identity due to deep expansion
+      if (!presetMatch) {
+        const coreParsed = PresetUtils.parseChipDetails(coreStr, this.context.cache);
+
+        // Ensure the chip is strictly a single variant tag like {wear} or {wear:hat}
+        if (coreParsed.variants.length === 1 && coreParsed.variants[0].full === coreStr) {
+          const variant = coreParsed.variants[0];
+          let resolvedKey = null;
+
+          if (variant.val) {
+            // 1. Handle explicitly chosen variants (e.g., {wear:hat})
+            let selectedKey = variant.val;
+            if (this.context.cache && !this.context.cache[selectedKey]) {
+              for (const k of Object.keys(this.context.cache)) {
+                if (k.toLowerCase() === variant.val.toLowerCase() ||
+                  PresetUtils.getPresetName(k).toLowerCase() === variant.val.toLowerCase() ||
+                  (k.toLowerCase().startsWith(variant.groupName + "/") && PresetUtils.getPresetName(k).toLowerCase() === variant.val.toLowerCase())) {
+                  selectedKey = k;
+                  break;
+                }
+              }
+            }
+            if (this.context.cache?.[selectedKey]) {
+              resolvedKey = selectedKey;
+            }
+          } else {
+            // 2. Handle randomly rolled variants (e.g., {wear}) using the roll state sequence
+            const rollIndex = beforeCounts[variant.groupName] || 0;
+            resolvedKey = this.context.variantRolls[`${variant.groupName}_${rollIndex}`];
+          }
+
+          // If a key was resolved from the cache, override the missing presetMatch
+          if (resolvedKey && this.context.cache?.[resolvedKey]) {
+            presetMatch = { key: resolvedKey, item: this.context.cache[resolvedKey] };
+          }
+        }
+      }
 
       let cleanLabel, bgStyle, tooltipTitle, evalId;
 
