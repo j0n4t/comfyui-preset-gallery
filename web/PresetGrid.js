@@ -16,7 +16,6 @@ export default class PresetGrid {
     .j0n4t-pg-group-edit:hover, .j0n4t-pg-group-edit:focus-visible { background: #d1a119; color: #fff; border-color: #d1a119; outline: none; }
     .j0n4t-pg-group-edit svg { width: 11px; height: 11px; fill: currentColor; }
     .j0n4t-pg-group-header[data-group-raw="root_presets"] .j0n4t-pg-group-edit { display: none !important; }
-    .j0n4t-pg-group-input { background: #222; border: 1px solid #d1a119; color: #fff; font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 1px 4px; outline: none; border-radius: 2px; font-family: inherit; letter-spacing: 0.5px; flex-grow: 1; max-width: 200px; max-height: 12px; margin-right: 8px; }
     .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header, .j0n4t-pg-grid.hide-folders .j0n4t-pg-global-collapse-btn { display: none !important; }
   `;
 
@@ -234,74 +233,36 @@ export default class PresetGrid {
             e.stopPropagation();
             if (rawFolder === "root_presets") return;
 
-            const titleSpan = header.querySelector(".j0n4t-pg-group-title");
-            if (!titleSpan || header.querySelector(".j0n4t-pg-group-input")) return;
+            const currentName = rawFolder.replace(/_/g, " ");
+            const inputName = await ModalUtils.prompt("Rename Group", currentName);
 
-            titleSpan.style.display = "none";
-            const inputHtml = `<input type="text" class="j0n4t-pg-group-input" tabindex="0" value="${rawFolder.replace(/_/g, " ")}" />`;
-            titleSpan.insertAdjacentHTML("afterend", inputHtml);
+            if (inputName === null || inputName === undefined) return;
 
-            const input = titleSpan.nextElementSibling;
-            input.focus();
-            input.select();
+            const newName = inputName
+              .trim()
+              .toLowerCase()
+              .replace(/ /g, "_");
 
-            let saved = false;
+            if (!newName || newName === rawFolder) return;
 
-            const save = async () => {
-              if (saved) return;
-              saved = true;
-
-              const newName = input.value
-                .trim()
-                .toLowerCase()
-                .replace(/ /g, "_");
-
-              input.remove();
-              titleSpan.style.display = "";
-
-              if (!newName || newName === rawFolder) return;
-
-              const res = await PresetGalleryAPI.renameFolder(rawFolder, newName);
-              if (res.success) {
-                this.context.setCollapsedFolders(
-                  this.context.getCollapsedFolders().filter((i) => i !== rawFolder)
-                );
-                await this.context.loadGallery();
-                this.context.updateWidgetValue(
-                  this.context
-                    .getSelectedArray()
-                    .map((i) =>
-                      i.startsWith(`${rawFolder}/`)
-                        ? i.replace(`${rawFolder}/`, `${newName}/`)
-                        : i
-                    )
-                );
-              } else {
-                await ModalUtils.alert("Rename failed");
-              }
-            };
-
-            const cancel = () => {
-              if (saved) return;
-              saved = true;
-              input.remove();
-              titleSpan.style.display = "";
-            };
-
-            input.addEventListener("click", (ev) => ev.stopPropagation());
-            input.addEventListener("mousedown", (ev) => ev.stopPropagation());
-            input.addEventListener("keydown", (ev) => {
-              if (ev.key === "Enter") {
-                ev.preventDefault();
-                save();
-              } else if (ev.key === "Escape") {
-                ev.preventDefault();
-                cancel();
-              }
-            });
-            input.addEventListener("blur", () => {
-              save();
-            });
+            const res = await PresetGalleryAPI.renameFolder(rawFolder, newName);
+            if (res.success) {
+              this.context.setCollapsedFolders(
+                this.context.getCollapsedFolders().filter((i) => i !== rawFolder)
+              );
+              await this.context.loadGallery();
+              this.context.updateWidgetValue(
+                this.context
+                  .getSelectedArray()
+                  .map((i) =>
+                    i.startsWith(`${rawFolder}/`)
+                      ? i.replace(`${rawFolder}/`, `${newName}/`)
+                      : i
+                  )
+              );
+            } else {
+              await ModalUtils.alert("Rename failed");
+            }
           });
         }
 
@@ -309,8 +270,7 @@ export default class PresetGrid {
           if (
             e.target.closest(".j0n4t-pg-group-color-picker") ||
             e.target.closest(".j0n4t-pg-group-color-dot") ||
-            e.target.closest(".j0n4t-pg-group-edit") ||
-            e.target.closest(".j0n4t-pg-group-input")
+            e.target.closest(".j0n4t-pg-group-edit")
           )
             return;
           const isCollapsed = header.classList.toggle("collapsed");
