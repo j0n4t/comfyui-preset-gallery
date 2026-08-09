@@ -23,7 +23,7 @@ export default class ChipMenuManager {
 
     const rawPreset = chipElement.dataset.preset || "";
     const source = coreKey.match(/\{[^{}]+\}/) ? coreKey : (rawPreset || item?.preset || "");
-    const parsed = this.basket.parseChipDetails(source);
+    const parsed = PresetUtils.parseChipDetails(source, this.context.cache);
 
     let varRowsHtml = "";
     const groupCounts = {};
@@ -157,7 +157,7 @@ export default class ChipMenuManager {
         let locateKey = coreKey;
         const presetVal = chipElement.dataset.preset;
         if (presetVal) {
-          const presetMatch = this.basket.findPresetMatch(presetVal);
+          const presetMatch = PresetUtils.findPresetMatch(presetVal, this.context.cache);
           if (presetMatch) locateKey = presetMatch.key;
         }
         this.basket.locatePreset(locateKey);

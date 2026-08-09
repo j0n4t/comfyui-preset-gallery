@@ -94,64 +94,6 @@ export default class PresetBasket {
     this.initBasketActions();
   }
 
-  /**
-   * Centralized parsing helper for variants, tags, and cache lookups.
-   */
-  parseChipDetails(text) {
-    if (!text) return { variants: [], tag: null, presetMatch: null, trimmed: "" };
-    const trimmed = text.trim();
-
-    // Parse variants: {group:val} or {group}
-    const varRegex = /\{([^{}:]+)(?::([^{}]+))?\}/g;
-    const variants = Array.from(trimmed.matchAll(varRegex)).map((m) => ({
-      full: m[0],
-      groupRaw: m[1].trim(),
-      groupName: m[1].trim().toLowerCase().replace(/\s+/g, "_"),
-      val: m[2] ? m[2].trim() : "",
-    }));
-
-    // Parse tag inputs: <label:value>
-    const tagMatch = trimmed.match(/^<(.+?)>$/);
-    let tag = null;
-    if (tagMatch) {
-      const parts = tagMatch[1].split(/[:;]/);
-      if (parts[0].match(/lora|lyco/) || parts.length === 2) {
-        const val = parts.pop().trim();
-        const label = parts.pop().trim();
-        tag = {
-          label,
-          val,
-          isBoolean: /^(true|false)$/i.test(val),
-          isNumeric: !isNaN(Number(val)) && val !== "",
-        };
-      }
-    }
-
-    return { variants, tag, presetMatch: this.findPresetMatch(trimmed), trimmed };
-  }
-
-  findPresetMatch(text) {
-    if (!text || !this.context.cache) return null;
-    const trimmed = text.trim();
-    if (!trimmed) return null;
-
-    if (this.context.cache[trimmed]) {
-      return { key: trimmed, item: this.context.cache[trimmed] };
-    }
-
-    for (const [key, item] of Object.entries(this.context.cache)) {
-      if (!item) continue;
-      if (key.trim() === trimmed || (item.preset && item.preset.trim() === trimmed)) {
-        return { key, item };
-      }
-    }
-    return null;
-  }
-
-  updateRawHighlights() {
-    this.rawManager.updateHighlights();
-  }
-
   initDragAndDrop() {
     this.container.addEventListener("dragenter", (e) => {
       if (!this.container.classList.contains("raw-mode")) {
@@ -298,7 +240,7 @@ export default class PresetBasket {
         const presetVal = chip.dataset.preset;
 
         if (presetVal) {
-          const match = this.findPresetMatch(presetVal);
+          const match = PresetUtils.findPresetMatch(presetVal, this.context.cache);
           if (match) targetKey = match.key;
         } else if (this.context.cache?.[evalId]) {
           targetKey = evalId;
@@ -453,7 +395,7 @@ export default class PresetBasket {
 
   reRollChipGroup(chipIndex, groupRaw, gIndex = null) {
     const activeList = this.context.getSelectedArray();
-    const chipsData = this.getGroupedChips(activeList);
+    const chipsData = PresetUtils.getGroupedChips(activeList, this.context.cache);
     const chipState = { rolls: this.context.variantRolls, counts: {} };
     const targetGroup = groupRaw.trim().toLowerCase().replace(/\s+/g, "_");
 
@@ -479,72 +421,6 @@ export default class PresetBasket {
     this.context.syncUI(this.context.widget.value);
   }
 
-  getGroupedChips(activeList) {
-    const chips = [];
-    if (!activeList || activeList.length === 0) return chips;
-
-    const lookupMap = new Map();
-    if (this.context.cache) {
-      for (const [key, item] of Object.entries(this.context.cache)) {
-        if (!item) continue;
-        if (item.preset?.trim()) {
-          const trimmedPreset = item.preset.trim();
-          lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });
-          const expanded = PresetUtils.expandRecursively(trimmedPreset, this.context.cache);
-          if (expanded) lookupMap.set(expanded, { foundKey: key, foundItem: item });
-        }
-        if (key) {
-          lookupMap.set(key, { foundKey: key, foundItem: item });
-          lookupMap.set(key.trim(), { foundKey: key, foundItem: item });
-        }
-      }
-    }
-
-    let i = 0;
-    while (i < activeList.length) {
-      let matched = null;
-      let matchedLen = 0;
-
-      for (let len = Math.min(activeList.length - i, 10); len >= 1; len--) {
-        const subArray = activeList.slice(i, i + len);
-        const joined = subArray.join(", ");
-
-        // Isolate core lookup key by pulling it from weight wrappers
-        const wMatch = joined.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-        const coreJoined = wMatch ? wMatch[1] : joined;
-
-        const cached = lookupMap.get(coreJoined) || lookupMap.get(coreJoined.replace(/\{([^{}:]+):[^{}]+\}/g, '{$1}'));
-
-        if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::[^{}]+)?\}$/)) {
-          matched = {
-            styleKey: cached?.foundKey || subArray[0],
-            item: cached?.foundItem || (cached?.foundKey ? this.context.cache[cached.foundKey] : this.context.cache[subArray[0]]),
-            startIndex: i,
-            endIndex: i + len,
-            subArray,
-          };
-          matchedLen = len;
-          break;
-        }
-      }
-
-      if (matched) {
-        chips.push(matched);
-        i += matchedLen;
-      } else {
-        chips.push({
-          styleKey: activeList[i],
-          item: this.context.cache[activeList[i]] || null,
-          startIndex: i,
-          endIndex: i + 1,
-          subArray: [activeList[i]],
-        });
-        i += 1;
-      }
-    }
-    return chips;
-  }
-
   render(activeList) {
     const rawModeRollState = { rolls: this.context.variantRolls, counts: {} };
 
@@ -560,10 +436,10 @@ export default class PresetBasket {
       });
       this.textarea.value = expandedList.join(", ");
     }
-    this.updateRawHighlights();
+    this.rawManager.updateHighlights();
 
     let htmlBuffer = "";
-    const chipsData = this.getGroupedChips(activeList);
+    const chipsData = PresetUtils.getGroupedChips(activeList, this.context.cache);
     const chipRollState = { rolls: this.context.variantRolls, counts: {} };
 
     chipsData.forEach((chipData, index) => {
@@ -590,8 +466,8 @@ export default class PresetBasket {
       const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
 
       const baseExpanded = PresetUtils.expandRecursively(styleKey, this.context.cache, new Set(), { rolls: {}, counts: {} });
-      const parsed = this.parseChipDetails(chipExpandedCore);
-      const baseParsed = this.parseChipDetails(item?.preset || baseExpanded);
+      const parsed = PresetUtils.parseChipDetails(chipExpandedCore, this.context.cache);
+      const baseParsed = PresetUtils.parseChipDetails(item?.preset || baseExpanded, this.context.cache);
       const presetMatch = parsed.presetMatch;
 
       let cleanLabel, bgStyle, tooltipTitle, evalId;
