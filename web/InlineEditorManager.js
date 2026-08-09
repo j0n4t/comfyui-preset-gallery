@@ -127,7 +127,7 @@ export default class InlineEditorManager {
         if (isPreset) {
           return `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`;
         } else {
-          return `<span>刀 ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
+          return `<span>${PresetUtils.icons.folder} ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
         }
       },
       onSelect: (match) => {
