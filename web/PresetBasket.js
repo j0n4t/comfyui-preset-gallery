@@ -274,7 +274,7 @@ export default class PresetBasket {
         } else {
           newValue = dynamicInput.value.trim();
         }
-        const newStyleKey = styleKey.replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
+        const newStyleKey = PresetUtils.expandRecursively(styleKey, this.context.cache).replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
         const selections = this.context.getSelectedArray();
         if (startIndex < selections.length) {
           selections.splice(startIndex, endIndex - startIndex, newStyleKey);
