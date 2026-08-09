@@ -7,6 +7,7 @@ import PresetBasket from "./PresetBasket.js";
 import PresetEditor from "./PresetEditor.js";
 import PresetGrid from "./PresetGrid.js";
 import PresetUtils from "./PresetUtils.js";
+import ExportUtils from "./ExportUtils.js";
 
 const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
@@ -313,8 +314,8 @@ class PresetGalleryApp {
     });
 
     this.dom.btnExport.addEventListener("click", () => {
-      PresetGalleryAPI.showExportModal((config) => {
-        PresetGalleryAPI.exportPresets(config);
+      ExportUtils.showExportModal((config) => {
+        ExportUtils.exportPresets(config);
       });
     });
 
@@ -322,7 +323,7 @@ class PresetGalleryApp {
     this.dom.inpJsonFile.addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const res = await PresetGalleryAPI.importFile(file);
+      const res = await ExportUtils.importFile(file);
       if (res.success) {
         await this.loadGallery();
         await ModalUtils.alert("Presets imported successfully!");
