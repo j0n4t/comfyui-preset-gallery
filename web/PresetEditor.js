@@ -20,6 +20,7 @@ export default class PresetEditor {
     .j0n4t-pg-editor input { background: #1a1a1ab0; border: 1px solid #444; color: #fff; font-size: 11px; padding: 5px; border-radius: 3px; box-sizing: border-box; width: 100%; outline: none; }
     .j0n4t-pg-editor input:focus, .j0n4t-pg-editor textarea:focus { border-color: #007acc; }
     .j0n4t-pg-editor textarea { resize: vertical; min-height: 48px; outline: none; }
+    .j0n4t-pg-editor .j0n4t-pg-raw-wrapper { background: #15151580; }
     .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
     .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; text-align: center; box-sizing: border-box; height: 24px; outline: none; }
     .j0n4t-pg-btn:hover, .j0n4t-pg-btn:focus-visible { background: #0062a3; outline: 2px solid #fff; outline-offset: -2px; }
