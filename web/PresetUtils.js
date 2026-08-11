@@ -134,18 +134,16 @@ const PresetUtils = {
             val: m[2] ? m[2].trim() : "",
         }));
 
-        const tagMatch = trimmed.match(/^<(.+?)>$/);
         let tag = null;
-        if (tagMatch) {
-            const parts = tagMatch[1].split(/[:;]/);
-            if (parts[0].match(/lora|lyco/) || parts.length === 2) {
+        if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+            const parts = trimmed.slice(1, -1).split(/[:;]/);
+            if (parts[0].match(/lora|lyco/i) || parts.length === 2) {
                 const val = parts.pop().trim();
-                const label = parts.pop().trim();
                 tag = {
-                    label,
+                    label: parts.pop().trim(),
                     val,
                     isBoolean: /^(true|false)$/i.test(val),
-                    isNumeric: !isNaN(Number(val)) && val !== "",
+                    isNumeric: val !== "" && !isNaN(Number(val)),
                 };
             }
         }
@@ -153,18 +151,22 @@ const PresetUtils = {
         return { variants, tag, presetMatch: PresetUtils.findPresetMatch(trimmed, cache), trimmed };
     },
 
-    resolvePresetTitle: (token, cache, variantRolls, countsTracker) => {
-        if (!token) return "";
+    resolvePresetSegment: (token, cache, variantRolls, countsTracker) => {
+        if (!token) return { title: "", filename: null };
         const parsed = PresetUtils.parseChipDetails(token, cache);
 
         if (parsed.presetMatch) {
-            return PresetUtils.toTitleCase(PresetUtils.getPresetName(parsed.presetMatch.key));
+            return {
+                title: PresetUtils.toTitleCase(PresetUtils.getPresetName(parsed.presetMatch.key)),
+                filename: parsed.presetMatch.item?.filename || null
+            };
         }
         if (parsed.tag) {
-            return parsed.tag.label;
+            return { title: parsed.tag.label, filename: null };
         }
         if (parsed.variants.length > 0) {
-            return token.replace(/\{([^{}:]+)(?::([^{}]+))?\}/g, (full, g1, sVal) => {
+            let filename = null;
+            const title = token.replace(/\{([^{}:]+)(?::([^{}]+))?\}/g, (full, g1, sVal) => {
                 const groupRaw = g1.trim();
                 const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
                 const val = sVal ? sVal.trim() : "";
@@ -177,12 +179,17 @@ const PresetUtils = {
                         return variantRolls[`${groupName}_${rollIndex}`];
                     })();
 
-                return resolvedKey
-                    ? PresetUtils.toTitleCase(PresetUtils.getPresetName(resolvedKey))
-                    : PresetUtils.toTitleCase(groupRaw);
+                if (resolvedKey) {
+                    if (!filename && cache[resolvedKey]?.filename) {
+                        filename = cache[resolvedKey].filename;
+                    }
+                    return PresetUtils.toTitleCase(PresetUtils.getPresetName(resolvedKey));
+                }
+                return PresetUtils.toTitleCase(groupRaw);
             });
+            return { title, filename };
         }
-        return token;
+        return { title: token, filename: null };
     },
 
     parseBasketChip: (chipData, cache = {}, variantRolls = {}, chipRollState = { rolls: {}, counts: {} }) => {
@@ -192,9 +199,9 @@ const PresetUtils = {
         const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         const weightVal = wMatch ? parseFloat(wMatch[2]) : null;
         const coreStr = wMatch ? wMatch[1] : joinedStr;
+        const trimmedCore = coreStr.trim();
 
         const beforeCounts = { ...chipRollState.counts };
-
         const chipExpandedCore = PresetUtils.expandRecursively(coreStr, cache, new Set(), chipRollState);
         const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
 
@@ -210,24 +217,17 @@ const PresetUtils = {
         }
         const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
 
-        const baseExpanded = PresetUtils.expandRecursively(styleKey, cache, new Set(), { rolls: {}, counts: {} });
         const parsed = PresetUtils.parseChipDetails(chipExpandedCore, cache);
-        const baseParsed = PresetUtils.parseChipDetails(item?.preset || baseExpanded, cache);
-
         let presetMatch = parsed.presetMatch;
 
-        if (!presetMatch) {
-            const varMatch = coreStr.match(/^\{([^{}:]+)(?::([^{}]+))?\}$/);
-            if (varMatch) {
-                const groupName = varMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
-                const val = varMatch[2] ? varMatch[2].trim() : "";
-                const resolvedKey = val
-                    ? PresetUtils.resolveVariantKey(groupName, val, cache)
-                    : variantRolls[`${groupName}_${beforeCounts[groupName] || 0}`];
+        if (!presetMatch && parsed.variants.length === 1 && parsed.variants[0].full === trimmedCore) {
+            const { groupName, val } = parsed.variants[0];
+            const resolvedKey = val
+                ? PresetUtils.resolveVariantKey(groupName, val, cache)
+                : variantRolls[`${groupName}_${beforeCounts[groupName] || 0}`];
 
-                if (resolvedKey && cache[resolvedKey]) {
-                    presetMatch = { key: resolvedKey, item: cache[resolvedKey] };
-                }
+            if (resolvedKey && cache[resolvedKey]) {
+                presetMatch = { key: resolvedKey, item: cache[resolvedKey] };
             }
         }
 
@@ -251,7 +251,9 @@ const PresetUtils = {
         }
 
         let inputHtml = "";
-        if (baseParsed.variants.length > 0) {
+        const basePreset = item?.preset || PresetUtils.expandRecursively(styleKey, cache, new Set(), { rolls: {}, counts: {} });
+
+        if (/\{[^{}:]+(?::[^{}]+)?\}/.test(styleKey + basePreset)) {
             inputHtml = `<span class="j0n4t-pg-var-more">${PresetUtils.icons.more}</span>`;
         } else if (parsed.tag) {
             const { label, val, isBoolean, isNumeric } = parsed.tag;
@@ -279,9 +281,20 @@ const PresetUtils = {
         const tokens = coreStr.split(/\s+/).filter(Boolean);
         if (tokens.length > 1 && tokens.some(t => /[{<]/.test(t))) {
             const countsTracker = { ...beforeCounts };
-            segmentedLabels = tokens.map(token =>
-                PresetUtils.resolvePresetTitle(token, cache, variantRolls, countsTracker)
-            );
+            segmentedLabels = [];
+            let segmentImg = null;
+
+            for (const token of tokens) {
+                const seg = PresetUtils.resolvePresetSegment(token, cache, variantRolls, countsTracker);
+                segmentedLabels.push(seg.title);
+                if (!segmentImg && seg.filename) {
+                    segmentImg = seg.filename;
+                }
+            }
+
+            if (segmentImg) {
+                bgStyle = `background-image: url("${segmentImg}")`;
+            }
         }
 
         return {
