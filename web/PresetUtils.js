@@ -1,5 +1,5 @@
 const PresetUtils = {
-    splitComma: (str) => {
+    splitPresets: (str) => {
         if (!str) return [];
         const tokens = [];
         let current = "";
@@ -117,7 +117,7 @@ const PresetUtils = {
             return expandText(trimmed);
         };
 
-        const keys = PresetUtils.splitComma(val);
+        const keys = PresetUtils.splitPresets(val);
         const expanded = keys.map(expandToken);
         return expanded.filter(Boolean).join(", ");
     },

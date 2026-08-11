@@ -65,7 +65,7 @@ export default class InlineEditorManager {
           this.context.updateWidgetValue(selections);
         } else if (!isNew && newVal !== initialValue) {
           if (startIndex !== undefined && endIndex !== undefined) {
-            const newValues = newVal.includes(",") ? PresetUtils.splitComma(newVal) : [newVal];
+            const newValues = newVal.includes(",") ? PresetUtils.splitPresets(newVal) : [newVal];
             selections.splice(startIndex, endIndex - startIndex, ...newValues);
             this.context.updateWidgetValue(selections);
           } else {
