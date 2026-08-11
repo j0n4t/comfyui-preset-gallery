@@ -157,7 +157,7 @@ export default class PresetGrid {
       const searchBlob = PresetUtils.getSearchBlob(key, item);
       const rawGroup = PresetUtils.getPresetFolder(key) || "root_presets";
       const uiGroup = PresetUtils.getUiFolder(key);
-      const groupColor = cache[rawGroup] ? cache[rawGroup].__color__ : '#888888';
+      const groupColor = PresetUtils.getPresetColor(rawGroup, cache);
 
       if (uiGroup !== lastGroup) {
         lastGroup = uiGroup;
