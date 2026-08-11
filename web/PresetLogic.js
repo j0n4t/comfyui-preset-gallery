@@ -37,7 +37,7 @@ const PresetLogic = {
     /**
      * Finds cache keys matching a specific preset folder group name.
      * @param {string} groupName - Target folder/group name.
-     * @param {Cache} [cache={}] - Cache lookup map.
+     * @param {PresetCache} [cache={}] - Cache lookup map.
      * @returns {string[]} Matching keys.
      */
     getGroupMatches: (groupName, cache = {}) => {
@@ -54,7 +54,7 @@ const PresetLogic = {
      * Resolves a target variant key within the cache.
      * @param {string} groupName - Group context.
      * @param {string} val - Variant value to match.
-     * @param {Cache} [cache={}] - Cache lookup map.
+     * @param {PresetCache} [cache={}] - Cache lookup map.
      * @returns {string|null} Resolved key or null.
      */
     resolveVariantKey: (groupName, val, cache = {}) => {
@@ -80,7 +80,7 @@ const PresetLogic = {
     /**
      * Recursively expands `{group:value}` syntax and references within templates.
      * @param {string} val - Template string to expand.
-     * @param {Cache} cache - Preset cache lookup dictionary.
+     * @param {PresetCache} cache - Preset cache lookup dictionary.
      * @param {Set<string>} [seen=new Set()] - Circular dependency tracking set.
      * @param {RollState|null} [rollState=null] - Dynamic roll state tracer.
      * @returns {string} Fully expanded prompt text.
@@ -151,7 +151,7 @@ const PresetLogic = {
     /**
      * Parses a string token to extract tag info, variant list, or cache match.
      * @param {string} text - Raw token text.
-     * @param {Cache} [cache] - Preset cache.
+     * @param {PresetCache} [cache] - Preset cache.
      * @returns {ParsedChipDetails} Parsed metadata.
      */
     parseChipDetails: (text, cache) => {
@@ -186,7 +186,7 @@ const PresetLogic = {
     /**
      * Resolves metadata (title and thumbnail) for single tokens within complex segment prompts.
      * @param {string} token - Inner text token.
-     * @param {Cache} [cache] - Cache object.
+     * @param {PresetCache} [cache] - Cache object.
      * @param {Record<string, string>} [variantRolls={}] - Map of pre-rolled variant choices.
      * @param {Record<string, number>} [countsTracker={}] - Tracker of variant group indices.
      * @returns {PresetSegment} Resolved title and image filename.
@@ -235,7 +235,7 @@ const PresetLogic = {
     /**
      * Processes input chip data and returns non-DOM pure calculated state.
      * @param {ChipGroupInput} chipData - Raw chip group input.
-     * @param {Cache} [cache={}] - Preset cache map.
+     * @param {PresetCache} [cache={}] - Preset cache map.
      * @param {Record<string, string>} [variantRolls={}] - Rolled variants map.
      * @param {RollState} [chipRollState={ rolls: {}, counts: {} }] - Dynamic roll tracker state.
      * @returns {ProcessedChip} Evaluated chip pure data structure.
@@ -340,7 +340,7 @@ const PresetLogic = {
     /**
      * Groups raw token elements from list sequence into aggregated chip entries.
      * @param {string[]} activeList - Sequential token inputs.
-     * @param {Cache} cache - Preset cache map.
+     * @param {PresetCache} cache - Preset cache map.
      * @returns {ChipGroupInput[]} Grouped chip item definitions.
      */
     getGroupedChips(activeList, cache) {
@@ -411,7 +411,7 @@ const PresetLogic = {
     /**
      * Evaluates whether string input directly matches a cache key or preset string.
      * @param {string} text - Plain text input.
-     * @param {Cache} [cache] - Preset cache map.
+     * @param {PresetCache} [cache] - Preset cache map.
      * @returns {PresetMatch | null} Preset key and item if matched.
      */
     findPresetMatch: (text, cache) => {
@@ -449,7 +449,7 @@ const PresetLogic = {
     /**
      * Lexically parses tokens from a string prompt input.
      * @param {string} val - Prompt raw string.
-     * @param {Cache|null} [cache=null] - Cache object.
+     * @param {PresetCache|null} [cache=null] - Cache object.
      * @param {string|null} [ignorePreset=null] - Preset key to ignore during expansion.
      * @returns {ParsedToken[]} Array of token positions and metadata.
      */
@@ -624,7 +624,7 @@ const PresetLogic = {
 
     /**
      * Returns unique folder paths extracted from the entire cache dictionary.
-     * @param {Cache} cache - Preset cache map.
+     * @param {PresetCache} cache - Preset cache map.
      * @returns {string[]} List of unique folder path strings.
      */
     getAllPresetFolders: (cache) => Array.from(new Set(
@@ -634,7 +634,7 @@ const PresetLogic = {
     /**
      * Computes the assigned or computed HSL color for a given preset key.
      * @param {string} [presetKey=""] - Preset identifier path key.
-     * @param {Cache|null} [cache=null] - Optional lookup cache.
+     * @param {PresetCache|null} [cache=null] - Optional lookup cache.
      * @returns {string} CSS Color string.
      */
     getPresetColor: (presetKey = "", cache = null) => {
@@ -666,7 +666,7 @@ const PresetLogic = {
     /**
      * Returns full formatted title and description body for tooltips.
      * @param {string} key - Cache key.
-     * @param {Cache} cache - Cache object.
+     * @param {PresetCache} cache - Cache object.
      * @returns {string} Formatted multiline title text.
      */
     getPresetTitle: (key, cache) => `${PresetLogic.toTitleCase(PresetLogic.getPresetName(key))} [${key}]\n${cache[key]?.preset || ""}`,
@@ -702,7 +702,7 @@ const PresetLogic = {
     /**
      * Constructs searchable lowercase blob text for indexing.
      * @param {string} key - Preset key path.
-     * @param {CacheItem} item - Cache item object.
+     * @param {PresetCacheItem} item - Cache item object.
      * @returns {string} Searchable text query blob.
      */
     getSearchBlob: (key, item) =>
@@ -713,7 +713,7 @@ const PresetLogic = {
      * @param {string[]} list - Key list array.
      * @param {string} query - Query filter string.
      * @param {(item: string) => string} [getSearchBlob] - Custom search blob mapper callback.
-     * @param {Cache|null} [cache=null] - Cache reference.
+     * @param {PresetCache|null} [cache=null] - Cache reference.
      * @param {string|null} [ignorePreset=null] - Preset key to exclude.
      * @returns {SearchResult[]} Top matched items.
      */

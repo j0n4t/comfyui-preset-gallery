@@ -100,7 +100,7 @@ const PresetDOM = {
     /**
      * Generates render-ready HTML structure elements for basket display chips.
      * @param {ChipGroupInput} chipData - Input group object.
-     * @param {Cache} [cache={}] - Preset cache map.
+     * @param {PresetCache} [cache={}] - Preset cache map.
      * @param {Record<string, string>} [variantRolls={}] - Rolled variants map.
      * @param {RollState} [chipRollState={ rolls: {}, counts: {} }] - Dynamic roll tracker state.
      * @returns {RenderedChip} Rendered chip definition containing HTML markup snippets.
