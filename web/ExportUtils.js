@@ -1,7 +1,8 @@
 import ModalUtils from "./ModalUtils.js";
 import NestedPresetUtils from "./NestedPresetUtils.js";
+import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
-import PresetUtils from "./PresetUtils.js";
+import PresetLogic from "./PresetLogic.js";
 import YAMLUtils from "./YAMLUtils.js";
 
 const loadJSZip = async () => {
@@ -74,7 +75,7 @@ const ExportUtils = {
             const hasContent = item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename);
             if (!hasContent) continue;
 
-            const gKey = PresetUtils.getPresetFolder(key) || "root_presets";
+            const gKey = PresetLogic.getPresetFolder(key) || "root_presets";
             if (!groups[gKey]) groups[gKey] = [];
             groups[gKey].push({ key, item });
         }
@@ -85,7 +86,7 @@ const ExportUtils = {
             if (gKey === "root_presets") {
                 gName = "Root Presets";
             } else {
-                gName = gKey.split("/").map(PresetUtils.toTitleCase).join(" › ");
+                gName = gKey.split("/").map(PresetLogic.toTitleCase).join(" › ");
                 if (presets[gKey] && presets[gKey].__color__) groupHex = presets[gKey].__color__;
             }
 
@@ -126,8 +127,8 @@ const ExportUtils = {
           <span class="j0n4t-pg-collapse-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em;">▼</span>
           <span class="j0n4t-pg-edit-group-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Rename Folder">✎</span>
           <label class="j0n4t-pg-checkbox-wrap" style="margin: 0; display: flex; align-items: center;">
-            <input type="checkbox" class="j0n4t-pg-group-cb" data-group="${PresetUtils.escapeHTML(gKey)}" checked />
-            <span class="j0n4t-pg-group-name" style="border-left:3px solid ${groupHex}; padding-left:6px; margin-right: 8px;"><strong>${PresetUtils.escapeHTML(gName)}</strong> (${items.length})</span>
+            <input type="checkbox" class="j0n4t-pg-group-cb" data-group="${PresetDOM.escapeHTML(gKey)}" checked />
+            <span class="j0n4t-pg-group-name" style="border-left:3px solid ${groupHex}; padding-left:6px; margin-right: 8px;"><strong>${PresetDOM.escapeHTML(gName)}</strong> (${items.length})</span>
           </label>
           ${statsHtml}
         </div>
@@ -150,7 +151,7 @@ const ExportUtils = {
                     if (oldText !== newText || oldImg !== newImg) {
                         hasDiff = true;
                         let textDiffHtml = oldText !== newText
-                            ? `<div style="color: #ff6b6b; margin-bottom: 4px;"><strong>- Current:</strong><br/>${PresetUtils.escapeHTML(oldText)}</div><div style="color: #51cf66;"><strong>+ Imported:</strong><br/>${PresetUtils.escapeHTML(newText)}</div>`
+                            ? `<div style="color: #ff6b6b; margin-bottom: 4px;"><strong>- Current:</strong><br/>${PresetDOM.escapeHTML(oldText)}</div><div style="color: #51cf66;"><strong>+ Imported:</strong><br/>${PresetDOM.escapeHTML(newText)}</div>`
                             : `<div style="color: #888; font-style: italic;">(Text unchanged)</div>`;
                         let imgDiffHtml = oldImg !== newImg ? `<div style="margin-top: 6px; color: #fcc419;"><strong>* Image/Thumbnail modified</strong></div>` : "";
                         detailsHtml = `${textDiffHtml}${imgDiffHtml}`;
@@ -163,7 +164,7 @@ const ExportUtils = {
 
                 if (!hasDiff) {
                     detailsHtml = `
-            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content:</strong><br/>${PresetUtils.escapeHTML(item.preset || "(Empty)")}</div>
+            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content:</strong><br/>${PresetDOM.escapeHTML(item.preset || "(Empty)")}</div>
             ${item.filename ? `<div style="margin-top: 6px;"><img src="${item.filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
           `;
                 }
@@ -181,10 +182,10 @@ const ExportUtils = {
                 const editContainerHtml = `
           <div class="j0n4t-pg-edit-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.25); border-left: 2px solid #4dabf7; font-size: 0.85em; border-radius: 4px;">
             <label style="display:block; margin-bottom:2px;">Name</label>
-            <input type="text" class="edit-name" value="${PresetUtils.escapeHTML(PresetUtils.getPresetName(key))}" style="width: 100%; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;" />
+            <input type="text" class="edit-name" value="${PresetDOM.escapeHTML(PresetLogic.getPresetName(key))}" style="width: 100%; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;" />
             
             <label style="display:block; margin-bottom:2px;">Preset Content</label>
-            <textarea class="edit-text" style="width: 100%; height: 80px; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;">${PresetUtils.escapeHTML(item.preset || "")}</textarea>
+            <textarea class="edit-text" style="width: 100%; height: 80px; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;">${PresetDOM.escapeHTML(item.preset || "")}</textarea>
             
             <label style="display:block; margin-bottom:2px;">Current Picture</label>
             <div class="edit-img-preview-wrap" style="margin-bottom: 8px;">
@@ -215,8 +216,8 @@ const ExportUtils = {
             <span class="j0n4t-pg-details-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em; color: ${hasDiff ? '#fcc419' : '#888'};" title="Toggle Details">⊞</span>
             <span class="j0n4t-pg-edit-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Edit Item">✎</span>
             <label class="j0n4t-pg-checkbox-wrap" style="flex: 1; margin: 0;">
-              <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetUtils.escapeHTML(gKey)}" data-status="${status}" data-user-modified="false" value="${PresetUtils.escapeHTML(key)}" ${checkedAttr} />
-              <span class="j0n4t-pg-item-name">${PresetUtils.escapeHTML(PresetUtils.getPresetName(key))}</span>
+              <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetDOM.escapeHTML(gKey)}" data-status="${status}" data-user-modified="false" value="${PresetDOM.escapeHTML(key)}" ${checkedAttr} />
+              <span class="j0n4t-pg-item-name">${PresetDOM.escapeHTML(PresetLogic.getPresetName(key))}</span>
               ${itemStatusTag}
             </label>
           </div>
@@ -247,7 +248,7 @@ const ExportUtils = {
                     const cb = itemRow.querySelector(".j0n4t-pg-item-cb");
 
                     const oldKey = cb.value;
-                    const folder = PresetUtils.getPresetFolder(oldKey);
+                    const folder = PresetLogic.getPresetFolder(oldKey);
                     const cleanName = newName.toLowerCase().replace(/ /g, "_");
                     const newKey = (folder && folder !== "root_presets") ? `${folder}/${cleanName}` : cleanName;
 
@@ -258,7 +259,7 @@ const ExportUtils = {
                             reader.onload = e => res(e.target.result);
                             reader.readAsDataURL(fileInput.files[0]);
                         });
-                        presets[oldKey].filename = await PresetUtils.createThumbnail(dataUrl);
+                        presets[oldKey].filename = await PresetDOM.createThumbnail(dataUrl);
 
                         const imgWrap = editContainer.querySelector(".edit-img-preview-wrap");
                         imgWrap.innerHTML = `<span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${presets[oldKey].filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" />`;
@@ -277,7 +278,7 @@ const ExportUtils = {
                     cb.checked = true;
 
                     let updatedDetailsHtml = `
-            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content (Edited):</strong><br/>${PresetUtils.escapeHTML(newText)}</div>
+            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content (Edited):</strong><br/>${PresetDOM.escapeHTML(newText)}</div>
             ${presets[newKey || oldKey].filename ? `<div style="margin-top: 6px;"><img src="${presets[newKey || oldKey].filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
           `;
                     detailsContainer.innerHTML = updatedDetailsHtml;
@@ -295,7 +296,7 @@ const ExportUtils = {
                     const checkboxes = itemsBox.querySelectorAll(".j0n4t-pg-item-cb");
                     checkboxes.forEach(cb => {
                         const oldKey = cb.value;
-                        const itemName = PresetUtils.getPresetName(oldKey);
+                        const itemName = PresetLogic.getPresetName(oldKey);
                         const newKey = cleanNewFolder ? `${cleanNewFolder}/${itemName}` : itemName;
 
                         if (presets[oldKey]) {
@@ -315,7 +316,7 @@ const ExportUtils = {
                     }
 
                     groupHeader.querySelector(".j0n4t-pg-group-cb").dataset.group = cleanNewFolder;
-                    groupHeader.querySelector(".j0n4t-pg-group-name").innerHTML = `<strong>${PresetUtils.escapeHTML(newGroupName)}</strong> (${items.length})`;
+                    groupHeader.querySelector(".j0n4t-pg-group-name").innerHTML = `<strong>${PresetDOM.escapeHTML(newGroupName)}</strong> (${items.length})`;
                 }
             });
 
@@ -561,7 +562,7 @@ const ExportUtils = {
                         zip.file(`${key}.txt`, item.preset || "");
 
                         if (mode !== "preset-only" && item.filename) {
-                            const parsed = PresetUtils.parseDataURL(item.filename);
+                            const parsed = PresetLogic.parseDataURL(item.filename);
                             if (parsed) {
                                 zip.file(`${key}.${parsed.ext}`, parsed.base64, { base64: true });
                             }
@@ -751,9 +752,9 @@ const ExportUtils = {
                     if (imgFiles[key]) {
                         const { entry, ext } = imgFiles[key];
                         const base64 = await entry.async("base64");
-                        const mime = PresetUtils.getMimeType(ext);
+                        const mime = PresetLogic.getMimeType(ext);
                         const dataUrl = `data:${mime};base64,${base64}`;
-                        filename = await PresetUtils.createThumbnail(dataUrl);
+                        filename = await PresetDOM.createThumbnail(dataUrl);
                     }
                     const cleanKey = key.toLowerCase().replace(/ /g, "_");
                     if (!cleanKey) continue;
@@ -787,7 +788,7 @@ const ExportUtils = {
                 importedPresets = NestedPresetUtils.nestedToFlat(parsedData);
                 for (const item of Object.values(importedPresets)) {
                     if (item && item.filename && item.filename.startsWith("data:image/")) {
-                        item.filename = await PresetUtils.createThumbnail(item.filename);
+                        item.filename = await PresetDOM.createThumbnail(item.filename);
                     }
                 }
             } catch (err) {

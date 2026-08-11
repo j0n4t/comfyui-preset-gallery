@@ -1,4 +1,4 @@
-import PresetUtils from "./PresetUtils.js";
+import PresetDOM from "./PresetDOM.js";
 
 export default class PresetGalleryAPI {
   static API_ENDPOINT = "/preset_gallery/presets";
@@ -101,7 +101,7 @@ export default class PresetGalleryAPI {
     if (clearImage) {
       finalImage = null;
     } else if (imageData) {
-      finalImage = await PresetUtils.createThumbnail(imageData);
+      finalImage = await PresetDOM.createThumbnail(imageData);
     }
 
     if (!trimmedText && !finalImage) {

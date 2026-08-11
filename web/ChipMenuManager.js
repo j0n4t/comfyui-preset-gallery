@@ -1,4 +1,5 @@
-import PresetUtils from "./PresetUtils.js";
+import PresetDOM from "./PresetDOM.js";
+import PresetLogic from "./PresetLogic.js";
 
 export default class ChipMenuManager {
   constructor(context, delegateBasket) {
@@ -23,7 +24,7 @@ export default class ChipMenuManager {
 
     const rawPreset = chipElement.dataset.preset || "";
     const source = coreKey.match(/\{[^{}]+\}/) ? coreKey : (rawPreset || item?.preset || "");
-    const parsed = PresetUtils.parseChipDetails(source, this.context.cache);
+    const parsed = PresetLogic.parseChipDetails(source, this.context.cache);
 
     let varRowsHtml = "";
     const groupCounts = {};
@@ -33,28 +34,28 @@ export default class ChipMenuManager {
         const gIndex = groupCounts[groupRaw] || 0;
         groupCounts[groupRaw] = gIndex + 1;
 
-        const matches = PresetUtils.getGroupMatches(groupName, this.context.cache);
+        const matches = PresetLogic.getGroupMatches(groupName, this.context.cache);
 
         if (matches.length > 0) {
           const optionsHtml = matches
             .map((m) => {
-              const name = PresetUtils.getPresetName(m);
+              const name = PresetLogic.getPresetName(m);
               const isSelected = currentSelectedVal && (m === currentSelectedVal || name.toLowerCase() === currentSelectedVal.toLowerCase());
-              return `<option value="${PresetUtils.escapeHTML(name)}" ${isSelected ? "selected" : ""}>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(name))}</option>`;
+              return `<option value="${PresetDOM.escapeHTML(name)}" ${isSelected ? "selected" : ""}>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(name))}</option>`;
             })
             .join("");
           const randomSelected = !currentSelectedVal ? "selected" : "";
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
-            <label>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}</label>
-            <select data-group="${PresetUtils.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
-            <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetUtils.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(groupRaw))}" tabindex="0">${PresetUtils.icons.dice}</button>
+            <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
+            <select data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
+            <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
           </div>`;
         }
       });
     }
 
     let varSectionHtml = varRowsHtml ? `<div class="j0n4t-pg-var-popup-container">${varRowsHtml}</div>` : "";
-    const swapIcon = PresetUtils.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
+    const swapIcon = PresetDOM.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
 
     const weightSectionHtml = `
       <div class="j0n4t-pg-weight-modifier" style="display: ${focusWeight ? 'flex' : 'none'}; justify-content: center; align-items: center; gap: 6px; padding: 4px; background: #222; border-bottom: 1px solid #444;">
@@ -77,12 +78,12 @@ export default class ChipMenuManager {
         <div class="j0n4t-pg-chip-popup-actions">
           ${weightToggleBtn}
           <div class="j0n4t-pg-chip-popup-item" data-action="swap" title="Swap Preset" tabindex="0" role="menuitem">${swapIcon}</div>
-          <div class="j0n4t-pg-chip-popup-item" data-action="edit" title="Edit" tabindex="0" role="menuitem">${PresetUtils.icons.edit}</div>
+          <div class="j0n4t-pg-chip-popup-item" data-action="edit" title="Edit" tabindex="0" role="menuitem">${PresetDOM.icons.edit}</div>
           ${item
-        ? `<div class="j0n4t-pg-chip-popup-item" data-action="locate" title="Locate in Gallery" tabindex="0" role="menuitem">${PresetUtils.icons.eye}</div>`
-        : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip" tabindex="0" role="menuitem">${PresetUtils.icons.add}</div>`
+        ? `<div class="j0n4t-pg-chip-popup-item" data-action="locate" title="Locate in Gallery" tabindex="0" role="menuitem">${PresetDOM.icons.eye}</div>`
+        : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip" tabindex="0" role="menuitem">${PresetDOM.icons.add}</div>`
       }
-          <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove" tabindex="0" role="menuitem">${PresetUtils.icons.close}</div>
+          <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove" tabindex="0" role="menuitem">${PresetDOM.icons.close}</div>
         </div>
       </div>
     `;
@@ -151,7 +152,7 @@ export default class ChipMenuManager {
         let locateKey = coreKey;
         const presetVal = chipElement.dataset.preset;
         if (presetVal) {
-          const presetMatch = PresetUtils.findPresetMatch(presetVal, this.context.cache);
+          const presetMatch = PresetLogic.findPresetMatch(presetVal, this.context.cache);
           if (presetMatch) locateKey = presetMatch.key;
         }
         this.basket.locatePreset(locateKey);

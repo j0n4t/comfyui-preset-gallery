@@ -6,8 +6,9 @@ import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetBasket from "./PresetBasket.js";
 import PresetEditor from "./PresetEditor.js";
 import PresetGrid from "./PresetGrid.js";
-import PresetUtils from "./PresetUtils.js";
+import PresetLogic from "./PresetLogic.js";
 import ExportUtils from "./ExportUtils.js";
+import PresetDOM from "./PresetDOM.js";
 
 const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
@@ -97,11 +98,11 @@ class PresetGalleryApp {
     this.editor = new PresetEditor(this.dom, this);
     this.grid = new PresetGrid(this.dom, this);
 
-    PresetUtils.injectStyles('j0n4t-pg-wrap-styles', PresetGalleryApp.WRAP_STYLES);
-    PresetUtils.injectStyles('j0n4t-pg-action-topbar-search-styles', PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES);
-    PresetUtils.injectStyles('j0n4t-pg-gallery-styles', PresetGalleryApp.GALLERY_STYLES);
-    PresetUtils.injectStyles('j0n4t-pg-modal-styles', PresetGalleryApp.MODAL_STYLES);
-    PresetUtils.injectStyles('j0n4t-pg-preset-tree-selector-styles', PresetGalleryApp.PRESET_TREE_SELECTOR_STYLES);
+    PresetDOM.injectStyles('j0n4t-pg-wrap-styles', PresetGalleryApp.WRAP_STYLES);
+    PresetDOM.injectStyles('j0n4t-pg-action-topbar-search-styles', PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES);
+    PresetDOM.injectStyles('j0n4t-pg-gallery-styles', PresetGalleryApp.GALLERY_STYLES);
+    PresetDOM.injectStyles('j0n4t-pg-modal-styles', PresetGalleryApp.MODAL_STYLES);
+    PresetDOM.injectStyles('j0n4t-pg-preset-tree-selector-styles', PresetGalleryApp.PRESET_TREE_SELECTOR_STYLES);
 
     this.bindEvents();
     this.editor.renderPreview();
@@ -115,8 +116,8 @@ class PresetGalleryApp {
         <div class="j0n4t-pg-basket-header">
           <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
           <div style="display: flex; gap: 4px; align-items: center;">
-                  <button type="button" class="j0n4t-pg-basket-copy-btn" title="Copy basket content" aria-label="Copy basket content">${PresetUtils.icons.copy}</button>
-                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?" style="display:flex; font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">${PresetUtils.icons.dice}</button>
+                  <button type="button" class="j0n4t-pg-basket-copy-btn" title="Copy basket content" aria-label="Copy basket content">${PresetDOM.icons.copy}</button>
+                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?" style="display:flex; font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">${PresetDOM.icons.dice}</button>
                   <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
                   <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" aria-label="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
           </div>
@@ -129,26 +130,26 @@ class PresetGalleryApp {
 
       <div class="j0n4t-pg-control-bar">
               <div class="j0n4t-pg-controls">
-                <div class="j0n4t-pg-view-btn" id="j0n4t-pg-toggle" tabindex="0" role="button" aria-expanded="false" title="Management Panel">${PresetUtils.icons.preset}</div>  
+                <div class="j0n4t-pg-view-btn" id="j0n4t-pg-toggle" tabindex="0" role="button" aria-expanded="false" title="Management Panel">${PresetDOM.icons.preset}</div>  
               </div>
-              <div class="j0n4t-pg-search-wrapper"><input type="text" enterkeyhint="enter" class="j0n4t-pg-search" placeholder="Search..." aria-label="Search Presets" /><div class="j0n4t-pg-search-clear" tabindex="0" role="button" aria-label="Clear Search">${PresetUtils.icons.close}</div></div>
+              <div class="j0n4t-pg-search-wrapper"><input type="text" enterkeyhint="enter" class="j0n4t-pg-search" placeholder="Search..." aria-label="Search Presets" /><div class="j0n4t-pg-search-clear" tabindex="0" role="button" aria-label="Clear Search">${PresetDOM.icons.close}</div></div>
               <div class="j0n4t-pg-controls">
                 <div class="j0n4t-pg-more-options-wrap">
-                  <div class="j0n4t-pg-view-btn" id="j0n4t-pg-more-options-btn" tabindex="0" role="button" aria-label="More Options" title="More Options">${PresetUtils.icons.more}</div>
+                  <div class="j0n4t-pg-view-btn" id="j0n4t-pg-more-options-btn" tabindex="0" role="button" aria-label="More Options" title="More Options">${PresetDOM.icons.more}</div>
                   <div class="j0n4t-pg-popup-menu" id="j0n4t-pg-popup-menu">
                     <div class="j0n4t-pg-popup-section j0n4t-pg-views" role="group" aria-label="View styles">
-                      <div class="j0n4t-pg-view-btn" data-view="small" tabindex="0" role="button" aria-pressed="false" aria-label="Small View" title="Small View">${PresetUtils.icons.small}</div>
-                      <div class="j0n4t-pg-view-btn" data-view="big" tabindex="0" role="button" aria-pressed="false" aria-label="Large View" title="Large View">${PresetUtils.icons.big}</div>
-                      <div class="j0n4t-pg-view-btn" data-view="list" tabindex="0" role="button" aria-pressed="false" aria-label="List View" title="List View">${PresetUtils.icons.list}</div>
+                      <div class="j0n4t-pg-view-btn" data-view="small" tabindex="0" role="button" aria-pressed="false" aria-label="Small View" title="Small View">${PresetDOM.icons.small}</div>
+                      <div class="j0n4t-pg-view-btn" data-view="big" tabindex="0" role="button" aria-pressed="false" aria-label="Large View" title="Large View">${PresetDOM.icons.big}</div>
+                      <div class="j0n4t-pg-view-btn" data-view="list" tabindex="0" role="button" aria-pressed="false" aria-label="List View" title="List View">${PresetDOM.icons.list}</div>
                     </div>
                     <div class="j0n4t-pg-popup-section" id="j0n4t-pg-group-controls">
-                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-global-collapse" tabindex="0" role="button" title="Collapse All" aria-label="Collapse All">${PresetUtils.icons.collapse}</div>
-                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-group-toggle" tabindex="0" role="button" title="Toggle Grouping" aria-label="Toggle Grouping" aria-pressed="false">${PresetUtils.icons.group}</div>
-                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-hide-hidden" tabindex="0" role="button" title="Toggle Hidden Presets" aria-label="Toggle Hidden Presets" aria-pressed="false">${PresetUtils.icons.hidden}</div>
+                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-global-collapse" tabindex="0" role="button" title="Collapse All" aria-label="Collapse All">${PresetDOM.icons.collapse}</div>
+                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-group-toggle" tabindex="0" role="button" title="Toggle Grouping" aria-label="Toggle Grouping" aria-pressed="false">${PresetDOM.icons.group}</div>
+                      <div class="j0n4t-pg-view-btn" id="j0n4t-pg-hide-hidden" tabindex="0" role="button" title="Toggle Hidden Presets" aria-label="Toggle Hidden Presets" aria-pressed="false">${PresetDOM.icons.hidden}</div>
                     </div>
                   </div>
                 </div>
-                <div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn" tabindex="0" role="button" aria-pressed="true" title="Toggle Gallery View" aria-label="Toggle Gallery Visibility">${PresetUtils.icons.eye}</div>
+                <div class="j0n4t-pg-view-btn active" id="j0n4t-pg-hide-gallery-btn" tabindex="0" role="button" aria-pressed="true" title="Toggle Gallery View" aria-label="Toggle Gallery Visibility">${PresetDOM.icons.eye}</div>
               </div>
             </div>
 
@@ -156,8 +157,8 @@ class PresetGalleryApp {
               <div class="j0n4t-pg-row">
                 <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner" title="📝 Select an Item">📝 Select an Item</div>
                 <input type="file" id="j0n4t-pg-json-file" accept=".zip,.json,.yaml,.yml" style="display:none;" />
-                <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import Presets (.zip, .yaml, .json)" aria-label="Import Presets">${PresetUtils.icons.import}</button>
-                <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Presets (.zip, .yaml, .json)" aria-label="Export Presets">${PresetUtils.icons.export}</button>
+                <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import Presets (.zip, .yaml, .json)" aria-label="Import Presets">${PresetDOM.icons.import}</button>
+                <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Presets (.zip, .yaml, .json)" aria-label="Export Presets">${PresetDOM.icons.export}</button>
                 <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;">New</button>
                 <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;">Save</button>
                 <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;">Delete</button>
@@ -220,7 +221,7 @@ class PresetGalleryApp {
 
   getSelectedArray() {
     return this.widget.value
-      ? PresetUtils.splitPresets(this.widget.value)
+      ? PresetLogic.splitPresets(this.widget.value)
       : [];
   }
 
@@ -265,7 +266,7 @@ class PresetGalleryApp {
 
   async syncUI(val) {
     const arr = val
-      ? PresetUtils.splitPresets(val)
+      ? PresetLogic.splitPresets(val)
       : [];
     this.grid.syncSelection(arr);
     this.basket.render(arr);
@@ -338,7 +339,7 @@ class PresetGalleryApp {
         const groupsMap = new Map();
         for (const [key, item] of Object.entries(cache)) {
           if (item?.preset) {
-            const folder = PresetUtils.getPresetFolder(key);
+            const folder = PresetLogic.getPresetFolder(key);
             if (folder) {
               if (!groupsMap.has(folder)) groupsMap.set(folder, []);
               groupsMap.get(folder).push(key);
@@ -407,12 +408,12 @@ class PresetGalleryApp {
       getMatches: (query) => {
         query = query.trim().toLowerCase();
         if (!query) return [];
-        return PresetUtils.getTopMatches(Object.keys(this.cache), query, (k) =>
-          PresetUtils.getSearchBlob(k, this.cache[k]), this.cache
+        return PresetLogic.getTopMatches(Object.keys(this.cache), query, (k) =>
+          PresetLogic.getSearchBlob(k, this.cache[k]), this.cache
         );
       },
       renderItem: (match) =>
-        `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`,
+        `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         const sel = this.getSelectedArray();
         if (!sel.includes(match)) this.updateWidgetValue([...sel, match]);
@@ -478,7 +479,7 @@ app.registerExtension({
 
       widget.serializeValue = function () {
         const raw = widget.value || "";
-        return PresetUtils.expandRecursively(raw, galleryView.cache, new Set(), { rolls: galleryView.variantRolls, counts: {} });
+        return PresetLogic.expandRecursively(raw, galleryView.cache, new Set(), { rolls: galleryView.variantRolls, counts: {} });
       };
 
       galleryView.init();

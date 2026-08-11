@@ -1,5 +1,6 @@
 import AutocompleteManager from "./AutocompleteManager.js";
-import PresetUtils from "./PresetUtils.js";
+import PresetDOM from "./PresetDOM.js";
+import PresetLogic from "./PresetLogic.js";
 
 export default class InlineEditorManager {
   constructor(context, basketElement) {
@@ -9,7 +10,7 @@ export default class InlineEditorManager {
 
   spawn(chipElement, initialValue, startIndex = undefined, endIndex = undefined) {
     const isNew = !chipElement;
-    const inputHtml = `<input type="text" class="j0n4t-pg-inline-edit" enterkeyhint="enter" value="${PresetUtils.escapeHTML(initialValue || '')}" tabindex="0" />`;
+    const inputHtml = `<input type="text" class="j0n4t-pg-inline-edit" enterkeyhint="enter" value="${PresetDOM.escapeHTML(initialValue || '')}" tabindex="0" />`;
     let input;
 
     if (isNew) {
@@ -65,7 +66,7 @@ export default class InlineEditorManager {
           this.context.updateWidgetValue(selections);
         } else if (!isNew && newVal !== initialValue) {
           if (startIndex !== undefined && endIndex !== undefined) {
-            const newValues = newVal.includes(",") ? PresetUtils.splitPresets(newVal) : [newVal];
+            const newValues = newVal.includes(",") ? PresetLogic.splitPresets(newVal) : [newVal];
             selections.splice(startIndex, endIndex - startIndex, ...newValues);
             this.context.updateWidgetValue(selections);
           } else {
@@ -97,37 +98,37 @@ export default class InlineEditorManager {
             const groupQuery = bracketContent.trim().toLowerCase();
             const groupsSet = new Set();
             for (const k of Object.keys(this.context.cache)) {
-              const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(k) : k.split('/')[0];
+              const folder = PresetLogic.getPresetFolder ? PresetLogic.getPresetFolder(k) : k.split('/')[0];
               if (folder) groupsSet.add(folder);
             }
             const groups = Array.from(groupsSet);
             const dummyCache = {};
             groups.forEach(g => { dummyCache[g] = { preset: g }; });
-            return PresetUtils.getTopMatches(groups, groupQuery, (g) => g, dummyCache);
+            return PresetLogic.getTopMatches(groups, groupQuery, (g) => g, dummyCache);
           } else {
             const groupName = bracketContent.substring(0, colonIndex).trim().toLowerCase();
             const presetQuery = bracketContent.substring(colonIndex + 1).trim().toLowerCase();
 
             const presetMatches = Object.keys(this.context.cache).filter((k) => {
               if (!this.context.cache[k]?.preset) return false;
-              const folder = PresetUtils.getPresetFolder ? PresetUtils.getPresetFolder(k) : k.split('/')[0];
+              const folder = PresetLogic.getPresetFolder ? PresetLogic.getPresetFolder(k) : k.split('/')[0];
               return folder.toLowerCase() === groupName || folder.toLowerCase().startsWith(groupName + "/") || folder.toLowerCase().endsWith("/" + groupName);
             });
 
-            return PresetUtils.getTopMatches(presetMatches, presetQuery, (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]), this.context.cache);
+            return PresetLogic.getTopMatches(presetMatches, presetQuery, (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]), this.context.cache);
           }
         } else {
           query = query.trim().toLowerCase();
           if (!query) return [];
-          return PresetUtils.getTopMatches(Object.keys(this.context.cache), query, (k) => PresetUtils.getSearchBlob(k, this.context.cache[k]), this.context.cache);
+          return PresetLogic.getTopMatches(Object.keys(this.context.cache), query, (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]), this.context.cache);
         }
       },
       renderItem: (match) => {
         const isPreset = this.context.cache && this.context.cache[match];
         if (isPreset) {
-          return `<span>${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetUtils.escapeHTML(match)}</span>`;
+          return `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`;
         } else {
-          return `<span>${PresetUtils.icons.folder} ${PresetUtils.escapeHTML(PresetUtils.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
+          return `<span>${PresetDOM.icons.folder} ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
         }
       },
       onSelect: (match) => {

@@ -1,6 +1,7 @@
 import ModalUtils from "./ModalUtils.js";
+import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
-import PresetUtils from "./PresetUtils.js";
+import PresetLogic from "./PresetLogic.js";
 
 export default class PresetGrid {
   static GROUP_HEADER_STYLES = /*css*/ `
@@ -51,9 +52,9 @@ export default class PresetGrid {
   constructor(dom, context) {
     this.dom = dom;
     this.context = context;
-    PresetUtils.injectStyles("j0n4t-pg-group-header-styles", PresetGrid.GROUP_HEADER_STYLES);
-    PresetUtils.injectStyles("j0n4t-pg-item-thumb-styles", PresetGrid.ITEM_THUMB_STYLES);
-    PresetUtils.injectStyles("j0n4t-pg-view-list-overrides-styles", PresetGrid.VIEW_LIST_OVERRIDES);
+    PresetDOM.injectStyles("j0n4t-pg-group-header-styles", PresetGrid.GROUP_HEADER_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-item-thumb-styles", PresetGrid.ITEM_THUMB_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-view-list-overrides-styles", PresetGrid.VIEW_LIST_OVERRIDES);
     this.bindEvents();
   }
 
@@ -84,8 +85,8 @@ export default class PresetGrid {
 
     const isHiddenPreset = (el, rawGroup) => {
       const styleKey = el.dataset.style || "";
-      const presetName = PresetUtils.getPresetName(styleKey);
-      const folder = rawGroup || PresetUtils.getPresetFolder(styleKey) || "";
+      const presetName = PresetLogic.getPresetName(styleKey);
+      const folder = rawGroup || PresetLogic.getPresetFolder(styleKey) || "";
       return styleKey.startsWith("_") || presetName.startsWith("_") || folder.startsWith("_");
     };
 
@@ -136,8 +137,8 @@ export default class PresetGrid {
     const collapsedList = this.context.getCollapsedFolders();
 
     const sortedKeys = Object.keys(cache).sort((a, b) => {
-      const groupA = PresetUtils.getUiFolder(a) || "root_presets";
-      const groupB = PresetUtils.getUiFolder(b) || "root_presets";
+      const groupA = PresetLogic.getUiFolder(a) || "root_presets";
+      const groupB = PresetLogic.getUiFolder(b) || "root_presets";
       const isAHidden = groupA.startsWith("_");
       const isBHidden = groupB.startsWith("_");
       if (isAHidden !== isBHidden) {
@@ -152,44 +153,44 @@ export default class PresetGrid {
 
     sortedKeys.forEach((key) => {
       const item = cache[key];
-      const cleanLabel = PresetUtils.toTitleCase(PresetUtils.getPresetName(key));
-      const initials = PresetUtils.getPresetInitials(key);
-      const searchBlob = PresetUtils.getSearchBlob(key, item);
-      const rawGroup = PresetUtils.getPresetFolder(key) || "root_presets";
-      const uiGroup = PresetUtils.getUiFolder(key);
-      const groupColor = PresetUtils.getPresetColor(rawGroup, cache);
+      const cleanLabel = PresetLogic.toTitleCase(PresetLogic.getPresetName(key));
+      const initials = PresetLogic.getPresetInitials(key);
+      const searchBlob = PresetLogic.getSearchBlob(key, item);
+      const rawGroup = PresetLogic.getPresetFolder(key) || "root_presets";
+      const uiGroup = PresetLogic.getUiFolder(key);
+      const groupColor = PresetLogic.getPresetColor(rawGroup, cache);
 
       if (uiGroup !== lastGroup) {
         lastGroup = uiGroup;
         htmlBuffer += `
-            <div class="j0n4t-pg-group-header${collapsedList.includes(rawGroup) ? " collapsed" : ""}" data-group="${PresetUtils.escapeHTML(uiGroup)}" data-group-raw="${PresetUtils.escapeHTML(rawGroup)}" tabindex="0" role="button" aria-expanded="${!collapsedList.includes(rawGroup)}">
+            <div class="j0n4t-pg-group-header${collapsedList.includes(rawGroup) ? " collapsed" : ""}" data-group="${PresetDOM.escapeHTML(uiGroup)}" data-group-raw="${PresetDOM.escapeHTML(rawGroup)}" tabindex="0" role="button" aria-expanded="${!collapsedList.includes(rawGroup)}">
                 <span class="j0n4t-pg-group-color-dot" tabindex="0" role="button" style="background-color: ${groupColor};" title="Click to customize group color" aria-label="Customize group color">
                     <input type="color" class="j0n4t-pg-group-color-picker" value="${groupColor}" tabindex="-1" aria-hidden="true" />
                 </span>
-                <span class="j0n4t-pg-group-title">${PresetUtils.escapeHTML(uiGroup)}</span>
+                <span class="j0n4t-pg-group-title">${PresetDOM.escapeHTML(uiGroup)}</span>
                 <div class="j0n4t-pg-group-line"></div>
-                <div class="j0n4t-pg-group-edit" tabindex="-1" role="button" title="Rename Group" aria-label="Rename Group">${PresetUtils.icons.edit}</div>
+                <div class="j0n4t-pg-group-edit" tabindex="-1" role="button" title="Rename Group" aria-label="Rename Group">${PresetDOM.icons.edit}</div>
             </div>`;
       }
 
       if (!item.preset) return;
 
       const thumb = item.filename
-        ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy" alt="${PresetUtils.escapeHTML(cleanLabel)} preview">`
-        : `<div style="background-color: ${groupColor}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;" aria-hidden="true">${PresetUtils.icons.file}</div>`;
-      const badge = PresetUtils.getPresetFolder(key)
-        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetUtils.escapeHTML(PresetUtils.toTitleCase(PresetUtils.getPresetFolder(key).split("/").pop()))}</div>`
+        ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy" alt="${PresetDOM.escapeHTML(cleanLabel)} preview">`
+        : `<div style="background-color: ${groupColor}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;" aria-hidden="true">${PresetDOM.icons.file}</div>`;
+      const badge = PresetLogic.getPresetFolder(key)
+        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetFolder(key).split("/").pop()))}</div>`
         : "";
 
       htmlBuffer += `
-       <div class="j0n4t-pg-item" data-style="${PresetUtils.escapeHTML(key)}" data-search-blob="${PresetUtils.escapeHTML(searchBlob)}" draggable="true" tabindex="0" role="option" aria-selected="false" title="${PresetUtils.escapeHTML(cleanLabel)} [${PresetUtils.escapeHTML(key)}]\n${PresetUtils.escapeHTML(item.preset || "")}">
+       <div class="j0n4t-pg-item" data-style="${PresetDOM.escapeHTML(key)}" data-search-blob="${PresetDOM.escapeHTML(searchBlob)}" draggable="true" tabindex="0" role="option" aria-selected="false" title="${PresetDOM.escapeHTML(cleanLabel)} [${PresetDOM.escapeHTML(key)}]\n${PresetDOM.escapeHTML(item.preset || "")}">
           ${badge}
           <div class="j0n4t-pg-thumb-box">
             ${thumb}
-            <div class="j0n4t-pg-initials">${PresetUtils.escapeHTML(initials)}</div>
+            <div class="j0n4t-pg-initials">${PresetDOM.escapeHTML(initials)}</div>
           </div>
-          <div class="j0n4t-pg-label">${PresetUtils.escapeHTML(cleanLabel)}</div>
-          <div class="j0n4t-pg-corner-edit" tabindex="-1" role="button" title="Edit" aria-label="Edit Preset">${PresetUtils.icons.edit}</div>
+          <div class="j0n4t-pg-label">${PresetDOM.escapeHTML(cleanLabel)}</div>
+          <div class="j0n4t-pg-corner-edit" tabindex="-1" role="button" title="Edit" aria-label="Edit Preset">${PresetDOM.icons.edit}</div>
         </div>`;
     });
 

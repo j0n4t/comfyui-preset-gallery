@@ -1,7 +1,8 @@
 import ChipMenuManager from "./ChipMenuManager.js";
 import InlineEditorManager from "./InlineEditorManager.js";
 import ModalUtils from "./ModalUtils.js";
-import PresetUtils from "./PresetUtils.js";
+import PresetDOM from "./PresetDOM.js";
+import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 
 export default class PresetBasket {
@@ -80,11 +81,11 @@ export default class PresetBasket {
     this.inlineEditorManager = new InlineEditorManager(this.context, this.basket);
     this.chipMenuManager = new ChipMenuManager(this.context, this);
 
-    PresetUtils.injectStyles("j0n4t-pg-basket-container-styles", PresetBasket.BASKET_CONTAINER_STYLES);
-    PresetUtils.injectStyles("j0n4t-pg-basket-chip-etc-styles", PresetBasket.BASKET_CHIP_ETC_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-basket-container-styles", PresetBasket.BASKET_CONTAINER_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-basket-chip-etc-styles", PresetBasket.BASKET_CHIP_ETC_STYLES);
 
     this.rawManager = new RawTextareaManager(this.textarea, this.context, null, (val) => {
-      const tokens = PresetUtils.parseTokens(val, this.context.cache);
+      const tokens = PresetLogic.parseTokens(val, this.context.cache);
       const selections = tokens
         .filter((t) => !t.isDelimiter && t.text.trim())
         .map((t) => (t.key ? t.key : t.text.trim()));
@@ -240,7 +241,7 @@ export default class PresetBasket {
         const presetVal = chip.dataset.preset;
 
         if (presetVal) {
-          const match = PresetUtils.findPresetMatch(presetVal, this.context.cache);
+          const match = PresetLogic.findPresetMatch(presetVal, this.context.cache);
           if (match) targetKey = match.key;
         } else if (this.context.cache?.[evalId]) {
           targetKey = evalId;
@@ -275,7 +276,7 @@ export default class PresetBasket {
         } else {
           newValue = dynamicInput.value.trim();
         }
-        const newStyleKey = PresetUtils.expandRecursively(styleKey, this.context.cache).replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
+        const newStyleKey = PresetLogic.expandRecursively(styleKey, this.context.cache).replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
         const selections = this.context.getSelectedArray();
         if (startIndex < selections.length) {
           selections.splice(startIndex, endIndex - startIndex, newStyleKey);
@@ -395,13 +396,13 @@ export default class PresetBasket {
 
   reRollChipGroup(chipIndex, groupRaw, gIndex = null) {
     const activeList = this.context.getSelectedArray();
-    const chipsData = PresetUtils.getGroupedChips(activeList, this.context.cache);
+    const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
     const chipState = { rolls: this.context.variantRolls, counts: {} };
     const targetGroup = groupRaw.trim().toLowerCase().replace(/\s+/g, "_");
 
     for (let i = 0; i < chipsData.length; i++) {
       const beforeCounts = { ...chipState.counts };
-      PresetUtils.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
+      PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
       if (i === chipIndex) {
         const start = beforeCounts[targetGroup] || 0;
         const end = chipState.counts[targetGroup] || 0;
@@ -428,47 +429,47 @@ export default class PresetBasket {
       const expandedList = activeList.map(itemStr => {
         const wMatch = itemStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         if (wMatch) {
-          const coreExpanded = PresetUtils.expandRecursively(wMatch[1], this.context.cache, new Set(), rawModeRollState);
+          const coreExpanded = PresetLogic.expandRecursively(wMatch[1], this.context.cache, new Set(), rawModeRollState);
           return `(${coreExpanded}:${wMatch[2]})`;
         }
-        return PresetUtils.expandRecursively(itemStr, this.context.cache, new Set(), rawModeRollState);
+        return PresetLogic.expandRecursively(itemStr, this.context.cache, new Set(), rawModeRollState);
       });
       this.textarea.value = expandedList.join(", ");
     }
     this.rawManager.updateHighlights();
 
     let htmlBuffer = "";
-    const chipsData = PresetUtils.getGroupedChips(activeList, this.context.cache);
+    const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
     const chipRollState = { rolls: this.context.variantRolls, counts: {} };
 
     chipsData.forEach((chipData, index) => {
-      const chip = PresetUtils.parseBasketChip(
+      const chip = PresetDOM.renderBasketChip(
         chipData,
         this.context.cache,
         this.context.variantRolls,
         chipRollState
       );
 
-      let labelContent = PresetUtils.escapeHTML(chip.cleanLabel);
+      let labelContent = PresetDOM.escapeHTML(chip.cleanLabel);
       if ((!chip.item || chipData.styleKey.startsWith("_/combo")) && chip.segmentedLabels) {
         labelContent = `<div class="j0n4t-pg-basket-chip-segments">` +
-          chip.segmentedLabels.map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetUtils.escapeHTML(p)}</span>`).join('') +
+          chip.segmentedLabels.map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`).join('') +
           `</div>`;
       }
 
       htmlBuffer += `
         <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
-             title="${PresetUtils.escapeHTML(chip.tooltipTitle)}"
-             data-id="${PresetUtils.escapeHTML(chip.joinedStr)}"
-             data-eval-id="${PresetUtils.escapeHTML(chip.evalId)}"
-             data-preset="${PresetUtils.escapeHTML(chip.item?.preset || "")}"
+             title="${PresetDOM.escapeHTML(chip.tooltipTitle)}"
+             data-id="${PresetDOM.escapeHTML(chip.joinedStr)}"
+             data-eval-id="${PresetDOM.escapeHTML(chip.evalId)}"
+             data-preset="${PresetDOM.escapeHTML(chip.item?.preset || "")}"
              data-index="${index}"
              data-start="${chip.startIndex}"
              data-end="${chip.endIndex}"
              style='${chip.bgStyle}'>
             ${chip.weightIconHtml}
-            <div class="j0n4t-pg-basket-chip-label" title="${PresetUtils.escapeHTML(chip.chipExpanded || chip.joinedStr)}">
+            <div class="j0n4t-pg-basket-chip-label" title="${PresetDOM.escapeHTML(chip.chipExpanded || chip.joinedStr)}">
                 ${labelContent}
             </div>
             ${chip.inputHtml}
@@ -514,7 +515,7 @@ export default class PresetBasket {
     }
     ModalUtils.show({
       title: "📋 Basket Contents",
-      content: `<textarea readonly style="width: 100%; height: 120px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; box-sizing: border-box; font-family: monospace; font-size: 11px; resize: vertical; margin: 8px 0;">${PresetUtils.escapeHTML(content)}</textarea>`,
+      content: `<textarea readonly style="width: 100%; height: 120px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; box-sizing: border-box; font-family: monospace; font-size: 11px; resize: vertical; margin: 8px 0;">${PresetDOM.escapeHTML(content)}</textarea>`,
       buttons: [
         {
           text: "Copy",
@@ -539,7 +540,7 @@ export default class PresetBasket {
   }
 
   locatePreset(styleKey) {
-    const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetUtils.escapeHTML(styleKey)}"]`);
+    const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetDOM.escapeHTML(styleKey)}"]`);
     if (itemEl) {
       this.context.dom.search.value = "";
       let prev = itemEl.previousElementSibling;

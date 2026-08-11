@@ -1,4 +1,4 @@
-import PresetUtils from "./PresetUtils.js";
+import PresetDOM from "./PresetDOM.js";
 
 export default class ModalUtils {
   static MODAL_STYLES = /*css*/ `
@@ -17,7 +17,7 @@ export default class ModalUtils {
   `;
 
   static injectStyles() {
-    PresetUtils.injectStyles("j0n4t-pg-modal-styles", ModalUtils.MODAL_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-modal-styles", ModalUtils.MODAL_STYLES);
   }
 
   /**
@@ -28,7 +28,7 @@ export default class ModalUtils {
   static alert(message) {
     return ModalUtils.show({
       title: "Notice",
-      content: `<div style="font-size: 11px; color: #ccc; line-height: 1.4;">${PresetUtils.escapeHTML(message)}</div>`,
+      content: `<div style="font-size: 11px; color: #ccc; line-height: 1.4;">${PresetDOM.escapeHTML(message)}</div>`,
       buttons: [{ text: "OK", isDefault: true, closeOnFinish: true }]
     });
   }
@@ -41,7 +41,7 @@ export default class ModalUtils {
   static async confirm(message) {
     const result = await ModalUtils.show({
       title: "Confirmation",
-      content: `<div style="font-size: 11px; color: #ccc; line-height: 1.4;">${PresetUtils.escapeHTML(message)}</div>`,
+      content: `<div style="font-size: 11px; color: #ccc; line-height: 1.4;">${PresetDOM.escapeHTML(message)}</div>`,
       buttons: [
         { text: "Cancel", closeOnFinish: true, callback: () => false },
         { text: "Confirm", isDefault: true, closeOnFinish: true, callback: () => true }
@@ -63,7 +63,7 @@ export default class ModalUtils {
       isLarge: true,
       content: `
         <div class="j0n4t-pg-modal-field">
-          <input type="text" class="j0n4t-pg-modal-input" value="${PresetUtils.escapeHTML(defaultValue)}" />
+          <input type="text" class="j0n4t-pg-modal-input" value="${PresetDOM.escapeHTML(defaultValue)}" />
         </div>
       `,
       buttons: [
@@ -111,12 +111,12 @@ export default class ModalUtils {
       const buttonsHTML = options.buttons
         ? options.buttons.map((btn) =>
           `<button type="button" class="j0n4t-pg-btn${btn.className ? " " + btn.className : ""}" ${btn.isDefault ? 'style="background:#007acc;"' : ""}>
-            ${PresetUtils.escapeHTML(btn.text)}
+            ${PresetDOM.escapeHTML(btn.text)}
           </button>`
         ).join("")
         : `<button type="button" class="j0n4t-pg-btn" style="background:#007acc;">OK</button>`;
       modal.innerHTML = `
-        <h3>${PresetUtils.escapeHTML(options.title || "Modal")}</h3>
+        <h3>${PresetDOM.escapeHTML(options.title || "Modal")}</h3>
         <div class="j0n4t-pg-modal-content">${options.content}</div>
         <div class="j0n4t-pg-modal-actions">${buttonsHTML}</div>
       `;

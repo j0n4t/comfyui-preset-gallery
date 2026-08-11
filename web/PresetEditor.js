@@ -1,7 +1,8 @@
 import AutocompleteManager from "./AutocompleteManager.js";
 import ModalUtils from "./ModalUtils.js";
+import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
-import PresetUtils from "./PresetUtils.js";
+import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 
 const fileToDataURL = (file) =>
@@ -41,8 +42,8 @@ export default class PresetEditor {
     this.currentMode = "new";
     this.isSaved = true;
 
-    PresetUtils.injectStyles("j0n4t-pg-editor-btn-styles", PresetEditor.EDITOR_BTN_STYLES);
-    PresetUtils.injectStyles("j0n4t-pg-editor-preview-styles", PresetEditor.EDITOR_PREVIEW_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-editor-btn-styles", PresetEditor.EDITOR_BTN_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-editor-preview-styles", PresetEditor.EDITOR_PREVIEW_STYLES);
 
     this.rawPresetManager = new RawTextareaManager(
       this.dom.inpPreset,
@@ -60,7 +61,7 @@ export default class PresetEditor {
   }
 
   renderPreview() {
-    const rmBtnHtml = `<div class="j0n4t-pg-corner-edit" id="j0n4t-pg-rm-img-btn" tabindex="0" role="button" title="Remove Image" aria-label="Remove Image">${PresetUtils.icons.close}</div>`;
+    const rmBtnHtml = `<div class="j0n4t-pg-corner-edit" id="j0n4t-pg-rm-img-btn" tabindex="0" role="button" title="Remove Image" aria-label="Remove Image">${PresetDOM.icons.close}</div>`;
     if (this.dom.editor.classList.contains("has-image")) {
       let imgSrc = "";
       if (this.dom.inpFile.files?.[0]) {
@@ -84,7 +85,7 @@ export default class PresetEditor {
       (this.dom.inpFolder.value.trim()
         ? `${this.dom.inpFolder.value.trim()}/`
         : "") + (this.dom.inpName.value.trim() || "New");
-    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetUtils.getPresetColor(uniqueKey, this.context.cache) || ""}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;" aria-hidden="true">${PresetUtils.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetUtils.escapeHTML(PresetUtils.getPresetInitials(uniqueKey))}</div></div>`;
+    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetLogic.getPresetColor(uniqueKey, this.context.cache) || ""}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;" aria-hidden="true">${PresetDOM.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetDOM.escapeHTML(PresetLogic.getPresetInitials(uniqueKey))}</div></div>`;
   }
 
   updateBanner() {
@@ -347,8 +348,8 @@ export default class PresetEditor {
       getMatches: (query) => {
         query = query.trim().toLowerCase().replace(/ /g, "_");
         if (!query) return [];
-        const allFolders = PresetUtils.getAllPresetFolders(this.context.cache);
-        return PresetUtils.getTopMatches(allFolders, query, (f) =>
+        const allFolders = PresetLogic.getAllPresetFolders(this.context.cache);
+        return PresetLogic.getTopMatches(allFolders, query, (f) =>
           f.replace(/_/g, " ")
         );
       },

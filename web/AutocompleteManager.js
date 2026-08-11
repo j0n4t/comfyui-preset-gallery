@@ -1,4 +1,4 @@
-import PresetUtils from "./PresetUtils.js";
+import PresetDOM from "./PresetDOM.js";
 
 export default class AutocompleteManager {
   static AUTOCOMPLETE_POPUP_STYLES = /*css*/ `
@@ -45,8 +45,8 @@ export default class AutocompleteManager {
     this.matches = [];
     this.activeIndex = 0;
 
-    PresetUtils.injectStyles("j0n4t-pg-autocomplete-popup-styles", AutocompleteManager.AUTOCOMPLETE_POPUP_STYLES);
-    PresetUtils.injectStyles("j0n4t-pg-folder-autocomplete-styles", AutocompleteManager.FOLDER_AUTOCOMPLETE_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-autocomplete-popup-styles", AutocompleteManager.AUTOCOMPLETE_POPUP_STYLES);
+    PresetDOM.injectStyles("j0n4t-pg-folder-autocomplete-styles", AutocompleteManager.FOLDER_AUTOCOMPLETE_STYLES);
 
     this.initEvents();
   }
