@@ -161,7 +161,6 @@ const ExportUtils = {
                     isNew = true;
                 }
 
-                // Details for ALL items (even if not a diff)
                 if (!hasDiff) {
                     detailsHtml = `
             <div style="color: #bbb; margin-bottom: 4px;"><strong>Content:</strong><br/>${PresetUtils.escapeHTML(item.preset || "(Empty)")}</div>
@@ -225,7 +224,6 @@ const ExportUtils = {
           ${editContainerHtml}
         `;
 
-                // Details Toggle
                 const detailsBtn = itemRow.querySelector(".j0n4t-pg-details-btn");
                 const detailsContainer = itemRow.querySelector(".j0n4t-pg-details-container");
                 detailsBtn.addEventListener("click", () => {
@@ -234,7 +232,6 @@ const ExportUtils = {
                     detailsBtn.textContent = isHidden ? "⊟" : "⊞";
                 });
 
-                // Edit Toggle & Save Logic
                 const editBtn = itemRow.querySelector(".j0n4t-pg-edit-btn");
                 const editContainer = itemRow.querySelector(".j0n4t-pg-edit-container");
                 const saveBtn = editContainer.querySelector(".edit-save");
@@ -254,7 +251,6 @@ const ExportUtils = {
                     const cleanName = newName.toLowerCase().replace(/ /g, "_");
                     const newKey = (folder && folder !== "root_presets") ? `${folder}/${cleanName}` : cleanName;
 
-                    // Mutate Presets object directly
                     presets[oldKey].preset = newText;
                     if (fileInput.files && fileInput.files[0]) {
                         const dataUrl = await new Promise((res) => {
@@ -264,10 +260,9 @@ const ExportUtils = {
                         });
                         presets[oldKey].filename = await PresetUtils.createThumbnail(dataUrl);
 
-                        // Update the current picture preview container live
                         const imgWrap = editContainer.querySelector(".edit-img-preview-wrap");
                         imgWrap.innerHTML = `<span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${presets[oldKey].filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" />`;
-                        fileInput.value = ""; // Reset file input
+                        fileInput.value = "";
                     }
 
                     if (newKey !== oldKey) {
@@ -279,9 +274,8 @@ const ExportUtils = {
 
                     editContainer.style.display = "none";
                     cb.dataset.userModified = "true";
-                    cb.checked = true; // Auto-check upon edit
+                    cb.checked = true;
 
-                    // Refresh details view content
                     let updatedDetailsHtml = `
             <div style="color: #bbb; margin-bottom: 4px;"><strong>Content (Edited):</strong><br/>${PresetUtils.escapeHTML(newText)}</div>
             ${presets[newKey || oldKey].filename ? `<div style="margin-top: 6px;"><img src="${presets[newKey || oldKey].filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
@@ -292,7 +286,6 @@ const ExportUtils = {
                 itemsBox.appendChild(itemRow);
             });
 
-            // Group Editor Hook
             const groupEditBtn = groupHeader.querySelector(".j0n4t-pg-edit-group-btn");
             groupEditBtn.addEventListener("click", () => {
                 const newGroupName = prompt("Rename Folder:", gName);
@@ -312,6 +305,14 @@ const ExportUtils = {
                         cb.value = newKey;
                         cb.dataset.group = cleanNewFolder;
                     });
+
+                    if (gKey && gKey !== "root_presets" && presets[gKey] && presets[gKey].__color__) {
+                        if (cleanNewFolder) {
+                            presets[cleanNewFolder] = { ...(presets[cleanNewFolder] || {}), __color__: presets[gKey].__color__ };
+                        }
+                        delete presets[gKey].__color__;
+                        if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
+                    }
 
                     groupHeader.querySelector(".j0n4t-pg-group-cb").dataset.group = cleanNewFolder;
                     groupHeader.querySelector(".j0n4t-pg-group-name").innerHTML = `<strong>${PresetUtils.escapeHTML(newGroupName)}</strong> (${items.length})`;
@@ -389,7 +390,7 @@ const ExportUtils = {
         return {
             element: container,
             getSelectedKeys: () => Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map((cb) => cb.value),
-            getPresets: () => presets, // Return the mutable object so callers get the new keys and content!
+            getPresets: () => presets,
             applyDuplicateStrategy: (strategy) => {
                 let stateChanged = false;
                 itemCbs.forEach((cb) => {
@@ -408,6 +409,7 @@ const ExportUtils = {
             }
         };
     },
+
     async showExportModal(onExport) {
         const presets = await PresetGalleryAPI.getPresets();
         if (Object.keys(presets).length === 0) {
@@ -489,21 +491,61 @@ const ExportUtils = {
 
         document.body.appendChild(overlay);
     },
+
     async exportPresets({ format = "zip", mode = "full", selectedKeys = null, includeColors = true, editedPresets }) {
         let presets = editedPresets;
+
+        const getActiveFolders = (presetMap, keys) => {
+            const active = new Set();
+            const targetKeys = keys || Object.keys(presetMap);
+            for (const k of targetKeys) {
+                const item = presetMap[k];
+                if (item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename)) {
+                    const parts = k.split("/");
+                    while (parts.length > 1) {
+                        parts.pop();
+                        active.add(parts.join("/"));
+                    }
+                }
+            }
+            return active;
+        };
 
         if (selectedKeys && Array.isArray(selectedKeys)) {
             const filtered = {};
             for (const k of selectedKeys) {
-                if (presets[k]) filtered[k] = presets[k];
+                if (presets[k]) {
+                    const itemCopy = { ...presets[k] };
+                    if (!includeColors) delete itemCopy.__color__;
+                    filtered[k] = itemCopy;
+                }
             }
             if (includeColors) {
-                for (const [k, item] of Object.entries(presets)) {
-                    if (item.__color__) filtered[k] = item;
+                const activeFolders = getActiveFolders(presets, selectedKeys);
+                for (const folder of activeFolders) {
+                    if (presets[folder] && presets[folder].__color__) {
+                        filtered[folder] = { ...(filtered[folder] || {}), __color__: presets[folder].__color__ };
+                    }
+                }
+            }
+            presets = filtered;
+        } else {
+            const activeFolders = getActiveFolders(presets);
+            const filtered = {};
+            for (const [k, item] of Object.entries(presets)) {
+                if (!item) continue;
+                const hasContent = (typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename;
+                if (hasContent) {
+                    const copy = { ...item };
+                    if (!includeColors) delete copy.__color__;
+                    filtered[k] = copy;
+                } else if (includeColors && item.__color__ && activeFolders.has(k)) {
+                    filtered[k] = { __color__: item.__color__ };
                 }
             }
             presets = filtered;
         }
+
         presets = Object.keys(presets).sort().reduce((acc, key) => {
             acc[key] = presets[key];
             return acc;
@@ -595,6 +637,7 @@ const ExportUtils = {
         a.click();
         URL.revokeObjectURL(url);
     },
+
     async showImportModal(importedPresets, onConfirm) {
         const overlay = document.createElement("div");
         overlay.className = "j0n4t-pg-modal-overlay";
@@ -761,16 +804,12 @@ const ExportUtils = {
         return new Promise((resolve) => {
             ExportUtils.showImportModal(importedPresets, async ({ selectedKeys, duplicateStrategy, importColors, editedPresets }) => {
                 const currentPresets = await PresetGalleryAPI.getPresets();
-                if (importColors) {
-                    for (const [key, item] of Object.entries(editedPresets)) {
-                        if (item && item.__color__) {
-                            currentPresets[key] = { ...(currentPresets[key] || {}), __color__: item.__color__ };
-                        }
-                    }
-                }
+                const importedActiveFolders = new Set();
+
                 for (const key of selectedKeys) {
-                    const item = importedPresets[key];
-                    if (!item || (!item.preset && item.__color__)) continue;
+                    const item = editedPresets[key] || importedPresets[key];
+                    if (!item || (!item.preset && !item.filename)) continue;
+
                     let targetKey = key;
                     if (targetKey in currentPresets && currentPresets[targetKey].preset) {
                         if (duplicateStrategy === "skip") {
@@ -786,13 +825,41 @@ const ExportUtils = {
                             targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
                         }
                     }
-                    currentPresets[targetKey] = item;
+
+                    const newItem = { ...item };
+                    if (!importColors) delete newItem.__color__;
+                    currentPresets[targetKey] = newItem;
+
+                    const targetParts = targetKey.split("/");
+                    while (targetParts.length > 1) {
+                        targetParts.pop();
+                        importedActiveFolders.add(targetParts.join("/"));
+                    }
+
+                    const origParts = key.split("/");
+                    while (origParts.length > 1) {
+                        origParts.pop();
+                        importedActiveFolders.add(origParts.join("/"));
+                    }
                 }
+
+                if (importColors) {
+                    for (const folderKey of importedActiveFolders) {
+                        const sourceItem = editedPresets[folderKey] || importedPresets[folderKey];
+                        if (sourceItem && sourceItem.__color__) {
+                            currentPresets[folderKey] = {
+                                ...(currentPresets[folderKey] || {}),
+                                __color__: sourceItem.__color__
+                            };
+                        }
+                    }
+                }
+
                 await PresetGalleryAPI.savePresets(currentPresets);
                 resolve({ success: true });
             });
         });
     }
-}
+};
 
-export default ExportUtils; 
+export default ExportUtils;

@@ -20,7 +20,33 @@ export default class PresetGalleryAPI {
   }
 
   static async savePresets(presets) {
-    const sortedPresets = Object.entries(presets)
+    const activeFolders = new Set();
+    for (const [key, item] of Object.entries(presets)) {
+      if (!item) continue;
+      const hasContent = (typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename;
+      if (hasContent) {
+        const parts = key.split("/");
+        while (parts.length > 1) {
+          parts.pop();
+          activeFolders.add(parts.join("/"));
+        }
+      }
+    }
+
+    const cleanedPresets = {};
+    for (const [key, item] of Object.entries(presets)) {
+      if (!item) continue;
+      const hasContent = (typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename;
+      const hasColor = typeof item.__color__ === "string" && item.__color__.length > 0;
+
+      if (hasContent) {
+        cleanedPresets[key] = { ...item };
+      } else if (hasColor && activeFolders.has(key)) {
+        cleanedPresets[key] = { __color__: item.__color__ };
+      }
+    }
+
+    const sortedPresets = Object.entries(cleanedPresets)
       .sort((a, b) => {
         const isAHidden = a[0].startsWith("_");
         const isBHidden = b[0].startsWith("_");
@@ -30,6 +56,7 @@ export default class PresetGalleryAPI {
         return a[0].localeCompare(b[0]);
       })
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+
     try {
       const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
         method: "POST",
