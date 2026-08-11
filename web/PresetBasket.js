@@ -30,8 +30,8 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
     .j0n4t-pg-basket-chip:focus-visible { border-width: 2px; border-color: #007acc; }
-    .j0n4t-pg-basket-chip-segments { display: flex; gap: 4px; width: 100%; align-items: center; }
-    .j0n4t-pg-basket-chip-segment { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 3px; padding: 1px 5px; flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+    .j0n4t-pg-basket-chip-segments { display: flex; gap: 0.2em; width: 100%; align-items: center; }
+    .j0n4t-pg-basket-chip-segment { flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
 
