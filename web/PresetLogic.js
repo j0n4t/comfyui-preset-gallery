@@ -166,16 +166,18 @@ const PresetLogic = {
             val: m[2] ? m[2].trim() : "",
         }));
 
+        const tagMatch = trimmed.match(/^<(.+?)>$/);
         let tag = null;
-        if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
-            const parts = trimmed.slice(1, -1).split(/[:;]/);
-            if (parts[0].match(/lora|lyco/i) || parts.length === 2) {
-                const val = parts.pop().trim();
+        if (tagMatch) {
+            const parts = tagMatch[1].split(/[:;]/);
+            if (parts[0].match(/lora|lyco/) || parts.length === 2) {
+                const val = parts.pop()?.trim() || "";
+                const label = parts.pop()?.trim() || "";
                 tag = {
-                    label: parts.pop().trim(),
+                    label,
                     val,
                     isBoolean: /^(true|false)$/i.test(val),
-                    isNumeric: val !== "" && !isNaN(Number(val)),
+                    isNumeric: !isNaN(Number(val)) && val !== "",
                 };
             }
         }
@@ -247,8 +249,6 @@ const PresetLogic = {
         const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         const weightVal = wMatch ? parseFloat(wMatch[2]) : null;
         const coreStr = wMatch ? wMatch[1] : joinedStr;
-        const trimmedCore = coreStr.trim();
-
         const beforeCounts = { ...chipRollState.counts };
         const chipExpandedCore = PresetLogic.expandRecursively(coreStr, cache, new Set(), chipRollState);
         const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
@@ -267,15 +267,18 @@ const PresetLogic = {
 
         const parsed = PresetLogic.parseChipDetails(chipExpandedCore, cache);
         let presetMatch = parsed.presetMatch;
+        if (!presetMatch) {
+            const varMatch = coreStr.match(/^\{([^{}:]+)(?::([^{}]+))?\}$/);
+            if (varMatch) {
+                const groupName = varMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
+                const val = varMatch[2] ? varMatch[2].trim() : "";
+                const resolvedKey = val
+                    ? PresetLogic.resolveVariantKey(groupName, val, cache)
+                    : variantRolls[`${groupName}_${beforeCounts[groupName] || 0}`];
 
-        if (!presetMatch && parsed.variants.length === 1 && parsed.variants[0].full === trimmedCore) {
-            const { groupName, val } = parsed.variants[0];
-            const resolvedKey = val
-                ? PresetLogic.resolveVariantKey(groupName, val, cache)
-                : variantRolls[`${groupName}_${beforeCounts[groupName] || 0}`];
-
-            if (resolvedKey && cache[resolvedKey]) {
-                presetMatch = { key: resolvedKey, item: cache[resolvedKey] };
+                if (resolvedKey && cache[resolvedKey]) {
+                    presetMatch = { key: resolvedKey, item: cache[resolvedKey] };
+                }
             }
         }
 
