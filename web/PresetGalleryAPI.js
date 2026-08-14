@@ -97,9 +97,9 @@ export default class PresetGalleryAPI {
 
     const trimmedText = presetText ? presetText.trim() : "";
 
-    let finalImage = presets[editingKey]?.filename || null;
+    let finalImage = presets[editingKey]?.filename || undefined;
     if (clearImage) {
-      finalImage = null;
+      finalImage = undefined;
     } else if (imageData) {
       finalImage = await PresetDOM.createThumbnail(imageData);
     }

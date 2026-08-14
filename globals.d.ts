@@ -109,6 +109,7 @@ type ParsedToken = {
 /** Search match result item. */
 type SearchResult = {
     item: string;
+    idx: number;
     title: string;
 }
 
