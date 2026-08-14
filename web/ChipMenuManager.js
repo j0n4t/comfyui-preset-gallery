@@ -48,6 +48,7 @@ export default class ChipMenuManager {
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
             <select data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
+            <button class="j0n4t-pg-var-edit-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Edit selected ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.edit}</button>
             <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
           </div>`;
         }
@@ -102,6 +103,49 @@ export default class ChipMenuManager {
           rerollBtn.dataset.gindex
         );
         this.close();
+        return;
+      }
+
+      const editVarBtn = e.target.closest(".j0n4t-pg-var-edit-btn");
+      if (editVarBtn) {
+        e.stopPropagation();
+        const group = editVarBtn.dataset.group;
+        const gIndex = parseInt(editVarBtn.dataset.gindex, 10);
+        const selectEl = popup.querySelector(`select[data-group="${group}"][data-gindex="${gIndex}"]`);
+
+        let variantKey = selectEl?.value;
+
+        // If "Random" is selected, resolve the currently active rolled preset
+        if (!variantKey) {
+          const chipIndex = parseInt(chipElement.dataset.index, 10);
+          if (!isNaN(chipIndex)) {
+            const activeList = this.context.getSelectedArray();
+            const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
+            const chipState = { rolls: this.context.variantRolls || {}, counts: {} };
+            const targetGroup = group.trim().toLowerCase().replace(/\s+/g, "_");
+
+            for (let i = 0; i < chipsData.length; i++) {
+              const beforeCounts = { ...chipState.counts };
+              PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
+              if (i === chipIndex) {
+                const start = beforeCounts[targetGroup] || 0;
+                const targetRollIndex = start + gIndex;
+                // Fetch the existing roll without altering it
+                variantKey = chipState.rolls[`${targetGroup}_${targetRollIndex}`];
+                break;
+              }
+            }
+          }
+        }
+
+        if (variantKey) {
+          // Resolve key or name against cache to open full editor
+          const presetMatch = PresetLogic.findPresetMatch(variantKey, this.context.cache);
+          if (presetMatch) variantKey = presetMatch.key;
+
+          this.context.openEditorForPreset(variantKey, true);
+          // this.close();
+        }
         return;
       }
 
