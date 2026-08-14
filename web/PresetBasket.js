@@ -295,6 +295,29 @@ export default class PresetBasket {
         }
       }
 
+      // Handle Delete key to remove selected chip
+      if (e.key === "Delete" && !e.target.closest("input")) {
+        const chip = e.target.closest('.j0n4t-pg-basket-chip');
+        if (chip) {
+          e.stopPropagation();
+          e.preventDefault();
+          const startIndex = parseInt(chip.dataset.start);
+          const endIndex = parseInt(chip.dataset.end);
+          const selections = this.context.getSelectedArray();
+          if (startIndex >= 0 && endIndex <= selections.length) {
+            selections.splice(startIndex, endIndex - startIndex);
+            this.context.updateWidgetValue(selections);
+            // Focus the next chip or add button if available
+            const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
+            const newIndex = Math.min(startIndex, focusableElements.length - 1);
+            if (newIndex >= 0) {
+              focusableElements[newIndex]?.focus();
+            }
+          }
+        }
+        return; // Prevent further processing
+      }
+
       if (!e.target.closest("input") && !e.altKey) {
         const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
         const currentElement = e.target.closest('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn');
