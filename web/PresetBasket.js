@@ -250,9 +250,6 @@ export default class PresetBasket {
           targetKey = coreKey;
         }
 
-        if (!this.context.dom.wrap.classList.contains("hide-gallery-mode")) {
-          this.locatePreset(targetKey);
-        }
         if (!this.context.dom.editor.classList.contains("collapsed") && this.context.editor.isSaved) {
           this.context.openEditorForPreset(targetKey);
         }
