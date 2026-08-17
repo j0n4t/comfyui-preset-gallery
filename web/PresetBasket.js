@@ -418,23 +418,25 @@ export default class PresetBasket {
   reRollChipGroup(chipIndex, groupRaw, gIndex = null) {
     const activeList = this.context.getSelectedArray();
     const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
-    const chipState = { rolls: this.context.variantRolls, counts: {} };
+    const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls);
     const targetGroup = groupRaw.trim().toLowerCase().replace(/\s+/g, "_");
 
     for (let i = 0; i < chipsData.length; i++) {
-      const beforeCounts = { ...chipState.counts };
-      PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
+      const startCounts = tracer.cloneCounts();
+      PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), tracer);
+
       if (i === chipIndex) {
-        const start = beforeCounts[targetGroup] || 0;
-        const end = chipState.counts[targetGroup] || 0;
+        const start = startCounts[targetGroup] || 0;
+        const end = tracer.getCount(targetGroup);
+
         if (gIndex !== null && gIndex !== undefined) {
           const targetRollIndex = start + parseInt(gIndex, 10);
           if (targetRollIndex < end) {
-            delete this.context.variantRolls[`${targetGroup}_${targetRollIndex}`];
+            tracer.deleteRoll(targetGroup, targetRollIndex);
           }
         } else {
           for (let k = start; k < end; k++) {
-            delete this.context.variantRolls[`${targetGroup}_${k}`];
+            tracer.deleteRoll(targetGroup, k);
           }
         }
         break;
@@ -444,16 +446,15 @@ export default class PresetBasket {
   }
 
   render(activeList) {
-    const rawModeRollState = { rolls: this.context.variantRolls, counts: {} };
-
     if (!this._updatingTextarea) {
+      this.context.rollManager.resetCounts(); // Clear counts before processing text
       const expandedList = activeList.map(itemStr => {
         const wMatch = itemStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         if (wMatch) {
-          const coreExpanded = PresetLogic.expandRecursively(wMatch[1], this.context.cache, new Set(), rawModeRollState);
+          const coreExpanded = PresetLogic.expandRecursively(wMatch[1], this.context.cache, new Set(), this.context.rollManager);
           return `(${coreExpanded}:${wMatch[2]})`;
         }
-        return PresetLogic.expandRecursively(itemStr, this.context.cache, new Set(), rawModeRollState);
+        return PresetLogic.expandRecursively(itemStr, this.context.cache, new Set(), this.context.rollManager);
       });
       this.textarea.value = expandedList.join(", ");
     }
@@ -461,14 +462,14 @@ export default class PresetBasket {
 
     let htmlBuffer = "";
     const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
-    const chipRollState = { rolls: this.context.variantRolls, counts: {} };
+
+    this.context.rollManager.resetCounts(); // Reset once more before UI paint
 
     chipsData.forEach((chipData, index) => {
       const chip = PresetDOM.renderBasketChip(
         chipData,
         this.context.cache,
-        this.context.variantRolls,
-        chipRollState
+        this.context.rollManager
       );
 
       let labelContent = PresetDOM.escapeHTML(chip.cleanLabel);

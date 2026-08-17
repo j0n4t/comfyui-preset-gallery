@@ -101,12 +101,11 @@ const PresetDOM = {
      * Generates render-ready HTML structure elements for basket display chips.
      * @param {ChipGroupInput} chipData - Input group object.
      * @param {PresetCache} [cache={}] - Preset cache map.
-     * @param {Record<string, string>} [variantRolls={}] - Rolled variants map.
-     * @param {RollState} [chipRollState={ rolls: {}, counts: {} }] - Dynamic roll tracker state.
+     * @param {RollManager} [rollManager=new PresetLogic.RollManager()] - Dynamic roll tracker state.
      * @returns {RenderedChip} Rendered chip definition containing HTML markup snippets.
      */
-    renderBasketChip: (chipData, cache = {}, variantRolls = {}, chipRollState = { rolls: {}, counts: {} }) => {
-        const processed = PresetLogic.parseBasketChip(chipData, cache, variantRolls, chipRollState);
+    renderBasketChip: (chipData, cache = {}, rollManager = new PresetLogic.RollManager()) => {
+        const processed = PresetLogic.parseBasketChip(chipData, cache, rollManager);
 
         const bgStyle = processed.bgImage
             ? `background-image: url("${processed.bgImage}")`

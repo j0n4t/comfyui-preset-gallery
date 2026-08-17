@@ -121,17 +121,17 @@ export default class ChipMenuManager {
           if (!isNaN(chipIndex)) {
             const activeList = this.context.getSelectedArray();
             const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
-            const chipState = { rolls: this.context.variantRolls || {}, counts: {} };
+            const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls);
             const targetGroup = group.trim().toLowerCase().replace(/\s+/g, "_");
 
             for (let i = 0; i < chipsData.length; i++) {
-              const beforeCounts = { ...chipState.counts };
-              PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), chipState);
+              const startCounts = tracer.cloneCounts();
+              PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), tracer);
+
               if (i === chipIndex) {
-                const start = beforeCounts[targetGroup] || 0;
-                const targetRollIndex = start + gIndex;
-                // Fetch the existing roll without altering it
-                variantKey = chipState.rolls[`${targetGroup}_${targetRollIndex}`];
+                const targetRollIndex = (startCounts[targetGroup] || 0) + gIndex;
+                // Fetch the existing roll dynamically
+                variantKey = tracer.peekRoll(targetGroup, targetRollIndex);
                 break;
               }
             }

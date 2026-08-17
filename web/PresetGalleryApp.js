@@ -86,7 +86,7 @@ class PresetGalleryApp {
     this.node = node;
     this.widget = widget;
     this.cache = {};
-    this.variantRolls = {}; // Keeps track of randomly rolled keys state for deterministic execution
+    this.rollManager = new PresetLogic.RollManager();
     this.dom = this.buildDOMStructure();
 
     this.basket = new PresetBasket(
@@ -380,7 +380,7 @@ class PresetGalleryApp {
         if (cache["_/combo/_default"]) newSelections.unshift("_/combo/_default");
         this.updateWidgetValue(newSelections);
       } else {
-        this.variantRolls = {};
+        this.rollManager.clearAll();
         this.syncUI(this.widget.value);
       }
     });
@@ -479,7 +479,8 @@ app.registerExtension({
 
       widget.serializeValue = function () {
         const raw = widget.value || "";
-        return PresetLogic.expandRecursively(raw, galleryView.cache, new Set(), { rolls: galleryView.variantRolls, counts: {} });
+        galleryView.rollManager.resetCounts(); // Clean slate for serialization
+        return PresetLogic.expandRecursively(raw, galleryView.cache, new Set(), galleryView.rollManager);
       };
 
       galleryView.init();

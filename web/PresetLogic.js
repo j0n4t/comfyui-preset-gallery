@@ -1,4 +1,57 @@
+class RollManager {
+  constructor(initialRolls = {}) {
+    this.rolls = initialRolls;
+    this.counts = {};
+  }
+
+  resetCounts() {
+    this.counts = {};
+    return this;
+  }
+
+  clearAll() {
+    this.rolls = {};
+    this.counts = {};
+    return this;
+  }
+
+  getCount(group) {
+    return this.counts[group] || 0;
+  }
+
+  cloneCounts() {
+    return { ...this.counts };
+  }
+
+  restoreCounts(counts) {
+    this.counts = { ...counts };
+    return this;
+  }
+
+  getRoll(group, matches = null) {
+    const idx = this.getCount(group);
+    this.counts[group] = idx + 1;
+    const key = `${group}_${idx}`;
+
+    if (matches && matches.length > 0) {
+      if (!this.rolls[key] || !matches.includes(this.rolls[key])) {
+        this.rolls[key] = matches[Math.floor(Math.random() * matches.length)];
+      }
+    }
+    return this.rolls[key];
+  }
+
+  peekRoll(group, index) {
+    return this.rolls[`${group}_${index}`];
+  }
+
+  deleteRoll(group, index) {
+    delete this.rolls[`${group}_${index}`];
+  }
+}
+
 const PresetLogic = {
+  RollManager,
   /**
    * Splits comma-separated preset strings while preserving nested structures inside (), <>, and {}.
    * @param {string} str - Raw input string.
@@ -85,7 +138,7 @@ const PresetLogic = {
    * @param {RollState|null} [rollState=null] - Dynamic roll state tracer.
    * @returns {string} Fully expanded prompt text.
    */
-  expandRecursively: (val, cache, seen = new Set(), rollState = null) => {
+  expandRecursively: (val, cache, seen = new Set(), rollManager = null) => {
     if (!val) return "";
     const expandText = (/** @type {string} */ str) => {
       if (!str) return "";
@@ -101,30 +154,21 @@ const PresetLogic = {
               if (seen.has(selectedKey)) return item.preset;
               const newSeen = new Set(seen);
               newSeen.add(selectedKey);
-              return PresetLogic.expandRecursively(item.preset, cache, newSeen, rollState);
+              return PresetLogic.expandRecursively(item.preset, cache, newSeen, rollManager);
             }
             return selectedVal;
           }
 
           const matches = PresetLogic.getGroupMatches(groupName, cache);
           if (matches.length > 0) {
-            let pickedKey;
-            if (rollState) {
-              const occKey = groupName + "_" + (rollState.counts[groupName] || 0);
-              rollState.counts[groupName] = (rollState.counts[groupName] || 0) + 1;
-              pickedKey = rollState.rolls[occKey];
-              if (!pickedKey || !matches.includes(pickedKey)) {
-                pickedKey = matches[Math.floor(Math.random() * matches.length)];
-                rollState.rolls[occKey] = pickedKey;
-              }
-            } else {
-              pickedKey = matches[Math.floor(Math.random() * matches.length)];
-            }
+            const pickedKey = rollManager
+              ? rollManager.getRoll(groupName, matches)
+              : matches[Math.floor(Math.random() * matches.length)];
 
             if (seen.has(pickedKey)) return pickedKey;
             const newSeen = new Set(seen);
             newSeen.add(pickedKey);
-            return PresetLogic.expandRecursively(cache[pickedKey].preset || "", cache, newSeen, rollState);
+            return PresetLogic.expandRecursively(cache[pickedKey].preset || "", cache, newSeen, rollManager);
           }
           return match;
         });
@@ -139,7 +183,7 @@ const PresetLogic = {
         if (seen.has(trimmed)) return trimmed;
         const newSeen = new Set(seen);
         newSeen.add(trimmed);
-        return expandText(PresetLogic.expandRecursively(item.preset, cache, newSeen, rollState));
+        return expandText(PresetLogic.expandRecursively(item.preset, cache, newSeen, rollManager));
       }
       return expandText(trimmed);
     };
@@ -194,7 +238,7 @@ const PresetLogic = {
    * @param {Record<string, number>} [countsTracker={}] - Tracker of variant group indices.
    * @returns {PresetSegment} Resolved title and image filename.
    */
-  resolvePresetSegment: (token, cache, variantRolls = {}, countsTracker = {}) => {
+  resolvePresetSegment: (token, cache, rollManager) => {
     if (!token) return { title: "", filename: null };
     const parsed = PresetLogic.parseChipDetails(token, cache);
 
@@ -217,11 +261,7 @@ const PresetLogic = {
 
         const resolvedKey = val
           ? PresetLogic.resolveVariantKey(groupName, val, cache)
-          : (() => {
-            const rollIndex = countsTracker[groupName] || 0;
-            countsTracker[groupName] = rollIndex + 1;
-            return variantRolls[`${groupName}_${rollIndex}`];
-          })();
+          : rollManager?.getRoll(groupName);
 
         if (resolvedKey && cache) {
           if (!filename && cache[resolvedKey]?.filename) {
@@ -240,26 +280,25 @@ const PresetLogic = {
    * Processes input chip data and returns non-DOM pure calculated state.
    * @param {ChipGroupInput} chipData - Raw chip group input.
    * @param {PresetCache} [cache={}] - Preset cache map.
-   * @param {Record<string, string>} [variantRolls={}] - Rolled variants map.
-   * @param {RollState} [chipRollState={ rolls: {}, counts: {} }] - Dynamic roll tracker state.
+   * @param {RollManager} [rollManager] - Dynamic roll tracker state.
    * @returns {ProcessedChip} Evaluated chip pure data structure.
    */
-  parseBasketChip: (chipData, cache = {}, variantRolls = {}, chipRollState = { rolls: {}, counts: {} }) => {
+  parseBasketChip: (chipData, cache = {}, rollManager = new PresetLogic.RollManager()) => {
     const { styleKey, item, startIndex, endIndex, subArray } = chipData;
     const joinedStr = subArray.join(", ");
 
     const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
     const weightVal = wMatch ? parseFloat(wMatch[2]) : null;
     const coreStr = wMatch ? wMatch[1] : joinedStr;
-    const beforeCounts = { ...chipRollState.counts };
-    const chipExpandedCore = PresetLogic.expandRecursively(coreStr, cache, new Set(), chipRollState);
+    const beforeCounts = rollManager.cloneCounts();
+    const chipExpandedCore = PresetLogic.expandRecursively(coreStr, cache, new Set(), rollManager);
     const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
 
     const rolledInfo = [];
-    for (const [group, endCount] of Object.entries(chipRollState.counts)) {
+    for (const [group, endCount] of Object.entries(rollManager.counts)) {
       const start = beforeCounts[group] || 0;
       for (let k = start; k < endCount; k++) {
-        const rolledKey = variantRolls[`${group}_${k}`];
+        const rolledKey = rollManager.peekRoll(group, k);
         if (rolledKey) {
           rolledInfo.push(`🎲 ${PresetLogic.toTitleCase(group.split("_")[0])}: ${PresetLogic.getPresetName(rolledKey)}`);
         }
@@ -276,7 +315,7 @@ const PresetLogic = {
         const val = varMatch[2] ? varMatch[2].trim() : "";
         const resolvedKey = val
           ? PresetLogic.resolveVariantKey(groupName, val, cache)
-          : variantRolls[`${groupName}_${beforeCounts[groupName] || 0}`];
+          : rollManager.peekRoll(groupName, beforeCounts[groupName] || 0);
 
         if (resolvedKey && cache[resolvedKey]) {
           presetMatch = { key: resolvedKey, item: cache[resolvedKey] };
@@ -301,18 +340,19 @@ const PresetLogic = {
       tooltipTitle = item ? `${chipExpandedCore}\n\n${PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : chipExpandedCore;
     }
 
-    const basePreset = item?.preset || PresetLogic.expandRecursively(styleKey, cache, new Set(), { rolls: {}, counts: {} });
+    const tempManager = new PresetLogic.RollManager();
+    const basePreset = item?.preset || PresetLogic.expandRecursively(styleKey, cache, new Set(), tempManager);
     const hasMoreVar = /\{[^{}:]+(?::[^{}]+)?\}/.test(styleKey + basePreset);
 
     let segmentedLabels = null;
     const tokens = coreStr.split(/\s+/).filter(Boolean);
     if (tokens.length > 1 && tokens.some(t => /[{<]/.test(t))) {
-      const countsTracker = { ...beforeCounts };
+      const tempTracer = new PresetLogic.RollManager(rollManager.rolls).restoreCounts(beforeCounts);
       segmentedLabels = [];
       let segmentImg = null;
 
       for (const token of tokens) {
-        const seg = PresetLogic.resolvePresetSegment(token, cache, variantRolls, countsTracker);
+        const seg = PresetLogic.resolvePresetSegment(token, cache, tempTracer);
         segmentedLabels.push(seg.title);
         if (!segmentImg && seg.filename) {
           segmentImg = seg.filename;
