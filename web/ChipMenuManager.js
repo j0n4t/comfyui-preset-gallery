@@ -41,7 +41,7 @@ export default class ChipMenuManager {
             .map((m) => {
               const name = PresetLogic.getPresetName(m);
               const isSelected = currentSelectedVal && (m === currentSelectedVal || name.toLowerCase() === currentSelectedVal.toLowerCase());
-              return `<option value="${PresetDOM.escapeHTML(name)}" ${isSelected ? "selected" : ""}>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(name))}</option>`;
+              return `<option data-key="${m}" value="${PresetDOM.escapeHTML(name)}" ${isSelected ? "selected" : ""}>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(name))}</option>`;
             })
             .join("");
           const randomSelected = !currentSelectedVal ? "selected" : "";
@@ -111,9 +111,9 @@ export default class ChipMenuManager {
         e.stopPropagation();
         const group = editVarBtn.dataset.group;
         const gIndex = parseInt(editVarBtn.dataset.gindex, 10);
-        const selectEl = popup.querySelector(`select[data-group="${group}"][data-gindex="${gIndex}"]`);
+        const optionEl = popup.querySelector(`select[data-group="${group}"][data-gindex="${gIndex}"] option[selected]`);
 
-        let variantKey = selectEl?.value;
+        let variantKey = optionEl?.dataset.key;
 
         // If "Random" is selected, resolve the currently active rolled preset
         if (!variantKey) {
