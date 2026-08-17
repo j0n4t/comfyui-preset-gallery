@@ -1,6 +1,6 @@
 class RollManager {
   constructor(initialRolls = {}) {
-    this.rolls = initialRolls;
+    this.rolls = { ...initialRolls };
     this.counts = {};
   }
 
@@ -148,6 +148,9 @@ const PresetLogic = {
           const selectedVal = sVal ? sVal.trim() : "";
 
           if (selectedVal) {
+            if (rollManager) {
+              rollManager.counts[groupName] = (rollManager.counts[groupName] || 0) + 1;
+            }
             const selectedKey = PresetLogic.resolveVariantKey(groupName, selectedVal, cache) || selectedVal;
             const item = cache?.[selectedKey];
             if (item && item.preset) {

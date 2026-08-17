@@ -432,11 +432,11 @@ export default class PresetBasket {
         if (gIndex !== null && gIndex !== undefined) {
           const targetRollIndex = start + parseInt(gIndex, 10);
           if (targetRollIndex < end) {
-            tracer.deleteRoll(targetGroup, targetRollIndex);
+            this.context.rollManager.deleteRoll(targetGroup, targetRollIndex);
           }
         } else {
           for (let k = start; k < end; k++) {
-            tracer.deleteRoll(targetGroup, k);
+            this.context.rollManager.deleteRoll(targetGroup, k);
           }
         }
         break;
