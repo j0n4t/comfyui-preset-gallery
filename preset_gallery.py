@@ -48,7 +48,8 @@ class PresetGalleryNode:
                 "preset_selection": ("STRING", {"default": "", "multiline": True})
             },
             "optional": {
-                "base_preset": ("STRING", {"forceInput": True, "default": ""})
+                "base_preset": ("STRING", {"forceInput": True, "default": ""}),
+                "evaluated_preset": ("STRING", {"default": "", "multiline": True})
             }
         }
     
@@ -61,8 +62,10 @@ class PresetGalleryNode:
     FUNCTION = "get_preset"
     CATEGORY = "utils"
     
-    def get_preset(self, preset_selection, base_preset=""):
-        parts = [p.strip() for p in [base_preset, preset_selection] if p and p.strip()]
+    def get_preset(self, preset_selection, base_preset="", evaluated_preset=""):
+        # Use evaluated_preset if available; fallback to preset_selection for older workflows
+        active_preset = evaluated_preset if evaluated_preset.strip() else preset_selection
+        parts = [p.strip() for p in [base_preset, active_preset] if p and p.strip()]
         final_preset = ", ".join(parts)
         return (final_preset,)
 

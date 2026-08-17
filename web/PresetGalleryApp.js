@@ -466,20 +466,24 @@ app.registerExtension({
     nodeType.prototype.onNodeCreated = function () {
       onNodeCreated?.apply(this, arguments);
       const widget = this.widgets?.find((w) => w.name === "preset_selection");
-      if (!widget) return;
+      const evaluatedWidget = this.widgets?.find((w) => w.name === "evaluated_preset");
+      if (!widget || !evaluatedWidget) return;
       widget.hidden = true;
+      evaluatedWidget.hidden = true;
 
       const galleryView = new PresetGalleryApp(this, widget);
       const baseCallback = widget.callback;
 
       widget.callback = function (value) {
         galleryView.syncUI(value);
+        galleryView.rollManager.resetCounts();
+        evaluatedWidget.value = PresetLogic.expandRecursively(value || "", galleryView.cache, new Set(), galleryView.rollManager);
         baseCallback?.apply(this, arguments);
       };
 
-      widget.serializeValue = function () {
+      evaluatedWidget.serializeValue = function () {
         const raw = widget.value || "";
-        galleryView.rollManager.resetCounts(); // Clean slate for serialization
+        galleryView.rollManager.resetCounts();
         return PresetLogic.expandRecursively(raw, galleryView.cache, new Set(), galleryView.rollManager);
       };
 
