@@ -348,7 +348,7 @@ const PresetLogic = {
     const hasMoreVar = /\{[^{}:]+(?::[^{}]+)?\}/.test(styleKey + basePreset);
 
     let segmentedLabels = null;
-    const tokens = coreStr.split(/\s+/).filter(Boolean);
+    const tokens = coreStr.match(/<[^>]*>|{[^}]*}|\S+/g) || [];
     if (tokens.length > 1 && tokens.some(t => /[{<]/.test(t))) {
       const tempTracer = new PresetLogic.RollManager(rollManager.rolls).restoreCounts(beforeCounts);
       segmentedLabels = [];
