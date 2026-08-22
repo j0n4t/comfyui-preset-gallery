@@ -131,8 +131,7 @@ const PresetDOM = {
 
         let weightIconHtml = "";
         if (processed.weightVal !== null) {
-            const labelPrefix = processed.weightVal > 0 ? `+${processed.weightVal}` : `${processed.weightVal}`;
-            weightIconHtml = `<div class="j0n4t-pg-basket-chip-weight" data-action="open-weight" title="Adjust Weight (Current: ${processed.weightVal})">${labelPrefix}</div>`;
+            weightIconHtml = `<div class="j0n4t-pg-basket-chip-weight" data-action="open-weight" title="Adjust Weight (Current: ${processed.weightVal})">${processed.weightVal}</div>`;
         }
 
         return {
