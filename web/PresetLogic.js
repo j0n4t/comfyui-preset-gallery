@@ -104,6 +104,17 @@ const PresetLogic = {
   },
 
   /**
+   * Checks if a variant value represents a virtual null option to omit it.
+   * @param {string} val - Variant value string.
+   * @returns {boolean} True if virtual null ("none" or "null").
+   */
+  isVirtualNull: (val) => {
+    if (!val) return false;
+    const lower = val.trim().toLowerCase();
+    return lower === "none" || lower === "null";
+  },
+
+  /**
    * Resolves a target variant key within the cache.
    * @param {string} groupName - Group context.
    * @param {string} val - Variant value to match.
@@ -150,6 +161,9 @@ const PresetLogic = {
           if (selectedVal) {
             if (rollManager) {
               rollManager.counts[groupName] = (rollManager.counts[groupName] || 0) + 1;
+            }
+            if (PresetLogic.isVirtualNull(selectedVal)) {
+              return "";
             }
             const selectedKey = PresetLogic.resolveVariantKey(groupName, selectedVal, cache) || selectedVal;
             const item = cache?.[selectedKey];
@@ -261,6 +275,10 @@ const PresetLogic = {
         const groupRaw = g1.trim();
         const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
         const val = sVal ? sVal.trim() : "";
+
+        if (val && PresetLogic.isVirtualNull(val)) {
+          return "None";
+        }
 
         const resolvedKey = val
           ? PresetLogic.resolveVariantKey(groupName, val, cache)
@@ -719,7 +737,12 @@ const PresetLogic = {
    * @param {PresetCache} cache - Cache object.
    * @returns {string} Formatted multiline title text.
    */
-  getPresetTitle: (key, cache) => `${PresetLogic.toTitleCase(PresetLogic.getPresetName(key))} [${key}]\n${cache[key]?.preset || ""}`,
+  getPresetTitle: (key, cache) => {
+    if (PresetLogic.isVirtualNull(key)) {
+      return "None [omit variant]";
+    }
+    return `${PresetLogic.toTitleCase(PresetLogic.getPresetName(key))} [${key}]\n${cache[key]?.preset || ""}`;
+  },
 
   /**
    * Creates initialized standard 2-character initials string for items.
@@ -773,7 +796,7 @@ const PresetLogic = {
     if (!queryWords.length) return [];
     const buckets = list.reduce(
       (/** @type {{startsWith: SearchResult[], fuzzy: SearchResult[]}} */ acc, item) => {
-        if (cache && !cache[item]?.preset || item === ignorePreset) return acc;
+        if ((cache && !cache[item]?.preset && !PresetLogic.isVirtualNull(item)) || item === ignorePreset) return acc;
         const blob = blobFn(item).toLowerCase();
         if (!queryWords.every((word) => blob.includes(word))) return acc;
         const title = cache ? PresetLogic.getPresetTitle(item, cache) : "";

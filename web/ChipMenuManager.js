@@ -44,10 +44,15 @@ export default class ChipMenuManager {
               return `<option data-key="${m}" value="${PresetDOM.escapeHTML(name)}" ${isSelected ? "selected" : ""}>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(name))}</option>`;
             })
             .join("");
+          const isNullSelected = currentSelectedVal && PresetLogic.isVirtualNull(currentSelectedVal);
           const randomSelected = !currentSelectedVal ? "selected" : "";
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
-            <select data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0"><option value="" ${randomSelected}>\ud83c\udfb2 Random</option>${optionsHtml}</select>
+            <select data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0">
+              <option value="" ${randomSelected}>🎲 Random</option>
+              <option value="none" ${isNullSelected ? "selected" : ""}>🚫 None (Omit)</option>
+              ${optionsHtml}
+            </select>
             <button class="j0n4t-pg-var-edit-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Edit selected ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.edit}</button>
             <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
           </div>`;

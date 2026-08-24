@@ -261,10 +261,13 @@ export default class RawTextareaManager {
               return folder.toLowerCase() === groupName || folder.toLowerCase().startsWith(groupName + "/") || folder.toLowerCase().endsWith("/" + groupName);
             });
 
+            const virtualNulls = ["none", "null"].filter(opt => !presetMatches.some(k => PresetLogic.getPresetName(k).toLowerCase() === opt));
+            const candidateKeys = [...virtualNulls, ...presetMatches];
+
             return PresetLogic.getTopMatches(
-              presetMatches,
+              candidateKeys,
               presetQuery,
-              (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]),
+              (k) => (PresetLogic.isVirtualNull(k) ? k : PresetLogic.getSearchBlob(k, this.context.cache[k])),
               this.context.cache
             );
           }
