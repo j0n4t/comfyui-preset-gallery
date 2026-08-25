@@ -1,6 +1,8 @@
 __pycache__
 /presets.json
 
+.vscode/
+
 # Playwright
 node_modules/
 /test-results/

@@ -151,6 +151,21 @@ const PresetLogic = {
    */
   expandRecursively: (val, cache, seen = new Set(), rollManager = null) => {
     if (!val) return "";
+
+    const getWrappedPreset = (key, baseStr) => {
+      if (!cache) return baseStr;
+      const baseFolder = PresetLogic.getPresetBaseFolder(key);
+      const prependMatch = cache[`_/config/prepend/${baseFolder}`]?.preset;
+      const appendMatch = cache[`_/config/append/${baseFolder}`]?.preset;
+
+      if (prependMatch || appendMatch) {
+        const pre = prependMatch ? `${prependMatch} ` : "";
+        const app = appendMatch ? ` ${appendMatch}` : "";
+        return `${pre}${baseStr}${app}`.trim();
+      }
+      return baseStr;
+    };
+
     const expandText = (/** @type {string} */ str) => {
       if (!str) return "";
       return str.replace(/\{([^{}:]+)(?::([^{}]+))?\}/g,
@@ -171,7 +186,8 @@ const PresetLogic = {
               if (seen.has(selectedKey)) return item.preset;
               const newSeen = new Set(seen);
               newSeen.add(selectedKey);
-              return PresetLogic.expandRecursively(item.preset, cache, newSeen, rollManager);
+              const wrappedPreset = getWrappedPreset(selectedKey, item.preset);
+              return PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager);
             }
             return selectedVal;
           }
@@ -185,7 +201,8 @@ const PresetLogic = {
             if (seen.has(pickedKey)) return pickedKey;
             const newSeen = new Set(seen);
             newSeen.add(pickedKey);
-            return PresetLogic.expandRecursively(cache[pickedKey].preset || "", cache, newSeen, rollManager);
+            const wrappedPreset = getWrappedPreset(pickedKey, cache[pickedKey].preset || "");
+            return PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager);
           }
           return match;
         });
@@ -200,14 +217,15 @@ const PresetLogic = {
         if (seen.has(trimmed)) return trimmed;
         const newSeen = new Set(seen);
         newSeen.add(trimmed);
-        return expandText(PresetLogic.expandRecursively(item.preset, cache, newSeen, rollManager));
+        const wrappedPreset = getWrappedPreset(trimmed, item.preset);
+        return expandText(PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager));
       }
       return expandText(trimmed);
     };
 
     const keys = PresetLogic.splitPresets(val);
     const expanded = keys.map(expandToken);
-    return expanded.filter(Boolean).join(", ");
+    return expanded.filter(Boolean).join(", ").trim();
   },
 
   /**
@@ -277,7 +295,7 @@ const PresetLogic = {
         const val = sVal ? sVal.trim() : "";
 
         if (val && PresetLogic.isVirtualNull(val)) {
-          return "None";
+          return "";
         }
 
         const resolvedKey = val
@@ -306,11 +324,26 @@ const PresetLogic = {
    */
   parseBasketChip: (chipData, cache = {}, rollManager = new PresetLogic.RollManager()) => {
     const { styleKey, item, startIndex, endIndex, subArray } = chipData;
-    const joinedStr = subArray.join(", ");
+    let joinedStr = subArray.join(", ");
 
     const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
     const weightVal = wMatch ? parseFloat(wMatch[2]) : null;
-    const coreStr = wMatch ? wMatch[1] : joinedStr;
+    let coreStr = wMatch ? wMatch[1] : joinedStr;
+
+    if (cache && item && coreStr === styleKey) {
+      const baseFolder = PresetLogic.getPresetBaseFolder(styleKey);
+      const prependMatch = cache[`_/config/prepend/${baseFolder}`]?.preset;
+      const appendMatch = cache[`_/config/append/${baseFolder}`]?.preset;
+
+      if (prependMatch || appendMatch) {
+        const pre = prependMatch ? `${prependMatch} ` : "";
+        const app = appendMatch ? ` ${appendMatch}` : "";
+        const baseContent = item.preset || styleKey;
+        coreStr = `${pre}${baseContent}${app}`.trim();
+        joinedStr = weightVal !== null ? `(${coreStr}:${weightVal})` : coreStr;
+      }
+    }
+
     const beforeCounts = rollManager.cloneCounts();
     const chipExpandedCore = PresetLogic.expandRecursively(coreStr, cache, new Set(), rollManager);
     const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
@@ -363,7 +396,7 @@ const PresetLogic = {
 
     const tempManager = new PresetLogic.RollManager();
     const basePreset = item?.preset || PresetLogic.expandRecursively(styleKey, cache, new Set(), tempManager);
-    const hasMoreVar = /\{[^{}:]+(?::[^{}]+)?\}/.test(styleKey + basePreset);
+    const hasMoreVar = /\{[^{}:]+(?::[^{}]+)?\}/.test(coreStr + basePreset);
 
     let segmentedLabels = null;
     const tokens = coreStr.match(/<[^>]*>|{[^}]*}|\S+/g) || [];

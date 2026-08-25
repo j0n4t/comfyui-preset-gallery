@@ -475,7 +475,7 @@ export default class PresetBasket {
       let labelContent = PresetDOM.escapeHTML(chip.cleanLabel);
       if ((!chip.item || chipData.styleKey.startsWith("_/combo")) && chip.segmentedLabels) {
         labelContent = `<div class="j0n4t-pg-basket-chip-segments">` +
-          chip.segmentedLabels.map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`).join('') +
+          chip.segmentedLabels.filter(Boolean).map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`).join('') +
           `</div>`;
       }
 
