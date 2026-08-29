@@ -231,8 +231,6 @@ export default class PresetEditor {
       );
     }
 
-    if (!selections.includes(uniqueKey) && !selections.includes(this.dom.inpPreset.value.trim())) selections.push(uniqueKey);
-
     this.editingKey = uniqueKey;
     this.currentMode = "edit";
     this.isSaved = true;
