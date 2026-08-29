@@ -154,9 +154,9 @@ const PresetLogic = {
 
     const getWrappedPreset = (key, baseStr) => {
       if (!cache) return baseStr;
-      const baseFolder = PresetLogic.getPresetBaseFolder(key);
-      const prependMatch = cache[`_/config/prepend/${baseFolder}`]?.preset;
-      const appendMatch = cache[`_/config/append/${baseFolder}`]?.preset;
+      const folder = PresetLogic.getPresetFolder(key);
+      const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
+      const appendMatch = cache[`_/config/append/${folder}`]?.preset;
 
       if (prependMatch || appendMatch) {
         const pre = prependMatch ? `${prependMatch} ` : "";
@@ -225,7 +225,7 @@ const PresetLogic = {
 
     const keys = PresetLogic.splitPresets(val);
     const expanded = keys.map(expandToken);
-    return expanded.filter(Boolean).join(", ").trim();
+    return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, ' ');
   },
 
   /**
@@ -331,9 +331,9 @@ const PresetLogic = {
     let coreStr = wMatch ? wMatch[1] : joinedStr;
 
     if (cache && item && coreStr === styleKey) {
-      const baseFolder = PresetLogic.getPresetBaseFolder(styleKey);
-      const prependMatch = cache[`_/config/prepend/${baseFolder}`]?.preset;
-      const appendMatch = cache[`_/config/append/${baseFolder}`]?.preset;
+      const folder = PresetLogic.getPresetFolder(styleKey);
+      const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
+      const appendMatch = cache[`_/config/append/${folder}`]?.preset;
 
       if (prependMatch || appendMatch) {
         const pre = prependMatch ? `${prependMatch} ` : "";
