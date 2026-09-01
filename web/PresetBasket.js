@@ -306,6 +306,7 @@ export default class PresetBasket {
           if (startIndex >= 0 && endIndex <= selections.length) {
             selections.splice(startIndex, endIndex - startIndex);
             this.context.updateWidgetValue(selections);
+            this.chipMenuManager.close();
             // Focus the next chip or add button if available
             const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
             const newIndex = Math.min(startIndex, focusableElements.length - 1);
