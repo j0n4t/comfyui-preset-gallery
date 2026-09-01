@@ -37,13 +37,20 @@ export default class ChipMenuManager {
         let matches = PresetLogic.getGroupMatches(groupName, this.context.cache);
 
         if (matches.length > 0) {
+          matches.sort((a, b) => a.localeCompare(b));
+
+          const listId = `dl-${groupRaw.replace(/\W/g, '')}-${gIndex}-${Date.now()}`;
+          const escapedGroup = PresetDOM.escapeHTML(groupName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const groupRegex = new RegExp(`(^|/)${escapedGroup}(/|$)`, 'i');
+
           const optionsHtml = matches
             .map((m) => {
-              const name = PresetLogic.getPresetName(m);
-              const isSelected = currentSelectedVal && (m === currentSelectedVal || name.toLowerCase() === currentSelectedVal.toLowerCase());
-              return `<option data-key="${m}" value="${PresetDOM.escapeHTML(name)}" ${isSelected ? "selected" : ""}>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(name))}</option>`;
+              const displayVal = m.replace(groupRegex, '$1.$2');
+              return `<option data-key="${m}" value="${PresetDOM.escapeHTML(displayVal)}"></option>`;
             })
             .join("");
+
+          let displayValue = currentSelectedVal || "";
           const isNullSelected = currentSelectedVal && PresetLogic.isVirtualNull(currentSelectedVal);
 
           if (!currentSelectedVal) displayValue = "🎲 Random";
@@ -54,11 +61,12 @@ export default class ChipMenuManager {
 
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
-            <select data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0">
-              <option value="" ${randomSelected}>🎲 Random</option>
-              <option value="none" ${isNullSelected ? "selected" : ""}>🚫 None (Omit)</option>
+            <input type="text" list="${listId}" class="j0n4t-pg-var-input" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" value="${PresetDOM.escapeHTML(displayValue)}" placeholder="🔍 Filter by folder/name..." tabindex="0" onclick="this.select()">
+            <datalist id="${listId}">
+              <option value="🎲 Random"></option>
+              <option value="🚫 None (Omit)"></option>
               ${optionsHtml}
-            </select>
+            </datalist>
             <button class="j0n4t-pg-var-edit-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Edit selected ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.edit}</button>
             <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
           </div>`;
@@ -134,9 +142,6 @@ export default class ChipMenuManager {
           variantKey = matchingOption ? matchingOption.dataset.key : rawVal;
         }
 
-        let variantKey = optionEl?.dataset.key;
-
-        // If "Random" is selected, resolve the currently active rolled preset
         if (!variantKey) {
           const chipIndex = parseInt(chipElement.dataset.index, 10);
           if (!isNaN(chipIndex)) {
@@ -151,7 +156,6 @@ export default class ChipMenuManager {
 
               if (i === chipIndex) {
                 const targetRollIndex = (startCounts[targetGroup] || 0) + gIndex;
-                // Fetch the existing roll dynamically
                 variantKey = tracer.peekRoll(targetGroup, targetRollIndex);
                 break;
               }
@@ -160,12 +164,9 @@ export default class ChipMenuManager {
         }
 
         if (variantKey) {
-          // Resolve key or name against cache to open full editor
           const presetMatch = PresetLogic.findPresetMatch(variantKey, this.context.cache);
           if (presetMatch) variantKey = presetMatch.key;
-
           this.context.openEditorForPreset(variantKey, true);
-          // this.close();
         }
         return;
       }
@@ -316,7 +317,7 @@ export default class ChipMenuManager {
     });
 
     popup.addEventListener("keydown", (e) => {
-      const items = Array.from(popup.querySelectorAll("[data-action], select, button, input"));
+      const items = Array.from(popup.querySelectorAll("[data-action], button, input"));
       const currentIndex = items.indexOf(document.activeElement);
 
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
@@ -380,7 +381,7 @@ export default class ChipMenuManager {
       if (focusWeight) {
         popup.querySelector('.j0n4t-pg-weight-input')?.focus();
       } else {
-        popup.querySelector("[data-action], select")?.focus();
+        popup.querySelector("[data-action]")?.focus();
       }
     }, 10);
   }

@@ -63,11 +63,12 @@ export default class PresetBasket {
     .j0n4t-pg-weight-input:focus { border-color: #007acc; }
 
     .j0n4t-pg-var-popup-container {display: flex; flex-direction: column; max-height: 50vh; max-width: 80vw; overflow: scroll; }
-    .j0n4t-pg-var-popup-row { display: flex; align-items: center; padding: 4px; }
+    .j0n4t-pg-var-popup-row { display: flex; align-items: center; padding: 2px 4px; }
     .j0n4t-pg-var-popup-row label { font-size: 10px; color: #d1a119; font-weight: 600; min-width: 40px; text-transform: capitalize; }
     .j0n4t-pg-var-popup-row select { flex: 1; height: 20px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 10px; border-radius: 2px; padding: 0 2px; font-weight: 600; font-family: inherit; outline: none; cursor: pointer; }
     .j0n4t-pg-var-popup-row select:focus { border-color: #007acc; }
     .j0n4t-pg-var-popup-row select option { background: #1a1a1a; color: #fff; }
+    .j0n4t-pg-var-input { height: 1.2em; }
   `;
 
   constructor(container, basket, textarea, context) {
