@@ -97,7 +97,7 @@ const PresetLogic = {
     if (!cache || !groupName) return [];
     const lowerGroup = groupName.toLowerCase();
     return Object.keys(cache).filter((k) => {
-      if (!cache[k]?.preset) return false;
+      if (!cache[k]?.preset || k.startsWith("_/config/append") || k.startsWith("_/config/prepend")) return false;
       const folder = PresetLogic.getPresetFolder(k).toLowerCase();
       return folder === lowerGroup || folder.startsWith(lowerGroup + "/") || folder.endsWith("/" + lowerGroup);
     });

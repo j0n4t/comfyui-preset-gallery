@@ -34,7 +34,7 @@ export default class ChipMenuManager {
         const gIndex = groupCounts[groupRaw] || 0;
         groupCounts[groupRaw] = gIndex + 1;
 
-        const matches = PresetLogic.getGroupMatches(groupName, this.context.cache);
+        let matches = PresetLogic.getGroupMatches(groupName, this.context.cache);
 
         if (matches.length > 0) {
           const optionsHtml = matches
@@ -45,7 +45,13 @@ export default class ChipMenuManager {
             })
             .join("");
           const isNullSelected = currentSelectedVal && PresetLogic.isVirtualNull(currentSelectedVal);
-          const randomSelected = !currentSelectedVal ? "selected" : "";
+
+          if (!currentSelectedVal) displayValue = "🎲 Random";
+          else if (isNullSelected) displayValue = "🚫 None (Omit)";
+          else {
+            displayValue = currentSelectedVal.replace(groupRegex, '$1.$2');
+          }
+
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
             <select data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" tabindex="0">
@@ -116,7 +122,17 @@ export default class ChipMenuManager {
         e.stopPropagation();
         const group = editVarBtn.dataset.group;
         const gIndex = parseInt(editVarBtn.dataset.gindex, 10);
-        const optionEl = popup.querySelector(`select[data-group="${group}"][data-gindex="${gIndex}"] option[selected]`);
+        const inputEl = popup.querySelector(`input.j0n4t-pg-var-input[data-group="${group}"][data-gindex="${gIndex}"]`);
+
+        let rawVal = inputEl?.value;
+        if (rawVal === "🚫 None (Omit)") return;
+
+        let variantKey = null;
+        if (rawVal && rawVal !== "🎲 Random") {
+          const datalistEl = popup.querySelector(`datalist#${inputEl.getAttribute('list')}`);
+          const matchingOption = datalistEl ? Array.from(datalistEl.options).find(opt => opt.value === rawVal) : null;
+          variantKey = matchingOption ? matchingOption.dataset.key : rawVal;
+        }
 
         let variantKey = optionEl?.dataset.key;
 
@@ -244,11 +260,23 @@ export default class ChipMenuManager {
         return;
       }
 
-      const selectEl = e.target.closest("select");
-      if (!selectEl) return;
-      const group = selectEl.dataset.group;
-      const gIndex = parseInt(selectEl.dataset.gindex, 10);
-      const selectedVal = selectEl.value;
+      const inputEl = e.target.closest("input.j0n4t-pg-var-input");
+      if (!inputEl) return;
+
+      const group = inputEl.dataset.group;
+      const gIndex = parseInt(inputEl.dataset.gindex, 10);
+      const rawVal = inputEl.value;
+
+      let selectedVal = rawVal;
+      if (rawVal === "🎲 Random" || !rawVal) {
+        selectedVal = "";
+      } else if (rawVal === "🚫 None (Omit)") {
+        selectedVal = "none";
+      } else {
+        const datalistEl = popup.querySelector(`#${inputEl.getAttribute('list')}`);
+        const matchingOption = datalistEl ? Array.from(datalistEl.options).find(opt => opt.value === rawVal) : null;
+        selectedVal = matchingOption ? matchingOption.dataset.key : rawVal;
+      }
 
       const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::[^{}]+)?\\}`, 'g');
