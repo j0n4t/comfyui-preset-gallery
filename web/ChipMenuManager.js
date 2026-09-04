@@ -1,5 +1,6 @@
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
+import AutocompleteManager from "./AutocompleteManager.js";
 
 export default class ChipMenuManager {
   constructor(context, delegateBasket) {
@@ -28,6 +29,7 @@ export default class ChipMenuManager {
 
     let varRowsHtml = "";
     const groupCounts = {};
+    const autocompleteConfigs = [];
 
     if (parsed.variants.length > 0) {
       parsed.variants.forEach(({ groupRaw, groupName, val: currentSelectedVal }) => {
@@ -39,37 +41,37 @@ export default class ChipMenuManager {
         if (matches.length > 0) {
           matches.sort((a, b) => a.localeCompare(b));
 
-          const listId = `dl-${groupRaw.replace(/\W/g, '')}-${gIndex}-${Date.now()}`;
           const escapedGroup = PresetDOM.escapeHTML(groupName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const groupRegex = new RegExp(`(^|/)${escapedGroup}(/|$)`, 'i');
 
-          const optionsHtml = matches
-            .map((m) => {
-              const displayVal = m.replace(groupRegex, '$1.$2');
-              return `<option data-key="${m}" value="${PresetDOM.escapeHTML(displayVal)}"></option>`;
-            })
-            .join("");
-
-          let displayValue = currentSelectedVal || "";
+          let displayValue = PresetLogic.getPresetName(currentSelectedVal) || "";
+          let dataKey = "";
           const isNullSelected = currentSelectedVal && PresetLogic.isVirtualNull(currentSelectedVal);
 
-          if (!currentSelectedVal) displayValue = "🎲 Random";
-          else if (isNullSelected) displayValue = "🚫 None (Omit)";
-          else {
-            displayValue = currentSelectedVal.replace(groupRegex, '$1.$2');
+          if (!currentSelectedVal) {
+            displayValue = "🎲 Random";
+            dataKey = "";
+          } else if (isNullSelected) {
+            displayValue = "🚫 None (Omit)";
+            dataKey = "none";
+          } else {
+            displayValue = PresetLogic.toTitleCase(displayValue);
+            dataKey = currentSelectedVal;
           }
 
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
-            <input type="text" list="${listId}" class="j0n4t-pg-var-input" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" value="${PresetDOM.escapeHTML(displayValue)}" placeholder="🔍 Filter by folder/name..." tabindex="0" onclick="this.select()">
-            <datalist id="${listId}">
-              <option value="🎲 Random"></option>
-              <option value="🚫 None (Omit)"></option>
-              ${optionsHtml}
-            </datalist>
+            <input type="text" class="j0n4t-pg-var-input" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" data-key="${PresetDOM.escapeHTML(dataKey)}" value="${PresetDOM.escapeHTML(displayValue)}" placeholder="🔍 Filter by folder/name..." tabindex="0" onclick="this.select()">
             <button class="j0n4t-pg-var-edit-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Edit selected ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.edit}</button>
             <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
           </div>`;
+
+          autocompleteConfigs.push({
+            group: groupRaw,
+            gIndex: gIndex,
+            matches: matches,
+            groupRegex: groupRegex
+          });
         }
       });
     }
@@ -112,6 +114,45 @@ export default class ChipMenuManager {
     const popup = document.body.lastElementChild;
     this.popupEl = popup;
 
+    autocompleteConfigs.forEach(cfg => {
+      const inputEl = popup.querySelector(`input.j0n4t-pg-var-input[data-group="${cfg.group}"][data-gindex="${cfg.gIndex}"]`);
+      if (inputEl) {
+        const options = [
+          { key: "", display: "🎲 Random" },
+          { key: "none", display: "🚫 None (Omit)" },
+          ...cfg.matches.map(m => ({
+            key: m,
+            display: PresetLogic.toTitleCase(PresetLogic.getPresetName(m))
+          }))
+        ];
+
+        inputEl._options = options;
+
+        new AutocompleteManager({
+          input: inputEl,
+          container: document.body,
+          popupClass: "j0n4t-pg-filter-autocomplete-popup",
+          itemClass: "j0n4t-pg-filter-autocomplete-item",
+          getMatches: (query) => {
+            const q = query.toLowerCase();
+            return options
+              .filter(opt => opt.display.toLowerCase().includes(q) || opt.key.toLowerCase().includes(q))
+              .map(opt => ({ item: opt, title: opt.key }));
+          },
+          renderItem: (opt) => `
+            <span>${PresetDOM.escapeHTML(opt.display)}</span>
+            ${opt.key && opt.key !== 'none' ? `<span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(opt.key)}</span>` : ''}
+          `,
+          onSelect: (selectedItem) => {
+            inputEl.value = selectedItem.display;
+            inputEl.dataset.key = selectedItem.key;
+            inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+            return false;
+          }
+        });
+      }
+    });
+
     popup.addEventListener("click", (e) => {
       const rerollBtn = e.target.closest(".j0n4t-pg-var-reroll-btn");
       if (rerollBtn) {
@@ -133,13 +174,12 @@ export default class ChipMenuManager {
         const inputEl = popup.querySelector(`input.j0n4t-pg-var-input[data-group="${group}"][data-gindex="${gIndex}"]`);
 
         let rawVal = inputEl?.value;
-        if (rawVal === "🚫 None (Omit)") return;
+        if (rawVal === "🚫 None (Omit)" || inputEl?.dataset.key === "none") return;
 
         let variantKey = null;
         if (rawVal && rawVal !== "🎲 Random") {
-          const datalistEl = popup.querySelector(`datalist#${inputEl.getAttribute('list')}`);
-          const matchingOption = datalistEl ? Array.from(datalistEl.options).find(opt => opt.value === rawVal) : null;
-          variantKey = matchingOption ? matchingOption.dataset.key : rawVal;
+          const matchingOpt = inputEl._options?.find(opt => opt.display === rawVal || opt.key === rawVal);
+          variantKey = matchingOpt ? matchingOpt.key : rawVal;
         }
 
         if (!variantKey) {
@@ -274,10 +314,11 @@ export default class ChipMenuManager {
       } else if (rawVal === "🚫 None (Omit)") {
         selectedVal = "none";
       } else {
-        const datalistEl = popup.querySelector(`#${inputEl.getAttribute('list')}`);
-        const matchingOption = datalistEl ? Array.from(datalistEl.options).find(opt => opt.value === rawVal) : null;
-        selectedVal = matchingOption ? matchingOption.dataset.key : rawVal;
+        const matchingOpt = inputEl._options?.find(opt => opt.display === rawVal || opt.key === rawVal);
+        selectedVal = matchingOpt ? matchingOpt.key : rawVal;
       }
+
+      inputEl.dataset.key = selectedVal;
 
       const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::[^{}]+)?\\}`, 'g');
