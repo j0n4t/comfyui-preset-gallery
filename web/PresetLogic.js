@@ -52,6 +52,51 @@ class RollManager {
 
 const PresetLogic = {
   RollManager,
+
+  /**
+   * Recursively expands presets but leaves {group} variants intact.
+   * @param {string} val - Template string to expand.
+   * @param {PresetCache} cache - Preset cache lookup dictionary.
+   * @param {Set<string>} [seen=new Set()] - Circular dependency tracking set.
+   * @returns {string} Unrolled template string.
+   */
+  getUnrolledTemplate: (val, cache, seen = new Set()) => {
+    if (!val) return "";
+
+    const getWrappedPreset = (key, baseStr) => {
+      if (!cache) return baseStr;
+      const folder = PresetLogic.getPresetFolder(key);
+      const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
+      const appendMatch = cache[`_/config/append/${folder}`]?.preset;
+
+      if (prependMatch || appendMatch) {
+        const pre = prependMatch ? `${prependMatch} ` : "";
+        const app = appendMatch ? ` ${appendMatch}` : "";
+        return `${pre}${baseStr}${app}`.trim();
+      }
+      return baseStr;
+    };
+
+    const expandToken = (tokenStr) => {
+      const trimmed = tokenStr.trim();
+      if (!trimmed) return "";
+
+      const item = cache?.[trimmed];
+      if (item && item.preset) {
+        if (seen.has(trimmed)) return trimmed;
+        const newSeen = new Set(seen);
+        newSeen.add(trimmed);
+        const wrappedPreset = getWrappedPreset(trimmed, item.preset);
+        return PresetLogic.getUnrolledTemplate(wrappedPreset, cache, newSeen);
+      }
+      return trimmed;
+    };
+
+    const keys = PresetLogic.splitPresets(val);
+    const expanded = keys.map(expandToken);
+    return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, ' ');
+  },
+
   /**
    * Splits comma-separated preset strings while preserving nested structures inside (), <>, and {}.
    * @param {string} str - Raw input string.

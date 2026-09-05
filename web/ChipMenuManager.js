@@ -23,8 +23,8 @@ export default class ChipMenuManager {
     let coreKey = wMatch ? wMatch[1] : styleKey;
     let currentWeight = wMatch ? parseFloat(wMatch[2]) : 1.0;
 
-    const rawPreset = chipElement.dataset.preset || "";
-    const source = coreKey.match(/\{[^{}]+\}/) ? coreKey : (rawPreset || item?.preset || "");
+    // Use the unrolled template to ensure nested sub-variants are found
+    const source = PresetLogic.getUnrolledTemplate(coreKey, this.context.cache);
     const parsed = PresetLogic.parseChipDetails(source, this.context.cache);
 
     let varRowsHtml = "";
@@ -297,6 +297,16 @@ export default class ChipMenuManager {
         if (startIndex < selections.length) {
           selections.splice(startIndex, endIndex - startIndex, finalNewKey);
           this.context.updateWidgetValue(selections);
+
+          // Re-attach to replacement element after widget refresh, or close if missing
+          const newChips = Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
+          const replacementChip = newChips.find(c => c.dataset.id === finalNewKey && parseInt(c.dataset.start) === startIndex);
+          if (replacementChip) {
+            this.activeChipMenuEl = replacementChip;
+            replacementChip.classList.add("active-menu");
+          } else {
+            this.close();
+          }
         }
         return;
       }
@@ -326,6 +336,11 @@ export default class ChipMenuManager {
 
       const currentKey = chipElement.dataset.id;
       const currentPreset = chipElement.dataset.preset || "";
+      const currentWMatch = currentKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+      const activeCoreKey = currentWMatch ? currentWMatch[1] : currentKey;
+
+      const unrolled = PresetLogic.getUnrolledTemplate(activeCoreKey, this.context.cache);
+
       const replaceNth = (str) => {
         let matchCount = 0;
         return str.replace(regex, (match) => {
@@ -338,22 +353,50 @@ export default class ChipMenuManager {
         });
       };
 
-      let newStyleKey;
+      let newStyleKey = currentKey;
+      let coreReplaced = false;
+
+      // Try replacing the variant safely, falling back to unrolled format if nested
       if (currentKey.match(regex)) {
-        newStyleKey = replaceNth(currentKey);
-      } else if (currentPreset.match(regex)) {
-        newStyleKey = replaceNth(currentPreset);
-      } else {
-        return;
+        const attempt = replaceNth(currentKey);
+        if (attempt !== currentKey) newStyleKey = attempt;
+      }
+      if (newStyleKey === currentKey && currentPreset.match(regex)) {
+        const attempt = replaceNth(currentPreset);
+        if (attempt !== currentPreset) newStyleKey = attempt;
+      }
+      if (newStyleKey === currentKey && unrolled.match(regex)) {
+        const attempt = replaceNth(unrolled);
+        if (attempt !== unrolled) {
+          newStyleKey = currentWMatch ? `(${attempt}:${currentWMatch[2]})` : attempt;
+          coreReplaced = true;
+        }
       }
 
+      if (newStyleKey === currentKey) return; // Nothing was replaced
+
       chipElement.dataset.id = newStyleKey;
-      chipElement.dataset.preset = newStyleKey;
+      chipElement.dataset.preset = coreReplaced ? "" : newStyleKey;
 
       const selections = this.context.getSelectedArray();
       if (startIndex < selections.length) {
         selections.splice(startIndex, endIndex - startIndex, newStyleKey);
         this.context.updateWidgetValue(selections);
+
+        // If the top-level preset chip morphed/disintegrated to expose nested values, close it
+        if (coreReplaced) {
+          this.close();
+        } else {
+          // Keep it open, but hook it onto the new freshly-rendered DOM element
+          const newChips = Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
+          const replacementChip = newChips.find(c => c.dataset.id === newStyleKey && parseInt(c.dataset.start) === startIndex);
+          if (replacementChip) {
+            this.activeChipMenuEl = replacementChip;
+            replacementChip.classList.add("active-menu");
+          } else {
+            this.close();
+          }
+        }
       }
     });
 
