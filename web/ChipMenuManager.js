@@ -140,7 +140,7 @@ export default class ChipMenuManager {
               .map(opt => ({ item: opt, title: opt.key }));
           },
           renderItem: (opt) => `
-            <span>${PresetDOM.escapeHTML(opt.display)}</span>
+            <span title="${PresetDOM.escapeHTML(PresetLogic.getPresetTitle(opt.key, this.context.cache))}">${PresetDOM.escapeHTML(opt.display)}</span>
             ${opt.key && opt.key !== 'none' ? `<span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(opt.key)}</span>` : ''}
           `,
           onSelect: (selectedItem) => {

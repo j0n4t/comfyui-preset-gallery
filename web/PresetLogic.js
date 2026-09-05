@@ -783,6 +783,7 @@ const PresetLogic = {
    * @returns {string} Formatted multiline title text.
    */
   getPresetTitle: (key, cache) => {
+    if (!key) return "";
     if (PresetLogic.isVirtualNull(key)) {
       return "None [omit variant]";
     }
