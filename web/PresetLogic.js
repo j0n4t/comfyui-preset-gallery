@@ -563,10 +563,13 @@ const PresetLogic = {
       for (const [key, item] of Object.entries(cache)) {
         if (item?.preset && item.preset.trim()) {
           const expanded = PresetLogic.expandRecursively(item.preset.trim(), cache);
-          candidates.push({ matchStr: expanded, key, item });
+          if (expanded && expanded.trim()) {
+            candidates.push({ matchStr: expanded, key, item });
+          }
 
-          if (expanded !== item.preset.trim()) {
-            candidates.push({ matchStr: item.preset.trim(), key, item });
+          const trimmedPreset = item.preset.trim();
+          if (expanded !== trimmedPreset && trimmedPreset) {
+            candidates.push({ matchStr: trimmedPreset, key, item });
           }
         }
         if (key && key.trim()) {
@@ -577,6 +580,7 @@ const PresetLogic = {
 
     const candidateMap = new Map();
     for (const cand of candidates) {
+      if (!cand.matchStr || !cand.matchStr.trim()) continue;
       if (!candidateMap.has(cand.matchStr) || cand.item) {
         candidateMap.set(cand.matchStr, cand);
       }
@@ -600,9 +604,11 @@ const PresetLogic = {
 
     let idx = 0;
     while (idx < val.length) {
+      const startIdx = idx;
       let matched = null;
 
       for (const cand of sortedCandidates) {
+        if (!cand.matchStr) continue;
         if (val.startsWith(cand.matchStr, idx)) {
           if (cand.key === ignorePreset || cand.matchStr === ignorePreset) continue;
           if (isValidBoundary(idx, idx + cand.matchStr.length)) {
@@ -624,7 +630,7 @@ const PresetLogic = {
         }
       }
 
-      if (matched) {
+      if (matched && matched.matchStr.length > 0) {
         tokens.push({
           start: idx,
           end: idx + matched.matchStr.length,
@@ -655,6 +661,7 @@ const PresetLogic = {
               foundNextMatch = true;
             } else {
               for (const cand of sortedCandidates) {
+                if (!cand.matchStr) continue;
                 if (val.startsWith(cand.matchStr, endPlain)) {
                   if (cand.key === ignorePreset || cand.matchStr === ignorePreset) continue;
                   if (isValidBoundary(endPlain, endPlain + cand.matchStr.length)) {
@@ -678,6 +685,11 @@ const PresetLogic = {
           });
           idx = endPlain;
         }
+      }
+
+      // Safety fallback to prevent infinite loops if index fails to advance
+      if (idx <= startIdx) {
+        idx = startIdx + 1;
       }
     }
 
