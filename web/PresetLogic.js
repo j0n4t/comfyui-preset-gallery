@@ -1,3 +1,5 @@
+const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
+
 class RollManager {
   constructor(initialRolls = {}) {
     this.rolls = { ...initialRolls };
@@ -213,44 +215,65 @@ const PresetLogic = {
 
     const expandText = (/** @type {string} */ str) => {
       if (!str) return "";
-      return str.replace(/\{([^{}:]+)(?::([^{}]+))?\}/g,
-        (/** @type {any} */ match, /** @type {string} */ gName, /** @type {string} */ sVal) => {
-          const groupName = gName.trim().toLowerCase().replace(/\s+/g, "_");
-          const selectedVal = sVal ? sVal.trim() : "";
+      return str.replace(VAR_REGEX, (/** @type {any} */ match, /** @type {string} */ gName, /** @type {string} */ sVal) => {
+        const groupName = gName.trim().toLowerCase().replace(/\s+/g, "_");
+        const selectedRaw = sVal ? sVal.trim() : "";
 
-          if (selectedVal) {
-            if (rollManager) {
-              rollManager.counts[groupName] = (rollManager.counts[groupName] || 0) + 1;
-            }
-            if (PresetLogic.isVirtualNull(selectedVal)) {
-              return "";
-            }
-            const selectedKey = PresetLogic.resolveVariantKey(groupName, selectedVal, cache) || selectedVal;
-            const item = cache?.[selectedKey];
-            if (item && item.preset) {
-              if (seen.has(selectedKey)) return item.preset;
-              const newSeen = new Set(seen);
-              newSeen.add(selectedKey);
-              const wrappedPreset = getWrappedPreset(selectedKey, item.preset);
-              return PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager);
-            }
-            return selectedVal;
+        if (selectedRaw) {
+          if (rollManager) {
+            rollManager.counts[groupName] = (rollManager.counts[groupName] || 0) + 1;
           }
 
-          const matches = PresetLogic.getGroupMatches(groupName, cache);
-          if (matches.length > 0) {
-            const pickedKey = rollManager
-              ? rollManager.getRoll(groupName, matches)
-              : matches[Math.floor(Math.random() * matches.length)];
+          let baseVal = selectedRaw;
+          let childVarsStr = "";
+          const bIdx = selectedRaw.indexOf('{');
+          if (bIdx !== -1) {
+            baseVal = selectedRaw.substring(0, bIdx).trim();
+            childVarsStr = selectedRaw.substring(bIdx).trim();
+          }
 
-            if (seen.has(pickedKey)) return pickedKey;
+          if (PresetLogic.isVirtualNull(baseVal)) {
+            return "";
+          }
+          const selectedKey = PresetLogic.resolveVariantKey(groupName, baseVal, cache) || baseVal;
+          const item = cache?.[selectedKey];
+          if (item && item.preset) {
+            if (seen.has(selectedKey)) return item.preset;
             const newSeen = new Set(seen);
-            newSeen.add(pickedKey);
-            const wrappedPreset = getWrappedPreset(pickedKey, cache[pickedKey].preset || "");
+            newSeen.add(selectedKey);
+            let wrappedPreset = getWrappedPreset(selectedKey, item.preset);
+
+            if (childVarsStr) {
+              const childRegex = new RegExp(VAR_REGEX.source, 'g');
+              let cm;
+              while ((cm = childRegex.exec(childVarsStr)) !== null) {
+                const cName = cm[1].trim();
+                const cVal = cm[2] || "";
+                const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const replaceRegex = new RegExp(`\\{\\s*${escapeRegExp(cName)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
+                wrappedPreset = wrappedPreset.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
+              }
+            }
+
             return PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager);
           }
-          return match;
-        });
+          return baseVal;
+        }
+
+        const matches = PresetLogic.getGroupMatches(groupName, cache);
+        if (matches.length > 0) {
+          const pickedKey = rollManager
+            ? rollManager.getRoll(groupName, matches)
+            : matches[Math.floor(Math.random() * matches.length)];
+
+          if (seen.has(pickedKey)) return pickedKey;
+          const newSeen = new Set(seen);
+          newSeen.add(pickedKey);
+          const wrappedPreset = getWrappedPreset(pickedKey, cache[pickedKey].preset || "");
+          return PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager);
+        }
+        return match;
+      });
     };
 
     const expandToken = (/** @type {string} */ tokenStr) => {
@@ -283,8 +306,7 @@ const PresetLogic = {
     if (!text) return { variants: [], tag: null, presetMatch: null, trimmed: "" };
     const trimmed = text.trim();
 
-    const varRegex = /\{([^{}:]+)(?::([^{}]+))?\}/g;
-    const variants = Array.from(trimmed.matchAll(varRegex)).map((m) => ({
+    const variants = Array.from(trimmed.matchAll(VAR_REGEX)).map((m) => ({
       full: m[0],
       groupRaw: m[1].trim(),
       groupName: m[1].trim().toLowerCase().replace(/\s+/g, "_"),
@@ -322,7 +344,7 @@ const PresetLogic = {
     if (!token) return { title: "", filename: null };
     const parsed = PresetLogic.parseChipDetails(token, cache);
 
-    if (parsed.presetMatch) {
+    if (parsed.presetMatch && !/^\{/.test(token)) {
       return {
         title: PresetLogic.toTitleCase(PresetLogic.getPresetName(parsed.presetMatch.key)),
         filename: parsed.presetMatch.item?.filename || null
@@ -334,26 +356,69 @@ const PresetLogic = {
     if (parsed.variants.length > 0) {
       /** @type {string|null} */
       let filename = null;
-      const title = token.replace(/\{([^{}:]+)(?::([^{}]+))?\}/g, (full, g1, sVal) => {
+      const title = token.replace(VAR_REGEX, (full, g1, sVal) => {
         const groupRaw = g1.trim();
         const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
-        const val = sVal ? sVal.trim() : "";
 
-        if (val && PresetLogic.isVirtualNull(val)) {
+        const valStr = sVal ? sVal.trim() : "";
+        let baseVal = valStr;
+        let childVarsStr = "";
+        const bIdx = valStr.indexOf('{');
+        if (bIdx !== -1) {
+          baseVal = valStr.substring(0, bIdx).trim();
+          childVarsStr = valStr.substring(bIdx).trim();
+        }
+
+        if (baseVal && PresetLogic.isVirtualNull(baseVal)) {
           return "";
         }
 
-        const resolvedKey = val
-          ? PresetLogic.resolveVariantKey(groupName, val, cache)
+        const resolvedKey = baseVal
+          ? PresetLogic.resolveVariantKey(groupName, baseVal, cache)
           : rollManager?.getRoll(groupName);
 
+        let baseTitle = "";
         if (resolvedKey && cache) {
           if (!filename && cache[resolvedKey]?.filename) {
             filename = cache[resolvedKey].filename;
           }
-          return PresetLogic.toTitleCase(PresetLogic.getPresetName(resolvedKey));
+          baseTitle = PresetLogic.toTitleCase(PresetLogic.getPresetName(resolvedKey));
+        } else if (baseVal) {
+          baseTitle = PresetLogic.toTitleCase(baseVal);
+        } else {
+          baseTitle = PresetLogic.toTitleCase(groupRaw);
         }
-        return PresetLogic.toTitleCase(groupRaw);
+
+        let childTitles = [];
+        if (childVarsStr) {
+          const childRegex = new RegExp(VAR_REGEX.source, 'g');
+          let cm;
+          while ((cm = childRegex.exec(childVarsStr)) !== null) {
+            const cName = cm[1].trim();
+            const cVal = cm[2] ? cm[2].trim() : "";
+            let childBaseVal = cVal;
+            const cbIdx = childBaseVal.indexOf('{');
+            if (cbIdx !== -1) {
+              childBaseVal = childBaseVal.substring(0, cbIdx).trim();
+            }
+
+            if (childBaseVal && !PresetLogic.isVirtualNull(childBaseVal)) {
+              const childResKey = PresetLogic.resolveVariantKey(cName, childBaseVal, cache) || childBaseVal;
+              childTitles.push(PresetLogic.toTitleCase(PresetLogic.getPresetName(childResKey)));
+            } else if (!childBaseVal) {
+              const childRoll = rollManager?.getRoll(cName.toLowerCase().replace(/\s+/g, "_"));
+              if (childRoll) {
+                childTitles.push(PresetLogic.toTitleCase(PresetLogic.getPresetName(childRoll)));
+              }
+            }
+          }
+        }
+
+        if (childTitles.length > 0) {
+          return childTitles.join(" ") + " " + baseTitle;
+        }
+
+        return baseTitle;
       });
       return { title, filename };
     }
@@ -407,13 +472,21 @@ const PresetLogic = {
 
     const parsed = PresetLogic.parseChipDetails(chipExpandedCore, cache);
     let presetMatch = parsed.presetMatch;
+
     if (!presetMatch) {
-      const varMatch = coreStr.match(/^\{([^{}:]+)(?::([^{}]+))?\}$/);
+      const varMatch = coreStr.match(/^\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}$/);
       if (varMatch) {
         const groupName = varMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
         const val = varMatch[2] ? varMatch[2].trim() : "";
-        const resolvedKey = val
-          ? PresetLogic.resolveVariantKey(groupName, val, cache)
+
+        let baseVal = val;
+        const bIdx = val.indexOf('{');
+        if (bIdx !== -1) {
+          baseVal = val.substring(0, bIdx).trim();
+        }
+
+        const resolvedKey = baseVal
+          ? PresetLogic.resolveVariantKey(groupName, baseVal, cache)
           : rollManager.peekRoll(groupName, beforeCounts[groupName] || 0);
 
         if (resolvedKey && cache[resolvedKey]) {
@@ -422,54 +495,69 @@ const PresetLogic = {
       }
     }
 
-    let cleanLabel, bgImage, color, tooltipTitle, evalId;
+    let cleanLabel, bgImage = null, color, tooltipTitle, evalId;
+
+    const tokens = coreStr.match(/<[^>]*>|\{[^{}:]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}|\S+/g) || [];
+    let segmentedLabels = null;
+    let segmentImg = null;
+    let segmentTitles = [];
+
+    if (tokens.length > 0 && tokens.some(t => /[{<]/.test(t))) {
+      segmentedLabels = [];
+      const tempTracer = new PresetLogic.RollManager(rollManager.rolls).restoreCounts(beforeCounts);
+
+      for (const token of tokens) {
+        const seg = PresetLogic.resolvePresetSegment(token, cache, tempTracer);
+        segmentedLabels.push(seg.title);
+        segmentTitles.push(seg.title);
+        if (!segmentImg && seg.filename) {
+          segmentImg = seg.filename;
+        }
+      }
+    }
 
     if (presetMatch) {
       evalId = presetMatch.key;
       const matchItem = presetMatch.item;
-      cleanLabel = PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId));
-      bgImage = matchItem?.filename || null;
+
+      if (segmentTitles.length === 1 && /^\{[^{}:]+/.test(coreStr)) {
+        cleanLabel = segmentTitles[0];
+      } else {
+        cleanLabel = parsed.tag ? parsed.tag.label : PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId));
+      }
+
+      bgImage = segmentImg || matchItem?.filename || null;
       color = PresetLogic.getPresetColor(evalId, cache);
-      tooltipTitle = `${cleanLabel} [${evalId}]\n${matchItem?.preset || evalId}`;
+      tooltipTitle = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId))} [${evalId}]\n${matchItem?.preset || evalId}`;
     } else {
       evalId = chipExpandedCore;
-      cleanLabel = item ? PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey)) : coreStr;
-      bgImage = item?.filename || null;
+
+      if (segmentTitles.length > 0) {
+        cleanLabel = segmentTitles.join(" ");
+      } else {
+        cleanLabel = item ? PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey)) : coreStr;
+      }
+
+      if (parsed.tag) cleanLabel = parsed.tag.label;
+
+      bgImage = segmentImg || item?.filename || null;
       color = PresetLogic.getPresetColor(styleKey, cache);
       tooltipTitle = item ? `${chipExpandedCore}\n\n${PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : chipExpandedCore;
     }
+
+    tooltipTitle = `${tooltipTitle}${rolledText}`;
 
     const tempManager = new PresetLogic.RollManager();
     const basePreset = item?.preset || PresetLogic.expandRecursively(styleKey, cache, new Set(), tempManager);
     const hasMoreVar = /\{[^{}:]+(?::[^{}]+)?\}/.test(coreStr + basePreset);
 
-    let segmentedLabels = null;
-    const tokens = coreStr.match(/<[^>]*>|{[^}]*}|\S+/g) || [];
-    if (tokens.length > 1 && tokens.some(t => /[{<]/.test(t))) {
-      const tempTracer = new PresetLogic.RollManager(rollManager.rolls).restoreCounts(beforeCounts);
-      segmentedLabels = [];
-      let segmentImg = null;
-
-      for (const token of tokens) {
-        const seg = PresetLogic.resolvePresetSegment(token, cache, tempTracer);
-        segmentedLabels.push(seg.title);
-        if (!segmentImg && seg.filename) {
-          segmentImg = seg.filename;
-        }
-      }
-
-      if (segmentImg) {
-        bgImage = segmentImg;
-      }
-    }
-
     return {
       joinedStr,
       evalId,
-      cleanLabel: parsed.tag ? parsed.tag.label : cleanLabel,
+      cleanLabel,
       bgImage,
       color,
-      tooltipTitle: `${tooltipTitle}${rolledText}`,
+      tooltipTitle,
       chipExpanded,
       item,
       startIndex,
@@ -521,9 +609,9 @@ const PresetLogic = {
         const wMatch = joined.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         const coreJoined = wMatch ? wMatch[1] : joined;
 
-        const cached = lookupMap.get(coreJoined) || lookupMap.get(coreJoined.replace(/\{([^{}:]+):[^{}]+\}/g, '{$1}'));
+        const cached = lookupMap.get(coreJoined) || lookupMap.get(coreJoined.replace(/\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '{$1}'));
 
-        if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::[^{}]+)?\}$/)) {
+        if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}$/)) {
           matched = {
             styleKey: cached?.foundKey || subArray[0],
             item: cached?.foundItem || (cached?.foundKey ? cache[cached.foundKey] : cache[subArray[0]]),
@@ -664,7 +752,7 @@ const PresetLogic = {
       }
 
       if (!matched) {
-        const varMatch = val.slice(idx).match(/^\{[^{}]+(?::[^{}]+)?\}/i);
+        const varMatch = val.slice(idx).match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}/i);
         if (varMatch) {
           matched = { matchStr: varMatch[0], isVar: true };
         } else {
@@ -702,7 +790,7 @@ const PresetLogic = {
             let foundNextMatch = false;
             if (val[endPlain] === '<' && /^<[^<>]+/i.test(val.slice(endPlain))) {
               foundNextMatch = true;
-            } else if (val[endPlain] === '{' && /^\{[^{}]+(?::[^{}]+)?\}/.test(val.slice(endPlain))) {
+            } else if (val[endPlain] === '{' && /^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}/.test(val.slice(endPlain))) {
               foundNextMatch = true;
             } else {
               for (const cand of sortedCandidates) {
@@ -732,7 +820,6 @@ const PresetLogic = {
         }
       }
 
-      // Safety fallback to prevent infinite loops if index fails to advance
       if (idx <= startIdx) {
         idx = startIdx + 1;
       }

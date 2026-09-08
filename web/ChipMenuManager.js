@@ -23,16 +23,67 @@ export default class ChipMenuManager {
     let coreKey = wMatch ? wMatch[1] : styleKey;
     let currentWeight = wMatch ? parseFloat(wMatch[2]) : 1.0;
 
-    // Use the unrolled template to ensure nested sub-variants are found
+    const VAR_REGEX_SRC = `\\{([^{}:]+)(?::((?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*))?\\}`;
+
+    const getAllVariants = (text, cache, rootGroup = null) => {
+      let results = [];
+      let m;
+      const localRegex = new RegExp(VAR_REGEX_SRC, 'g');
+      while ((m = localRegex.exec(text)) !== null) {
+        const groupRaw = m[1].trim();
+        const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
+        const valStr = m[2] ? m[2].trim() : "";
+
+        let baseVal = valStr;
+        let childVarsStr = "";
+        const bIdx = valStr.indexOf('{');
+        if (bIdx !== -1) {
+          baseVal = valStr.substring(0, bIdx).trim();
+          childVarsStr = valStr.substring(bIdx).trim();
+        }
+
+        results.push({
+          groupRaw,
+          groupName,
+          val: baseVal,
+          childVarsStr,
+          rootGroup: rootGroup || groupName,
+          isSub: !!rootGroup
+        });
+
+        if (baseVal && !PresetLogic.isVirtualNull(baseVal)) {
+          const resolvedKey = PresetLogic.resolveVariantKey(groupName, baseVal, cache) || baseVal;
+          const item = cache?.[resolvedKey];
+          if (item && item.preset) {
+            let childTemplate = item.preset;
+            if (childVarsStr) {
+              const childRegex = new RegExp(VAR_REGEX_SRC, 'g');
+              let cm;
+              while ((cm = childRegex.exec(childVarsStr)) !== null) {
+                const cName = cm[1].trim();
+                const cVal = cm[2] || "";
+                const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const replaceRegex = new RegExp(`\\{\\s*${escapeRegExp(cName)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
+                childTemplate = childTemplate.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
+              }
+            }
+            const childResults = getAllVariants(childTemplate, cache, rootGroup || groupName);
+            results = results.concat(childResults);
+          }
+        }
+      }
+      return results;
+    };
+
     const source = PresetLogic.getUnrolledTemplate(coreKey, this.context.cache);
-    const parsed = PresetLogic.parseChipDetails(source, this.context.cache);
+    const allVariants = getAllVariants(source, this.context.cache);
 
     let varRowsHtml = "";
     const groupCounts = {};
     const autocompleteConfigs = [];
 
-    if (parsed.variants.length > 0) {
-      parsed.variants.forEach(({ groupRaw, groupName, val: currentSelectedVal }) => {
+    if (allVariants.length > 0) {
+      allVariants.forEach(({ groupRaw, groupName, val: currentSelectedVal, rootGroup, isSub }) => {
         const gIndex = groupCounts[groupRaw] || 0;
         groupCounts[groupRaw] = gIndex + 1;
 
@@ -61,7 +112,7 @@ export default class ChipMenuManager {
 
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
-            <input type="text" class="j0n4t-pg-var-input" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" data-key="${PresetDOM.escapeHTML(dataKey)}" value="${PresetDOM.escapeHTML(displayValue)}" placeholder="🔍 Filter by folder/name..." tabindex="0" onclick="this.select()">
+            <input type="text" class="j0n4t-pg-var-input" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" data-root-group="${PresetDOM.escapeHTML(rootGroup)}" data-issub="${isSub}" data-key="${PresetDOM.escapeHTML(dataKey)}" value="${PresetDOM.escapeHTML(displayValue)}" placeholder="🔍 Filter by folder/name..." tabindex="0" onclick="this.select()">
             <button class="j0n4t-pg-var-edit-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Edit selected ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.edit}</button>
             <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
           </div>`;
@@ -298,7 +349,6 @@ export default class ChipMenuManager {
           selections.splice(startIndex, endIndex - startIndex, finalNewKey);
           this.context.updateWidgetValue(selections);
 
-          // Re-attach to replacement element after widget refresh, or close if missing
           const newChips = Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
           const replacementChip = newChips.find(c => c.dataset.id === finalNewKey && parseInt(c.dataset.start) === startIndex);
           if (replacementChip) {
@@ -316,6 +366,8 @@ export default class ChipMenuManager {
 
       const group = inputEl.dataset.group;
       const gIndex = parseInt(inputEl.dataset.gindex, 10);
+      const rootGroup = inputEl.dataset.rootGroup;
+      const isSub = inputEl.dataset.issub === 'true';
       const rawVal = inputEl.value;
 
       let selectedVal = rawVal;
@@ -331,7 +383,7 @@ export default class ChipMenuManager {
       inputEl.dataset.key = selectedVal;
 
       const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::[^{}]+)?\\}`, 'g');
+      const groupRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
       const replacement = selectedVal ? `{${group}:${selectedVal}}` : `{${group}}`;
 
       const currentKey = chipElement.dataset.id;
@@ -341,12 +393,12 @@ export default class ChipMenuManager {
 
       const unrolled = PresetLogic.getUnrolledTemplate(activeCoreKey, this.context.cache);
 
-      const replaceNth = (str) => {
+      const replaceNth = (str, regex, replStr) => {
         let matchCount = 0;
         return str.replace(regex, (match) => {
           if (matchCount === gIndex) {
             matchCount++;
-            return replacement;
+            return replStr;
           }
           matchCount++;
           return match;
@@ -356,24 +408,58 @@ export default class ChipMenuManager {
       let newStyleKey = currentKey;
       let coreReplaced = false;
 
-      // Try replacing the variant safely, falling back to unrolled format if nested
-      if (currentKey.match(regex)) {
-        const attempt = replaceNth(currentKey);
+      if (currentKey.match(groupRegex)) {
+        const attempt = replaceNth(currentKey, groupRegex, replacement);
         if (attempt !== currentKey) newStyleKey = attempt;
       }
-      if (newStyleKey === currentKey && currentPreset.match(regex)) {
-        const attempt = replaceNth(currentPreset);
+
+      if (newStyleKey === currentKey && isSub && rootGroup) {
+        const rootRegex = new RegExp(`\\{\\s*${escapeRegExp(rootGroup)}\\s*(?::((?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*))?\\}`, 'gi');
+        if (currentKey.match(rootRegex)) {
+          newStyleKey = currentKey.replace(rootRegex, (match, rootVal) => {
+            if (!rootVal) rootVal = "";
+            const childRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
+            if (rootVal.match(childRegex)) {
+              rootVal = rootVal.replace(childRegex, replacement);
+            } else {
+              rootVal = rootVal + replacement;
+            }
+            return `{${rootGroup}:${rootVal}}`;
+          });
+        }
+      }
+
+      if (newStyleKey === currentKey && currentPreset.match(groupRegex)) {
+        const attempt = replaceNth(currentPreset, groupRegex, replacement);
         if (attempt !== currentPreset) newStyleKey = attempt;
       }
-      if (newStyleKey === currentKey && unrolled.match(regex)) {
-        const attempt = replaceNth(unrolled);
+
+      if (newStyleKey === currentKey && isSub && rootGroup) {
+        const rootRegex = new RegExp(`\\{\\s*${escapeRegExp(rootGroup)}\\s*(?::((?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*))?\\}`, 'gi');
+        if (currentPreset.match(rootRegex)) {
+          const attempt = currentPreset.replace(rootRegex, (match, rootVal) => {
+            if (!rootVal) rootVal = "";
+            const childRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
+            if (rootVal.match(childRegex)) {
+              rootVal = rootVal.replace(childRegex, replacement);
+            } else {
+              rootVal = rootVal + replacement;
+            }
+            return `{${rootGroup}:${rootVal}}`;
+          });
+          if (attempt !== currentPreset) newStyleKey = attempt;
+        }
+      }
+
+      if (newStyleKey === currentKey && unrolled.match(groupRegex)) {
+        const attempt = replaceNth(unrolled, groupRegex, replacement);
         if (attempt !== unrolled) {
           newStyleKey = currentWMatch ? `(${attempt}:${currentWMatch[2]})` : attempt;
           coreReplaced = true;
         }
       }
 
-      if (newStyleKey === currentKey) return; // Nothing was replaced
+      if (newStyleKey === currentKey) return; 
 
       chipElement.dataset.id = newStyleKey;
       chipElement.dataset.preset = coreReplaced ? "" : newStyleKey;
@@ -383,11 +469,9 @@ export default class ChipMenuManager {
         selections.splice(startIndex, endIndex - startIndex, newStyleKey);
         this.context.updateWidgetValue(selections);
 
-        // If the top-level preset chip morphed/disintegrated to expose nested values, close it
         if (coreReplaced) {
           this.close();
         } else {
-          // Keep it open, but hook it onto the new freshly-rendered DOM element
           const newChips = Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
           const replacementChip = newChips.find(c => c.dataset.id === newStyleKey && parseInt(c.dataset.start) === startIndex);
           if (replacementChip) {
