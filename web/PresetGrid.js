@@ -234,8 +234,7 @@ export default class PresetGrid {
             e.stopPropagation();
             if (rawFolder === "root_presets") return;
 
-            const currentName = rawFolder.replace(/_/g, " ");
-            const inputName = await ModalUtils.prompt("Rename Group", currentName);
+            const inputName = await ModalUtils.prompt("Rename Group", rawFolder);
 
             if (inputName === null || inputName === undefined) return;
 
