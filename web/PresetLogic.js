@@ -523,7 +523,7 @@ const PresetLogic = {
       if (segmentTitles.length === 1 && /^\{[^{}:]+/.test(coreStr)) {
         cleanLabel = segmentTitles[0];
       } else {
-        cleanLabel = parsed.tag ? parsed.tag.label : PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId));
+        cleanLabel = PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId));
       }
 
       bgImage = segmentImg || matchItem?.filename || null;
@@ -565,7 +565,7 @@ const PresetLogic = {
       weightVal,
       segmentedLabels,
       hasMoreVar,
-      tag: parsed.tag
+      tag: presetMatch ? null : parsed.tag
     };
   },
 
