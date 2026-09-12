@@ -920,14 +920,18 @@ const PresetLogic = {
    * Returns full formatted title and description body for tooltips.
    * @param {string} key - Cache key.
    * @param {PresetCache} cache - Cache object.
+   * @param {RollManager} [rollManager] - Dynamic roll tracker state.
    * @returns {string} Formatted multiline title text.
    */
-  getPresetTitle: (key, cache) => {
+  getPresetTitle: (key, cache, rollManager = new PresetLogic.RollManager()) => {
     if (!key) return "";
-    if (PresetLogic.isVirtualNull(key)) {
-      return "None [omit variant]";
-    }
-    return `${PresetLogic.toTitleCase(PresetLogic.getPresetName(key))} [${key}]\n${cache[key]?.preset || ""}`;
+    if (PresetLogic.isVirtualNull(key)) return "None [omit variant]";
+    const name = PresetLogic.toTitleCase(PresetLogic.getPresetName(key));
+    const preset = cache[key]?.preset || key;
+    const title = `${name} [${key}]\n${preset}`;
+    const expanded = PresetLogic.expandRecursively(key, cache, new Set(), rollManager);
+    if (expanded !== preset) return `${expanded}\n\n${title}`;
+    return title;
   },
 
   /**

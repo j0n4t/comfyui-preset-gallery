@@ -188,10 +188,10 @@ export default class ChipMenuManager {
             const q = query.toLowerCase();
             return options
               .filter(opt => opt.display.toLowerCase().includes(q) || opt.key.toLowerCase().includes(q))
-              .map(opt => ({ item: opt, title: opt.key }));
+              .map(opt => ({ item: opt, title: PresetDOM.escapeHTML(PresetLogic.getPresetTitle(opt.key, this.context.cache)) }));
           },
           renderItem: (opt) => `
-            <span title="${PresetDOM.escapeHTML(PresetLogic.getPresetTitle(opt.key, this.context.cache))}">${PresetDOM.escapeHTML(opt.display)}</span>
+            <span>${PresetDOM.escapeHTML(opt.display)}</span>
             ${opt.key && opt.key !== 'none' ? `<span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(opt.key)}</span>` : ''}
           `,
           onSelect: (selectedItem) => {
@@ -459,7 +459,7 @@ export default class ChipMenuManager {
         }
       }
 
-      if (newStyleKey === currentKey) return; 
+      if (newStyleKey === currentKey) return;
 
       chipElement.dataset.id = newStyleKey;
       chipElement.dataset.preset = coreReplaced ? "" : newStyleKey;
