@@ -18,6 +18,10 @@ export default class PresetGrid {
     .j0n4t-pg-group-edit svg { width: 11px; height: 11px; fill: currentColor; }
     .j0n4t-pg-group-header[data-group-raw="root_presets"] .j0n4t-pg-group-edit { display: none !important; }
     .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header, .j0n4t-pg-grid.hide-folders .j0n4t-pg-global-collapse-btn { display: none !important; }
+    .j0n4t-pg-group-roll-toggle { color: #bbb; border-radius: 3px; width: 10px; height: 10px; display: flex; align-items: center; justify-content: center; transition: 0.15s; cursor: pointer; margin-right: 4px; }
+    .j0n4t-pg-group-roll-toggle:hover, .j0n4t-pg-group-roll-toggle:focus-visible { color: #fff; outline: none; }
+    .j0n4t-pg-group-roll-toggle svg { width: 11px; height: 11px; fill: currentColor; }
+    .j0n4t-pg-group-roll-toggle.excluded { color: #555; }
   `;
 
   static ITEM_THUMB_STYLES = /*css*/ `
@@ -162,6 +166,8 @@ export default class PresetGrid {
 
       if (uiGroup !== lastGroup) {
         lastGroup = uiGroup;
+        const excludedRoll = this.context.getExcludedRollFolders();
+        const isExcluded = excludedRoll.includes(rawGroup);
         htmlBuffer += `
             <div class="j0n4t-pg-group-header${collapsedList.includes(rawGroup) ? " collapsed" : ""}" data-group="${PresetDOM.escapeHTML(uiGroup)}" data-group-raw="${PresetDOM.escapeHTML(rawGroup)}" tabindex="0" role="button" aria-expanded="${!collapsedList.includes(rawGroup)}">
                 <span class="j0n4t-pg-group-color-dot" tabindex="0" role="button" style="background-color: ${groupColor};" title="Click to customize group color" aria-label="Customize group color">
@@ -169,6 +175,7 @@ export default class PresetGrid {
                 </span>
                 <span class="j0n4t-pg-group-title">${PresetDOM.escapeHTML(uiGroup)}</span>
                 <div class="j0n4t-pg-group-line"></div>
+                <div class="j0n4t-pg-group-roll-toggle${isExcluded ? ' excluded' : ''}" tabindex="-1" role="button" title="Toggle Roll Inclusion" aria-label="Toggle Roll Inclusion">${PresetDOM.icons.dice}</div>
                 <div class="j0n4t-pg-group-edit" tabindex="-1" role="button" title="Rename Group" aria-label="Rename Group">${PresetDOM.icons.edit}</div>
             </div>`;
       }
@@ -216,6 +223,22 @@ export default class PresetGrid {
         const rawFolder = header.dataset.groupRaw;
         const colorPicker = header.querySelector(".j0n4t-pg-group-color-picker");
         const editBtn = header.querySelector(".j0n4t-pg-group-edit");
+        const rollToggle = header.querySelector(".j0n4t-pg-group-roll-toggle");
+
+        if (rollToggle) {
+          rollToggle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            let excluded = this.context.getExcludedRollFolders();
+            if (excluded.includes(rawFolder)) {
+              excluded = excluded.filter((i) => i !== rawFolder);
+              rollToggle.classList.remove("excluded");
+            } else {
+              excluded.push(rawFolder);
+              rollToggle.classList.add("excluded");
+            }
+            this.context.setExcludedRollFolders(excluded);
+          });
+        }
 
         if (colorPicker) {
           colorPicker.addEventListener("click", (e) => e.stopPropagation());
@@ -270,7 +293,8 @@ export default class PresetGrid {
           if (
             e.target.closest(".j0n4t-pg-group-color-picker") ||
             e.target.closest(".j0n4t-pg-group-color-dot") ||
-            e.target.closest(".j0n4t-pg-group-edit")
+            e.target.closest(".j0n4t-pg-group-edit") ||
+            e.target.closest(".j0n4t-pg-group-roll-toggle")
           )
             return;
           const isCollapsed = header.classList.toggle("collapsed");

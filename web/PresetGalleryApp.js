@@ -228,6 +228,14 @@ class PresetGalleryApp {
     localStorage.setItem("pg_collapsed_folders_list", JSON.stringify(list));
   }
 
+  getExcludedRollFolders() {
+    return JSON.parse(localStorage.getItem("pg_excluded_roll_folders")) || [];
+  }
+
+  setExcludedRollFolders(list) {
+    localStorage.setItem("pg_excluded_roll_folders", JSON.stringify(list));
+  }
+
   getSelectedArray() {
     return this.widget.value
       ? PresetLogic.splitPresets(this.widget.value)
@@ -295,22 +303,25 @@ class PresetGalleryApp {
         }
       }
     }
-    const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_"));
+
+    const excludedFolders = this.getExcludedRollFolders();
+    const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_") && !excludedFolders.includes(key));
     if (availableGroups.length === 0) return;
+
     const newSelections = [];
     const addedSet = new Set();
     const min = this.settings?.rollMin ?? 10;
     const max = this.settings?.rollMax ?? 20;
     const targetTotal = Math.floor(Math.random() * (max - min + 1)) + min;
+
     while (newSelections.length < targetTotal) {
-      const numGroupsToPick = Math.floor(Math.random() * (7 - 3 + 1)) + 3;
       const shuffledGroups = [...availableGroups].sort(() => 0.5 - Math.random());
-      const selectedGroups = shuffledGroups.slice(0, Math.min(numGroupsToPick, shuffledGroups.length));
       let addedInIteration = false;
-      for (const group of selectedGroups) {
+      for (const group of shuffledGroups) {
         const groupPresets = groupsMap.get(group) || [];
         if (groupPresets.length === 0) continue;
-        const numChips = Math.floor(Math.random() * 2);
+
+        const numChips = Math.floor(Math.random() * 2) + 1;
         for (let i = 0; i < numChips; i++) {
           const randomPreset = groupPresets[Math.floor(Math.random() * groupPresets.length)];
           if (!addedSet.has(randomPreset)) {
@@ -322,11 +333,13 @@ class PresetGalleryApp {
         }
         if (newSelections.length >= targetTotal) break;
       }
-      const totalPresetsCount = Object.keys(cache).length;
-      if (!addedInIteration || addedSet.size >= totalPresetsCount) {
+
+      const totalAvailablePresets = availableGroups.reduce((acc, g) => acc + (groupsMap.get(g)?.length || 0), 0);
+      if (!addedInIteration || addedSet.size >= totalAvailablePresets) {
         break;
       }
     }
+
     newSelections.sort((a, b) => a.localeCompare(b));
     if (cache["_/combo/_default"]) newSelections.unshift("_/combo/_default");
     this.updateWidgetValue(newSelections);
