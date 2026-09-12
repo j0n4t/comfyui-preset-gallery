@@ -292,6 +292,7 @@ class PresetGalleryApp {
   }
 
   triggerRoll() {
+    this.rollManager.clearAll();
     const cache = this.cache || {};
     const groupsMap = new Map();
     for (const [key, item] of Object.entries(cache)) {
