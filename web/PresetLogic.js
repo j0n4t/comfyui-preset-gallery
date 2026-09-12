@@ -585,10 +585,24 @@ const PresetLogic = {
       for (const [key, item] of Object.entries(cache)) {
         if (!item) continue;
         if (item.preset?.trim()) {
-          const trimmedPreset = item.preset.trim();
-          lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });
-          const expanded = PresetLogic.expandRecursively(trimmedPreset, cache);
+          const expanded = PresetLogic.expandRecursively(key, cache);
           if (expanded) lookupMap.set(expanded, { foundKey: key, foundItem: item });
+
+          let wrappedPreset = item.preset.trim();
+          const folder = PresetLogic.getPresetFolder(key);
+          const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
+          const appendMatch = cache[`_/config/append/${folder}`]?.preset;
+
+          if (prependMatch || appendMatch) {
+            const pre = prependMatch ? `${prependMatch} ` : "";
+            const app = appendMatch ? ` ${appendMatch}` : "";
+            wrappedPreset = `${pre}${wrappedPreset}${app}`.trim();
+          }
+
+          if (wrappedPreset) lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });
+
+          const trimmedPreset = item.preset.trim();
+          if (trimmedPreset) lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });
         }
         if (key) {
           lookupMap.set(key, { foundKey: key, foundItem: item });
@@ -658,7 +672,21 @@ const PresetLogic = {
 
     for (const [key, item] of Object.entries(cache)) {
       if (!item) continue;
-      if (key.trim() === trimmed || (item.preset && item.preset.trim() === trimmed)) {
+
+      let wrappedPreset = item.preset?.trim();
+      if (wrappedPreset) {
+        const folder = PresetLogic.getPresetFolder(key);
+        const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
+        const appendMatch = cache[`_/config/append/${folder}`]?.preset;
+
+        if (prependMatch || appendMatch) {
+          const pre = prependMatch ? `${prependMatch} ` : "";
+          const app = appendMatch ? ` ${appendMatch}` : "";
+          wrappedPreset = `${pre}${wrappedPreset}${app}`.trim();
+        }
+      }
+
+      if (key.trim() === trimmed || (item.preset && item.preset.trim() === trimmed) || (wrappedPreset && wrappedPreset === trimmed)) {
         return { key, item };
       }
     }
@@ -695,13 +723,31 @@ const PresetLogic = {
     if (cache) {
       for (const [key, item] of Object.entries(cache)) {
         if (item?.preset && item.preset.trim()) {
-          const expanded = PresetLogic.expandRecursively(item.preset.trim(), cache);
+          // 1. Fully expanded preset (inheriting prepends/appends)
+          const expanded = PresetLogic.expandRecursively(key, cache);
           if (expanded && expanded.trim()) {
             candidates.push({ matchStr: expanded, key, item });
           }
 
+          // 2. Wrapped but unexpanded preset
+          let wrappedPreset = item.preset.trim();
+          const folder = PresetLogic.getPresetFolder(key);
+          const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
+          const appendMatch = cache[`_/config/append/${folder}`]?.preset;
+
+          if (prependMatch || appendMatch) {
+            const pre = prependMatch ? `${prependMatch} ` : "";
+            const app = appendMatch ? ` ${appendMatch}` : "";
+            wrappedPreset = `${pre}${wrappedPreset}${app}`.trim();
+          }
+
+          if (wrappedPreset && wrappedPreset !== expanded) {
+            candidates.push({ matchStr: wrappedPreset, key, item });
+          }
+
+          // 3. Raw preset fallback
           const trimmedPreset = item.preset.trim();
-          if (expanded !== trimmedPreset && trimmedPreset) {
+          if (trimmedPreset && trimmedPreset !== expanded && trimmedPreset !== wrappedPreset) {
             candidates.push({ matchStr: trimmedPreset, key, item });
           }
         }
