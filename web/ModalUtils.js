@@ -1,5 +1,15 @@
 import PresetDOM from "./PresetDOM.js";
 
+
+/**
+ * @typedef {Object} ModalButton
+ * @property {string} text 
+ * @property {string} [className]
+ * @property {() => void} [callback]
+ * @property {boolean} [isDefault]
+ * @property {boolean} closeOnFinish
+ */
+
 export default class ModalUtils {
   static MODAL_STYLES = /*css*/ `
     .j0n4t-pg-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(3px); z-index: 20000; display: flex; align-items: center; justify-content: center; }
@@ -23,7 +33,7 @@ export default class ModalUtils {
   /**
    * Create and show a basic alert modal
    * @param {string} message - The message to display
-   * @returns {Promise} - Resolves when user clicks OK
+   * @returns {Promise<any>} - Resolves when user clicks OK
    */
   static alert(message) {
     return ModalUtils.show({
@@ -57,6 +67,7 @@ export default class ModalUtils {
    * @returns {Promise<string|null>} - Resolves with the input value if confirmed, or null if cancelled
    */
   static async prompt(title, defaultValue = "") {
+    /** @type {HTMLInputElement | null} */
     let inputEl;
     const result = await ModalUtils.show({
       title,
@@ -73,15 +84,15 @@ export default class ModalUtils {
       onOpen: (modal) => {
         inputEl = modal.querySelector(".j0n4t-pg-modal-input");
         if (inputEl) {
-          setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
+          setTimeout(() => { inputEl?.focus(); inputEl?.select(); }, 50);
           inputEl.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              const okBtn = modal.querySelectorAll(".j0n4t-pg-btn")[1];
+              const okBtn = /** @type {HTMLButtonElement} */ (modal.querySelectorAll(".j0n4t-pg-btn")[1]);
               if (okBtn) okBtn.click();
             } else if (e.key === "Escape") {
               e.preventDefault();
-              const cancelBtn = modal.querySelectorAll(".j0n4t-pg-btn")[0];
+              const cancelBtn = /** @type {HTMLButtonElement} */ (modal.querySelectorAll(".j0n4t-pg-btn")[0]);
               if (cancelBtn) cancelBtn.click();
             }
           });
@@ -96,9 +107,9 @@ export default class ModalUtils {
    * @param {Object} options - Modal configuration options
    * @param {string} options.title - The modal title
    * @param {string} options.content - The modal content HTML
-   * @param {Array} options.buttons - Array of button objects {text, className, callback, isDefault, closeOnFinish}
-   * @param {boolean} options.isLarge - Whether to use large modal variant
-   * @param {Function} options.onOpen - Optional callback executed when modal is opened
+   * @param {ModalButton[]} options.buttons - Array of button objects
+   * @param {boolean} [options.isLarge] - Whether to use large modal variant
+   * @param {(modal: HTMLDivElement, overlay: HTMLDivElement) => void} [options.onOpen] - Optional callback executed when modal is opened
    * @returns {Promise<any>} - Resolves with the result from button callbacks
    */
   static show(options) {
@@ -133,15 +144,15 @@ export default class ModalUtils {
           }
         });
       } else {
-        modal.querySelector(".j0n4t-pg-btn").addEventListener("click", () => {
+        modal.querySelector(".j0n4t-pg-btn")?.addEventListener("click", () => {
           overlay.remove();
-          resolve();
+          resolve(true);
         });
       }
       overlay.addEventListener("click", (e) => {
         if (e.target === overlay) {
           overlay.remove();
-          resolve();
+          resolve(true);
         }
       });
       document.body.appendChild(overlay);
