@@ -65,20 +65,6 @@ const PresetLogic = {
   getUnrolledTemplate: (val, cache, seen = new Set()) => {
     if (!val) return "";
 
-    const getWrappedPreset = (key, baseStr) => {
-      if (!cache) return baseStr;
-      const folder = PresetLogic.getPresetFolder(key);
-      const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
-      const appendMatch = cache[`_/config/append/${folder}`]?.preset;
-
-      if (prependMatch || appendMatch) {
-        const pre = prependMatch ? `${prependMatch} ` : "";
-        const app = appendMatch ? ` ${appendMatch}` : "";
-        return `${pre}${baseStr}${app}`.trim();
-      }
-      return baseStr;
-    };
-
     const expandToken = (tokenStr) => {
       const trimmed = tokenStr.trim();
       if (!trimmed) return "";
@@ -88,7 +74,7 @@ const PresetLogic = {
         if (seen.has(trimmed)) return trimmed;
         const newSeen = new Set(seen);
         newSeen.add(trimmed);
-        const wrappedPreset = getWrappedPreset(trimmed, item.preset);
+        const wrappedPreset = PresetLogic.getWrappedPreset(trimmed, item.preset, cache);
         return PresetLogic.getUnrolledTemplate(wrappedPreset, cache, newSeen);
       }
       return trimmed;
@@ -97,6 +83,28 @@ const PresetLogic = {
     const keys = PresetLogic.splitPresets(val);
     const expanded = keys.map(expandToken);
     return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, ' ');
+  },
+
+
+  /**
+   * Evaluates and wraps a base string with any configured prepends or appends.
+   * @param {string} key - Cache key used to determine the folder path.
+   * @param {string} baseStr - The core text/preset to wrap.
+   * @param {PresetCache} cache - Preset cache lookup dictionary.
+   * @returns {string} Wrapped string.
+   */
+  getWrappedPreset: (key, baseStr, cache) => {
+    if (!cache || !baseStr) return baseStr || "";
+    const folder = PresetLogic.getPresetFolder(key);
+    const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
+    const appendMatch = cache[`_/config/append/${folder}`]?.preset;
+
+    if (prependMatch || appendMatch) {
+      const pre = prependMatch ? `${prependMatch} ` : "";
+      const app = appendMatch ? ` ${appendMatch}` : "";
+      return `${pre}${baseStr}${app}`.trim();
+    }
+    return baseStr.trim();
   },
 
   /**
@@ -199,20 +207,6 @@ const PresetLogic = {
   expandRecursively: (val, cache, seen = new Set(), rollManager = null) => {
     if (!val) return "";
 
-    const getWrappedPreset = (key, baseStr) => {
-      if (!cache) return baseStr;
-      const folder = PresetLogic.getPresetFolder(key);
-      const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
-      const appendMatch = cache[`_/config/append/${folder}`]?.preset;
-
-      if (prependMatch || appendMatch) {
-        const pre = prependMatch ? `${prependMatch} ` : "";
-        const app = appendMatch ? ` ${appendMatch}` : "";
-        return `${pre}${baseStr}${app}`.trim();
-      }
-      return baseStr;
-    };
-
     const expandText = (/** @type {string} */ str) => {
       if (!str) return "";
       return str.replace(VAR_REGEX, (/** @type {any} */ match, /** @type {string} */ gName, /** @type {string} */ sVal) => {
@@ -241,7 +235,7 @@ const PresetLogic = {
             if (seen.has(selectedKey)) return item.preset;
             const newSeen = new Set(seen);
             newSeen.add(selectedKey);
-            let wrappedPreset = getWrappedPreset(selectedKey, item.preset);
+            let wrappedPreset = PresetLogic.getWrappedPreset(selectedKey, item.preset, cache);
 
             if (childVarsStr) {
               const childRegex = new RegExp(VAR_REGEX.source, 'g');
@@ -269,7 +263,7 @@ const PresetLogic = {
           if (seen.has(pickedKey)) return pickedKey;
           const newSeen = new Set(seen);
           newSeen.add(pickedKey);
-          const wrappedPreset = getWrappedPreset(pickedKey, cache[pickedKey].preset || "");
+          const wrappedPreset = PresetLogic.getWrappedPreset(pickedKey, cache[pickedKey].preset || "", cache);
           return PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager);
         }
         return match;
@@ -285,7 +279,7 @@ const PresetLogic = {
         if (seen.has(trimmed)) return trimmed;
         const newSeen = new Set(seen);
         newSeen.add(trimmed);
-        const wrappedPreset = getWrappedPreset(trimmed, item.preset);
+        const wrappedPreset = PresetLogic.getWrappedPreset(trimmed, item.preset, cache);
         return expandText(PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager));
       }
       return expandText(trimmed);
@@ -441,15 +435,11 @@ const PresetLogic = {
     let coreStr = wMatch ? wMatch[1] : joinedStr;
 
     if (cache && item && coreStr === styleKey) {
-      const folder = PresetLogic.getPresetFolder(styleKey);
-      const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
-      const appendMatch = cache[`_/config/append/${folder}`]?.preset;
+      const baseContent = item.preset || styleKey;
+      const wrappedContent = PresetLogic.getWrappedPreset(styleKey, baseContent, cache);
 
-      if (prependMatch || appendMatch) {
-        const pre = prependMatch ? `${prependMatch} ` : "";
-        const app = appendMatch ? ` ${appendMatch}` : "";
-        const baseContent = item.preset || styleKey;
-        coreStr = `${pre}${baseContent}${app}`.trim();
+      if (wrappedContent !== baseContent.trim()) {
+        coreStr = wrappedContent;
         joinedStr = weightVal !== null ? `(${coreStr}:${weightVal})` : coreStr;
       }
     }
@@ -588,17 +578,7 @@ const PresetLogic = {
           const expanded = PresetLogic.expandRecursively(key, cache);
           if (expanded) lookupMap.set(expanded, { foundKey: key, foundItem: item });
 
-          let wrappedPreset = item.preset.trim();
-          const folder = PresetLogic.getPresetFolder(key);
-          const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
-          const appendMatch = cache[`_/config/append/${folder}`]?.preset;
-
-          if (prependMatch || appendMatch) {
-            const pre = prependMatch ? `${prependMatch} ` : "";
-            const app = appendMatch ? ` ${appendMatch}` : "";
-            wrappedPreset = `${pre}${wrappedPreset}${app}`.trim();
-          }
-
+          const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
           if (wrappedPreset) lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });
 
           const trimmedPreset = item.preset.trim();
@@ -671,21 +651,8 @@ const PresetLogic = {
     }
 
     for (const [key, item] of Object.entries(cache)) {
-      if (!item) continue;
-
-      let wrappedPreset = item.preset?.trim();
-      if (wrappedPreset) {
-        const folder = PresetLogic.getPresetFolder(key);
-        const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
-        const appendMatch = cache[`_/config/append/${folder}`]?.preset;
-
-        if (prependMatch || appendMatch) {
-          const pre = prependMatch ? `${prependMatch} ` : "";
-          const app = appendMatch ? ` ${appendMatch}` : "";
-          wrappedPreset = `${pre}${wrappedPreset}${app}`.trim();
-        }
-      }
-
+      if (!item || !item.preset) continue;
+      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
       if (key.trim() === trimmed || (item.preset && item.preset.trim() === trimmed) || (wrappedPreset && wrappedPreset === trimmed)) {
         return { key, item };
       }
@@ -730,15 +697,10 @@ const PresetLogic = {
           }
 
           // 2. Wrapped but unexpanded preset
-          let wrappedPreset = item.preset.trim();
-          const folder = PresetLogic.getPresetFolder(key);
-          const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
-          const appendMatch = cache[`_/config/append/${folder}`]?.preset;
+          const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
 
-          if (prependMatch || appendMatch) {
-            const pre = prependMatch ? `${prependMatch} ` : "";
-            const app = appendMatch ? ` ${appendMatch}` : "";
-            wrappedPreset = `${pre}${wrappedPreset}${app}`.trim();
+          if (wrappedPreset && wrappedPreset !== expanded) {
+            candidates.push({ matchStr: wrappedPreset, key, item });
           }
 
           if (wrappedPreset && wrappedPreset !== expanded) {
