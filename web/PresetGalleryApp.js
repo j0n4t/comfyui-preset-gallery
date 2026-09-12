@@ -288,7 +288,9 @@ class PresetGalleryApp {
     this.grid.syncSelection(arr);
     this.basket.render(arr);
     this.syncEditorHighlight();
-    this.dom.btnRerollBasket.title = arr.length === 0 ? "Feeling lucky?" : "Re-roll variants";
+
+    const diceTitle = this.settings?.diceBehavior === "overwrite" ? "Overwrite with new presets" : "Re-roll variants";
+    this.dom.btnRerollBasket.title = arr.length === 0 ? "Feeling lucky?" : diceTitle;
   }
 
   triggerRoll() {
@@ -442,7 +444,7 @@ class PresetGalleryApp {
 
     this.dom.btnRerollBasket.addEventListener("click", () => {
       const selections = this.getSelectedArray();
-      if (selections.length === 0) {
+      if (selections.length === 0 || this.settings?.diceBehavior === "overwrite") {
         this.triggerRoll();
       } else {
         this.rollManager.clearAll();

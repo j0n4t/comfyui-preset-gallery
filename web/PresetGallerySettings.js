@@ -14,11 +14,13 @@ export default class PresetGallerySettings {
       this.rollMax = saved.rollMax !== undefined ? saved.rollMax : 20;
       this.rollOnGeneration = saved.rollOnGeneration !== undefined ? saved.rollOnGeneration : false;
       this.rollOnSeedChange = saved.rollOnSeedChange !== undefined ? saved.rollOnSeedChange : false;
+      this.diceBehavior = saved.diceBehavior || "variants";
     } catch (e) {
       this.rollMin = 10;
       this.rollMax = 20;
       this.rollOnGeneration = false;
       this.rollOnSeedChange = false;
+      this.diceBehavior = "variants";
     }
   }
 
@@ -27,18 +29,27 @@ export default class PresetGallerySettings {
       rollMin: this.rollMin,
       rollMax: this.rollMax,
       rollOnGeneration: this.rollOnGeneration,
-      rollOnSeedChange: this.rollOnSeedChange
+      rollOnSeedChange: this.rollOnSeedChange,
+      diceBehavior: this.diceBehavior
     };
     localStorage.setItem("pg_settings", JSON.stringify(data));
   }
 
   async openModal() {
-    let minInput, maxInput, genCheck, seedCheck;
+    let minInput, maxInput, genCheck, seedCheck, diceSelect;
 
     const content = `
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <div style="font-size: 12px; font-weight: bold; color: #fff; border-bottom: 1px solid #444; padding-bottom: 4px;">Rolling Options</div>
         
+        <div class="j0n4t-pg-modal-field">
+          <label>Baskert Dice Button Behavior (When Basket Has Items)</label>
+          <select id="j0n4t-pg-dice-behavior">
+            <option value="variants" ${this.diceBehavior === "variants" ? "selected" : ""}>Re-roll Variants Only</option>
+            <option value="overwrite" ${this.diceBehavior === "overwrite" ? "selected" : ""}>Overwrite with New Presets</option>
+          </select>
+        </div>
+
         <div class="j0n4t-pg-modal-field">
           <label>Preset Count Range for Rolling</label>
           <div style="display: flex; gap: 8px; align-items: center;">
@@ -81,7 +92,11 @@ export default class PresetGallerySettings {
             this.rollMax = !isNaN(maxVal) ? Math.max(this.rollMin, maxVal) : 20;
             this.rollOnGeneration = genCheck.checked;
             this.rollOnSeedChange = seedCheck.checked;
+            this.diceBehavior = diceSelect.value;
             this.save();
+            if (this.appInstance?.widget) {
+              this.appInstance.syncUI(this.appInstance.widget.value);
+            }
             return true;
           }
         }
@@ -91,6 +106,7 @@ export default class PresetGallerySettings {
         maxInput = modal.querySelector("#j0n4t-pg-roll-max");
         genCheck = modal.querySelector("#j0n4t-pg-roll-on-gen");
         seedCheck = modal.querySelector("#j0n4t-pg-roll-on-seed");
+        diceSelect = modal.querySelector("#j0n4t-pg-dice-behavior");
       }
     });
 
