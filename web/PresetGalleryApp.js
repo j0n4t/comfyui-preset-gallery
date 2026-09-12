@@ -9,6 +9,7 @@ import PresetGrid from "./PresetGrid.js";
 import PresetLogic from "./PresetLogic.js";
 import ExportUtils from "./ExportUtils.js";
 import PresetDOM from "./PresetDOM.js";
+import PresetGallerySettings from "./PresetGallerySettings.js";
 
 const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
@@ -87,7 +88,11 @@ class PresetGalleryApp {
     this.widget = widget;
     this.cache = {};
     this.rollManager = new PresetLogic.RollManager();
+    this.settings = new PresetGallerySettings(this);
     this.dom = this.buildDOMStructure();
+
+    app._presetGalleryInstances = app._presetGalleryInstances || [];
+    app._presetGalleryInstances.push(this);
 
     this.basket = new PresetBasket(
       this.dom.basketContainer,
@@ -133,6 +138,9 @@ class PresetGalleryApp {
                 <div class="j0n4t-pg-view-btn" id="j0n4t-pg-toggle" tabindex="0" role="button" aria-expanded="false" title="Management Panel">${PresetDOM.icons.preset}</div>  
               </div>
               <div class="j0n4t-pg-search-wrapper"><input type="text" enterkeyhint="enter" class="j0n4t-pg-search" placeholder="Search..." aria-label="Search Presets" /><div class="j0n4t-pg-search-clear" tabindex="0" role="button" aria-label="Clear Search">${PresetDOM.icons.close}</div></div>
+              <div class="j0n4t-pg-controls">
+                <div class="j0n4t-pg-view-btn" id="j0n4t-pg-config-btn" tabindex="0" role="button" aria-expanded="false" title="Settings">${PresetDOM.icons.config}</div>  
+              </div>
               <div class="j0n4t-pg-controls">
                 <div class="j0n4t-pg-more-options-wrap">
                   <div class="j0n4t-pg-view-btn" id="j0n4t-pg-more-options-btn" tabindex="0" role="button" aria-label="More Options" title="More Options">${PresetDOM.icons.more}</div>
@@ -183,6 +191,7 @@ class PresetGalleryApp {
       editor: wrap.querySelector(".j0n4t-pg-editor"),
       banner: wrap.querySelector("#j0n4t-pg-banner"),
       toggle: wrap.querySelector("#j0n4t-pg-toggle"),
+      btnConfig: wrap.querySelector("#j0n4t-pg-config-btn"),
       btnMoreOptions: wrap.querySelector("#j0n4t-pg-more-options-btn"),
       popupMenu: wrap.querySelector("#j0n4t-pg-popup-menu"),
       viewsContainer: wrap.querySelector(".j0n4t-pg-views"),
@@ -274,6 +283,87 @@ class PresetGalleryApp {
     this.dom.btnRerollBasket.title = arr.length === 0 ? "Feeling lucky?" : "Re-roll variants";
   }
 
+  triggerRoll() {
+    const cache = this.cache || {};
+    const groupsMap = new Map();
+    for (const [key, item] of Object.entries(cache)) {
+      if (item?.preset) {
+        const folder = PresetLogic.getPresetFolder(key);
+        if (folder) {
+          if (!groupsMap.has(folder)) groupsMap.set(folder, []);
+          groupsMap.get(folder).push(key);
+        }
+      }
+    }
+    const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_"));
+    if (availableGroups.length === 0) return;
+    const newSelections = [];
+    const addedSet = new Set();
+    const min = this.settings?.rollMin ?? 10;
+    const max = this.settings?.rollMax ?? 20;
+    const targetTotal = Math.floor(Math.random() * (max - min + 1)) + min;
+    while (newSelections.length < targetTotal) {
+      const numGroupsToPick = Math.floor(Math.random() * (7 - 3 + 1)) + 3;
+      const shuffledGroups = [...availableGroups].sort(() => 0.5 - Math.random());
+      const selectedGroups = shuffledGroups.slice(0, Math.min(numGroupsToPick, shuffledGroups.length));
+      let addedInIteration = false;
+      for (const group of selectedGroups) {
+        const groupPresets = groupsMap.get(group) || [];
+        if (groupPresets.length === 0) continue;
+        const numChips = Math.floor(Math.random() * 2);
+        for (let i = 0; i < numChips; i++) {
+          const randomPreset = groupPresets[Math.floor(Math.random() * groupPresets.length)];
+          if (!addedSet.has(randomPreset)) {
+            addedSet.add(randomPreset);
+            newSelections.push(randomPreset);
+            addedInIteration = true;
+            if (newSelections.length >= targetTotal) break;
+          }
+        }
+        if (newSelections.length >= targetTotal) break;
+      }
+      const totalPresetsCount = Object.keys(cache).length;
+      if (!addedInIteration || addedSet.size >= totalPresetsCount) {
+        break;
+      }
+    }
+    newSelections.sort((a, b) => a.localeCompare(b));
+    if (cache["_/combo/_default"]) newSelections.unshift("_/combo/_default");
+    this.updateWidgetValue(newSelections);
+  }
+
+  checkSeedChange() {
+    if (!this.settings || !this.settings.rollOnSeedChange) return false;
+    if (!this.node.graph) return false;
+    let seedChanged = false;
+    const currentSeeds = {};
+
+    const checkNodes = (nodes) => {
+      for (const node of nodes || []) {
+        if (node.widgets) {
+          for (const w of node.widgets) {
+            if (w.name && (w.name.toLowerCase().includes("seed") || w.name.toLowerCase().includes("noise"))) {
+              const key = `${node.id}-${w.name}`;
+              currentSeeds[key] = w.value;
+              if (this._lastSeeds && this._lastSeeds[key] !== undefined && this._lastSeeds[key] !== w.value) {
+                seedChanged = true;
+              }
+            }
+          }
+        }
+        // Recursively check sub-graphs
+        if (node.subgraph && node.subgraph._nodes) {
+          checkNodes(node.subgraph._nodes);
+        }
+      }
+    };
+
+    checkNodes(this.node.graph._nodes);
+
+    this._lastSeeds = currentSeeds;
+    return seedChanged;
+  }
+
   bindEvents() {
     this.dom.wrap.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -290,6 +380,10 @@ class PresetGalleryApp {
         !this.dom.editor.classList.contains("collapsed")
       )
     );
+
+    this.dom.btnConfig.addEventListener("click", () => {
+      this.settings.openModal();
+    });
 
     // More Options Popup logic
     this.dom.btnMoreOptions.addEventListener("click", (e) => {
@@ -335,50 +429,7 @@ class PresetGalleryApp {
     this.dom.btnRerollBasket.addEventListener("click", () => {
       const selections = this.getSelectedArray();
       if (selections.length === 0) {
-        const cache = this.cache || {};
-        const groupsMap = new Map();
-        for (const [key, item] of Object.entries(cache)) {
-          if (item?.preset) {
-            const folder = PresetLogic.getPresetFolder(key);
-            if (folder) {
-              if (!groupsMap.has(folder)) groupsMap.set(folder, []);
-              groupsMap.get(folder).push(key);
-            }
-          }
-        }
-        const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_"));
-        if (availableGroups.length === 0) return;
-        const newSelections = [];
-        const addedSet = new Set();
-        const targetTotal = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
-        while (newSelections.length < targetTotal) {
-          const numGroupsToPick = Math.floor(Math.random() * (7 - 3 + 1)) + 3;
-          const shuffledGroups = [...availableGroups].sort(() => 0.5 - Math.random());
-          const selectedGroups = shuffledGroups.slice(0, Math.min(numGroupsToPick, shuffledGroups.length));
-          let addedInIteration = false;
-          for (const group of selectedGroups) {
-            const groupPresets = groupsMap.get(group) || [];
-            if (groupPresets.length === 0) continue;
-            const numChips = Math.floor(Math.random() * 2);
-            for (let i = 0; i < numChips; i++) {
-              const randomPreset = groupPresets[Math.floor(Math.random() * groupPresets.length)];
-              if (!addedSet.has(randomPreset)) {
-                addedSet.add(randomPreset);
-                newSelections.push(randomPreset);
-                addedInIteration = true;
-                if (newSelections.length >= targetTotal) break;
-              }
-            }
-            if (newSelections.length >= targetTotal) break;
-          }
-          const totalPresetsCount = Object.keys(cache).length;
-          if (!addedInIteration || addedSet.size >= totalPresetsCount) {
-            break;
-          }
-        }
-        newSelections.sort((a, b) => a.localeCompare(b));
-        if (cache["_/combo/_default"]) newSelections.unshift("_/combo/_default");
-        this.updateWidgetValue(newSelections);
+        this.triggerRoll();
       } else {
         this.rollManager.clearAll();
         this.syncUI(this.widget.value);
@@ -453,6 +504,23 @@ class PresetGalleryApp {
       this.node.size[1] || MIN_NODE_HEIGHT,
     ]);
   }
+}
+
+// Global hook for generation runs and seed changes
+if (!app._presetGalleryQueueHooked) {
+  app._presetGalleryQueueHooked = true;
+  const originalQueuePrompt = app.queuePrompt;
+  app.queuePrompt = async function () {
+    if (app._presetGalleryInstances) {
+      for (const instance of app._presetGalleryInstances) {
+        const seedChanged = instance.checkSeedChange();
+        if (instance.settings?.rollOnGeneration || (instance.settings?.rollOnSeedChange && seedChanged)) {
+          instance.triggerRoll();
+        }
+      }
+    }
+    return originalQueuePrompt.apply(this, arguments);
+  };
 }
 
 // Registration
