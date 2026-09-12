@@ -518,7 +518,7 @@ const PresetLogic = {
 
       bgImage = segmentImg || matchItem?.filename || null;
       color = PresetLogic.getPresetColor(evalId, cache);
-      tooltipTitle = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId))} [${evalId}]\n${matchItem?.preset || evalId}`;
+      tooltipTitle = `${chipExpandedCore}\n\n${PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId))} [${evalId}]\n${matchItem?.preset || evalId}`;
     } else {
       evalId = chipExpandedCore;
 
