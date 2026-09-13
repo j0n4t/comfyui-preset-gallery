@@ -53,9 +53,10 @@ export default class PresetGrid {
     .view-list .j0n4t-pg-corner-edit svg { width: 9px; height: 9px; }
   `;
 
-  constructor(dom, context) {
-    this.dom = dom;
+  /** @param {import("./PresetGalleryApp.js").default} context  */
+  constructor(context) {
     this.context = context;
+    this.dom = context.dom;
     PresetDOM.injectStyles("j0n4t-pg-group-header-styles", PresetGrid.GROUP_HEADER_STYLES);
     PresetDOM.injectStyles("j0n4t-pg-item-thumb-styles", PresetGrid.ITEM_THUMB_STYLES);
     PresetDOM.injectStyles("j0n4t-pg-view-list-overrides-styles", PresetGrid.VIEW_LIST_OVERRIDES);
@@ -64,10 +65,9 @@ export default class PresetGrid {
 
   switchView(viewName) {
     ["small", "big", "list"].forEach((v) =>
-      this.dom.grid.classList.remove(`view-${v}`)
+      this.dom.grid?.classList.remove(`view-${v}`)
     );
-    this.dom.viewsContainer
-      .querySelectorAll(".j0n4t-pg-view-btn")
+    this.dom.viewsContainer?.querySelectorAll(".j0n4t-pg-view-btn")
       .forEach((btn) => {
         const isActive = btn.dataset.view === viewName;
         btn.classList.toggle("active", isActive);

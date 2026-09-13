@@ -1,3 +1,4 @@
+// @ts-ignore
 import { app } from "../../../scripts/app.js";
 
 import AutocompleteManager from "./AutocompleteManager.js";
@@ -14,7 +15,7 @@ import PresetGallerySettings from "./PresetGallerySettings.js";
 const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
 
-class PresetGalleryApp {
+export default class PresetGalleryApp {
   static WRAP_STYLES = /*css*/ `
     .j0n4t-pg-wrap { display: flex; flex: auto; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; min-height: 100%; font-family: sans-serif; position: relative; outline: none; overflow: hidden; resize: vertical; }
     .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-more-options-wrap { display: none; }
@@ -83,9 +84,14 @@ class PresetGalleryApp {
     .j0n4t-pg-tree-item { padding: 1px 0; }
   `;
 
+  /**
+   * @param {any} node
+   * @param {any} widget
+   */
   constructor(node, widget) {
     this.node = node;
     this.widget = widget;
+    /** @type {PresetCache}  */
     this.cache = {};
     this.rollManager = new PresetLogic.RollManager();
     this.settings = new PresetGallerySettings(this);
@@ -100,8 +106,8 @@ class PresetGalleryApp {
       this.dom.rawTextarea,
       this
     );
-    this.editor = new PresetEditor(this.dom, this);
-    this.grid = new PresetGrid(this.dom, this);
+    this.editor = new PresetEditor(this);
+    this.grid = new PresetGrid(this);
 
     PresetDOM.injectStyles('j0n4t-pg-wrap-styles', PresetGalleryApp.WRAP_STYLES);
     PresetDOM.injectStyles('j0n4t-pg-action-topbar-search-styles', PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES);
@@ -185,53 +191,54 @@ class PresetGalleryApp {
   `;
     return {
       wrap,
-      grid: wrap.querySelector(".j0n4t-pg-grid"),
-      search: wrap.querySelector(".j0n4t-pg-search"),
-      searchClear: wrap.querySelector(".j0n4t-pg-search-clear"),
-      editor: wrap.querySelector(".j0n4t-pg-editor"),
-      banner: wrap.querySelector("#j0n4t-pg-banner"),
-      toggle: wrap.querySelector("#j0n4t-pg-toggle"),
-      btnConfig: wrap.querySelector("#j0n4t-pg-config-btn"),
-      btnMoreOptions: wrap.querySelector("#j0n4t-pg-more-options-btn"),
-      popupMenu: wrap.querySelector("#j0n4t-pg-popup-menu"),
-      viewsContainer: wrap.querySelector(".j0n4t-pg-views"),
-      chkGroup: wrap.querySelector("#j0n4t-pg-group-toggle"),
-      btnGlobalCollapse: wrap.querySelector("#j0n4t-pg-global-collapse"),
-      btnHideHidden: wrap.querySelector("#j0n4t-pg-hide-hidden"),
-      editorPreview: wrap.querySelector("#j0n4t-pg-editor-preview"),
-      inpName: wrap.querySelector("#j0n4t-pg-name"),
-      inpFolder: wrap.querySelector("#j0n4t-pg-folder"),
-      inpPreset: wrap.querySelector("#j0n4t-pg-preset"),
-      inpFile: wrap.querySelector("#j0n4t-pg-file"),
-      btnClearFields: wrap.querySelector("#j0n4t-pg-clear-fields-btn"),
-      btnSave: wrap.querySelector("#j0n4t-pg-save-btn"),
-      btnDel: wrap.querySelector("#j0n4t-pg-del-btn"),
-      inpJsonFile: wrap.querySelector("#j0n4t-pg-json-file"),
-      btnImport: wrap.querySelector("#j0n4t-pg-import-btn"),
-      btnExport: wrap.querySelector("#j0n4t-pg-export-btn"),
-      btnCopyBasket: wrap.querySelector(".j0n4t-pg-basket-copy-btn"),
-      btnClearBasket: wrap.querySelector(".j0n4t-pg-basket-clear-btn"),
-      btnRerollBasket: wrap.querySelector(".j0n4t-pg-basket-reroll-btn"),
-      chkBasketRaw: wrap.querySelector("#j0n4t-pg-basket-raw-toggle"),
-      basketContainer: wrap.querySelector(".j0n4t-pg-basket-container"),
-      rawTextarea: wrap.querySelector("#j0n4t-pg-raw-input"),
-      rawHighlights: wrap.querySelector("#j0n4t-pg-raw-highlights"),
-      btnHideGallery: wrap.querySelector("#j0n4t-pg-hide-gallery-btn"),
+      grid: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-grid")),
+      search: /** @type {HTMLInputElement} */ (wrap.querySelector(".j0n4t-pg-search")),
+      searchClear: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-search-clear")),
+      editor: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-editor")),
+      banner: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-banner")),
+      toggle: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-toggle")),
+      btnConfig: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-config-btn")),
+      btnMoreOptions: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-more-options-btn")),
+      popupMenu: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-popup-menu")),
+      viewsContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-views")),
+      chkGroup: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-group-toggle")),
+      btnGlobalCollapse: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-global-collapse")),
+      btnHideHidden: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-hide-hidden")),
+      editorPreview: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-editor-preview")),
+      inpName: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-name")),
+      inpFolder: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-folder")),
+      inpPreset: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-preset")),
+      inpFile: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-file")),
+      btnClearFields: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-clear-fields-btn")),
+      btnSave: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-save-btn")),
+      btnDel: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-del-btn")),
+      inpJsonFile: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-json-file")),
+      btnImport: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-import-btn")),
+      btnExport: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-export-btn")),
+      btnCopyBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-copy-btn")),
+      btnClearBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-clear-btn")),
+      btnRerollBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-reroll-btn")),
+      chkBasketRaw: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-basket-raw-toggle")),
+      basketContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-container")),
+      rawTextarea: /** @type {HTMLTextAreaElement} */ (wrap.querySelector("#j0n4t-pg-raw-input")),
+      btnHideGallery: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-hide-gallery-btn")),
     };
   }
 
   getCollapsedFolders() {
-    return JSON.parse(localStorage.getItem("pg_collapsed_folders_list")) || [];
+    return JSON.parse(localStorage.getItem("pg_collapsed_folders_list") || "") || [];
   }
 
+  /** @param {string[]} list  */
   setCollapsedFolders(list) {
     localStorage.setItem("pg_collapsed_folders_list", JSON.stringify(list));
   }
 
   getExcludedRollFolders() {
-    return JSON.parse(localStorage.getItem("pg_excluded_roll_folders")) || [];
+    return JSON.parse(localStorage.getItem("pg_excluded_roll_folders") || "") || [];
   }
 
+  /** @param {string[]} list  */
   setExcludedRollFolders(list) {
     localStorage.setItem("pg_excluded_roll_folders", JSON.stringify(list));
   }
@@ -242,6 +249,7 @@ class PresetGalleryApp {
       : [];
   }
 
+  /** @param {string[]} arr  */
   updateWidgetValue(arr) {
     this.widget.value = arr.join(", ");
     this.widget.callback?.(this.widget.value);
@@ -249,6 +257,7 @@ class PresetGalleryApp {
     if (this.node.graph) this.node.graph._version++;
   }
 
+  /** @param {boolean} col  */
   setPanelCollapseState(col) {
     const isCurrentlyCollapsed = this.dom.editor.classList.contains("collapsed");
     if (isCurrentlyCollapsed === col) return;
@@ -267,11 +276,15 @@ class PresetGalleryApp {
         el.classList.toggle(
           "editing",
           this.editor.currentMode === "edit" &&
-          el.dataset.style === this.editor.editingKey
+          /** @type {HTMLElement} */ (el).dataset.style === this.editor.editingKey
         )
       );
   }
 
+  /**
+   * @param {string} styleKey
+   * @param {boolean} [focus]
+   */
   openEditorForPreset(styleKey, focus) {
     this.editor.openPreset(styleKey, focus);
   }
@@ -281,6 +294,9 @@ class PresetGalleryApp {
     this.grid.compile(this.cache);
   }
 
+  /**
+   * @param {string} val
+   */
   async syncUI(val) {
     const arr = val
       ? PresetLogic.splitPresets(val)
@@ -295,9 +311,8 @@ class PresetGalleryApp {
 
   triggerRoll() {
     this.rollManager.clearAll();
-    const cache = this.cache || {};
     const groupsMap = new Map();
-    for (const [key, item] of Object.entries(cache)) {
+    for (const [key, item] of Object.entries(this.cache)) {
       if (item?.preset) {
         const folder = PresetLogic.getPresetFolder(key);
         if (folder) {
@@ -311,11 +326,13 @@ class PresetGalleryApp {
     const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_") && !excludedFolders.includes(key));
     if (availableGroups.length === 0) return;
 
-    const newSelections = [];
-    const addedSet = new Set();
+    const pinnedSelections = this.getSelectedArray().filter(item => this.basket.pinnedChips.has(item));
+    const newSelections = [...pinnedSelections];
+    const addedSet = new Set(pinnedSelections);
+
     const min = this.settings?.rollMin ?? 10;
     const max = this.settings?.rollMax ?? 20;
-    const targetTotal = Math.floor(Math.random() * (max - min + 1)) + min;
+    const targetTotal = Math.max(Math.floor(Math.random() * (max - min + 1)) + min, newSelections.length + 1);
 
     while (newSelections.length < targetTotal) {
       const shuffledGroups = [...availableGroups].sort(() => 0.5 - Math.random());
@@ -344,7 +361,7 @@ class PresetGalleryApp {
     }
 
     newSelections.sort((a, b) => a.localeCompare(b));
-    if (cache["_/combo/_default"]) newSelections.unshift("_/combo/_default");
+    if (this.cache["_/combo/_default"]) newSelections.unshift("_/combo/_default");
     this.updateWidgetValue(newSelections);
   }
 
@@ -352,9 +369,10 @@ class PresetGalleryApp {
     if (!this.settings || !this.settings.rollOnSeedChange) return false;
     if (!this.node.graph) return false;
     let seedChanged = false;
+    /** @type {{[key: string]: any}} */
     const currentSeeds = {};
 
-    const checkNodes = (nodes) => {
+    const checkNodes = (/** @type {any} */ nodes) => {
       for (const node of nodes || []) {
         if (node.widgets) {
           for (const w of node.widgets) {
@@ -383,10 +401,10 @@ class PresetGalleryApp {
   bindEvents() {
     this.dom.wrap.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
-        const triggerable = e.target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-copy-btn, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
+        const triggerable = /** @type {HTMLElement} */ (e.target)?.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-copy-btn, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
         if (triggerable) {
           e.preventDefault();
-          triggerable.click();
+          /** @type {HTMLElement} */ (triggerable).click();
         }
       }
     });
@@ -409,7 +427,7 @@ class PresetGalleryApp {
 
     document.addEventListener("click", (e) => {
       if (this.dom.popupMenu.classList.contains("show")) {
-        if (!this.dom.btnMoreOptions.contains(e.target) && !this.dom.popupMenu.contains(e.target)) {
+        if (!this.dom.btnMoreOptions.contains(/** @type {HTMLElement} */(e.target)) && !this.dom.popupMenu.contains(/** @type {HTMLElement} */(e.target))) {
           this.dom.popupMenu.classList.remove("show");
         }
       }
@@ -432,7 +450,7 @@ class PresetGalleryApp {
 
     this.dom.btnImport.addEventListener("click", () => this.dom.inpJsonFile.click());
     this.dom.inpJsonFile.addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
+      const file = /** @type {HTMLInputElement} */ (e.target).files?.[0];
       if (!file) return;
       const res = await ExportUtils.importFile(file);
       if (res.success) {
@@ -512,8 +530,7 @@ class PresetGalleryApp {
 
     this.initFilterAutocomplete();
     this.setPanelCollapseState(
-      localStorage.getItem("comfy_preset_gallery_collapsed") === "true",
-      true
+      localStorage.getItem("comfy_preset_gallery_collapsed") === "true"
     );
     this.node.setSize([
       this.node.size[0] || MIN_NODE_WIDTH,
@@ -540,17 +557,31 @@ if (!app._presetGalleryQueueHooked) {
 }
 
 // Registration
+/**
+ * @typedef {Object} ComfyUiWidget
+ * @property {string} name
+ * @property {string} value
+ * @property {boolean} hidden
+ * @property {Function} callback
+ * @property {Function} serializeValue
+ */
+
 
 app.registerExtension({
   name: "Comfy.PresetGallery",
+  /**
+   * @param {{ prototype: { onNodeCreated: (...args: any[]) => void; widgets: ComfyUiWidget[]; addDOMWidget: Function }}} nodeType
+   * @param {{ name: string; }} nodeData
+   */
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== "PresetGalleryNode") return;
     const onNodeCreated = nodeType.prototype.onNodeCreated;
 
     nodeType.prototype.onNodeCreated = function () {
+      // @ts-ignore
       onNodeCreated?.apply(this, arguments);
-      const widget = this.widgets?.find((w) => w.name === "preset_selection");
-      const evaluatedWidget = this.widgets?.find((w) => w.name === "evaluated_preset");
+      const widget = this.widgets?.find((/** @type {{ name: string; }} */ w) => w.name === "preset_selection");
+      const evaluatedWidget = this.widgets?.find((/** @type {{ name: string; }} */ w) => w.name === "evaluated_preset");
       if (!widget || !evaluatedWidget) return;
       widget.hidden = true;
       evaluatedWidget.hidden = true;
@@ -558,7 +589,7 @@ app.registerExtension({
       const galleryView = new PresetGalleryApp(this, widget);
       const baseCallback = widget.callback;
 
-      widget.callback = function (value) {
+      widget.callback = function (/** @type {string} */ value) {
         galleryView.syncUI(value);
         galleryView.rollManager.resetCounts();
         evaluatedWidget.value = PresetLogic.expandRecursively(value || "", galleryView.cache, new Set(), galleryView.rollManager);
@@ -575,6 +606,9 @@ app.registerExtension({
       this.addDOMWidget("preset_gallery_ui", "HTML", galleryView.dom.wrap);
     };
   },
+  /**
+   * @param {{ comfyClass: string; size: number[]; min_size: number[]; properties: {}; }} node
+   */
   async nodeCreated(node) {
     if (node.comfyClass === "PresetGalleryNode") {
       node.size = node.min_size = [MIN_NODE_WIDTH, MIN_NODE_HEIGHT];
