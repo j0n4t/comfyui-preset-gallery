@@ -13,7 +13,12 @@ export default class RawTextareaManager {
     .j0n4t-pg-raw-token.plain-text { color: #cccccc; font-weight: normal; }
   `;
 
-  constructor(textarea, context, ignorePreset = null, onSync = null) {
+  /**
+   * @param {HTMLInputElement} textarea
+   * @param {import("./PresetGalleryApp.js").default} context
+   * @param {(textareaValue: string) => void} onSync
+   */
+  constructor(textarea, context, ignorePreset = "", onSync) {
     this.textarea = textarea;
     this.context = context;
     this.onSync = onSync;
@@ -44,7 +49,7 @@ export default class RawTextareaManager {
     this.textarea.className = "j0n4t-pg-raw-textarea";
   }
 
-  updateHighlights(ignorePreset = null) {
+  updateHighlights(ignorePreset = "") {
     this.ignorePreset = ignorePreset;
     if (!this.highlightsEl) return;
     const val = this.textarea.value || "";
@@ -64,7 +69,7 @@ export default class RawTextareaManager {
       } else if (token.isVar || /^\{[^{}]+\}$/.test(token.text)) {
         html += `<span class="j0n4t-pg-raw-token" style="color: #d1a119; font-weight: bold;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else {
-        const itemKey = token.key;
+        const itemKey = token.key || "";
         const item = token.item;
         const textColor = itemKey ? PresetLogic.getPresetColor(itemKey, this.context.cache) : "";
         const styleAttr = textColor ? ` style="color: ${textColor};"` : "";
@@ -101,6 +106,7 @@ export default class RawTextareaManager {
     this.textarea.addEventListener("mouseleave", () => this.textarea.title = "");
   }
 
+  /** @param {MouseEvent} e */
   handleMouseMove(e) {
     const rect = this.textarea.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -120,6 +126,10 @@ export default class RawTextareaManager {
     }
   }
 
+  /**
+   * @param {number} x
+   * @param {number} y
+   */
   getCharPositionAt(x, y) {
     const rect = this.textarea.getBoundingClientRect();
     const clientX = rect.left + x;
@@ -173,6 +183,7 @@ export default class RawTextareaManager {
     return this._normalizeTokenPosition(Math.min(calcPos, text.length));
   }
 
+  /** @param {number} pos */
   _normalizeTokenPosition(pos) {
     const value = this.textarea.value;
     if (!value) return 0;
@@ -199,6 +210,7 @@ export default class RawTextareaManager {
     return leftDist <= rightDist ? left + 1 : right - 1;
   }
 
+  /** @param {number} pos */
   getTokenAtPosition(pos) {
     const value = this.textarea.value;
     if (!value || pos < 0 || pos > value.length) return null;
@@ -242,6 +254,7 @@ export default class RawTextareaManager {
               if (folder) groupsSet.add(folder);
             }
             const groups = Array.from(groupsSet);
+            /** @type {PresetCache} */
             const dummyCache = {};
             groups.forEach(g => { dummyCache[g] = { preset: g }; });
             return PresetLogic.getTopMatches(
@@ -293,7 +306,7 @@ export default class RawTextareaManager {
         `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         const query = this.textarea.value;
-        const cursor = this.textarea.selectionStart;
+        const cursor = this.textarea.selectionStart || 0;
         const textBeforeCursor = query.substring(0, cursor);
         const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
         const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
