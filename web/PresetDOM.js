@@ -102,7 +102,7 @@ const PresetDOM = {
      * Generates render-ready HTML structure elements for basket display chips.
      * @param {ChipGroupInput} chipData - Input group object.
      * @param {PresetCache} [cache={}] - Preset cache map.
-     * @param {RollManager} [rollManager=new PresetLogic.RollManager()] - Dynamic roll tracker state.
+     * @param {import("./RollManager.js").default} [rollManager=new PresetLogic.RollManager()] - Dynamic roll tracker state.
      * @returns {RenderedChip} Rendered chip definition containing HTML markup snippets.
      */
     renderBasketChip: (chipData, cache = {}, rollManager = new PresetLogic.RollManager()) => {
