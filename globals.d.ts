@@ -115,6 +115,10 @@ type SearchResult = {
 
 /** Parsed Base64 Data URL result. */
 type DataURLParseResult = {
-    ext: string;
-    base64: string;
+  ext: string;
+  base64: string;
+};
+
+interface Window {
+  JSZip: any;
 }

@@ -5,19 +5,49 @@ import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetLogic from "./PresetLogic.js";
 import YAMLUtils from "./YAMLUtils.js";
 
+/**
+ * @typedef {Object} ExportConfig
+ * @property {string} [format]
+ * @property {string} [mode]
+ * @property {string[] | null} [selectedKeys]
+ * @property {boolean} [includeColors]
+ * @property {PresetCache} [editedPresets]
+ */
+
+/**
+ * @typedef {Object} SelectionSummary
+ * @property {number} newCount
+ * @property {number} replacedCount
+ * @property {number} sameCount
+ * @property {number} total
+ */
+
+/**
+ * @typedef {Object} SelectorTreeResult
+ * @property {HTMLDivElement} element
+ * @property {() => string[]} getSelectedKeys
+ * @property {() => PresetCache} getPresets
+ * @property {(strategy: string) => void} applyDuplicateStrategy
+ */
+
 const loadJSZip = async () => {
     if (window.JSZip) return window.JSZip;
-    if (globalThis.JSZip) return globalThis.JSZip;
     return new Promise((resolve, reject) => {
         const script = document.createElement("script");
         script.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
-        script.onload = () => resolve(window.JSZip || globalThis.JSZip);
+        script.onload = () => resolve(window.JSZip);
         script.onerror = () => reject(new Error("Failed to load JSZip library"));
         document.head.appendChild(script);
     });
 };
 
 const ExportUtils = {
+    /**
+     * @param {string[]} selectedKeys 
+     * @param {PresetCache} presets 
+     * @param {PresetCache | null} [existingPresets=null]
+     * @returns {SelectionSummary}
+     */
     getSelectionSummary(selectedKeys, presets, existingPresets = null) {
         let summary = {
             newCount: 0,
@@ -49,6 +79,11 @@ const ExportUtils = {
         return summary;
     },
 
+    /**
+     * @param {PresetCache} presets
+     * @param {PresetCache | null} [existingPresets=null] 
+     * @returns {SelectorTreeResult}
+     */
     buildPresetSelectorTree(presets, existingPresets = null) {
         const container = document.createElement("div");
         container.className = "j0n4t-pg-selector-container";
@@ -70,6 +105,7 @@ const ExportUtils = {
         const treeBox = document.createElement("div");
         treeBox.className = "j0n4t-pg-selector-tree";
 
+        /** @type {Record<string, PresetMatch[]>} */
         const groups = {};
         for (const [key, item] of Object.entries(presets).sort((a, b) => a[0].localeCompare(b[0]))) {
             const hasContent = item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename);
@@ -164,9 +200,9 @@ const ExportUtils = {
 
                 if (!hasDiff) {
                     detailsHtml = `
-            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content:</strong><br/>${PresetDOM.escapeHTML(item.preset || "(Empty)")}</div>
-            ${item.filename ? `<div style="margin-top: 6px;"><img src="${item.filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
-          `;
+                        <div style="color: #bbb; margin-bottom: 4px;"><strong>Content:</strong><br/>${PresetDOM.escapeHTML(item.preset || "(Empty)")}</div>
+                        ${item.filename ? `<div style="margin-top: 6px;"><img src="${item.filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
+                    `;
                 }
 
                 const currentImgHtml = item.filename
@@ -174,30 +210,30 @@ const ExportUtils = {
                     : `<div style="margin-bottom: 4px; font-style: italic; color: #888; font-size: 0.85em;">No current image</div>`;
 
                 const detailsContainerHtml = `
-          <div class="j0n4t-pg-details-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.15); border-left: 2px solid ${hasDiff ? '#fcc419' : '#51cf66'}; font-family: monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
-            ${detailsHtml}
-          </div>
-        `;
+                    <div class="j0n4t-pg-details-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.15); border-left: 2px solid ${hasDiff ? '#fcc419' : '#51cf66'}; font-family: monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
+                        ${detailsHtml}
+                    </div>
+                    `;
 
                 const editContainerHtml = `
-          <div class="j0n4t-pg-edit-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.25); border-left: 2px solid #4dabf7; font-size: 0.85em; border-radius: 4px;">
-            <label style="display:block; margin-bottom:2px;">Name</label>
-            <input type="text" class="edit-name" value="${PresetDOM.escapeHTML(PresetLogic.getPresetName(key))}" style="width: 100%; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;" />
-            
-            <label style="display:block; margin-bottom:2px;">Preset Content</label>
-            <textarea class="edit-text" style="width: 100%; height: 80px; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;">${PresetDOM.escapeHTML(item.preset || "")}</textarea>
-            
-            <label style="display:block; margin-bottom:2px;">Current Picture</label>
-            <div class="edit-img-preview-wrap" style="margin-bottom: 8px;">
-              ${currentImgHtml}
-            </div>
+                    <div class="j0n4t-pg-edit-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.25); border-left: 2px solid #4dabf7; font-size: 0.85em; border-radius: 4px;">
+                        <label style="display:block; margin-bottom:2px;">Name</label>
+                        <input type="text" class="edit-name" value="${PresetDOM.escapeHTML(PresetLogic.getPresetName(key))}" style="width: 100%; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;" />
+                        
+                        <label style="display:block; margin-bottom:2px;">Preset Content</label>
+                        <textarea class="edit-text" style="width: 100%; height: 80px; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;">${PresetDOM.escapeHTML(item.preset || "")}</textarea>
+                        
+                        <label style="display:block; margin-bottom:2px;">Current Picture</label>
+                        <div class="edit-img-preview-wrap" style="margin-bottom: 8px;">
+                        ${currentImgHtml}
+                        </div>
 
-            <label style="display:block; margin-bottom:2px;">Update Image</label>
-            <input type="file" class="edit-image" accept="image/*" style="width: 100%; margin-bottom: 8px;" />
-            
-            <button type="button" class="edit-save" style="background: #007acc; color: white; border: none; padding: 4px 12px; cursor: pointer; border-radius: 3px;">Save Changes</button>
-          </div>
-        `;
+                        <label style="display:block; margin-bottom:2px;">Update Image</label>
+                        <input type="file" class="edit-image" accept="image/*" style="width: 100%; margin-bottom: 8px;" />
+                        
+                        <button type="button" class="edit-save" style="background: #007acc; color: white; border: none; padding: 4px 12px; cursor: pointer; border-radius: 3px;">Save Changes</button>
+                    </div>
+                    `;
 
                 const itemRow = document.createElement("div");
                 itemRow.className = "j0n4t-pg-tree-item";
@@ -212,56 +248,56 @@ const ExportUtils = {
                 const checkedAttr = isSame ? "" : "checked";
 
                 itemRow.innerHTML = `
-          <div style="display: flex; align-items: center; width: 100%;">
-            <span class="j0n4t-pg-details-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em; color: ${hasDiff ? '#fcc419' : '#888'};" title="Toggle Details">⊞</span>
-            <span class="j0n4t-pg-edit-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Edit Item">✎</span>
-            <label class="j0n4t-pg-checkbox-wrap" style="flex: 1; margin: 0;">
-              <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetDOM.escapeHTML(gKey)}" data-status="${status}" data-user-modified="false" value="${PresetDOM.escapeHTML(key)}" ${checkedAttr} />
-              <span class="j0n4t-pg-item-name">${PresetDOM.escapeHTML(PresetLogic.getPresetName(key))}</span>
-              ${itemStatusTag}
-            </label>
-          </div>
-          ${detailsContainerHtml}
-          ${editContainerHtml}
-        `;
+                    <div style="display: flex; align-items: center; width: 100%;">
+                        <span class="j0n4t-pg-details-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em; color: ${hasDiff ? '#fcc419' : '#888'};" title="Toggle Details">⊞</span>
+                        <span class="j0n4t-pg-edit-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Edit Item">✎</span>
+                        <label class="j0n4t-pg-checkbox-wrap" style="flex: 1; margin: 0;">
+                        <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetDOM.escapeHTML(gKey)}" data-status="${status}" data-user-modified="false" value="${PresetDOM.escapeHTML(key)}" ${checkedAttr} />
+                        <span class="j0n4t-pg-item-name">${PresetDOM.escapeHTML(PresetLogic.getPresetName(key))}</span>
+                        ${itemStatusTag}
+                        </label>
+                    </div>
+                    ${detailsContainerHtml}
+                    ${editContainerHtml}
+                    `;
 
-                const detailsBtn = itemRow.querySelector(".j0n4t-pg-details-btn");
-                const detailsContainer = itemRow.querySelector(".j0n4t-pg-details-container");
+                const detailsBtn = /** @type {HTMLSpanElement} */ (itemRow.querySelector(".j0n4t-pg-details-btn"));
+                const detailsContainer = /** @type {HTMLDivElement} */ (itemRow.querySelector(".j0n4t-pg-details-container"));
                 detailsBtn.addEventListener("click", () => {
                     const isHidden = detailsContainer.style.display === "none";
                     detailsContainer.style.display = isHidden ? "block" : "none";
                     detailsBtn.textContent = isHidden ? "⊟" : "⊞";
                 });
 
-                const editBtn = itemRow.querySelector(".j0n4t-pg-edit-btn");
-                const editContainer = itemRow.querySelector(".j0n4t-pg-edit-container");
-                const saveBtn = editContainer.querySelector(".edit-save");
+                const editBtn = /** @type {HTMLSpanElement} */ (itemRow.querySelector(".j0n4t-pg-edit-btn"));
+                const editContainer = /** @type {HTMLDivElement} */ (itemRow.querySelector(".j0n4t-pg-edit-container"));
+                const saveBtn = /** @type {HTMLButtonElement} */ (editContainer.querySelector(".edit-save"));
 
                 editBtn.addEventListener("click", () => {
                     editContainer.style.display = editContainer.style.display === "none" ? "block" : "none";
                 });
 
                 saveBtn.addEventListener("click", async () => {
-                    const newName = editContainer.querySelector(".edit-name").value.trim();
-                    const newText = editContainer.querySelector(".edit-text").value.trim();
-                    const fileInput = editContainer.querySelector(".edit-image");
-                    const cb = itemRow.querySelector(".j0n4t-pg-item-cb");
+                    const newNameInput = /** @type {HTMLInputElement} */ (editContainer.querySelector(".edit-name"));
+                    const newTextInput = /** @type {HTMLTextAreaElement} */ (editContainer.querySelector(".edit-text"));
+                    const fileInput = /** @type {HTMLInputElement} */ (editContainer.querySelector(".edit-image"));
+                    const cb = /** @type {HTMLInputElement} */ (itemRow.querySelector(".j0n4t-pg-item-cb"));
 
                     const oldKey = cb.value;
                     const folder = PresetLogic.getPresetFolder(oldKey);
-                    const cleanName = newName.toLowerCase().replace(/ /g, "_");
+                    const cleanName = newNameInput.value.trim().toLowerCase().replace(/ /g, "_");
                     const newKey = (folder && folder !== "root_presets") ? `${folder}/${cleanName}` : cleanName;
 
-                    presets[oldKey].preset = newText;
+                    presets[oldKey].preset = newTextInput.value.trim();
                     if (fileInput.files && fileInput.files[0]) {
                         const dataUrl = await new Promise((res) => {
                             const reader = new FileReader();
-                            reader.onload = e => res(e.target.result);
-                            reader.readAsDataURL(fileInput.files[0]);
+                            reader.onload = e => res(/** @type {string} */(e.target?.result));
+                            if (fileInput.files) reader.readAsDataURL(fileInput.files[0]);
                         });
                         presets[oldKey].filename = await PresetDOM.createThumbnail(dataUrl);
 
-                        const imgWrap = editContainer.querySelector(".edit-img-preview-wrap");
+                        const imgWrap = /** @type {HTMLDivElement} */ (editContainer.querySelector(".edit-img-preview-wrap"));
                         imgWrap.innerHTML = `<span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${presets[oldKey].filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" />`;
                         fileInput.value = "";
                     }
@@ -270,7 +306,8 @@ const ExportUtils = {
                         presets[newKey] = presets[oldKey];
                         delete presets[oldKey];
                         cb.value = newKey;
-                        itemRow.querySelector(".j0n4t-pg-item-name").textContent = newName;
+                        const nameEL = itemRow.querySelector(".j0n4t-pg-item-name");
+                        if (nameEL) { nameEL.textContent = newNameInput.value; }
                     }
 
                     editContainer.style.display = "none";
@@ -278,7 +315,7 @@ const ExportUtils = {
                     cb.checked = true;
 
                     let updatedDetailsHtml = `
-            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content (Edited):</strong><br/>${PresetDOM.escapeHTML(newText)}</div>
+            <div style="color: #bbb; margin-bottom: 4px;"><strong>Content (Edited):</strong><br/>${PresetDOM.escapeHTML(newTextInput.value)}</div>
             ${presets[newKey || oldKey].filename ? `<div style="margin-top: 6px;"><img src="${presets[newKey || oldKey].filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
           `;
                     detailsContainer.innerHTML = updatedDetailsHtml;
@@ -287,45 +324,52 @@ const ExportUtils = {
                 itemsBox.appendChild(itemRow);
             });
 
-            const groupEditBtn = groupHeader.querySelector(".j0n4t-pg-edit-group-btn");
-            groupEditBtn.addEventListener("click", () => {
-                const newGroupName = prompt("Rename Folder:", gName);
-                if (newGroupName && newGroupName.trim() !== "" && newGroupName !== gName) {
-                    const cleanNewFolder = newGroupName.trim().toLowerCase().replace(/ /g, "_");
+            const groupEditBtn = /** @type {HTMLSpanElement | null} */ (groupHeader.querySelector(".j0n4t-pg-edit-group-btn"));
+            if (groupEditBtn) {
+                groupEditBtn.addEventListener("click", () => {
+                    const newGroupName = prompt("Rename Folder:", gName);
+                    if (newGroupName && newGroupName.trim() !== "" && newGroupName !== gName) {
+                        const cleanNewFolder = newGroupName.trim().toLowerCase().replace(/ /g, "_");
 
-                    const checkboxes = itemsBox.querySelectorAll(".j0n4t-pg-item-cb");
-                    checkboxes.forEach(cb => {
-                        const oldKey = cb.value;
-                        const itemName = PresetLogic.getPresetName(oldKey);
-                        const newKey = cleanNewFolder ? `${cleanNewFolder}/${itemName}` : itemName;
+                        const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (itemsBox.querySelectorAll(".j0n4t-pg-item-cb"));
+                        checkboxes.forEach(cb => {
+                            const oldKey = cb.value;
+                            const itemName = PresetLogic.getPresetName(oldKey);
+                            const newKey = cleanNewFolder ? `${cleanNewFolder}/${itemName}` : itemName;
 
-                        if (presets[oldKey]) {
-                            presets[newKey] = presets[oldKey];
-                            delete presets[oldKey];
+                            if (presets[oldKey]) {
+                                presets[newKey] = presets[oldKey];
+                                delete presets[oldKey];
+                            }
+                            cb.value = newKey;
+                            cb.dataset.group = cleanNewFolder;
+                        });
+
+                        if (gKey && gKey !== "root_presets" && presets[gKey] && presets[gKey].__color__) {
+                            if (cleanNewFolder) {
+                                presets[cleanNewFolder] = { ...(presets[cleanNewFolder] || {}), __color__: presets[gKey].__color__ };
+                            }
+                            delete presets[gKey].__color__;
+                            if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
                         }
-                        cb.value = newKey;
-                        cb.dataset.group = cleanNewFolder;
-                    });
 
-                    if (gKey && gKey !== "root_presets" && presets[gKey] && presets[gKey].__color__) {
-                        if (cleanNewFolder) {
-                            presets[cleanNewFolder] = { ...(presets[cleanNewFolder] || {}), __color__: presets[gKey].__color__ };
-                        }
-                        delete presets[gKey].__color__;
-                        if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
+                        const groupCb = /** @type {HTMLInputElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-cb"));
+                        if (groupCb) groupCb.dataset.group = cleanNewFolder;
+
+                        const groupNameEl = /** @type {HTMLElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-name"));
+                        if (groupNameEl) groupNameEl.innerHTML = `<strong>${PresetDOM.escapeHTML(newGroupName)}</strong> (${items.length})`;
                     }
+                });
+            }
 
-                    groupHeader.querySelector(".j0n4t-pg-group-cb").dataset.group = cleanNewFolder;
-                    groupHeader.querySelector(".j0n4t-pg-group-name").innerHTML = `<strong>${PresetDOM.escapeHTML(newGroupName)}</strong> (${items.length})`;
-                }
-            });
-
-            const collapseBtn = groupHeader.querySelector(".j0n4t-pg-collapse-btn");
-            collapseBtn.addEventListener("click", () => {
-                const isCollapsed = itemsBox.style.display === "none";
-                itemsBox.style.display = isCollapsed ? "" : "none";
-                collapseBtn.textContent = isCollapsed ? "▼" : "▶";
-            });
+            const collapseBtn = /** @type {HTMLSpanElement | null} */ (groupHeader.querySelector(".j0n4t-pg-collapse-btn"));
+            if (collapseBtn) {
+                collapseBtn.addEventListener("click", () => {
+                    const isCollapsed = itemsBox.style.display === "none";
+                    itemsBox.style.display = isCollapsed ? "" : "none";
+                    collapseBtn.textContent = isCollapsed ? "▼" : "▶";
+                });
+            }
 
             groupEl.appendChild(itemsBox);
             treeBox.appendChild(groupEl);
@@ -333,29 +377,31 @@ const ExportUtils = {
 
         container.appendChild(treeBox);
 
-        const masterCb = controls.querySelector("#j0n4t-pg-sel-all");
-        const toggleAllBtn = controls.querySelector("#j0n4t-pg-toggle-collapse-all");
-        const groupCbs = treeBox.querySelectorAll(".j0n4t-pg-group-cb");
-        const itemCbs = treeBox.querySelectorAll(".j0n4t-pg-item-cb");
+        const masterCb = /** @type {HTMLInputElement | null} */ (controls.querySelector("#j0n4t-pg-sel-all"));
+        const toggleAllBtn = /** @type {HTMLButtonElement | null} */ (controls.querySelector("#j0n4t-pg-toggle-collapse-all"));
+        const groupCbs = /** @type {NodeListOf<HTMLInputElement>} */ (treeBox.querySelectorAll(".j0n4t-pg-group-cb"));
+        const itemCbs = /** @type {NodeListOf<HTMLInputElement>} */ (treeBox.querySelectorAll(".j0n4t-pg-item-cb"));
 
         let isAllCollapsed = false;
-        toggleAllBtn.addEventListener("click", () => {
-            isAllCollapsed = !isAllCollapsed;
-            toggleAllBtn.textContent = isAllCollapsed ? "Expand All" : "Collapse All";
-            treeBox.querySelectorAll(".j0n4t-pg-collapse-btn").forEach((btn, idx) => {
-                btn.textContent = isAllCollapsed ? "▶" : "▼";
-                const box = treeBox.querySelectorAll(".j0n4t-pg-tree-group-items")[idx];
-                if (box) box.style.display = isAllCollapsed ? "none" : "";
+        if (toggleAllBtn) {
+            toggleAllBtn.addEventListener("click", () => {
+                isAllCollapsed = !isAllCollapsed;
+                toggleAllBtn.textContent = isAllCollapsed ? "Expand All" : "Collapse All";
+                treeBox.querySelectorAll(".j0n4t-pg-collapse-btn").forEach((btn, idx) => {
+                    btn.textContent = isAllCollapsed ? "▶" : "▼";
+                    const box = /** @type {HTMLElement | null} */ (treeBox.querySelectorAll(".j0n4t-pg-tree-group-items")[idx]);
+                    if (box) box.style.display = isAllCollapsed ? "none" : "";
+                });
             });
-        });
+        }
 
         const updateGroupAndMasterStates = () => {
             let allItemsChecked = true;
             let anyItemChecked = false;
 
             groupCbs.forEach((gCb) => {
-                const gKey = gCb.dataset.group;
-                const groupItems = treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`);
+                const gKey = gCb.dataset.group || "";
+                const groupItems = /** @type {NodeListOf<HTMLInputElement>} */ (treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`));
                 const checkedCount = Array.from(groupItems).filter((c) => c.checked).length;
                 gCb.checked = (checkedCount === groupItems.length && groupItems.length > 0);
                 gCb.indeterminate = (checkedCount > 0 && checkedCount < groupItems.length);
@@ -363,20 +409,26 @@ const ExportUtils = {
                 if (checkedCount < groupItems.length) allItemsChecked = false;
             });
 
-            masterCb.checked = allItemsChecked;
-            masterCb.indeterminate = !allItemsChecked && anyItemChecked;
+            if (masterCb) {
+                masterCb.checked = allItemsChecked;
+                masterCb.indeterminate = !allItemsChecked && anyItemChecked;
+            }
         };
 
-        masterCb.addEventListener("change", () => {
-            itemCbs.forEach((cb) => { cb.checked = masterCb.checked; cb.dataset.userModified = "true"; });
-            groupCbs.forEach((cb) => { cb.checked = masterCb.checked; cb.indeterminate = false; });
-        });
+        if (masterCb) {
+            masterCb.addEventListener("change", () => {
+                itemCbs.forEach((cb) => { cb.checked = masterCb.checked; cb.dataset.userModified = "true"; });
+                groupCbs.forEach((cb) => { cb.checked = masterCb.checked; cb.indeterminate = false; });
+            });
+        }
 
         groupCbs.forEach((gCb) => {
             gCb.addEventListener("change", () => {
-                const gKey = gCb.dataset.group;
+                const gKey = gCb.dataset.group || "";
                 treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`).forEach(cb => {
-                    cb.checked = gCb.checked; cb.dataset.userModified = "true";
+                    const itemCb = /** @type {HTMLInputElement} */ (cb);
+                    itemCb.checked = gCb.checked;
+                    itemCb.dataset.userModified = "true";
                 });
                 updateGroupAndMasterStates();
             });
@@ -390,7 +442,7 @@ const ExportUtils = {
 
         return {
             element: container,
-            getSelectedKeys: () => Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map((cb) => cb.value),
+            getSelectedKeys: () => Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map((cb) => /** @type {HTMLInputElement} */(cb).value),
             getPresets: () => presets,
             applyDuplicateStrategy: (strategy) => {
                 let stateChanged = false;
@@ -411,6 +463,9 @@ const ExportUtils = {
         };
     },
 
+    /**
+     * @param {(config: ExportConfig) => void} onExport
+     */
     async showExportModal(onExport) {
         const presets = await PresetGalleryAPI.getPresets();
         if (Object.keys(presets).length === 0) {
@@ -461,46 +516,65 @@ const ExportUtils = {
         overlay.appendChild(modal);
 
         const tree = ExportUtils.buildPresetSelectorTree(presets);
-        modal.querySelector("#j0n4t-pg-tree-mount").appendChild(tree.element);
+        const mount = /** @type {HTMLElement | null} */ (modal.querySelector("#j0n4t-pg-tree-mount"));
+        if (mount) mount.appendChild(tree.element);
 
         const close = () => overlay.remove();
-        modal.querySelector("#j0n4t-pg-exp-cancel").addEventListener("click", close);
+        const cancelBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-exp-cancel"));
+        if (cancelBtn) cancelBtn.addEventListener("click", close);
+
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) close();
         });
 
-        modal.querySelector("#j0n4t-pg-exp-confirm").addEventListener("click", async () => {
-            const selectedKeys = tree.getSelectedKeys();
-            if (!selectedKeys.length) {
-                await ModalUtils.alert("Please select at least one preset to export.");
-                return;
-            }
-            const format = modal.querySelector("#j0n4t-pg-exp-format").value;
-            const mode = modal.querySelector("#j0n4t-pg-exp-mode").value;
-            const includeColors = modal.querySelector("#j0n4t-pg-exp-colors").checked;
-            const editedPresets = tree.getPresets();
-            const summary = ExportUtils.getSelectionSummary(selectedKeys, editedPresets);
-            if (await ModalUtils.confirm(
-                `📦 Export Summary (${format.toUpperCase()}):\n` +
-                `• Total Styles Exported: ${summary.total}\n` +
-                `• Mode: ${mode}`
-            )) {
-                close();
-                onExport({ format, mode, selectedKeys, includeColors, editedPresets });
-            }
-        });
+        const confirmBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-exp-confirm"));
+        if (confirmBtn) {
+            confirmBtn.addEventListener("click", async () => {
+                const selectedKeys = tree.getSelectedKeys();
+                if (!selectedKeys.length) {
+                    await ModalUtils.alert("Please select at least one preset to export.");
+                    return;
+                }
+                const formatEl = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-exp-format"));
+                const modeEl = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-exp-mode"));
+                const colorsEl = /** @type {HTMLInputElement | null} */ (modal.querySelector("#j0n4t-pg-exp-colors"));
+
+                const format = formatEl ? formatEl.value : "zip";
+                const mode = modeEl ? modeEl.value : "full";
+                const includeColors = colorsEl ? colorsEl.checked : true;
+                const editedPresets = tree.getPresets();
+                const summary = ExportUtils.getSelectionSummary(selectedKeys, editedPresets);
+                if (await ModalUtils.confirm(
+                    `📦 Export Summary (${format.toUpperCase()}):\n` +
+                    `• Total Styles Exported: ${summary.total}\n` +
+                    `• Mode: ${mode}`
+                )) {
+                    close();
+                    onExport({ format, mode, selectedKeys, includeColors, editedPresets });
+                }
+            });
+        }
 
         document.body.appendChild(overlay);
     },
 
-    async exportPresets({ format = "zip", mode = "full", selectedKeys = null, includeColors = true, editedPresets }) {
+    /**
+     * @param {ExportConfig} config 
+     */
+    async exportPresets({ format = "zip", mode = "full", selectedKeys = null, includeColors = true, editedPresets = {} }) {
+        /** @type {PresetCache} */
         let presets = editedPresets;
 
-        const getActiveFolders = (presetMap, keys) => {
+        /**
+         * @param {PresetCache} [presetMap]
+         * @param {string[] | null} [keys]
+         * @returns {Set<string>}
+         */
+        const getActiveFolders = (presetMap = {}, keys = null) => {
             const active = new Set();
             const targetKeys = keys || Object.keys(presetMap);
             for (const k of targetKeys) {
-                const item = presetMap[k];
+                const item = presetMap?.[k];
                 if (item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename)) {
                     const parts = k.split("/");
                     while (parts.length > 1) {
@@ -513,9 +587,10 @@ const ExportUtils = {
         };
 
         if (selectedKeys && Array.isArray(selectedKeys)) {
+            /** @type {PresetCache} */
             const filtered = {};
             for (const k of selectedKeys) {
-                if (presets[k]) {
+                if (presets?.[k]) {
                     const itemCopy = { ...presets[k] };
                     if (!includeColors) delete itemCopy.__color__;
                     filtered[k] = itemCopy;
@@ -524,7 +599,7 @@ const ExportUtils = {
             if (includeColors) {
                 const activeFolders = getActiveFolders(presets, selectedKeys);
                 for (const folder of activeFolders) {
-                    if (presets[folder] && presets[folder].__color__) {
+                    if (presets?.[folder] && presets[folder].__color__) {
                         filtered[folder] = { ...(filtered[folder] || {}), __color__: presets[folder].__color__ };
                     }
                 }
@@ -532,6 +607,7 @@ const ExportUtils = {
             presets = filtered;
         } else {
             const activeFolders = getActiveFolders(presets);
+            /** @type {PresetCache} */
             const filtered = {};
             for (const [k, item] of Object.entries(presets)) {
                 if (!item) continue;
@@ -550,7 +626,7 @@ const ExportUtils = {
         presets = Object.keys(presets).sort().reduce((acc, key) => {
             acc[key] = presets[key];
             return acc;
-        }, {});
+        }, /** @type {PresetCache} */({}));
 
         if (format === "zip") {
             try {
@@ -582,7 +658,7 @@ const ExportUtils = {
                 a.click();
                 URL.revokeObjectURL(url);
             } catch (err) {
-                await ModalUtils.alert("ZIP export failed: " + err.message);
+                await ModalUtils.alert("ZIP export failed: " + /** @type {Error} */ (err).message);
             }
             return;
         }
@@ -603,12 +679,14 @@ const ExportUtils = {
                 ext = "json";
             }
         } else {
+            /** @type {PresetCache} */
             const exportData = {};
             for (const [key, item] of Object.entries(presets)) {
                 if (item.preset) {
+                    /** @type {PresetCacheItem} */
                     const exportItem = {
                         preset: item.preset,
-                        filename: item.filename || null,
+                        filename: item.filename,
                     };
                     if (includeColors && item.__color__) {
                         exportItem.__color__ = item.__color__;
@@ -639,6 +717,10 @@ const ExportUtils = {
         URL.revokeObjectURL(url);
     },
 
+    /**
+     * @param {PresetCache} importedPresets
+     * @param {(result: { selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache }) => void} onConfirm
+     */
     async showImportModal(importedPresets, onConfirm) {
         const overlay = document.createElement("div");
         overlay.className = "j0n4t-pg-modal-overlay";
@@ -678,58 +760,78 @@ const ExportUtils = {
         overlay.appendChild(modal);
 
         const tree = ExportUtils.buildPresetSelectorTree(importedPresets, currentPresets);
-        modal.querySelector("#j0n4t-pg-tree-mount").appendChild(tree.element);
-        modal.querySelector("#j0n4t-pg-dup-strategy").addEventListener("change", (e) => {
-            tree.applyDuplicateStrategy(e.target.value);
-        });
+        const mount = /** @type {HTMLElement | null} */ (modal.querySelector("#j0n4t-pg-tree-mount"));
+        if (mount) mount.appendChild(tree.element);
+
+        const dupSelect = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-dup-strategy"));
+        if (dupSelect) {
+            dupSelect.addEventListener("change", (e) => {
+                const target = /** @type {HTMLSelectElement} */ (e.target);
+                tree.applyDuplicateStrategy(target.value);
+            });
+        }
 
         const close = () => overlay.remove();
-        modal.querySelector("#j0n4t-pg-imp-cancel").addEventListener("click", close);
+        const cancelBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-imp-cancel"));
+        if (cancelBtn) cancelBtn.addEventListener("click", close);
+
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) close();
         });
 
-        modal.querySelector("#j0n4t-pg-imp-confirm").addEventListener("click", async () => {
-            const selectedKeys = tree.getSelectedKeys();
-            if (!selectedKeys.length) {
-                await ModalUtils.alert("Please select at least one preset to import.");
-                return;
-            }
-            const duplicateStrategy = modal.querySelector("#j0n4t-pg-dup-strategy").value;
-            const importColors = modal.querySelector("#j0n4t-pg-imp-colors").checked;
-            const editedPresets = tree.getPresets();
-            const summary = ExportUtils.getSelectionSummary(selectedKeys, editedPresets, currentPresets);
-            if (await ModalUtils.confirm(
-                `📊 Import Summary:\n` +
-                `• Total Selected: ${summary.total}\n` +
-                `• New Styles: ${summary.newCount}\n` +
-                `• Replaced Styles: ${summary.replacedCount}\n` +
-                `• Unchanged Styles: ${summary.sameCount}`
-            )) {
-                close();
-                onConfirm({ selectedKeys, duplicateStrategy, importColors, editedPresets });
-            }
-        });
+        const confirmBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-imp-confirm"));
+        if (confirmBtn) {
+            confirmBtn.addEventListener("click", async () => {
+                const selectedKeys = tree.getSelectedKeys();
+                if (!selectedKeys.length) {
+                    await ModalUtils.alert("Please select at least one preset to import.");
+                    return;
+                }
+                const duplicateStrategy = dupSelect ? dupSelect.value : "overwrite";
+                const colorsEl = /** @type {HTMLInputElement | null} */ (modal.querySelector("#j0n4t-pg-imp-colors"));
+                const importColors = colorsEl ? colorsEl.checked : true;
+                const editedPresets = tree.getPresets();
+                const summary = ExportUtils.getSelectionSummary(selectedKeys, editedPresets, currentPresets);
+                if (await ModalUtils.confirm(
+                    `📊 Import Summary:\n` +
+                    `• Total Selected: ${summary.total}\n` +
+                    `• New Styles: ${summary.newCount}\n` +
+                    `• Replaced Styles: ${summary.replacedCount}\n` +
+                    `• Unchanged Styles: ${summary.sameCount}`
+                )) {
+                    close();
+                    onConfirm({ selectedKeys, duplicateStrategy, importColors, editedPresets });
+                }
+            });
+        }
 
         document.body.appendChild(overlay);
     },
 
+    /**
+     * @param {File} file
+     * @returns {Promise<{ success: boolean }>}
+     */
     async importFile(file) {
+        /** @type {PresetCache} */
         let importedPresets = {};
 
         if (file.name.toLowerCase().endsWith(".zip")) {
             try {
                 const JSZip = await loadJSZip();
                 const zip = await JSZip.loadAsync(file);
+                /** @type {Record<string, any>} */
                 const txtFiles = {};
+                /** @type {Record<string, { entry: any, ext: string }>} */
                 const imgFiles = {};
 
                 for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-                    if (zipEntry.dir) continue;
+                    const entry = /** @type {any} */ (zipEntry);
+                    if (entry.dir) continue;
                     const normalizedPath = relativePath.replace(/\\/g, "/").replace(/^[/\\]+/, "");
                     if (normalizedPath.endsWith("/__color__.txt") || normalizedPath === "__color__.txt") {
                         const groupKey = normalizedPath.replace(/\/?__color__\.txt$/i, "").toLowerCase().replace(/ /g, "_");
-                        const colorVal = (await zipEntry.async("string")).trim();
+                        const colorVal = (await entry.async("string")).trim();
                         if (groupKey) {
                             importedPresets[groupKey] = { ...(importedPresets[groupKey] || {}), __color__: colorVal };
                         }
@@ -740,15 +842,15 @@ const ExportUtils = {
                     const ext = normalizedPath.slice(lastDot + 1).toLowerCase();
                     const keyPath = normalizedPath.slice(0, lastDot);
                     if (ext === "txt") {
-                        txtFiles[keyPath] = zipEntry;
+                        txtFiles[keyPath] = entry;
                     } else if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) {
-                        imgFiles[keyPath] = { entry: zipEntry, ext };
+                        imgFiles[keyPath] = { entry, ext };
                     }
                 }
 
                 for (const [key, txtEntry] of Object.entries(txtFiles)) {
                     const presetText = await txtEntry.async("string");
-                    let filename = null;
+                    let filename;
                     if (imgFiles[key]) {
                         const { entry, ext } = imgFiles[key];
                         const base64 = await entry.async("base64");
@@ -765,22 +867,22 @@ const ExportUtils = {
                     };
                 }
             } catch (err) {
-                await ModalUtils.alert("Failed to parse ZIP file: " + err.message);
+                await ModalUtils.alert("Failed to parse ZIP file: " + /** @type {Error} */ (err).message);
                 return { success: false };
             }
         } else {
             try {
                 const text = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onload = (e) => resolve(/** @type {string} */(e.target?.result));
                     reader.onerror = reject;
                     reader.readAsText(file);
                 });
                 let parsedData = null;
                 if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
-                    parsedData = YAMLUtils.parse(text);
+                    parsedData = YAMLUtils.parse(/** @type {string} */(text));
                 } else {
-                    parsedData = JSON.parse(text);
+                    parsedData = JSON.parse(/** @type {string} */(text));
                 }
                 if (typeof parsedData !== "object" || parsedData === null) {
                     throw new Error("Invalid file structure");
@@ -792,7 +894,7 @@ const ExportUtils = {
                     }
                 }
             } catch (err) {
-                await ModalUtils.alert("Failed to parse file: " + err.message);
+                await ModalUtils.alert("Failed to parse file: " + /** @type {Error} */ (err).message);
                 return { success: false };
             }
         }
