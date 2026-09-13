@@ -2,15 +2,28 @@ import AutocompleteManager from "./AutocompleteManager.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 
+
 export default class InlineEditorManager {
+  /**
+   * @param {import("./PresetGalleryApp.js").default} context
+   * @param {HTMLDivElement} basketElement
+   */
   constructor(context, basketElement) {
     this.context = context;
     this.basket = basketElement;
   }
 
-  spawn(chipElement, initialValue, startIndex = undefined, endIndex = undefined) {
+  /**
+   * 
+   * @param {HTMLElement | null} [chipElement]
+   * @param {string} [initialValue]
+   * @param {number} [startIndex]
+   * @param {number} [endIndex] 
+   * @returns 
+   */
+  spawn(chipElement, initialValue = "", startIndex = undefined, endIndex = undefined) {
     const isNew = !chipElement;
-    const inputHtml = `<input type="text" class="j0n4t-pg-inline-edit" enterkeyhint="enter" value="${PresetDOM.escapeHTML(initialValue || '')}" tabindex="0" />`;
+    const inputHtml = `<input type="text" class="j0n4t-pg-inline-edit" enterkeyhint="enter" value="${PresetDOM.escapeHTML(initialValue)}" tabindex="0" />`;
     let input;
 
     if (isNew) {
@@ -18,29 +31,31 @@ export default class InlineEditorManager {
       const newChipHtml = `<div class="j0n4t-pg-basket-chip inline-editing">${inputHtml}</div>`;
       if (addBtn) {
         addBtn.insertAdjacentHTML("beforebegin", newChipHtml);
-        chipElement = addBtn.previousElementSibling;
+        chipElement = /** @type {HTMLElement} */(addBtn.previousElementSibling);
       } else {
         this.basket.insertAdjacentHTML("beforeend", newChipHtml);
-        chipElement = this.basket.lastElementChild;
+        chipElement = /** @type {HTMLElement} */(this.basket.lastElementChild);
       }
+      if (!chipElement) return;
       input = chipElement.querySelector("input");
     } else {
-      if (chipElement.classList.contains("inline-editing")) return;
+      if (!chipElement || chipElement.classList.contains("inline-editing")) return;
       chipElement.classList.add("inline-editing");
       chipElement.draggable = false;
-      const label = chipElement.querySelector(".j0n4t-pg-basket-chip-label");
-      const weight = chipElement.querySelector(".j0n4t-pg-basket-chip-weight");
+      const label = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-label"));
+      const weight = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-weight"));
       if (label) label.style.display = "none";
       if (weight) weight.style.display = "none";
       chipElement.insertAdjacentHTML("afterbegin", inputHtml);
       input = chipElement.querySelector("input");
     }
 
+    if (!input) return;
     input.focus();
     input.selectionStart = 0;
     input.selectionEnd = input.value.length;
 
-    const finishEdit = (save) => {
+    const finishEdit = (/** @type {boolean} */ save) => {
       const newVal = input.value.trim();
       try {
         input.remove();
@@ -53,8 +68,8 @@ export default class InlineEditorManager {
       else {
         chipElement.classList.remove("inline-editing");
         chipElement.draggable = true;
-        const label = chipElement.querySelector(".j0n4t-pg-basket-chip-label");
-        const weight = chipElement.querySelector(".j0n4t-pg-basket-chip-weight");
+        const label = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-label"));
+        const weight = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-weight"));
         if (label) label.style.display = "";
         if (weight) weight.style.display = "";
       }
@@ -102,6 +117,7 @@ export default class InlineEditorManager {
               if (folder) groupsSet.add(folder);
             }
             const groups = Array.from(groupsSet);
+            /** @type {PresetCache} */
             const dummyCache = {};
             groups.forEach(g => { dummyCache[g] = { preset: g }; });
             return PresetLogic.getTopMatches(groups, groupQuery, (g) => g, dummyCache);
@@ -133,7 +149,7 @@ export default class InlineEditorManager {
       },
       onSelect: (match) => {
         const query = input.value;
-        const cursor = input.selectionStart;
+        const cursor = input.selectionStart || 0;
         const textBeforeCursor = query.substring(0, cursor);
         const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
         const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
