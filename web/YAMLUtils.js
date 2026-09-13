@@ -1,10 +1,11 @@
 const YAMLUtils = {
+    /** @param {Record<string, any>} obj */
     stringify(obj, indent = 0) {
         let yaml = "";
         const spaces = " ".repeat(indent);
         const needsQuotes = /[\n:#"{}@]|^\s|^$/;
 
-        const escapeString = (str) =>
+        const escapeString = (/** @type {string} */ str) =>
             `"${str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
 
         for (const [key, value] of Object.entries(obj)) {
@@ -26,8 +27,10 @@ const YAMLUtils = {
         }
         return yaml;
     },
+    /** @param {string} yamlStr */
     parse(yamlStr) {
         const lines = yamlStr.split(/\r?\n/);
+        /** @type {Record<string, any>} */
         const result = {};
         const stack = [{ indent: -1, obj: result }];
 
