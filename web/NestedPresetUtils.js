@@ -1,5 +1,9 @@
 const NestedPresetUtils = {
+    /**
+     * @param {PresetCache} presets
+     */
     flatToNested(presets, presetOnly = true, includeColors = true) {
+        /** @type {{[key:string]: any}} */
         const root = {};
         for (const [key, item] of Object.entries(presets)) {
             if (!item) continue;
@@ -43,7 +47,8 @@ const NestedPresetUtils = {
         }
         return root;
     },
-    nestedToFlat(obj, prefix = "") {
+    nestedToFlat(obj = {}, prefix = "") {
+        /** @type {PresetCache} */
         let flat = {};
         for (const [key, val] of Object.entries(obj)) {
             if (key === "__color__") {
@@ -64,15 +69,14 @@ const NestedPresetUtils = {
                 if (typeof val === "string") {
                     flat[fullKey] = {
                         preset: val,
-                        filename: null,
                     };
                 } else if (typeof val === "object" && val !== null) {
                     if ("preset" in val) {
                         const item = {
                             preset: val.preset || "",
-                            filename: val.filename || null,
+                            filename: val.filename,
+                            __color__: val.__color__
                         };
-                        if (val.__color__) item.__color__ = val.__color__;
                         flat[fullKey] = item;
                     } else if ("__color__" in val) {
                         flat[fullKey] = { ...(flat[fullKey] || {}), __color__: String(val.__color__) };
