@@ -5,7 +5,7 @@ import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 
-const fileToDataURL = (file) =>
+const fileToDataURL = (/** @type {Blob} */ file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -35,9 +35,10 @@ export default class PresetEditor {
     .j0n4t-pg-editor-preview img { width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; }
   `;
 
-  constructor(dom, context) {
-    this.dom = dom;
+  /** @param {import("./PresetGalleryApp.js").default} context  */
+  constructor(context) {
     this.context = context;
+    this.dom = context.dom;
     this.editingKey = "";
     this.currentMode = "new";
     this.isSaved = true;
@@ -73,7 +74,7 @@ export default class PresetEditor {
         this.editingKey &&
         this.context.cache[this.editingKey]?.filename
       ) {
-        imgSrc = this.context.cache[this.editingKey].filename;
+        imgSrc = this.context.cache[this.editingKey].filename || "";
       }
       if (imgSrc) {
         this.dom.editorPreview.innerHTML = `${rmBtnHtml}<img src="${imgSrc}" alt="Preset preview" />`;
@@ -136,6 +137,9 @@ export default class PresetEditor {
     this.context.syncEditorHighlight();
   }
 
+  /**
+   * @param {string} styleKey
+   */
   async openPreset(styleKey, focus = false) {
     if (!this.context.cache[styleKey]) return;
     this.context.setPanelCollapseState(false);
@@ -195,7 +199,7 @@ export default class PresetEditor {
     let imageData = null;
     let clearImage = false;
 
-    if (this.dom.inpFile.files[0]) {
+    if (this.dom.inpFile.files && this.dom.inpFile.files[0]) {
       imageData = await fileToDataURL(this.dom.inpFile.files[0]);
     } else if (this.dom.editor.classList.contains("no-image")) {
       clearImage = true;
@@ -263,12 +267,12 @@ export default class PresetEditor {
       if (this.dom.editor.classList.contains("no-image")) this.renderPreview();
     };
 
-    ["inpName", "inpFolder", "inpPreset"].forEach((id) =>
-      this.dom[id].addEventListener("input", markDirty)
-    );
+    this.dom.inpName.addEventListener("input", markDirty);
+    this.dom.inpFolder.addEventListener("input", markDirty);
+    this.dom.inpPreset.addEventListener("input", markDirty);
 
     this.dom.editorPreview.addEventListener("click", async (e) => {
-      if (e.target.closest("#j0n4t-pg-rm-img-btn")) {
+      if (/** @type {HTMLElement} */ (e.target)?.closest("#j0n4t-pg-rm-img-btn")) {
         e.stopPropagation();
         if (await ModalUtils.confirm("Clear image?")) {
           this.resetImageState();
@@ -280,7 +284,7 @@ export default class PresetEditor {
     this.dom.editorPreview.addEventListener("keydown", async (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        if (e.target.closest("#j0n4t-pg-rm-img-btn")) {
+        if (/** @type {HTMLElement} */ (e.target)?.closest("#j0n4t-pg-rm-img-btn")) {
           e.stopPropagation();
           if (await ModalUtils.confirm("Clear image?")) {
             this.resetImageState();
@@ -293,22 +297,22 @@ export default class PresetEditor {
     });
 
     this.dom.inpFile.addEventListener("change", () => {
-      if (this.dom.inpFile.files[0]) {
+      if (this.dom.inpFile.files && this.dom.inpFile.files[0]) {
         this.dom.editor.classList.replace("no-image", "has-image");
         this.renderPreview();
         markDirty();
       }
     });
 
-    const handleQuickSave = (e) => {
+    const handleQuickSave = (/** @type {KeyboardEvent} */ e) => {
       if (e.key === "Enter" && e.shiftKey) {
         e.preventDefault();
         this.dom.btnSave.click();
       }
     };
-    ["inpName", "inpFolder", "inpPreset"].forEach((id) =>
-      this.dom[id].addEventListener("keydown", handleQuickSave)
-    );
+    this.dom.inpName.addEventListener("keydown", handleQuickSave);
+    this.dom.inpFolder.addEventListener("keydown", handleQuickSave);
+    this.dom.inpPreset.addEventListener("keydown", handleQuickSave);
 
     this.dom.inpPreset.addEventListener("paste", (e) => {
       if (!this.dom.inpName.value.trim() || this.currentMode === "new") {

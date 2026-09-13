@@ -121,4 +121,5 @@ type DataURLParseResult = {
 
 interface Window {
   JSZip: any;
+  clipboardData: any;
 }
