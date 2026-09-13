@@ -2,7 +2,29 @@ import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import AutocompleteManager from "./AutocompleteManager.js";
 
+/**
+ * @typedef {Object} ChipVariantData
+ * @property {string} groupRaw
+ * @property {string} groupName
+ * @property {string} val
+ * @property {string} childVarsStr
+ * @property {string} rootGroup
+ * @property {boolean} isSub
+ */
+
+/**
+ * @typedef {Object} AutocompleteConfig
+ * @property {string} group
+ * @property {number} gIndex
+ * @property {string[]} matches
+ * @property {RegExp} groupRegex
+ */
+
 export default class ChipMenuManager {
+  /** 
+   * @param {import("./PresetGalleryApp.js").default} context
+   * @param {import("./PresetBasket.js").default} delegateBasket
+   */
   constructor(context, delegateBasket) {
     this.context = context;
     this.basket = delegateBasket;
@@ -11,6 +33,13 @@ export default class ChipMenuManager {
     this.closeHandler = null;
   }
 
+  /**
+   * @param {HTMLElement} chipElement
+   * @param {string} styleKey
+   * @param {PresetCacheItem} item
+   * @param {number} startIndex
+   * @param {number} endIndex
+   */
   show(chipElement, styleKey, item, startIndex, endIndex, focusWeight = false) {
     if (this.activeChipMenuEl) {
       this.activeChipMenuEl.classList.remove("active-menu");
@@ -25,7 +54,8 @@ export default class ChipMenuManager {
 
     const VAR_REGEX_SRC = `\\{([^{}:]+)(?::((?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*))?\\}`;
 
-    const getAllVariants = (text, cache, rootGroup = null) => {
+    const getAllVariants = (/** @type {string} */ text, /** @type {PresetCache | undefined} */ cache, rootGroup = "") => {
+      /** @type {ChipVariantData[]}  */
       let results = [];
       let m;
       const localRegex = new RegExp(VAR_REGEX_SRC, 'g');
@@ -62,7 +92,7 @@ export default class ChipMenuManager {
               while ((cm = childRegex.exec(childVarsStr)) !== null) {
                 const cName = cm[1].trim();
                 const cVal = cm[2] || "";
-                const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const escapeRegExp = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const replaceRegex = new RegExp(`\\{\\s*${escapeRegExp(cName)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
                 childTemplate = childTemplate.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
               }
@@ -79,7 +109,9 @@ export default class ChipMenuManager {
     const allVariants = getAllVariants(source, this.context.cache);
 
     let varRowsHtml = "";
+    /** @type {Record<string, number>} */
     const groupCounts = {};
+    /** @type {AutocompleteConfig[]} */
     const autocompleteConfigs = [];
 
     if (allVariants.length > 0) {
@@ -162,21 +194,23 @@ export default class ChipMenuManager {
     `;
 
     document.body.insertAdjacentHTML('beforeend', popupHtml);
-    const popup = document.body.lastElementChild;
+    const popup = /** @type {HTMLElement} */ (document.body.lastElementChild);
     this.popupEl = popup;
+    if (!popup) return;
 
     autocompleteConfigs.forEach(cfg => {
-      const inputEl = popup.querySelector(`input.j0n4t-pg-var-input[data-group="${cfg.group}"][data-gindex="${cfg.gIndex}"]`);
+      const inputEl = /** @type {HTMLInputElement} */(popup?.querySelector(`input.j0n4t-pg-var-input[data-group="${cfg.group}"][data-gindex="${cfg.gIndex}"]`));
       if (inputEl) {
         const options = [
           { key: "", display: "🎲 Random" },
           { key: "none", display: "🚫 None (Omit)" },
-          ...cfg.matches.map(m => ({
+          ...cfg.matches.map((/** @type {string} */ m) => ({
             key: m,
             display: PresetLogic.toTitleCase(PresetLogic.getPresetName(m))
           }))
         ];
 
+        // @ts-ignore
         inputEl._options = options;
 
         new AutocompleteManager({
@@ -205,11 +239,11 @@ export default class ChipMenuManager {
     });
 
     popup.addEventListener("click", (e) => {
-      const rerollBtn = e.target.closest(".j0n4t-pg-var-reroll-btn");
+      /** @type {HTMLElement |null} */ const rerollBtn = /** @type {HTMLElement} */(e.target).closest(".j0n4t-pg-var-reroll-btn");
       if (rerollBtn) {
         e.stopPropagation();
         this.basket.reRollChipGroup(
-          parseInt(chipElement.dataset.index),
+          Number(chipElement.dataset.index),
           rerollBtn.dataset.group,
           rerollBtn.dataset.gindex
         );
@@ -217,29 +251,30 @@ export default class ChipMenuManager {
         return;
       }
 
-      const editVarBtn = e.target.closest(".j0n4t-pg-var-edit-btn");
+      /** @type {HTMLElement |null} */ const editVarBtn = /** @type {HTMLElement} */(e.target).closest(".j0n4t-pg-var-edit-btn");
       if (editVarBtn) {
         e.stopPropagation();
         const group = editVarBtn.dataset.group;
-        const gIndex = parseInt(editVarBtn.dataset.gindex, 10);
-        const inputEl = popup.querySelector(`input.j0n4t-pg-var-input[data-group="${group}"][data-gindex="${gIndex}"]`);
+        const gIndex = Number(editVarBtn.dataset.gindex);
+        const inputEl = /** @type {HTMLInputElement} */(popup.querySelector(`input.j0n4t-pg-var-input[data-group="${group}"][data-gindex="${gIndex}"]`));
 
         let rawVal = inputEl?.value;
         if (rawVal === "🚫 None (Omit)" || inputEl?.dataset.key === "none") return;
 
         let variantKey = null;
         if (rawVal && rawVal !== "🎲 Random") {
-          const matchingOpt = inputEl._options?.find(opt => opt.display === rawVal || opt.key === rawVal);
+          // @ts-ignore
+          const matchingOpt = inputEl._options?.find((/** @type {{ display: any; key: any; }} */ opt) => opt.display === rawVal || opt.key === rawVal);
           variantKey = matchingOpt ? matchingOpt.key : rawVal;
         }
 
         if (!variantKey) {
-          const chipIndex = parseInt(chipElement.dataset.index, 10);
+          const chipIndex = Number(chipElement.dataset.index);
           if (!isNaN(chipIndex)) {
             const activeList = this.context.getSelectedArray();
             const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
             const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls);
-            const targetGroup = group.trim().toLowerCase().replace(/\s+/g, "_");
+            const targetGroup = group?.trim().toLowerCase().replace(/\s+/g, "_") || "";
 
             for (let i = 0; i < chipsData.length; i++) {
               const startCounts = tracer.cloneCounts();
@@ -262,26 +297,26 @@ export default class ChipMenuManager {
         return;
       }
 
-      const actionEl = e.target.closest("[data-action]");
+      /** @type {HTMLElement | null} */ const actionEl = /** @type {HTMLElement} */(e.target).closest("[data-action]");
       if (!actionEl) return;
       e.stopPropagation();
 
       const action = actionEl.dataset.action;
 
       if (action === "toggle-weight") {
-        const wMod = popup.querySelector('.j0n4t-pg-weight-modifier');
+        const wMod = /** @type {HTMLElement} */(popup.querySelector('.j0n4t-pg-weight-modifier'));
         wMod.style.display = wMod.style.display === 'none' ? 'flex' : 'none';
         if (wMod.style.display === 'flex') {
-          wMod.querySelector('input').focus();
+          wMod.querySelector('input')?.focus();
         }
         return;
       }
 
       if (action === "weight-minus" || action === "weight-plus") {
-        const input = popup.querySelector('.j0n4t-pg-weight-input');
+        const input = /** @type {HTMLInputElement} */(popup.querySelector('.j0n4t-pg-weight-input'));
         let val = parseFloat(input.value) || 1.0;
         val += (action === "weight-plus" ? 0.05 : -0.05);
-        input.value = Number(val.toFixed(2));
+        input.value = String(Number(val.toFixed(2)));
         input.dispatchEvent(new Event('change', { bubbles: true }));
         return;
       }
@@ -316,9 +351,9 @@ export default class ChipMenuManager {
       } else if (action === "create") {
         this.context.setPanelCollapseState(false);
         this.context.editor.clearFields();
-        this.context.editor.dom.inpPreset.value = item ? item.preset : coreKey;
+        this.context.editor.dom.inpPreset.value = item.preset ? item.preset : coreKey;
         this.context.editor.rawPresetManager?.updateHighlights();
-        const cleanName = coreKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop().replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
+        const cleanName = coreKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop()?.replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
         if (cleanName) this.context.editor.dom.inpName.value = cleanName;
         this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
         this.context.editor.dom.inpPreset.focus();
@@ -332,13 +367,13 @@ export default class ChipMenuManager {
     });
 
     popup.addEventListener("change", (e) => {
-      const weightInput = e.target.closest(".j0n4t-pg-weight-input");
+      /** @type {HTMLInputElement | null} */ const weightInput = /** @type {HTMLElement} */(e.target).closest(".j0n4t-pg-weight-input");
       if (weightInput) {
         let val = parseFloat(weightInput.value);
         if (isNaN(val)) return;
 
-        const currentStyleKey = chipElement.dataset.id;
-        const currentWMatch = currentStyleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
+        const currentStyleKey = chipElement.dataset.id || "";
+        const currentWMatch = currentStyleKey?.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         const activeCoreKey = currentWMatch ? currentWMatch[1] : currentStyleKey;
 
         let finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
@@ -361,11 +396,11 @@ export default class ChipMenuManager {
         return;
       }
 
-      const inputEl = e.target.closest("input.j0n4t-pg-var-input");
+      /** @type {HTMLInputElement | null} */ const inputEl = /** @type {HTMLElement} */(e.target).closest("input.j0n4t-pg-var-input");
       if (!inputEl) return;
 
-      const group = inputEl.dataset.group;
-      const gIndex = parseInt(inputEl.dataset.gindex, 10);
+      const group = inputEl.dataset.group || "";
+      const gIndex = Number(inputEl.dataset.gindex);
       const rootGroup = inputEl.dataset.rootGroup;
       const isSub = inputEl.dataset.issub === 'true';
       const rawVal = inputEl.value;
@@ -376,26 +411,27 @@ export default class ChipMenuManager {
       } else if (rawVal === "🚫 None (Omit)") {
         selectedVal = "none";
       } else {
-        const matchingOpt = inputEl._options?.find(opt => opt.display === rawVal || opt.key === rawVal);
+        // @ts-ignore
+        const matchingOpt = inputEl._options?.find((/** @type {{ display: any; key: any; }} */ opt) => opt.display === rawVal || opt.key === rawVal);
         selectedVal = matchingOpt ? matchingOpt.key : rawVal;
       }
 
       inputEl.dataset.key = selectedVal;
 
-      const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapeRegExp = (/** @type {string} */ str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const groupRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
       const replacement = selectedVal ? `{${group}:${selectedVal}}` : `{${group}}`;
 
-      const currentKey = chipElement.dataset.id;
+      const currentKey = chipElement.dataset.id || "";
       const currentPreset = chipElement.dataset.preset || "";
       const currentWMatch = currentKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
       const activeCoreKey = currentWMatch ? currentWMatch[1] : currentKey;
 
       const unrolled = PresetLogic.getUnrolledTemplate(activeCoreKey, this.context.cache);
 
-      const replaceNth = (str, regex, replStr) => {
+      const replaceNth = (/** @type {string} */ str, /** @type {RegExp} */ regex, /** @type {string} */ replStr) => {
         let matchCount = 0;
-        return str.replace(regex, (match) => {
+        return str.replace(regex, (/** @type {string} */ match) => {
           if (matchCount === gIndex) {
             matchCount++;
             return replStr;
@@ -416,7 +452,7 @@ export default class ChipMenuManager {
       if (newStyleKey === currentKey && isSub && rootGroup) {
         const rootRegex = new RegExp(`\\{\\s*${escapeRegExp(rootGroup)}\\s*(?::((?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*))?\\}`, 'gi');
         if (currentKey.match(rootRegex)) {
-          newStyleKey = currentKey.replace(rootRegex, (match, rootVal) => {
+          newStyleKey = currentKey.replace(rootRegex, (/** @type {string} */ match, /** @type {string} */ rootVal) => {
             if (!rootVal) rootVal = "";
             const childRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
             if (rootVal.match(childRegex)) {
@@ -437,7 +473,7 @@ export default class ChipMenuManager {
       if (newStyleKey === currentKey && isSub && rootGroup) {
         const rootRegex = new RegExp(`\\{\\s*${escapeRegExp(rootGroup)}\\s*(?::((?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*))?\\}`, 'gi');
         if (currentPreset.match(rootRegex)) {
-          const attempt = currentPreset.replace(rootRegex, (match, rootVal) => {
+          const attempt = currentPreset.replace(rootRegex, (/** @type {string} */ match, /** @type {string} */ rootVal) => {
             if (!rootVal) rootVal = "";
             const childRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
             if (rootVal.match(childRegex)) {
@@ -484,24 +520,25 @@ export default class ChipMenuManager {
       }
     });
 
-    popup.addEventListener("keydown", (e) => {
-      const items = Array.from(popup.querySelectorAll("[data-action], button, input"));
-      const currentIndex = items.indexOf(document.activeElement);
+    popup.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
+      /** @type {HTMLInputElement[]} */ const items = Array.from(popup.querySelectorAll("[data-action], button, input"));
+      const currentIndex = document.activeElement ? items.indexOf(/** @type {HTMLInputElement} */(document.activeElement)) : 0;
+      const target = /** @type {HTMLInputElement} */(e.target);
 
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-        if (e.target.tagName !== 'INPUT') {
+        if (target.tagName !== 'INPUT') {
           e.stopPropagation();
           e.preventDefault();
           items[(currentIndex + 1) % items.length].focus();
         }
       } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-        if (e.target.tagName !== 'INPUT') {
+        if (target.tagName !== 'INPUT') {
           e.stopPropagation();
           e.preventDefault();
           items[(currentIndex - 1 + items.length) % items.length].focus();
         }
       } else if (e.key === "Enter" || e.key === " ") {
-        const actionEl = e.target.closest("[data-action], button");
+        const actionEl = /** @type {HTMLButtonElement} */(target.closest("[data-action], button"));
         if (actionEl) {
           e.stopPropagation();
           e.preventDefault();
@@ -537,8 +574,8 @@ export default class ChipMenuManager {
     popup.style.top = `${topPos < window.scrollY ? window.scrollY + rect.bottom + 4 : topPos}px`;
     popup.style.left = `${leftPos}px`;
 
-    const closeHandler = (e) => {
-      if (!popup.contains(e.target) && e.target !== chipElement) {
+    const closeHandler = (/** @type {Event} */e) => {
+      if (!popup.contains(/** @type {HTMLElement} */(e.target)) && e.target !== chipElement) {
         this.close();
         document.removeEventListener("mousedown", closeHandler);
       }
@@ -547,9 +584,9 @@ export default class ChipMenuManager {
     setTimeout(() => {
       document.addEventListener("mousedown", closeHandler);
       if (focusWeight) {
-        popup.querySelector('.j0n4t-pg-weight-input')?.focus();
+        /** @type {HTMLElement} */ (popup.querySelector('.j0n4t-pg-weight-input')).focus();
       } else {
-        popup.querySelector("[data-action]")?.focus();
+        /** @type {HTMLElement} */ (popup.querySelector("[data-action]")).focus();
       }
     }, 10);
   }
