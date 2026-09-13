@@ -102,7 +102,7 @@ export default class PresetGalleryApp {
 
     this.basket = new PresetBasket(
       this.dom.basketContainer,
-      this.dom.wrap.querySelector(".j0n4t-pg-basket-pool"),
+      this.dom.basketPool,
       this.dom.rawTextarea,
       this
     );
@@ -220,6 +220,7 @@ export default class PresetGalleryApp {
       btnRerollBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-reroll-btn")),
       chkBasketRaw: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-basket-raw-toggle")),
       basketContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-container")),
+      basketPool: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-pool")),
       rawTextarea: /** @type {HTMLTextAreaElement} */ (wrap.querySelector("#j0n4t-pg-raw-input")),
       btnHideGallery: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-hide-gallery-btn")),
     };
@@ -326,9 +327,8 @@ export default class PresetGalleryApp {
     const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_") && !excludedFolders.includes(key));
     if (availableGroups.length === 0) return;
 
-    const pinnedSelections = this.getSelectedArray().filter(item => this.basket.pinnedChips.has(item));
-    const newSelections = [...pinnedSelections];
-    const addedSet = new Set(pinnedSelections);
+    const newSelections = [];
+    const addedSet = new Set();
 
     const min = this.settings?.rollMin ?? 10;
     const max = this.settings?.rollMax ?? 20;

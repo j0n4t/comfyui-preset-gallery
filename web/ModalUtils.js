@@ -7,7 +7,7 @@ import PresetDOM from "./PresetDOM.js";
  * @property {string} [className]
  * @property {() => void} [callback]
  * @property {boolean} [isDefault]
- * @property {boolean} closeOnFinish
+ * @property {boolean} [closeOnFinish]
  */
 
 export default class ModalUtils {

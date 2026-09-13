@@ -14,16 +14,17 @@ export default class RawTextareaManager {
   `;
 
   /**
-   * @param {HTMLInputElement} textarea
+   * @param {HTMLTextAreaElement} textarea
    * @param {import("./PresetGalleryApp.js").default} context
+   * @param {string|null} ignorePreset
    * @param {(textareaValue: string) => void} onSync
    */
-  constructor(textarea, context, ignorePreset = "", onSync) {
+  constructor(textarea, context, ignorePreset, onSync) {
     this.textarea = textarea;
     this.context = context;
     this.onSync = onSync;
     this.highlightsEl = null;
-    this.ignorePreset = ignorePreset;
+    this.ignorePreset = ignorePreset || "";
 
     PresetDOM.injectStyles("j0n4t-pg-raw-textarea-styles", RawTextareaManager.STYLES);
     this.initWrapper();

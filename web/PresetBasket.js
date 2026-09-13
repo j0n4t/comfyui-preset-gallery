@@ -69,6 +69,12 @@ export default class PresetBasket {
     .j0n4t-pg-var-input:focus { border-color: #d1a119; }
   `;
 
+  /**
+   * @param {HTMLDivElement} container
+   * @param {HTMLDivElement} basket
+   * @param {HTMLTextAreaElement} textarea
+   * @param {import("./PresetGalleryApp.js").default} context
+   */
   constructor(container, basket, textarea, context) {
     this.container = container;
     this.basket = basket;
@@ -105,7 +111,7 @@ export default class PresetBasket {
       }
     });
     this.container.addEventListener("dragleave", (e) => {
-      if (e.relatedTarget && this.container.contains(e.relatedTarget)) return;
+      if (e.relatedTarget && this.container.contains( /** @type {HTMLElement} */(e.relatedTarget))) return;
       this.container.classList.remove("drag-over");
       this.removeDropIndicator();
     });
@@ -116,11 +122,11 @@ export default class PresetBasket {
 
       if (!this.dropIndicator) {
         this.basket.insertAdjacentHTML('beforeend', '<div class="j0n4t-pg-basket-drop-indicator"></div>');
-        this.dropIndicator = this.basket.lastElementChild;
+        this.dropIndicator = /** @type {HTMLElement} */ (this.basket.lastElementChild);
       }
 
       const closest = this.getClosestChip(e.clientX, e.clientY);
-      if (closest.element) {
+      if (closest.element && closest.box && this.dropIndicator) {
         this.dropIndicator.style.height = `${closest.box.height}px`;
         if (e.clientX > closest.box.left + closest.box.width / 2) {
           closest.element.after(this.dropIndicator);
@@ -138,24 +144,24 @@ export default class PresetBasket {
       e.preventDefault();
       this.container.classList.remove("drag-over");
       this.removeDropIndicator();
-      const styleKey = e.dataTransfer.getData("text/plain");
+      const styleKey = e.dataTransfer?.getData("text/plain");
       if (!styleKey) return;
 
       let selections = this.context.getSelectedArray();
-      const sourceStartStr = e.dataTransfer.getData("source/basket_start");
-      const sourceEndStr = e.dataTransfer.getData("source/basket_end");
+      const sourceStartStr = e.dataTransfer?.getData("source/basket_start");
+      const sourceEndStr = e.dataTransfer?.getData("source/basket_end");
 
       let movedItems = [styleKey];
-      if (e.dataTransfer.getData("source/basket") && sourceStartStr !== "" && sourceEndStr !== "") {
-        const start = parseInt(sourceStartStr, 10);
-        const end = parseInt(sourceEndStr, 10);
+      if (e.dataTransfer?.getData("source/basket") && sourceStartStr !== "" && sourceEndStr !== "") {
+        const start = Number(sourceStartStr);
+        const end = Number(sourceEndStr);
         if (!isNaN(start) && !isNaN(end) && start < end) {
           movedItems = selections.splice(start, end - start);
         }
       }
 
       const closest = this.getClosestChip(e.clientX, e.clientY);
-      if (closest.element) {
+      if (closest.element && closest.box) {
         const targetStartStr = closest.element.dataset.start;
         let insertionIndex = targetStartStr !== undefined ? parseInt(targetStartStr, 10) : selections.length;
         if (e.clientX > closest.box.left + closest.box.width / 2) {
@@ -192,12 +198,12 @@ export default class PresetBasket {
     });
 
     this.basket.addEventListener("dblclick", (e) => {
-      const chip = e.target.closest('.j0n4t-pg-basket-chip');
+      /** @type {HTMLElement | null} */ const chip = /** @type {HTMLElement} */ (e.target).closest('.j0n4t-pg-basket-chip');
       if (chip) {
         e.stopPropagation();
         this.chipMenuManager.close();
 
-        const styleKey = chip.dataset.id;
+        const styleKey = chip.dataset.id || "";
         const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         let editVal = styleKey;
 
@@ -208,7 +214,7 @@ export default class PresetBasket {
           editVal = rawPreset;
         }
 
-        this.inlineEditorManager.spawn(chip, editVal, parseInt(chip.dataset.start), parseInt(chip.dataset.end));
+        this.inlineEditorManager.spawn(chip, editVal, Number(chip.dataset.start), Number(chip.dataset.end));
       } else {
         e.stopPropagation();
         this.inlineEditorManager.spawn(null, "");
@@ -216,24 +222,25 @@ export default class PresetBasket {
     });
 
     this.basket.addEventListener("click", (e) => {
-      const addBtn = e.target.closest('.j0n4t-pg-basket-add-btn');
+      const target = /** @type {HTMLElement} */ (e.target);
+      const addBtn = target.closest('.j0n4t-pg-basket-add-btn');
       if (addBtn) return this.inlineEditorManager.spawn(null, "");
 
-      if (e.target.closest("input")) return;
+      if (target.closest("input")) return;
 
-      const weightBadge = e.target.closest('.j0n4t-pg-basket-chip-weight');
-      const chip = e.target.closest('.j0n4t-pg-basket-chip');
+      const weightBadge = target.closest('.j0n4t-pg-basket-chip-weight');
+      /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
 
       if (chip) {
         e.stopPropagation();
-        const styleKey = chip.dataset.id;
+        const styleKey = chip.dataset.id || "";
 
         const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         const coreKey = wMatch ? wMatch[1] : styleKey;
-        const cachedItem = this.context.cache?.[coreKey] || this.context.cache?.[styleKey];
+        const cachedItem = this.context.cache[coreKey] || this.context.cache[styleKey];
         const evalId = chip.dataset.evalId || coreKey;
 
-        this.chipMenuManager.show(chip, styleKey, cachedItem, parseInt(chip.dataset.start), parseInt(chip.dataset.end), !!weightBadge);
+        this.chipMenuManager.show(chip, styleKey, cachedItem, Number(chip.dataset.start), Number(chip.dataset.end), !!weightBadge);
 
         if (weightBadge) return;
 
@@ -256,13 +263,14 @@ export default class PresetBasket {
     });
 
     this.basket.addEventListener("change", (e) => {
-      const dynamicInput = e.target.closest('input.text-input, input.bool-input, input.num-input');
+      const target = /** @type {HTMLElement} */ (e.target);
+      /** @type {HTMLInputElement | null} */ const dynamicInput = target.closest('input.text-input, input.bool-input, input.num-input');
       if (dynamicInput) {
-        const chip = dynamicInput.closest('.j0n4t-pg-basket-chip');
+        /** @type {HTMLElement | null} */ const chip = dynamicInput.closest('.j0n4t-pg-basket-chip');
         if (!chip) return;
-        const styleKey = chip.dataset.id;
-        const startIndex = parseInt(chip.dataset.start);
-        const endIndex = parseInt(chip.dataset.end);
+        const styleKey = chip.dataset.id || "";
+        const startIndex = Number(chip.dataset.start);
+        const endIndex = Number(chip.dataset.end);
 
         let newValue;
         if (dynamicInput.type === "checkbox") {
@@ -283,9 +291,10 @@ export default class PresetBasket {
     });
 
     this.basket.addEventListener("keydown", (e) => {
+      const target = /** @type {HTMLElement} */ (e.target);
       if (e.key === "Enter" || e.key === " ") {
-        const triggerable = e.target.closest(".j0n4t-pg-basket-add-btn, .j0n4t-pg-basket-chip");
-        if (triggerable && !e.target.closest("input")) {
+        /** @type {HTMLElement | null} */ const triggerable = target.closest(".j0n4t-pg-basket-add-btn, .j0n4t-pg-basket-chip");
+        if (triggerable && !target.closest("input")) {
           e.stopPropagation();
           e.preventDefault();
           triggerable.click();
@@ -293,20 +302,20 @@ export default class PresetBasket {
       }
 
       // Handle Delete key to remove selected chip
-      if (e.key === "Delete" && !e.target.closest("input")) {
-        const chip = e.target.closest('.j0n4t-pg-basket-chip');
+      if (e.key === "Delete" && !target.closest("input")) {
+        /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
         if (chip) {
           e.stopPropagation();
           e.preventDefault();
-          const startIndex = parseInt(chip.dataset.start);
-          const endIndex = parseInt(chip.dataset.end);
+          const startIndex = Number(chip.dataset.start);
+          const endIndex = Number(chip.dataset.end);
           const selections = this.context.getSelectedArray();
           if (startIndex >= 0 && endIndex <= selections.length) {
             selections.splice(startIndex, endIndex - startIndex);
             this.context.updateWidgetValue(selections);
             this.chipMenuManager.close();
             // Focus the next chip or add button if available
-            const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
+            /** @type {HTMLElement[]} */ const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
             const newIndex = Math.min(startIndex, focusableElements.length - 1);
             if (newIndex >= 0) {
               focusableElements[newIndex]?.focus();
@@ -316,10 +325,10 @@ export default class PresetBasket {
         return; // Prevent further processing
       }
 
-      if (!e.target.closest("input") && !e.altKey) {
-        const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
-        const currentElement = e.target.closest('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn');
-        const currentIndex = focusableElements.indexOf(currentElement);
+      if (!target.closest("input") && !e.altKey) {
+        /** @type {HTMLElement[]} */ const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
+        /** @type {HTMLElement | null} */ const currentElement = target.closest('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn');
+        const currentIndex = currentElement ? focusableElements.indexOf(currentElement) : 0;
 
         if (currentIndex !== -1) {
           if (e.key === "ArrowRight" || e.key === "ArrowDown") {
@@ -335,39 +344,39 @@ export default class PresetBasket {
       }
 
       if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-        const chip = e.target.closest('.j0n4t-pg-basket-chip');
+        /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
         if (!chip) return;
         e.stopPropagation();
         e.preventDefault();
-        const startIndex = parseInt(chip.dataset.start);
-        const endIndex = parseInt(chip.dataset.end);
+        const startIndex = Number(chip.dataset.start);
+        const endIndex = Number(chip.dataset.end);
         const selections = this.context.getSelectedArray();
         const itemsToMove = selections.slice(startIndex, endIndex);
 
         if (e.key === 'ArrowLeft') {
-          const prevChip = chip.previousElementSibling;
+          const prevChip = /** @type {HTMLElement | null} */ (chip.previousElementSibling);
           if (prevChip?.classList.contains('j0n4t-pg-basket-chip')) {
-            const prevStart = parseInt(prevChip.dataset.start);
-            const prevEnd = parseInt(prevChip.dataset.end);
+            const prevStart = Number(prevChip.dataset.start);
+            const prevEnd = Number(prevChip.dataset.end);
             const prevItems = selections.slice(prevStart, prevEnd);
             selections.splice(prevStart, endIndex - prevStart, ...itemsToMove, ...prevItems);
             this.context.updateWidgetValue(selections);
             setTimeout(() => {
-              const newChip = this.basket.querySelector(`[data-start="${prevStart}"]`);
+              /** @type {HTMLElement | null} */ const newChip = this.basket.querySelector(`[data-start="${prevStart}"]`);
               if (newChip) newChip.focus();
             }, 0);
           }
         } else if (e.key === 'ArrowRight') {
-          const nextChip = chip.nextElementSibling;
+          const nextChip = /** @type {HTMLElement | null} */ (chip.nextElementSibling);
           if (nextChip && nextChip.classList.contains('j0n4t-pg-basket-chip')) {
-            const nextStart = parseInt(nextChip.dataset.start);
-            const nextEnd = parseInt(nextChip.dataset.end);
+            const nextStart = Number(nextChip.dataset.start);
+            const nextEnd = Number(nextChip.dataset.end);
             const nextItems = selections.slice(nextStart, nextEnd);
             selections.splice(startIndex, nextEnd - startIndex, ...nextItems, ...itemsToMove);
             this.context.updateWidgetValue(selections);
             const newStart = startIndex + (nextEnd - nextStart);
             setTimeout(() => {
-              const newChip = this.basket.querySelector(`[data-start="${newStart}"]`);
+              /** @type {HTMLElement | null} */ const newChip = this.basket.querySelector(`[data-start="${newStart}"]`);
               if (newChip) newChip.focus();
             }, 0);
           }
@@ -376,13 +385,14 @@ export default class PresetBasket {
     });
 
     this.basket.addEventListener("dragstart", (e) => {
-      const chip = e.target.closest(".j0n4t-pg-basket-chip");
+      const target = /** @type {HTMLElement} */ (e.target);
+      /** @type {HTMLElement | null} */ const chip = target.closest(".j0n4t-pg-basket-chip");
       if (chip) {
         chip.classList.add("dragging");
-        e.dataTransfer.setData("text/plain", chip.dataset.id);
-        e.dataTransfer.setData("source/basket", "true");
-        e.dataTransfer.setData("source/basket_start", chip.dataset.start);
-        e.dataTransfer.setData("source/basket_end", chip.dataset.end);
+        e.dataTransfer?.setData("text/plain", chip.dataset.id || "");
+        e.dataTransfer?.setData("source/basket", "true");
+        e.dataTransfer?.setData("source/basket_start", chip.dataset.start || "");
+        e.dataTransfer?.setData("source/basket_end", chip.dataset.end || "");
       }
     });
 
@@ -397,29 +407,37 @@ export default class PresetBasket {
     this.dropIndicator = null;
   }
 
+  /**
+   * @param {number} clientX
+   * @param {number} clientY
+   */
   getClosestChip(clientX, clientY) {
-    return [
-      ...this.basket.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)"),
-    ].reduce(
-      (closest, el) => {
-        const box = el.getBoundingClientRect();
-        const dist = Math.hypot(
-          clientX - (box.left + box.width / 2),
-          clientY - (box.top + box.height / 2)
-        );
-        return dist < closest.distance
-          ? { distance: dist, element: el, box }
-          : closest;
-      },
-      { distance: Infinity, element: null, box: null }
-    );
+    /** @type {{ distance: number, element: HTMLElement | null; box: DOMRect | null }} */
+    const initialResult = { distance: Infinity, element: null, box: null };
+    const chips = [...this.basket.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)")];
+    const result = chips.reduce((closest, el) => {
+      const box = el.getBoundingClientRect();
+      const dist = Math.hypot(
+        clientX - (box.left + box.width / 2),
+        clientY - (box.top + box.height / 2)
+      );
+      return dist < closest.distance
+        ? { distance: dist, element: /** @type {HTMLElement} */ (el), box }
+        : closest;
+    }, initialResult);
+    return result;
   }
 
-  reRollChipGroup(chipIndex, groupRaw, gIndex = null) {
+  /**
+   * @param {number} chipIndex
+   * @param {string} [groupRaw]
+   * @param {string} [gIndex]
+   */
+  reRollChipGroup(chipIndex, groupRaw, gIndex) {
     const activeList = this.context.getSelectedArray();
     const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
     const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls);
-    const targetGroup = groupRaw.trim().toLowerCase().replace(/\s+/g, "_");
+    const targetGroup = groupRaw?.trim().toLowerCase().replace(/\s+/g, "_") || "";
 
     for (let i = 0; i < chipsData.length; i++) {
       const startCounts = tracer.cloneCounts();
@@ -445,10 +463,11 @@ export default class PresetBasket {
     this.context.syncUI(this.context.widget.value);
   }
 
+  /** @param {string[]} activeList  */
   render(activeList) {
     if (!this._updatingTextarea) {
       this.context.rollManager.resetCounts(); // Clear counts before processing text
-      const expandedList = activeList.map(itemStr => {
+      const expandedList = activeList.map((/** @type {string} */ itemStr) => {
         const wMatch = itemStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         if (wMatch) {
           const coreExpanded = PresetLogic.expandRecursively(wMatch[1], this.context.cache, new Set(), this.context.rollManager);
@@ -472,26 +491,26 @@ export default class PresetBasket {
         this.context.rollManager
       );
 
-      let labelContent = PresetDOM.escapeHTML(chip.cleanLabel);
-      if ((!chip.item || chipData.styleKey.startsWith("_/combo")) && chip.segmentedLabels) {
+      let labelContent = PresetDOM.escapeHTML(chip.processed.cleanLabel);
+      if ((!chip.processed.chipData.item || chipData.styleKey.startsWith("_/combo")) && chip.processed.segmentedLabels) {
         labelContent = `<div class="j0n4t-pg-basket-chip-segments">` +
-          chip.segmentedLabels.filter(Boolean).map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`).join('') +
+          chip.processed.segmentedLabels.filter(Boolean).map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`).join('') +
           `</div>`;
       }
 
       htmlBuffer += `
         <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
-             title="${PresetDOM.escapeHTML(chip.tooltipTitle)}"
-             data-id="${PresetDOM.escapeHTML(chip.joinedStr)}"
-             data-eval-id="${PresetDOM.escapeHTML(chip.evalId)}"
-             data-preset="${PresetDOM.escapeHTML(chip.item?.preset || "")}"
+             title="${PresetDOM.escapeHTML(chip.processed.tooltipTitle)}"
+             data-id="${PresetDOM.escapeHTML(chip.processed.joinedStr)}"
+             data-eval-id="${PresetDOM.escapeHTML(chip.processed.evalId)}"
+             data-preset="${PresetDOM.escapeHTML(chip.processed.chipData.item?.preset || "")}"
              data-index="${index}"
-             data-start="${chip.startIndex}"
-             data-end="${chip.endIndex}"
+             data-start="${chip.processed.chipData.startIndex}"
+             data-end="${chip.processed.chipData.endIndex}"
              style='${chip.bgStyle}'>
             ${chip.weightIconHtml}
-            <div class="j0n4t-pg-basket-chip-label" title="${PresetDOM.escapeHTML(chip.chipExpanded || chip.joinedStr)}">
+            <div class="j0n4t-pg-basket-chip-label" title="${PresetDOM.escapeHTML(chip.processed.chipExpanded || chip.processed.joinedStr)}">
                 ${labelContent}
             </div>
             ${chip.inputHtml}
@@ -511,7 +530,7 @@ export default class PresetBasket {
     if (!selections || selections.length === 0) return "";
     const cache = this.context.cache || {};
 
-    const items = selections.map((key) => {
+    const items = selections.map((/** @type {string} */ key) => {
       const wMatch = key.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
       const coreKey = wMatch ? wMatch[1] : key;
       const weightStr = wMatch ? wMatch[2] : null;
@@ -520,10 +539,6 @@ export default class PresetBasket {
       if (!item) return key;
 
       let res = coreKey;
-      if (Array.isArray(item.variants) && item.variants.length > 1) {
-        const variantOptions = item.variants.map((v) => `${coreKey}:${v}`).join("|");
-        res = `{${variantOptions}}`;
-      }
       return weightStr ? `(${res}:${weightStr})` : res;
     });
 
@@ -544,6 +559,7 @@ export default class PresetBasket {
           className: "",
           isDefault: true,
           callback: () => {
+            /** @type {HTMLTextAreaElement | null} */
             const textarea = document.querySelector(".j0n4t-pg-modal textarea");
             if (textarea) {
               textarea.select();
@@ -561,16 +577,17 @@ export default class PresetBasket {
     });
   }
 
+  /** @param {string} styleKey */
   locatePreset(styleKey) {
-    const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetDOM.escapeHTML(styleKey)}"]`);
+    /** @type {HTMLElement | null} */ const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetDOM.escapeHTML(styleKey)}"]`);
     if (itemEl) {
       this.context.dom.search.value = "";
-      let prev = itemEl.previousElementSibling;
+      let prev = /** @type {HTMLElement} */ (itemEl.previousElementSibling);
       while (prev && !prev.classList.contains("j0n4t-pg-group-header"))
-        prev = prev.previousElementSibling;
+        prev =  /** @type {HTMLElement} */ (prev.previousElementSibling);
       if (prev?.classList.contains("collapsed")) {
         prev.classList.remove("collapsed");
-        this.context.setCollapsedFolders(this.context.getCollapsedFolders().filter((f) => f !== prev.dataset.groupRaw));
+        this.context.setCollapsedFolders(this.context.getCollapsedFolders().filter((/** @type {string} */ f) => f !== prev.dataset.groupRaw));
       }
       this.context.grid.executeFilterPipeline();
       if (this.context.dom.wrap.classList.contains("hide-gallery-mode")) {

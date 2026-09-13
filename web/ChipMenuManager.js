@@ -36,7 +36,7 @@ export default class ChipMenuManager {
   /**
    * @param {HTMLElement} chipElement
    * @param {string} styleKey
-   * @param {PresetCacheItem} item
+   * @param {PresetCacheItem | undefined} item
    * @param {number} startIndex
    * @param {number} endIndex
    */
@@ -351,7 +351,7 @@ export default class ChipMenuManager {
       } else if (action === "create") {
         this.context.setPanelCollapseState(false);
         this.context.editor.clearFields();
-        this.context.editor.dom.inpPreset.value = item.preset ? item.preset : coreKey;
+        this.context.editor.dom.inpPreset.value = item && item.preset ? item.preset : coreKey;
         this.context.editor.rawPresetManager?.updateHighlights();
         const cleanName = coreKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop()?.replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
         if (cleanName) this.context.editor.dom.inpName.value = cleanName;
@@ -385,7 +385,10 @@ export default class ChipMenuManager {
           this.context.updateWidgetValue(selections);
 
           const newChips = Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
-          const replacementChip = newChips.find(c => c.dataset.id === finalNewKey && parseInt(c.dataset.start) === startIndex);
+          const replacementChip = newChips.find((c) => {
+            const chip = /** @type {HTMLElement} */ (c);
+            return chip.dataset.id === finalNewKey && Number(chip.dataset.start) === startIndex;
+          });
           if (replacementChip) {
             this.activeChipMenuEl = replacementChip;
             replacementChip.classList.add("active-menu");
@@ -509,7 +512,10 @@ export default class ChipMenuManager {
           this.close();
         } else {
           const newChips = Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
-          const replacementChip = newChips.find(c => c.dataset.id === newStyleKey && parseInt(c.dataset.start) === startIndex);
+          const replacementChip = newChips.find(c => {
+            const chip = /** @type {HTMLElement} */ (c);
+            return chip.dataset.id === newStyleKey && Number(chip.dataset.start) === startIndex;
+          });
           if (replacementChip) {
             this.activeChipMenuEl = replacementChip;
             replacementChip.classList.add("active-menu");
@@ -547,7 +553,7 @@ export default class ChipMenuManager {
       } else if (e.key === "Escape") {
         e.stopPropagation();
         e.preventDefault();
-        const parentChip = this.activeChipMenuEl;
+        const parentChip = /** @type {HTMLElement} */ (this.activeChipMenuEl);
         this.close();
         parentChip?.focus();
       }
