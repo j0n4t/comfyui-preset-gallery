@@ -136,18 +136,10 @@ const PresetDOM = {
         }
 
         return {
-            joinedStr: processed.joinedStr,
-            evalId: processed.evalId,
-            cleanLabel: processed.cleanLabel,
-            bgStyle,
-            tooltipTitle: processed.tooltipTitle,
-            chipExpanded: processed.chipExpanded,
-            item: processed.item,
-            startIndex: processed.startIndex,
-            endIndex: processed.endIndex,
+            processed,
             inputHtml,
             weightIconHtml,
-            segmentedLabels: processed.segmentedLabels
+            bgStyle,
         };
     }
 };

@@ -15,7 +15,7 @@ const PresetLogic = {
   getUnrolledTemplate: (val, cache, seen = new Set()) => {
     if (!val) return "";
 
-    const expandToken = (tokenStr) => {
+    const expandToken = (/** @type {string} */ tokenStr) => {
       const trimmed = tokenStr.trim();
       if (!trimmed) return "";
 
@@ -34,7 +34,6 @@ const PresetLogic = {
     const expanded = keys.map(expandToken);
     return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, ' ');
   },
-
 
   /**
    * Evaluates and wraps a base string with any configured prepends or appends.
@@ -151,7 +150,7 @@ const PresetLogic = {
    * @param {string} val - Template string to expand.
    * @param {PresetCache} cache - Preset cache lookup dictionary.
    * @param {Set<string>} [seen=new Set()] - Circular dependency tracking set.
-   * @param {RollState|null} [rollState=null] - Dynamic roll state tracer.
+   * @param {RollManager|null} [rollManager=null] - Dynamic roll state tracer.
    * @returns {string} Fully expanded prompt text.
    */
   expandRecursively: (val, cache, seen = new Set(), rollManager = null) => {
@@ -193,7 +192,7 @@ const PresetLogic = {
               while ((cm = childRegex.exec(childVarsStr)) !== null) {
                 const cName = cm[1].trim();
                 const cVal = cm[2] || "";
-                const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const escapeRegExp = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const replaceRegex = new RegExp(`\\{\\s*${escapeRegExp(cName)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
                 wrappedPreset = wrappedPreset.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
               }
@@ -279,9 +278,8 @@ const PresetLogic = {
   /**
    * Resolves metadata (title and thumbnail) for single tokens within complex segment prompts.
    * @param {string} token - Inner text token.
-   * @param {PresetCache} [cache] - Cache object.
-   * @param {Record<string, string>} [variantRolls={}] - Map of pre-rolled variant choices.
-   * @param {Record<string, number>} [countsTracker={}] - Tracker of variant group indices.
+   * @param {PresetCache} cache - Cache object.
+   * @param {RollManager|null} rollManager - Dynamic roll state tracer.
    * @returns {PresetSegment} Resolved title and image filename.
    */
   resolvePresetSegment: (token, cache, rollManager) => {
@@ -377,7 +375,7 @@ const PresetLogic = {
    * @returns {ProcessedChip} Evaluated chip pure data structure.
    */
   parseBasketChip: (chipData, cache = {}, rollManager = new PresetLogic.RollManager()) => {
-    const { styleKey, item, startIndex, endIndex, subArray } = chipData;
+    const { styleKey, item, subArray } = chipData;
     let joinedStr = subArray.join(", ");
 
     const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
@@ -499,9 +497,7 @@ const PresetLogic = {
       color,
       tooltipTitle,
       chipExpanded,
-      item,
-      startIndex,
-      endIndex,
+      chipData,
       weightVal,
       segmentedLabels,
       hasMoreVar,

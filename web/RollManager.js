@@ -34,7 +34,7 @@ export default class RollManager {
 
     /**
      * @param {string} group
-     * @param {string[]} matches
+     * @param {string[]} [matches]
      */
     getRoll(group, matches) {
         const idx = this.getCount(group);
