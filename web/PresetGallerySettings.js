@@ -2,8 +2,9 @@ import ModalUtils from "./ModalUtils.js";
 import PresetDOM from "./PresetDOM.js";
 
 export default class PresetGallerySettings {
-  constructor(appInstance) {
-    this.appInstance = appInstance;
+  /** @param {import("./PresetGalleryApp.js").default} context  */
+  constructor(context) {
+    this.context = context;
     this.load();
   }
 
@@ -36,7 +37,16 @@ export default class PresetGallerySettings {
   }
 
   async openModal() {
-    let minInput, maxInput, genCheck, seedCheck, diceSelect;
+    /** @type {HTMLInputElement | null} */
+    let minInput;
+    /** @type {HTMLInputElement | null} */
+    let maxInput;
+    /** @type {HTMLInputElement | null} */
+    let genCheck;
+    /** @type {HTMLInputElement | null} */
+    let seedCheck;
+    /** @type {HTMLInputElement | null} */
+    let diceSelect;
 
     const content = `
       <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -86,17 +96,15 @@ export default class PresetGallerySettings {
           isDefault: true,
           closeOnFinish: true,
           callback: () => {
-            const minVal = parseInt(minInput.value, 10);
-            const maxVal = parseInt(maxInput.value, 10);
+            const minVal = Number(minInput?.value);
+            const maxVal = Number(maxInput?.value);
             this.rollMin = !isNaN(minVal) ? Math.max(1, minVal) : 10;
             this.rollMax = !isNaN(maxVal) ? Math.max(this.rollMin, maxVal) : 20;
-            this.rollOnGeneration = genCheck.checked;
-            this.rollOnSeedChange = seedCheck.checked;
-            this.diceBehavior = diceSelect.value;
+            this.rollOnGeneration = genCheck?.checked;
+            this.rollOnSeedChange = seedCheck?.checked;
+            this.diceBehavior = diceSelect?.value;
             this.save();
-            if (this.appInstance?.widget) {
-              this.appInstance.syncUI(this.appInstance.widget.value);
-            }
+            this.context.syncUI(this.context.widget.value);
             return true;
           }
         }
