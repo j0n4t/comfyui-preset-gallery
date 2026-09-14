@@ -22,6 +22,7 @@ export default class PresetGrid {
     .j0n4t-pg-group-roll-toggle:hover, .j0n4t-pg-group-roll-toggle:focus-visible { color: #fff; outline: none; }
     .j0n4t-pg-group-roll-toggle svg { width: 11px; height: 11px; fill: currentColor; }
     .j0n4t-pg-group-roll-toggle.excluded { color: #555; }
+    .j0n4t-pg-group-roll-toggle.hidden { display: none; }
   `;
 
   static ITEM_THUMB_STYLES = /*css*/ `
@@ -168,6 +169,8 @@ export default class PresetGrid {
         lastGroup = uiGroup;
         const excludedRoll = this.context.getExcludedRollFolders();
         const isExcluded = excludedRoll.includes(rawGroup);
+        const isHidden = key.startsWith('_');
+
         htmlBuffer += `
             <div class="j0n4t-pg-group-header${collapsedList.includes(rawGroup) ? " collapsed" : ""}" data-group="${PresetDOM.escapeHTML(uiGroup)}" data-group-raw="${PresetDOM.escapeHTML(rawGroup)}" tabindex="0" role="button" aria-expanded="${!collapsedList.includes(rawGroup)}">
                 <span class="j0n4t-pg-group-color-dot" tabindex="0" role="button" style="background-color: ${groupColor};" title="Click to customize group color" aria-label="Customize group color">
@@ -175,7 +178,7 @@ export default class PresetGrid {
                 </span>
                 <span class="j0n4t-pg-group-title">${PresetDOM.escapeHTML(uiGroup)}</span>
                 <div class="j0n4t-pg-group-line"></div>
-                <div class="j0n4t-pg-group-roll-toggle${isExcluded ? ' excluded' : ''}" tabindex="-1" role="button" title="Toggle Roll Inclusion" aria-label="Toggle Roll Inclusion">${PresetDOM.icons.dice}</div>
+                <div class="j0n4t-pg-group-roll-toggle${isExcluded ? ' excluded' : ''}${isHidden ? ' hidden' : ''}" tabindex="-1" role="button" title="Toggle Roll Inclusion" aria-label="Toggle Roll Inclusion">${PresetDOM.icons.dice}</div>
                 <div class="j0n4t-pg-group-edit" tabindex="-1" role="button" title="Rename Group" aria-label="Rename Group">${PresetDOM.icons.edit}</div>
             </div>`;
       }
