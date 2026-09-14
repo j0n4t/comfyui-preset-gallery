@@ -326,6 +326,7 @@ export default class ChipMenuManager {
           actionEl.querySelector('svg')?.setAttribute('fill', 'currentColor');
           actionEl.title = "Unpin";
         }
+        this.context.savePins();
         return;
       }
 
@@ -408,12 +409,7 @@ export default class ChipMenuManager {
         const selections = this.context.getSelectedArray();
         if (startIndex < selections.length) {
           const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
-
-          if (this.context.pinnedChips?.has(oldRawVal)) {
-            this.context.pinnedChips.delete(oldRawVal);
-            this.context.pinnedChips.add(finalNewKey);
-          }
-
+          this.context.transferPin(oldRawVal, finalNewKey);
           selections.splice(startIndex, endIndex - startIndex, finalNewKey);
           this.context.updateWidgetValue(selections);
 
@@ -539,12 +535,7 @@ export default class ChipMenuManager {
       const selections = this.context.getSelectedArray();
       if (startIndex < selections.length) {
         const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
-
-        if (this.context.pinnedChips?.has(oldRawVal)) {
-          this.context.pinnedChips.delete(oldRawVal);
-          this.context.pinnedChips.add(newStyleKey);
-        }
-
+        this.context.transferPin(oldRawVal, newStyleKey);
         selections.splice(startIndex, endIndex - startIndex, newStyleKey);
         this.context.updateWidgetValue(selections);
 

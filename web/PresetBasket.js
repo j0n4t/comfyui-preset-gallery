@@ -290,10 +290,7 @@ export default class PresetBasket {
         const selections = this.context.getSelectedArray();
         if (startIndex < selections.length) {
           const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
-          if (this.context.pinnedChips?.has(oldRawVal)) {
-            this.context.pinnedChips.delete(oldRawVal);
-            this.context.pinnedChips.add(newStyleKey);
-          }
+          this.context.transferPin(oldRawVal, newStyleKey);
           selections.splice(startIndex, endIndex - startIndex, newStyleKey);
           this.context.updateWidgetValue(selections);
         }

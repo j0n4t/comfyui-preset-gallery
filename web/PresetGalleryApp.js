@@ -93,7 +93,9 @@ export default class PresetGalleryApp {
     this.widget = widget;
     /** @type {PresetCache}  */
     this.cache = {};
-    this.pinnedChips = new Set();
+    this.pinKey = `j0n4t-pg-pins-${this.node?.id || 'global'}`;
+    const savedPins = localStorage.getItem(this.pinKey);
+    this.pinnedChips = new Set(savedPins ? JSON.parse(savedPins) : []);
     this.rollManager = new PresetLogic.RollManager();
     this.settings = new PresetGallerySettings(this);
     this.dom = this.buildDOMStructure();
@@ -245,6 +247,24 @@ export default class PresetGalleryApp {
     localStorage.setItem("pg_excluded_roll_folders", JSON.stringify(list));
   }
 
+  savePins() {
+    try {
+      localStorage.setItem(this.pinKey, JSON.stringify(Array.from(this.pinnedChips)));
+    } catch (e) { console.warn("Could not save pinned chips", e); }
+  }
+
+  /**
+   * @param {string} oldVal
+   * @param {string} newVal
+   */
+  transferPin(oldVal, newVal) {
+    if (this.pinnedChips?.has(oldVal)) {
+      this.pinnedChips.delete(oldVal);
+      this.pinnedChips.add(newVal);
+      this.savePins();
+    }
+  }
+
   getSelectedArray() {
     return this.widget.value
       ? PresetLogic.splitPresets(this.widget.value)
@@ -255,9 +275,14 @@ export default class PresetGalleryApp {
   updateWidgetValue(arr) {
     this.widget.value = arr.join(", ");
     if (this.pinnedChips) {
+      let pinsChanged = false;
       for (const val of this.pinnedChips) {
-        if (!arr.includes(val)) this.pinnedChips.delete(val);
+        if (!arr.includes(val)) {
+          this.pinnedChips.delete(val);
+          pinsChanged = true;
+        }
       }
+      if (pinsChanged) this.savePins();
     }
     this.widget.callback?.(this.widget.value);
     this.syncUI(this.widget.value);
