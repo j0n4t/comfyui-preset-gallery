@@ -93,6 +93,7 @@ export default class PresetGalleryApp {
     this.widget = widget;
     /** @type {PresetCache}  */
     this.cache = {};
+    this.pinnedChips = new Set();
     this.rollManager = new PresetLogic.RollManager();
     this.settings = new PresetGallerySettings(this);
     this.dom = this.buildDOMStructure();
@@ -253,6 +254,11 @@ export default class PresetGalleryApp {
   /** @param {string[]} arr  */
   updateWidgetValue(arr) {
     this.widget.value = arr.join(", ");
+    if (this.pinnedChips) {
+      for (const val of this.pinnedChips) {
+        if (!arr.includes(val)) this.pinnedChips.delete(val);
+      }
+    }
     this.widget.callback?.(this.widget.value);
     this.syncUI(this.widget.value);
     if (this.node.graph) this.node.graph._version++;
@@ -327,8 +333,9 @@ export default class PresetGalleryApp {
     const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_") && !excludedFolders.includes(key));
     if (availableGroups.length === 0) return;
 
-    const newSelections = [];
-    const addedSet = new Set();
+    const currentList = this.getSelectedArray();
+    const newSelections = currentList.filter(item => this.pinnedChips?.has(item));
+    const addedSet = new Set(newSelections);
 
     const min = this.settings?.rollMin ?? 10;
     const max = this.settings?.rollMax ?? 20;

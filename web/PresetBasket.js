@@ -35,6 +35,9 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip-segment { flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
+    .j0n4t-pg-basket-chip.pinned { border-color: #e09f3e; border-width: 1px; }
+    .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -2px; top: -2px; font-size: 10px; pointer-events: none; z-index: 2; }
+    .j0n4t-pg-chip-popup-item.active-pin { color: #e09f3e; }
 
     .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
     .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
@@ -186,8 +189,10 @@ export default class PresetBasket {
     }
 
     dom.btnClearBasket.addEventListener("click", async () => {
-      if (this.context.getSelectedArray().length && await ModalUtils.confirm("Empty basket?"))
-        this.context.updateWidgetValue([]);
+      if (this.context.getSelectedArray().length && await ModalUtils.confirm("Empty basket?")) {
+        const pinned = this.context.getSelectedArray().filter(item => this.context.pinnedChips?.has(item));
+        this.context.updateWidgetValue(pinned);
+      }
     });
 
     dom.chkBasketRaw.checked = localStorage.getItem("comfy_preset_gallery_raw_basket") === "true";
@@ -284,6 +289,11 @@ export default class PresetBasket {
         const newStyleKey = PresetLogic.expandRecursively(styleKey, this.context.cache).replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
         const selections = this.context.getSelectedArray();
         if (startIndex < selections.length) {
+          const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
+          if (this.context.pinnedChips?.has(oldRawVal)) {
+            this.context.pinnedChips.delete(oldRawVal);
+            this.context.pinnedChips.add(newStyleKey);
+          }
           selections.splice(startIndex, endIndex - startIndex, newStyleKey);
           this.context.updateWidgetValue(selections);
         }
@@ -491,6 +501,10 @@ export default class PresetBasket {
         this.context.rollManager
       );
 
+      const rawItems = activeList.slice(chipData.startIndex, chipData.endIndex);
+      const rawVal = rawItems.join(', ');
+      const isPinned = this.context.pinnedChips?.has(rawVal);
+
       let labelContent = PresetDOM.escapeHTML(chip.processed.cleanLabel);
       if ((!chip.processed.chipData.item || chipData.styleKey.startsWith("_/combo")) && chip.processed.segmentedLabels) {
         labelContent = `<div class="j0n4t-pg-basket-chip-segments">` +
@@ -499,7 +513,7 @@ export default class PresetBasket {
       }
 
       htmlBuffer += `
-        <div class="j0n4t-pg-basket-chip" tabindex="0" role="option" aria-selected="false" 
+        <div class="j0n4t-pg-basket-chip ${isPinned ? 'pinned' : ''}" tabindex="0" role="option" aria-selected="false" 
              draggable="true" 
              title="${PresetDOM.escapeHTML(chip.processed.tooltipTitle)}"
              data-id="${PresetDOM.escapeHTML(chip.processed.joinedStr)}"

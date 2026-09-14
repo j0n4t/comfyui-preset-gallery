@@ -176,11 +176,18 @@ export default class ChipMenuManager {
       </div>
     `;
 
+    const rawVal = this.context.getSelectedArray().slice(startIndex, endIndex).join(', ');
+    const isPinned = this.context.pinnedChips?.has(rawVal);
+    const pinBtn = `
+      <div class="j0n4t-pg-chip-popup-item ${isPinned ? 'active-pin' : ''}" data-action="pin" title="${isPinned ? 'Unpin' : 'Pin'}" tabindex="0" role="menuitem">${PresetDOM.icons.pin}</div>
+    `;
+
     const popupHtml = `
       <div class="j0n4t-pg-chip-popup" tabindex="-1" role="menu">
         ${weightSectionHtml}
         ${varSectionHtml}
         <div class="j0n4t-pg-chip-popup-actions">
+          ${pinBtn}
           ${weightToggleBtn}
           <div class="j0n4t-pg-chip-popup-item" data-action="swap" title="Swap Preset" tabindex="0" role="menuitem">${swapIcon}</div>
           <div class="j0n4t-pg-chip-popup-item" data-action="edit" title="Edit" tabindex="0" role="menuitem">${PresetDOM.icons.edit}</div>
@@ -303,6 +310,25 @@ export default class ChipMenuManager {
 
       const action = actionEl.dataset.action;
 
+      if (action === "pin") {
+        const currentList = this.context.getSelectedArray();
+        const rawToken = currentList.slice(startIndex, endIndex).join(', ');
+        if (this.context.pinnedChips?.has(rawToken)) {
+          this.context.pinnedChips.delete(rawToken);
+          chipElement.classList.remove("pinned");
+          actionEl.classList.remove("active-pin");
+          actionEl.querySelector('svg')?.setAttribute('fill', 'none');
+          actionEl.title = "Pin";
+        } else {
+          this.context.pinnedChips?.add(rawToken);
+          chipElement.classList.add("pinned");
+          actionEl.classList.add("active-pin");
+          actionEl.querySelector('svg')?.setAttribute('fill', 'currentColor');
+          actionEl.title = "Unpin";
+        }
+        return;
+      }
+
       if (action === "toggle-weight") {
         const wMod = /** @type {HTMLElement} */(popup.querySelector('.j0n4t-pg-weight-modifier'));
         wMod.style.display = wMod.style.display === 'none' ? 'flex' : 'none';
@@ -381,6 +407,13 @@ export default class ChipMenuManager {
 
         const selections = this.context.getSelectedArray();
         if (startIndex < selections.length) {
+          const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
+
+          if (this.context.pinnedChips?.has(oldRawVal)) {
+            this.context.pinnedChips.delete(oldRawVal);
+            this.context.pinnedChips.add(finalNewKey);
+          }
+
           selections.splice(startIndex, endIndex - startIndex, finalNewKey);
           this.context.updateWidgetValue(selections);
 
@@ -505,6 +538,13 @@ export default class ChipMenuManager {
 
       const selections = this.context.getSelectedArray();
       if (startIndex < selections.length) {
+        const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
+
+        if (this.context.pinnedChips?.has(oldRawVal)) {
+          this.context.pinnedChips.delete(oldRawVal);
+          this.context.pinnedChips.add(newStyleKey);
+        }
+
         selections.splice(startIndex, endIndex - startIndex, newStyleKey);
         this.context.updateWidgetValue(selections);
 
