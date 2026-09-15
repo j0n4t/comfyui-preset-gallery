@@ -225,7 +225,7 @@ export default class PresetGrid {
     this.dom.grid
       .querySelectorAll(".j0n4t-pg-group-header")
       .forEach((header) => {
-        const rawFolder =  /** @type {HTMLElement} */ (header).dataset.groupRaw;
+        const rawFolder =  /** @type {HTMLElement} */ (header).dataset.groupRaw || "";
         const colorPicker = header.querySelector(".j0n4t-pg-group-color-picker");
         const editBtn = header.querySelector(".j0n4t-pg-group-edit");
         const rollToggle = header.querySelector(".j0n4t-pg-group-roll-toggle");

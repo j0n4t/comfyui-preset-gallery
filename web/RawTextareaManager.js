@@ -14,7 +14,7 @@ export default class RawTextareaManager {
   `;
 
   /**
-   * @param {HTMLTextAreaElement} textarea
+   * @param {HTMLTextAreaElement | HTMLInputElement} textarea
    * @param {import("./PresetGalleryApp.js").default} context
    * @param {string|null} ignorePreset
    * @param {(textareaValue: string) => void} onSync
@@ -103,7 +103,7 @@ export default class RawTextareaManager {
     this.textarea.addEventListener("change", sync);
     this.textarea.addEventListener("mousedown", (e) => e.stopPropagation());
 
-    this.textarea.addEventListener("mousemove", (e) => this.handleMouseMove(e));
+    this.textarea.addEventListener("mousemove", (e) => this.handleMouseMove(/** @type {MouseEvent} */(e)));
     this.textarea.addEventListener("mouseleave", () => this.textarea.title = "");
   }
 

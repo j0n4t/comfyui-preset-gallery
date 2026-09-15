@@ -19,6 +19,7 @@ export default class PresetGalleryAPI {
     return await PresetGalleryAPI.fetchGallery();
   }
 
+  /** @param {PresetCache} presets */
   static async savePresets(presets) {
     const activeFolders = new Set();
     for (const [key, item] of Object.entries(presets)) {
@@ -33,6 +34,7 @@ export default class PresetGalleryAPI {
       }
     }
 
+    /** @type {PresetCache} */
     const cleanedPresets = {};
     for (const [key, item] of Object.entries(presets)) {
       if (!item) continue;
@@ -70,6 +72,10 @@ export default class PresetGalleryAPI {
     }
   }
 
+  /**
+   * @param {string} groupRaw
+   * @param {string} color
+   */
   static async setGroupColor(groupRaw, color) {
     const presets = await PresetGalleryAPI.getPresets();
     if (color) {
@@ -81,6 +87,18 @@ export default class PresetGalleryAPI {
     return { success: true };
   }
 
+  /**
+   * @typedef {Object} SavePresetData
+   * @property {string} name
+   * @property {string} folder
+   * @property {string} presetText
+   * @property {string} imageData
+   * @property {boolean} clearImage
+   * @property {string} editingKey
+   * @property {string} mode 
+  */
+
+  /** @param {SavePresetData} data */
   static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode }) {
     const presets = await PresetGalleryAPI.getPresets();
 
@@ -124,6 +142,7 @@ export default class PresetGalleryAPI {
     return { success: true, key: newKey };
   }
 
+  /** @param {string} uniqueKey */
   static async deletePreset(uniqueKey) {
     const presets = await PresetGalleryAPI.getPresets();
     delete presets[uniqueKey];
@@ -131,8 +150,13 @@ export default class PresetGalleryAPI {
     return { success: true };
   }
 
+  /**
+   * @param {string} oldFolder
+   * @param {string} newFolder
+   */
   static async renameFolder(oldFolder, newFolder) {
     const presets = await PresetGalleryAPI.getPresets();
+    /** @type {PresetCache} */
     const newPresets = {};
     const prefix = `${oldFolder}/`;
 
