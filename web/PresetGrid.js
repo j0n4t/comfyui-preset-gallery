@@ -64,13 +64,14 @@ export default class PresetGrid {
     this.bindEvents();
   }
 
+  /** @param {string} viewName */
   switchView(viewName) {
     ["small", "big", "list"].forEach((v) =>
       this.dom.grid?.classList.remove(`view-${v}`)
     );
     this.dom.viewsContainer?.querySelectorAll(".j0n4t-pg-view-btn")
       .forEach((btn) => {
-        const isActive = btn.dataset.view === viewName;
+        const isActive =  /** @type {HTMLElement} */ (btn).dataset.view === viewName;
         btn.classList.toggle("active", isActive);
         btn.setAttribute("aria-pressed", String(isActive));
       });
@@ -88,8 +89,8 @@ export default class PresetGrid {
     const showHidden = hideBtn ? hideBtn.classList.contains("active") : false;
     const shouldHideHidden = !showHidden;
 
-    const isHiddenPreset = (el, rawGroup) => {
-      const styleKey = el.dataset.style || "";
+    const isHiddenPreset = (/** @type {Element} */ el, rawGroup = "") => {
+      const styleKey =  /** @type {HTMLElement} */ (el).dataset.style || "";
       const presetName = PresetLogic.getPresetName(styleKey);
       const folder = rawGroup || PresetLogic.getPresetFolder(styleKey) || "";
       return styleKey.startsWith("_") || presetName.startsWith("_") || folder.startsWith("_");
@@ -98,7 +99,7 @@ export default class PresetGrid {
     this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach((el) => {
       const matchesQuery =
         !queryWords.length ||
-        queryWords.every((word) => el.dataset.searchBlob.includes(word));
+        queryWords.every((word) =>  /** @type {HTMLElement} */(el).dataset.searchBlob?.includes(word));
       const isHidden = isHiddenPreset(el);
 
       el.classList.toggle(
@@ -111,8 +112,8 @@ export default class PresetGrid {
       this.dom.grid
         .querySelectorAll(".j0n4t-pg-group-header")
         .forEach((header) => {
-          const rawGroup = header.dataset.groupRaw || "";
-          let next = header.nextElementSibling,
+          const rawGroup =  /** @type {HTMLElement} */ (header).dataset.groupRaw || "";
+          let next =  /** @type {HTMLElement} */ (header.nextElementSibling),
             hasVisibleChildren = false;
           while (next && !next.classList.contains("j0n4t-pg-group-header")) {
             const matchesQuery =
@@ -129,16 +130,17 @@ export default class PresetGrid {
                 header.classList.contains("collapsed")
               );
             } else next.classList.add("j0n4t-pg-hidden");
-            next = next.nextElementSibling;
+            next =  /** @type {HTMLElement} */ (next.nextElementSibling);
           }
           header.classList.toggle("j0n4t-pg-hidden", !hasVisibleChildren);
         });
     }
   }
 
+  /** @param {PresetCache} cache */
   compile(cache) {
-    let htmlBuffer = "",
-      lastGroup = null;
+    let htmlBuffer = "";
+    let lastGroup = "";
     const collapsedList = this.context.getCollapsedFolders();
 
     const sortedKeys = Object.keys(cache).sort((a, b) => {
@@ -189,7 +191,7 @@ export default class PresetGrid {
         ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy" alt="${PresetDOM.escapeHTML(cleanLabel)} preview">`
         : `<div style="background-color: ${groupColor}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;" aria-hidden="true">${PresetDOM.icons.file}</div>`;
       const badge = PresetLogic.getPresetFolder(key)
-        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetFolder(key).split("/").pop()))}</div>`
+        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetFolder(key).split("/").pop() || ""))}</div>`
         : "";
 
       htmlBuffer += `
@@ -223,7 +225,7 @@ export default class PresetGrid {
     this.dom.grid
       .querySelectorAll(".j0n4t-pg-group-header")
       .forEach((header) => {
-        const rawFolder = header.dataset.groupRaw;
+        const rawFolder =  /** @type {HTMLElement} */ (header).dataset.groupRaw;
         const colorPicker = header.querySelector(".j0n4t-pg-group-color-picker");
         const editBtn = header.querySelector(".j0n4t-pg-group-edit");
         const rollToggle = header.querySelector(".j0n4t-pg-group-roll-toggle");
@@ -233,7 +235,7 @@ export default class PresetGrid {
             e.stopPropagation();
             let excluded = this.context.getExcludedRollFolders();
             if (excluded.includes(rawFolder)) {
-              excluded = excluded.filter((i) => i !== rawFolder);
+              excluded = excluded.filter((/** @type {string} */ i) => i !== rawFolder);
               rollToggle.classList.remove("excluded");
             } else {
               excluded.push(rawFolder);
@@ -249,7 +251,7 @@ export default class PresetGrid {
 
           colorPicker.addEventListener("change", async (e) => {
             e.stopPropagation();
-            const newColor = e.target.value;
+            const newColor =  /** @type {HTMLInputElement} */ (e.target).value;
             await PresetGalleryAPI.setGroupColor(rawFolder, newColor);
             await this.context.loadGallery();
           });
@@ -274,7 +276,7 @@ export default class PresetGrid {
             const res = await PresetGalleryAPI.renameFolder(rawFolder, newName);
             if (res.success) {
               this.context.setCollapsedFolders(
-                this.context.getCollapsedFolders().filter((i) => i !== rawFolder)
+                this.context.getCollapsedFolders().filter((/** @type {string} */ i) => i !== rawFolder)
               );
               await this.context.loadGallery();
               this.context.updateWidgetValue(
@@ -293,11 +295,12 @@ export default class PresetGrid {
         }
 
         header.addEventListener("click", (e) => {
+          const target =  /** @type {HTMLElement} */ (e.target);
           if (
-            e.target.closest(".j0n4t-pg-group-color-picker") ||
-            e.target.closest(".j0n4t-pg-group-color-dot") ||
-            e.target.closest(".j0n4t-pg-group-edit") ||
-            e.target.closest(".j0n4t-pg-group-roll-toggle")
+            target.closest(".j0n4t-pg-group-color-picker") ||
+            target.closest(".j0n4t-pg-group-color-dot") ||
+            target.closest(".j0n4t-pg-group-edit") ||
+            target.closest(".j0n4t-pg-group-roll-toggle")
           )
             return;
           const isCollapsed = header.classList.toggle("collapsed");
@@ -306,7 +309,7 @@ export default class PresetGrid {
           if (isCollapsed && !list.includes(rawFolder)) {
             list.push(rawFolder);
           } else {
-            list = list.filter((i) => i !== rawFolder);
+            list = list.filter((/** @type {string} */ i) => i !== rawFolder);
           }
           this.context.setCollapsedFolders(list);
           this.executeFilterPipeline(this.dom.search.value);
@@ -314,27 +317,28 @@ export default class PresetGrid {
       });
 
     this.dom.grid.querySelectorAll(".j0n4t-pg-item").forEach((item) => {
-      item.addEventListener("dragstart", (e) => {
-        item.classList.add("dragging");
+      const typedItem =  /** @type {HTMLElement} */ (item);
+      typedItem.addEventListener("dragstart", (e) => {
+        if (!e.dataTransfer) return;
+        typedItem.classList.add("dragging");
         e.dataTransfer.effectAllowed = "copyMove";
-        e.dataTransfer.setData("text/plain", item.dataset.style);
-        e.dataTransfer.setData("source/grid", "true");
+        e.dataTransfer?.setData("text/plain", typedItem.dataset.style || "");
+        e.dataTransfer?.setData("source/grid", "true");
       });
-      item.addEventListener("dragend", () => item.classList.remove("dragging"));
-      item
-        .querySelector(".j0n4t-pg-corner-edit")
-        .addEventListener("click", (e) => {
-          e.stopPropagation();
-          this.context.openEditorForPreset(item.dataset.style);
-        });
+      typedItem.addEventListener("dragend", () => typedItem.classList.remove("dragging"));
+      typedItem.querySelector(".j0n4t-pg-corner-edit")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.context.openEditorForPreset(typedItem.dataset.style || "");
+      });
     });
   }
 
+  /** @param {string[]} activeList */
   syncSelection(activeList) {
     this.dom.grid
       .querySelectorAll(".j0n4t-pg-item")
       .forEach((el) => {
-        const isSelected = activeList.includes(el.dataset.style);
+        const isSelected = activeList.includes( /** @type {HTMLElement} */(el).dataset.style || "");
         el.classList.toggle("selected", isSelected);
         el.setAttribute("aria-selected", String(isSelected));
       });
@@ -342,8 +346,8 @@ export default class PresetGrid {
 
   bindEvents() {
     this.dom.viewsContainer.addEventListener("click", (e) => {
-      const btn = e.target.closest(".j0n4t-pg-view-btn");
-      if (btn) this.switchView(btn.dataset.view);
+      const btn =  /** @type {HTMLElement} */ (e.target).closest(".j0n4t-pg-view-btn");
+      if (btn) this.switchView( /** @type {HTMLElement} */(btn).dataset.view || "");
     });
 
     const isGrouped = localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
@@ -381,7 +385,7 @@ export default class PresetGrid {
       const headers = this.dom.grid.querySelectorAll(".j0n4t-pg-group-header");
       const collapseAll = this.dom.btnGlobalCollapse.title === "Collapse All";
       this.context.setCollapsedFolders(
-        collapseAll ? [...headers].map((h) => h.dataset.groupRaw) : []
+        collapseAll ? [...headers].map((h) =>  /** @type {HTMLElement} */(h).dataset.groupRaw || "") : []
       );
       this.dom.btnGlobalCollapse.title = collapseAll ? "Expand All" : "Collapse All";
       this.dom.btnGlobalCollapse.setAttribute("aria-label", collapseAll ? "Expand All" : "Collapse All");
@@ -395,14 +399,15 @@ export default class PresetGrid {
     });
 
     this.dom.grid.addEventListener("click", (e) => {
+      const target = /** @type {HTMLElement} */ (e.target);
       if (
-        e.target.closest(".j0n4t-pg-corner-edit") ||
-        e.target.closest(".j0n4t-pg-group-header")
+        target.closest(".j0n4t-pg-corner-edit") ||
+        target.closest(".j0n4t-pg-group-header")
       )
         return;
-      const item = e.target.closest(".j0n4t-pg-item");
+      const item = target.closest(".j0n4t-pg-item");
       if (!item || !this.context.widget.callback) return;
-      const key = item.dataset.style;
+      const key =  /** @type {HTMLElement} */ (item).dataset.style || "";
       let sel = this.context.getSelectedArray();
       this.context.updateWidgetValue(
         sel.includes(key) ? sel.filter((v) => v !== key) : [...sel, key]
@@ -410,7 +415,7 @@ export default class PresetGrid {
     });
 
     this.dom.grid.addEventListener("keydown", (e) => {
-      const target = e.target.closest(".j0n4t-pg-item, .j0n4t-pg-group-header");
+       /** @type {HTMLElement | null} */ const target =  /** @type {HTMLElement} */ (e.target).closest(".j0n4t-pg-item, .j0n4t-pg-group-header");
       if (!target) return;
 
       const focusables = [...this.dom.grid.querySelectorAll(".j0n4t-pg-group-header:not(.j0n4t-pg-hidden), .j0n4t-pg-item:not(.j0n4t-pg-hidden)")];
@@ -430,10 +435,10 @@ export default class PresetGrid {
         e.stopPropagation();
         e.preventDefault();
         if (target.classList.contains("j0n4t-pg-item")) {
-          this.context.openEditorForPreset(target.dataset.style);
+          this.context.openEditorForPreset(target.dataset.style || "");
         } else if (target.classList.contains("j0n4t-pg-group-header")) {
           const editBtn = target.querySelector(".j0n4t-pg-group-edit");
-          if (editBtn) editBtn.click();
+          if (editBtn)  /** @type {HTMLElement} */ (editBtn).click();
         }
         return;
       }
@@ -506,7 +511,7 @@ export default class PresetGrid {
         });
 
         if (bestCandidate) {
-          bestCandidate.focus();
+           /** @type {HTMLElement} */ (bestCandidate).focus();
         }
       }
     });
