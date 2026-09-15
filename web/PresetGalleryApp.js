@@ -230,7 +230,7 @@ export default class PresetGalleryApp {
   }
 
   getCollapsedFolders() {
-    return JSON.parse(localStorage.getItem("pg_collapsed_folders_list") || "") || [];
+    return JSON.parse(localStorage.getItem("pg_collapsed_folders_list") || "[]");
   }
 
   /** @param {string[]} list  */
@@ -239,7 +239,7 @@ export default class PresetGalleryApp {
   }
 
   getExcludedRollFolders() {
-    return JSON.parse(localStorage.getItem("pg_excluded_roll_folders") || "") || [];
+    return JSON.parse(localStorage.getItem("pg_excluded_roll_folders") || "[]");
   }
 
   /** @param {string[]} list  */
