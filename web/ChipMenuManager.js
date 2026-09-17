@@ -229,7 +229,7 @@ export default class ChipMenuManager {
             const q = query.toLowerCase();
             return options
               .filter(opt => opt.display.toLowerCase().includes(q) || opt.key.toLowerCase().includes(q))
-              .map(opt => ({ item: opt, title: PresetDOM.escapeHTML(PresetLogic.getPresetTitle(opt.key, this.context.cache)) }));
+              .map(opt => ({ item: opt, title: PresetLogic.getPresetTitle(opt.key, this.context.cache) }));
           },
           renderItem: (opt) => `
             <span>${PresetDOM.escapeHTML(opt.display)}</span>
