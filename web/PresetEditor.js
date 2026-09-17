@@ -348,14 +348,14 @@ export default class PresetEditor {
       popupClass: "j0n4t-pg-folder-autocomplete-popup",
       itemClass: "j0n4t-pg-folder-autocomplete-item",
       getMatches: (query) => {
-        query = query.trim().toLowerCase().replace(/ /g, "_");
+        query = query.trim().toLowerCase();
         if (!query) return [];
         const allFolders = PresetLogic.getAllPresetFolders(this.context.cache);
         return PresetLogic.getTopMatches(allFolders, query, (f) =>
           f.replace(/_/g, " ")
         );
       },
-      renderItem: (match) => match.replace(/_/g, " "),
+      renderItem: (match) => match,
       onSelect: (match) => {
         this.dom.inpFolder.value = match;
         this.dom.inpFolder.focus();
