@@ -53,7 +53,7 @@ export default class PresetGallerySettings {
         <div style="font-size: 12px; font-weight: bold; color: #fff; border-bottom: 1px solid #444; padding-bottom: 4px;">Rolling Options</div>
         
         <div class="j0n4t-pg-modal-field">
-          <label>Baskert Dice Button Behavior (When Basket Has Items)</label>
+          <label>Basket Dice Roll Behavior</label>
           <select id="j0n4t-pg-dice-behavior">
             <option value="variants" ${this.diceBehavior === "variants" ? "selected" : ""}>Re-roll Variants Only</option>
             <option value="overwrite" ${this.diceBehavior === "overwrite" ? "selected" : ""}>Overwrite with New Presets</option>
@@ -72,14 +72,14 @@ export default class PresetGallerySettings {
         <div class="j0n4t-pg-modal-field">
           <label class="j0n4t-pg-checkbox-wrap" style="height: auto; cursor: pointer; display: flex; align-items: center; gap: 6px;">
             <input type="checkbox" id="j0n4t-pg-roll-on-gen" ${this.rollOnGeneration ? "checked" : ""} />
-            Roll presets on each generation run
+            Dice roll on each generation run
           </label>
         </div>
 
         <div class="j0n4t-pg-modal-field">
           <label class="j0n4t-pg-checkbox-wrap" style="height: auto; cursor: pointer; display: flex; align-items: center; gap: 6px;">
             <input type="checkbox" id="j0n4t-pg-roll-on-seed" ${this.rollOnSeedChange ? "checked" : ""} />
-            Roll presets when generation seed changes
+            Dice roll on generation seed changes
           </label>
         </div>
       </div>

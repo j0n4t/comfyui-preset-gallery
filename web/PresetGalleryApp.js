@@ -223,6 +223,7 @@ export default class PresetGalleryApp {
       btnRerollBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-reroll-btn")),
       chkBasketRaw: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-basket-raw-toggle")),
       basketContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-container")),
+      basketHeader: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-header")),
       basketPool: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-pool")),
       rawTextarea: /** @type {HTMLTextAreaElement} */ (wrap.querySelector("#j0n4t-pg-raw-input")),
       btnHideGallery: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-hide-gallery-btn")),
@@ -341,8 +342,13 @@ export default class PresetGalleryApp {
     this.dom.btnRerollBasket.title = arr.length === 0 ? "Feeling lucky?" : diceTitle;
   }
 
-  triggerRoll() {
+  /** @param {boolean} overwriteMode */
+  triggerRoll(overwriteMode) {
     this.rollManager.clearAll();
+    if (!overwriteMode) {
+      this.syncUI(this.widget.value);
+      return;
+    }
     const groupsMap = new Map();
     for (const [key, item] of Object.entries(this.cache)) {
       if (item?.preset) {
@@ -492,14 +498,22 @@ export default class PresetGalleryApp {
       this.dom.inpJsonFile.value = "";
     });
 
-    this.dom.btnRerollBasket.addEventListener("click", () => {
-      const selections = this.getSelectedArray();
-      if (selections.length === 0 || this.settings?.diceBehavior === "overwrite") {
-        this.triggerRoll();
-      } else {
-        this.rollManager.clearAll();
-        this.syncUI(this.widget.value);
-      }
+    this.dom.btnRerollBasket.addEventListener("click", (e) => {
+      const isOverwrite = this.settings?.diceBehavior === "overwrite";
+      const overwriteMode = e.shiftKey ? !isOverwrite : isOverwrite;
+      this.triggerRoll(overwriteMode);
+    });
+    this.dom.basketHeader.addEventListener("mousemove", (e) => {
+      this.dom.basketHeader.classList.toggle("shift-held", e.shiftKey);
+    });
+    this.dom.basketHeader.addEventListener("mouseleave", () => {
+      this.dom.basketHeader.classList.remove("shift-held");
+    });
+    this.dom.basketHeader.addEventListener("keydown", (e) => {
+      if (e.key === "Shift") this.dom.basketHeader.classList.add("shift-held");
+    });
+    this.dom.basketHeader.addEventListener("keyup", (e) => {
+      if (e.key === "Shift") this.dom.basketHeader.classList.remove("shift-held");
     });
 
     this.dom.btnHideGallery.addEventListener("click", () => {
@@ -580,7 +594,7 @@ if (!app._presetGalleryQueueHooked) {
       for (const instance of app._presetGalleryInstances) {
         const seedChanged = instance.checkSeedChange();
         if (instance.settings?.rollOnGeneration || (instance.settings?.rollOnSeedChange && seedChanged)) {
-          instance.triggerRoll();
+          instance.triggerRoll(instance.settings?.diceBehavior === "overwrite");
         }
       }
     }
