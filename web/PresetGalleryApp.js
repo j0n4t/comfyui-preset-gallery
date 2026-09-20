@@ -100,9 +100,6 @@ export default class PresetGalleryApp {
     this.settings = new PresetGallerySettings(this);
     this.dom = this.buildDOMStructure();
 
-    app._presetGalleryInstances = app._presetGalleryInstances || [];
-    app._presetGalleryInstances.push(this);
-
     this.basket = new PresetBasket(
       this.dom.basketContainer,
       this.dom.basketPool,
@@ -585,23 +582,6 @@ export default class PresetGalleryApp {
   }
 }
 
-// Global hook for generation runs and seed changes
-if (!app._presetGalleryQueueHooked) {
-  app._presetGalleryQueueHooked = true;
-  const originalQueuePrompt = app.queuePrompt;
-  app.queuePrompt = async function () {
-    if (app._presetGalleryInstances) {
-      for (const instance of app._presetGalleryInstances) {
-        const seedChanged = instance.checkSeedChange();
-        if (instance.settings?.rollOnGeneration || (instance.settings?.rollOnSeedChange && seedChanged)) {
-          instance.triggerRoll(instance.settings?.diceBehavior === "overwrite");
-        }
-      }
-    }
-    return originalQueuePrompt.apply(this, arguments);
-  };
-}
-
 // Registration
 /**
  * @typedef {Object} ComfyUiWidget
@@ -645,7 +625,14 @@ app.registerExtension({
       evaluatedWidget.serializeValue = function () {
         const raw = widget.value || "";
         galleryView.rollManager.resetCounts();
-        return PresetLogic.expandRecursively(raw, galleryView.cache, new Set(), galleryView.rollManager);
+        const expanded = PresetLogic.expandRecursively(raw, galleryView.cache, new Set(), galleryView.rollManager);
+        const seedChanged = galleryView.checkSeedChange();
+        if (galleryView.settings?.rollOnGeneration || (galleryView.settings?.rollOnSeedChange && seedChanged)) {
+          setTimeout(() => {
+            galleryView.triggerRoll(galleryView.settings?.diceBehavior === "overwrite");
+          }, 150);
+        }
+        return expanded;
       };
 
       galleryView.init();
