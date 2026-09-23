@@ -301,6 +301,31 @@ export default class PresetBasket {
         }
       }
 
+      if ((e.key === "+" || e.key === "=" || e.key === "-") && !target.closest("input")) {
+        /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
+        if (chip) {
+          e.stopPropagation();
+          e.preventDefault();
+          const startIndex = Number(chip.dataset.start);
+          const endIndex = Number(chip.dataset.end);
+          const styleKey = chip.dataset.id || "";
+          const { core: activeCoreKey, weight: currentWeight } = PresetLogic.parseWeight(styleKey);
+
+          let val = currentWeight || 1.0;
+          val += (e.key === "+" || e.key === "=") ? 0.05 : -0.05;
+
+          let finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
+
+          if (this.updateChipSelection(startIndex, endIndex, finalNewKey)) {
+            setTimeout(() => {
+              /** @type {HTMLElement | null} */ const newChip = this.basket.querySelector(`[data-start="${startIndex}"]`);
+              if (newChip) newChip.focus();
+            }, 0);
+          }
+        }
+        return;
+      }
+
       // Handle Delete key to remove selected chip
       if (e.key === "Delete" && !target.closest("input")) {
         /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
