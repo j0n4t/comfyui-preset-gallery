@@ -5,6 +5,46 @@ const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
 const PresetLogic = {
   RollManager: RollManager,
 
+  // 1. Centralize constants
+  WEIGHT_REGEX: /^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/,
+  NESTED_BRACES_PATTERN: "(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*",
+
+  // 2. Centralize Regex Escaping
+  escapeRegExp: (/** @type {string} */ str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+
+  // 3. Centralize Weight Parsing
+  parseWeight: (/** @type {string} */ str) => {
+    const match = str?.match(PresetLogic.WEIGHT_REGEX);
+    return match
+      ? { isWeighted: true, core: match[1], weight: parseFloat(match[2]), weightStr: match[2] }
+      : { isWeighted: false, core: str || "", weight: 1.0, weightStr: null };
+  },
+
+  // 4. Centralize Value Splitting (base value vs child modifiers)
+  splitVariantValue: (/** @type {string} */ valStr) => {
+    if (!valStr) return { baseVal: "", childVarsStr: "" };
+    const bIdx = valStr.indexOf('{');
+    return bIdx !== -1
+      ? { baseVal: valStr.substring(0, bIdx).trim(), childVarsStr: valStr.substring(bIdx).trim() }
+      : { baseVal: valStr.trim(), childVarsStr: "" };
+  },
+
+  // 5. Centralize Dynamic Group Regex Creation
+  createGroupRegex: (/** @type {string} */ groupName, flags = 'gi') => {
+    return new RegExp(`\\{\\s*${PresetLogic.escapeRegExp(groupName)}\\s*(?::(${PresetLogic.NESTED_BRACES_PATTERN}))?\\}`, flags);
+  },
+
+  // 6. Centralize Root Group Nested Replacement
+  replaceNestedRoot: (/** @type {string} */ sourceStr, /** @type {string} */ rootGroup, /** @type {string} */ group, /** @type {string} */ replacement) => {
+    const rootRegex = PresetLogic.createGroupRegex(rootGroup);
+    return sourceStr.replace(rootRegex, (match, rootVal) => {
+      rootVal = rootVal || "";
+      const childRegex = PresetLogic.createGroupRegex(group);
+      rootVal = rootVal.match(childRegex) ? rootVal.replace(childRegex, replacement) : rootVal + replacement;
+      return `{${rootGroup}:${rootVal}}`;
+    });
+  },
+
   /**
    * Recursively expands presets but leaves {group} variants intact.
    * @param {string} val - Template string to expand.
@@ -155,13 +195,7 @@ const PresetLogic = {
       const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
       const valStr = m[2] ? m[2].trim() : "";
 
-      let baseVal = valStr;
-      let childVarsStr = "";
-      const bIdx = valStr.indexOf('{');
-      if (bIdx !== -1) {
-        baseVal = valStr.substring(0, bIdx).trim();
-        childVarsStr = valStr.substring(bIdx).trim();
-      }
+      const { baseVal, childVarsStr } = PresetLogic.splitVariantValue(valStr);
 
       results.push({
         groupRaw,
@@ -183,8 +217,7 @@ const PresetLogic = {
             while ((cm = childRegex.exec(childVarsStr)) !== null) {
               const cName = cm[1].trim();
               const cVal = cm[2] || "";
-              const escapeRegExp = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const replaceRegex = new RegExp(`\\{\\s*${escapeRegExp(cName)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
+              const replaceRegex = PresetLogic.createGroupRegex(cName);
               childTemplate = childTemplate.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
             }
           }
@@ -218,13 +251,7 @@ const PresetLogic = {
             rollManager.counts[groupName] = (rollManager.counts[groupName] || 0) + 1;
           }
 
-          let baseVal = selectedRaw;
-          let childVarsStr = "";
-          const bIdx = selectedRaw.indexOf('{');
-          if (bIdx !== -1) {
-            baseVal = selectedRaw.substring(0, bIdx).trim();
-            childVarsStr = selectedRaw.substring(bIdx).trim();
-          }
+          const { baseVal, childVarsStr } = PresetLogic.splitVariantValue(selectedRaw);
 
           if (PresetLogic.isVirtualNull(baseVal)) {
             return "";
@@ -243,8 +270,7 @@ const PresetLogic = {
               while ((cm = childRegex.exec(childVarsStr)) !== null) {
                 const cName = cm[1].trim();
                 const cVal = cm[2] || "";
-                const escapeRegExp = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const replaceRegex = new RegExp(`\\{\\s*${escapeRegExp(cName)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
+                const replaceRegex = PresetLogic.createGroupRegex(cName);
                 wrappedPreset = wrappedPreset.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
               }
             }
@@ -354,13 +380,7 @@ const PresetLogic = {
         const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
 
         const valStr = sVal ? sVal.trim() : "";
-        let baseVal = valStr;
-        let childVarsStr = "";
-        const bIdx = valStr.indexOf('{');
-        if (bIdx !== -1) {
-          baseVal = valStr.substring(0, bIdx).trim();
-          childVarsStr = valStr.substring(bIdx).trim();
-        }
+        const { baseVal, childVarsStr } = PresetLogic.splitVariantValue(valStr);
 
         if (baseVal && PresetLogic.isVirtualNull(baseVal)) {
           return "";
@@ -428,10 +448,8 @@ const PresetLogic = {
   parseBasketChip: (chipData, cache = {}, rollManager = new PresetLogic.RollManager()) => {
     const { styleKey, item, subArray } = chipData;
     let joinedStr = subArray.join(", ");
-
     const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-    const weightVal = wMatch ? parseFloat(wMatch[2]) : null;
-    let coreStr = wMatch ? wMatch[1] : joinedStr;
+    let { core: coreStr, weight: weightVal } = PresetLogic.parseWeight(joinedStr);
 
     if (cache && item && coreStr === styleKey) {
       const baseContent = item.preset || styleKey;
@@ -596,10 +614,7 @@ const PresetLogic = {
       for (let len = Math.min(activeList.length - i, 10); len >= 1; len--) {
         const subArray = activeList.slice(i, i + len);
         const joined = subArray.join(", ");
-
-        const wMatch = joined.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-        const coreJoined = wMatch ? wMatch[1] : joined;
-
+        const { core: coreJoined } = PresetLogic.parseWeight(joined);
         const cached = lookupMap.get(coreJoined) || lookupMap.get(coreJoined.replace(/\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '{$1}'));
 
         if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}$/)) {

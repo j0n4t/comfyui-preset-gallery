@@ -15,25 +15,64 @@ export default class ChipMenuManager {
     this.popupEl = null;
     this.closeHandler = null;
   }
+  /**
+    * @param {HTMLInputElement} inputEl
+    * @param {string} rawVal
+    */
+  _resolveInputValue(inputEl, rawVal) {
+    if (!rawVal || rawVal === "🎲 Random") return "";
+    if (rawVal === "🚫 None (Omit)") return "none";
+    // @ts-ignore
+    const matchingOpt = inputEl._options?.find(opt => opt.display === rawVal || opt.key === rawVal);
+    return matchingOpt ? matchingOpt.key : rawVal;
+  }
+
+  /**
+   * @param {number} startIndex 
+   * @param {number} endIndex 
+   * @param {string} newStyleKey 
+   * @param {boolean} coreReplaced 
+   */
+  _updateChipSelection(startIndex, endIndex, newStyleKey, coreReplaced) {
+    const selections = this.context.getSelectedArray();
+    if (startIndex >= selections.length) return;
+
+    const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
+    this.context.transferPin(oldRawVal, newStyleKey);
+    selections.splice(startIndex, endIndex - startIndex, newStyleKey);
+    this.context.updateWidgetValue(selections);
+
+    if (coreReplaced) {
+      this.close();
+    } else {
+      const newChips = /** @type {HTMLElement[]} */ (Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip")));
+      const replacementChip = newChips.find(c => c.dataset.id === newStyleKey && Number(c.dataset.start) === startIndex);
+      if (replacementChip) {
+        this.activeChipMenuEl = replacementChip;
+        replacementChip.classList.add("active-menu");
+      } else {
+        this.close();
+      }
+    }
+  }
 
   /**
    * @param {HTMLElement} chipElement
-   * @param {string} styleKey
-   * @param {PresetCacheItem | undefined} item
-   * @param {number} startIndex
-   * @param {number} endIndex
+   * @param {boolean} [focusWeight]
    */
-  show(chipElement, styleKey, item, startIndex, endIndex, focusWeight = false) {
+  show(chipElement, focusWeight = false) {
+    const styleKey = chipElement.dataset.id || "";
+    const startIndex = Number(chipElement.dataset.start);
+    const endIndex = Number(chipElement.dataset.end);
+    const { core: coreKey, weight: currentWeight, isWeighted } = PresetLogic.parseWeight(styleKey);
+    const item = this.context.cache[coreKey];
+
     if (this.activeChipMenuEl) {
       this.activeChipMenuEl.classList.remove("active-menu");
     }
     this.popupEl?.remove();
     chipElement.classList.add("active-menu");
     this.activeChipMenuEl = chipElement;
-
-    const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-    let coreKey = wMatch ? wMatch[1] : styleKey;
-    let currentWeight = wMatch ? parseFloat(wMatch[2]) : 1.0;
 
     const source = PresetLogic.getUnrolledTemplate(coreKey, this.context.cache);
     const allVariants = PresetLogic.getAllVariants(source, this.context.cache);
@@ -198,13 +237,7 @@ export default class ChipMenuManager {
 
         let rawVal = inputEl?.value;
         if (rawVal === "🚫 None (Omit)" || inputEl?.dataset.key === "none") return;
-
-        let variantKey = null;
-        if (rawVal && rawVal !== "🎲 Random") {
-          // @ts-ignore
-          const matchingOpt = inputEl._options?.find((/** @type {{ display: any; key: any; }} */ opt) => opt.display === rawVal || opt.key === rawVal);
-          variantKey = matchingOpt ? matchingOpt.key : rawVal;
-        }
+        let variantKey = this._resolveInputValue(inputEl, rawVal);
 
         if (!variantKey) {
           const chipIndex = Number(chipElement.dataset.index);
@@ -291,8 +324,8 @@ export default class ChipMenuManager {
         else {
           let editVal = styleKey;
           const rawPreset = chipElement.dataset.preset;
-          if (wMatch && rawPreset) {
-            editVal = `(${rawPreset}:${wMatch[2]})`;
+          if (isWeighted && rawPreset) {
+            editVal = `(${rawPreset}:${currentWeight})`;
           } else if (rawPreset) {
             editVal = rawPreset;
           }
@@ -300,7 +333,7 @@ export default class ChipMenuManager {
         }
       } else if (action === "swap") {
         let editVal = this.context.cache[coreKey]?.preset || coreKey;
-        if (wMatch && editVal) {
+        if (isWeighted && editVal) {
           editVal = `(${editVal}:${currentWeight})`;
         }
         this.basket.inlineEditorManager.spawn(chipElement, editVal, startIndex, endIndex);
@@ -336,32 +369,11 @@ export default class ChipMenuManager {
         let val = parseFloat(weightInput.value);
         if (isNaN(val)) return;
 
-        const currentStyleKey = chipElement.dataset.id || "";
-        const currentWMatch = currentStyleKey?.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-        const activeCoreKey = currentWMatch ? currentWMatch[1] : currentStyleKey;
-
+        const { core: activeCoreKey } = PresetLogic.parseWeight(chipElement.dataset.id || "");
         let finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
         chipElement.dataset.id = finalNewKey;
 
-        const selections = this.context.getSelectedArray();
-        if (startIndex < selections.length) {
-          const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
-          this.context.transferPin(oldRawVal, finalNewKey);
-          selections.splice(startIndex, endIndex - startIndex, finalNewKey);
-          this.context.updateWidgetValue(selections);
-
-          const newChips = Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
-          const replacementChip = newChips.find((c) => {
-            const chip = /** @type {HTMLElement} */ (c);
-            return chip.dataset.id === finalNewKey && Number(chip.dataset.start) === startIndex;
-          });
-          if (replacementChip) {
-            this.activeChipMenuEl = /** @type {HTMLElement} */ (replacementChip);
-            replacementChip.classList.add("active-menu");
-          } else {
-            this.close();
-          }
-        }
+        this._updateChipSelection(startIndex, endIndex, finalNewKey, false);
         return;
       }
 
@@ -374,27 +386,15 @@ export default class ChipMenuManager {
       const isSub = inputEl.dataset.issub === 'true';
       const rawVal = inputEl.value;
 
-      let selectedVal = rawVal;
-      if (rawVal === "🎲 Random" || !rawVal) {
-        selectedVal = "";
-      } else if (rawVal === "🚫 None (Omit)") {
-        selectedVal = "none";
-      } else {
-        // @ts-ignore
-        const matchingOpt = inputEl._options?.find((/** @type {{ display: any; key: any; }} */ opt) => opt.display === rawVal || opt.key === rawVal);
-        selectedVal = matchingOpt ? matchingOpt.key : rawVal;
-      }
-
+      const selectedVal = this._resolveInputValue(inputEl, rawVal);
       inputEl.dataset.key = selectedVal;
 
-      const escapeRegExp = (/** @type {string} */ str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const groupRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
+      const groupRegex = PresetLogic.createGroupRegex(group);
       const replacement = selectedVal ? `{${group}:${selectedVal}}` : `{${group}}`;
 
       const currentKey = chipElement.dataset.id || "";
       const currentPreset = chipElement.dataset.preset || "";
-      const currentWMatch = currentKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-      const activeCoreKey = currentWMatch ? currentWMatch[1] : currentKey;
+      const { core: activeCoreKey, isWeighted: isActiveWeighted, weightStr: activeWeight } = PresetLogic.parseWeight(currentKey);
 
       const unrolled = PresetLogic.getUnrolledTemplate(activeCoreKey, this.context.cache);
 
@@ -419,19 +419,7 @@ export default class ChipMenuManager {
       }
 
       if (newStyleKey === currentKey && isSub && rootGroup) {
-        const rootRegex = new RegExp(`\\{\\s*${escapeRegExp(rootGroup)}\\s*(?::((?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*))?\\}`, 'gi');
-        if (currentKey.match(rootRegex)) {
-          newStyleKey = currentKey.replace(rootRegex, (/** @type {string} */ match, /** @type {string} */ rootVal) => {
-            if (!rootVal) rootVal = "";
-            const childRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
-            if (rootVal.match(childRegex)) {
-              rootVal = rootVal.replace(childRegex, replacement);
-            } else {
-              rootVal = rootVal + replacement;
-            }
-            return `{${rootGroup}:${rootVal}}`;
-          });
-        }
+        newStyleKey = PresetLogic.replaceNestedRoot(currentKey, rootGroup, group, replacement);
       }
 
       if (newStyleKey === currentKey && currentPreset.match(groupRegex)) {
@@ -440,26 +428,14 @@ export default class ChipMenuManager {
       }
 
       if (newStyleKey === currentKey && isSub && rootGroup) {
-        const rootRegex = new RegExp(`\\{\\s*${escapeRegExp(rootGroup)}\\s*(?::((?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*))?\\}`, 'gi');
-        if (currentPreset.match(rootRegex)) {
-          const attempt = currentPreset.replace(rootRegex, (/** @type {string} */ match, /** @type {string} */ rootVal) => {
-            if (!rootVal) rootVal = "";
-            const childRegex = new RegExp(`\\{\\s*${escapeRegExp(group)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
-            if (rootVal.match(childRegex)) {
-              rootVal = rootVal.replace(childRegex, replacement);
-            } else {
-              rootVal = rootVal + replacement;
-            }
-            return `{${rootGroup}:${rootVal}}`;
-          });
-          if (attempt !== currentPreset) newStyleKey = attempt;
-        }
+        const attempt = PresetLogic.replaceNestedRoot(currentPreset, rootGroup, group, replacement);
+        if (attempt !== currentPreset) newStyleKey = attempt;
       }
 
       if (newStyleKey === currentKey && unrolled.match(groupRegex)) {
         const attempt = replaceNth(unrolled, groupRegex, replacement);
         if (attempt !== unrolled) {
-          newStyleKey = currentWMatch ? `(${attempt}:${currentWMatch[2]})` : attempt;
+          newStyleKey = isActiveWeighted ? `(${attempt}:${activeWeight})` : attempt;
           coreReplaced = true;
         }
       }
@@ -469,29 +445,7 @@ export default class ChipMenuManager {
       chipElement.dataset.id = newStyleKey;
       chipElement.dataset.preset = coreReplaced ? "" : newStyleKey;
 
-      const selections = this.context.getSelectedArray();
-      if (startIndex < selections.length) {
-        const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
-        this.context.transferPin(oldRawVal, newStyleKey);
-        selections.splice(startIndex, endIndex - startIndex, newStyleKey);
-        this.context.updateWidgetValue(selections);
-
-        if (coreReplaced) {
-          this.close();
-        } else {
-          const newChips = Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
-          const replacementChip = newChips.find(c => {
-            const chip = /** @type {HTMLElement} */ (c);
-            return chip.dataset.id === newStyleKey && Number(chip.dataset.start) === startIndex;
-          });
-          if (replacementChip) {
-            this.activeChipMenuEl = /** @type {HTMLElement} */ (replacementChip);
-            replacementChip.classList.add("active-menu");
-          } else {
-            this.close();
-          }
-        }
-      }
+      this._updateChipSelection(startIndex, endIndex, newStyleKey, coreReplaced);
     });
 
     popup.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {

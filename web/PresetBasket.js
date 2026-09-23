@@ -211,12 +211,11 @@ export default class PresetBasket {
         this.chipMenuManager.close();
 
         const styleKey = chip.dataset.id || "";
-        const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
         let editVal = styleKey;
-
         const rawPreset = chip.dataset.preset;
-        if (wMatch && rawPreset) {
-          editVal = `(${rawPreset}:${wMatch[2]})`;
+        const { core: coreKey, weightStr, isWeighted } = PresetLogic.parseWeight(styleKey);
+        if (isWeighted) {
+          editVal = `(${coreKey}:${weightStr})`;
         } else if (rawPreset) {
           editVal = rawPreset;
         }
@@ -241,13 +240,10 @@ export default class PresetBasket {
       if (chip) {
         e.stopPropagation();
         const styleKey = chip.dataset.id || "";
-
-        const wMatch = styleKey.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-        const coreKey = wMatch ? wMatch[1] : styleKey;
-        const cachedItem = this.context.cache[coreKey] || this.context.cache[styleKey];
+        const { core: coreKey } = PresetLogic.parseWeight(styleKey);
         const evalId = chip.dataset.evalId || coreKey;
 
-        this.chipMenuManager.show(chip, styleKey, cachedItem, Number(chip.dataset.start), Number(chip.dataset.end), !!weightBadge);
+        this.chipMenuManager.show(chip, !!weightBadge);
 
         let targetKey = styleKey;
         const presetVal = chip.dataset.preset;
@@ -496,10 +492,10 @@ export default class PresetBasket {
     if (!this._updatingTextarea) {
       this.context.rollManager.resetCounts(); // Clear counts before processing text
       const expandedList = activeList.map((/** @type {string} */ itemStr) => {
-        const wMatch = itemStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-        if (wMatch) {
-          const coreExpanded = PresetLogic.expandRecursively(wMatch[1], this.context.cache, new Set(), this.context.rollManager);
-          return `(${coreExpanded}:${wMatch[2]})`;
+        const { core: coreKey, weightStr, isWeighted } = PresetLogic.parseWeight(itemStr);
+        if (isWeighted) {
+          const coreExpanded = PresetLogic.expandRecursively(coreKey, this.context.cache, new Set(), this.context.rollManager);
+          return `(${coreExpanded}:${weightStr})`;
         }
         return PresetLogic.expandRecursively(itemStr, this.context.cache, new Set(), this.context.rollManager);
       });
@@ -563,15 +559,10 @@ export default class PresetBasket {
     const cache = this.context.cache || {};
 
     const items = selections.map((/** @type {string} */ key) => {
-      const wMatch = key.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-      const coreKey = wMatch ? wMatch[1] : key;
-      const weightStr = wMatch ? wMatch[2] : null;
-
+      const { core: coreKey, weightStr, isWeighted } = PresetLogic.parseWeight(key);
       const item = cache[coreKey];
       if (!item) return key;
-
-      let res = coreKey;
-      return weightStr ? `(${res}:${weightStr})` : res;
+      return isWeighted ? `(${coreKey}:${weightStr})` : coreKey;
     });
 
     return items.join(", ");
