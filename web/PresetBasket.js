@@ -361,55 +361,47 @@ export default class PresetBasket {
         return;
       }
 
-      if (!target.closest("input") && !e.altKey) {
-        /** @type {HTMLElement[]} */ const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
+      if (!target.closest("input") && !e.altKey && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
         /** @type {HTMLElement | null} */ const currentElement = target.closest('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn');
-        const currentIndex = currentElement ? focusableElements.indexOf(currentElement) : 0;
-
-        if (currentIndex !== -1) {
-          if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        if (currentElement) {
+          const targetEl = this.getSpatialTarget(currentElement, e.key);
+          if (targetEl) {
             e.stopPropagation();
             e.preventDefault();
-            focusableElements[currentIndex + 1]?.focus();
-          } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-            e.stopPropagation();
-            e.preventDefault();
-            focusableElements[currentIndex - 1]?.focus();
+            targetEl.focus();
           }
         }
       }
 
-      if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      if (e.altKey && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
         /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
         if (!chip) return;
-        e.stopPropagation();
-        e.preventDefault();
-        const startIndex = Number(chip.dataset.start);
-        const endIndex = Number(chip.dataset.end);
-        const selections = this.context.getSelectedArray();
-        const itemsToMove = selections.slice(startIndex, endIndex);
+        const chipElements = /** @type {HTMLElement[]} */(Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip')));
+        const targetChip = /** @type {HTMLElement | null} */ (this.getSpatialTarget(chip, e.key, chipElements));
 
-        if (e.key === 'ArrowLeft') {
-          const prevChip = /** @type {HTMLElement | null} */ (chip.previousElementSibling);
-          if (prevChip?.classList.contains('j0n4t-pg-basket-chip')) {
-            const prevStart = Number(prevChip.dataset.start);
-            const prevEnd = Number(prevChip.dataset.end);
-            const prevItems = selections.slice(prevStart, prevEnd);
-            selections.splice(prevStart, endIndex - prevStart, ...itemsToMove, ...prevItems);
-            this.context.updateWidgetValue(selections);
-            this.focusChip(prevStart);
+        if (targetChip) {
+          e.stopPropagation();
+          e.preventDefault();
+
+          const startIndex = Number(chip.dataset.start);
+          const endIndex = Number(chip.dataset.end);
+          const targetStart = Number(targetChip.dataset.start);
+          const targetEnd = Number(targetChip.dataset.end);
+
+          const selections = this.context.getSelectedArray();
+          const itemsToMove = selections.splice(startIndex, endIndex - startIndex);
+          const moveLen = itemsToMove.length;
+
+          let newStart = targetStart;
+          if (targetStart > startIndex) {
+            newStart = targetEnd - moveLen;
+            selections.splice(newStart, 0, ...itemsToMove);
+          } else {
+            selections.splice(targetStart, 0, ...itemsToMove);
           }
-        } else if (e.key === 'ArrowRight') {
-          const nextChip = /** @type {HTMLElement | null} */ (chip.nextElementSibling);
-          if (nextChip && nextChip.classList.contains('j0n4t-pg-basket-chip')) {
-            const nextStart = Number(nextChip.dataset.start);
-            const nextEnd = Number(nextChip.dataset.end);
-            const nextItems = selections.slice(nextStart, nextEnd);
-            selections.splice(startIndex, nextEnd - startIndex, ...nextItems, ...itemsToMove);
-            this.context.updateWidgetValue(selections);
-            const newStart = startIndex + (nextEnd - nextStart);
-            this.focusChip(newStart);
-          }
+
+          this.context.updateWidgetValue(selections);
+          this.focusChip(newStart);
         }
       }
     });
@@ -435,6 +427,54 @@ export default class PresetBasket {
   removeDropIndicator() {
     this.dropIndicator?.remove();
     this.dropIndicator = null;
+  }
+
+  /**
+   * Finds the geometrically or sequentially adjacent element in the basket.
+   * @param {HTMLElement} currentElement
+   * @param {string} key - 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight'
+   * @param {HTMLElement[]} [candidateElements] - Optional subset of elements to search within
+   * @returns {HTMLElement | null}
+   */
+  getSpatialTarget(currentElement, key, candidateElements) {
+    const elements = candidateElements || Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
+    const currentIndex = elements.indexOf(currentElement);
+    if (currentIndex === -1) return null;
+
+    if (key === "ArrowRight") return elements[currentIndex + 1] || null;
+    if (key === "ArrowLeft") return elements[currentIndex - 1] || null;
+
+    if (key === "ArrowUp" || key === "ArrowDown") {
+      const currentRect = currentElement.getBoundingClientRect();
+      const currentCenterX = currentRect.left + currentRect.width / 2;
+
+      const rects = elements.map(el => ({ el, rect: el.getBoundingClientRect() }));
+
+      const candidates = rects.filter(item => {
+        if (key === "ArrowUp") return item.rect.bottom <= currentRect.top + 4;
+        return item.rect.top >= currentRect.bottom - 4;
+      });
+
+      if (candidates.length === 0) return null;
+
+      const targetY = key === "ArrowUp"
+        ? Math.max(...candidates.map(c => c.rect.bottom))
+        : Math.min(...candidates.map(c => c.rect.top));
+
+      const rowItems = candidates.filter(c =>
+        Math.abs((key === "ArrowUp" ? c.rect.bottom : c.rect.top) - targetY) < 4
+      );
+
+      const closestItem = rowItems.reduce((closest, item) => {
+        const itemCenterX = item.rect.left + item.rect.width / 2;
+        const diff = Math.abs(itemCenterX - currentCenterX);
+        return diff < closest.diff ? { item, diff } : closest;
+      }, { item: rowItems[0], diff: Infinity }).item;
+
+      return closestItem.el;
+    }
+
+    return null;
   }
 
   /**
