@@ -37,7 +37,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip-segment { flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
-    .j0n4t-pg-basket-chip.pinned { border-color: #e09f3e; border-width: 1px; }
+    .j0n4t-pg-basket-chip.pinned { border-color: #e09f3e; }
     .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -2px; top: -2px; font-size: 10px; pointer-events: none; z-index: 2; }
     .j0n4t-pg-chip-popup-item.active-pin { color: #e09f3e; }
 
@@ -57,7 +57,7 @@ export default class PresetBasket {
     .j0n4t-pg-chip-popup-actions { display: flex;  flex-direction: row; justify-content: space-around; padding: 0 2px; }
     .j0n4t-pg-chip-popup-item, .j0n4t-pg-var-edit-btn { padding: 4px; font-size: 11px; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; outline: none; }
     .j0n4t-pg-chip-popup-item svg, .j0n4t-pg-var-edit-btn svg { width: 12px; height: 12px; fill: currentColor; }
-    .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus-visible, .j0n4t-pg-var-edit-btn:hover, .j0n4t-pg-var-edit-btn:focus-visibles { background: #333; color: #fff; }
+    .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus-visible, .j0n4t-pg-var-edit-btn:hover, .j0n4t-pg-var-edit-btn:focus-visible { background: #333; color: #fff; }
     .j0n4t-pg-var-edit-btn { background: transparent; border: 0; }
     .j0n4t-pg-chip-popup-item.danger:hover, .j0n4t-pg-chip-popup-item.danger:focus-visible { background: #912e2e; color: #fff; }
     .j0n4t-pg-var-more { display: flex; font-size: 11px; }
@@ -248,8 +248,6 @@ export default class PresetBasket {
         const evalId = chip.dataset.evalId || coreKey;
 
         this.chipMenuManager.show(chip, styleKey, cachedItem, Number(chip.dataset.start), Number(chip.dataset.end), !!weightBadge);
-
-        if (weightBadge) return;
 
         let targetKey = styleKey;
         const presetVal = chip.dataset.preset;

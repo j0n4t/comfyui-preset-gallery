@@ -10,6 +10,7 @@ export default class ChipMenuManager {
   constructor(context, delegateBasket) {
     this.context = context;
     this.basket = delegateBasket;
+    /** @type {HTMLElement | null} */
     this.activeChipMenuEl = null;
     this.popupEl = null;
     this.closeHandler = null;
@@ -89,7 +90,7 @@ export default class ChipMenuManager {
     }
 
     let varSectionHtml = varRowsHtml ? `<div class="j0n4t-pg-var-popup-container">${varRowsHtml}</div>` : "";
-    const swapIcon = PresetDOM.icons.swap || `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>`;
+    const swapIcon = PresetDOM.icons.swap;
 
     const weightSectionHtml = `
       <div class="j0n4t-pg-weight-modifier" style="display: ${focusWeight ? 'flex' : 'none'}; justify-content: center; align-items: center; gap: 6px; padding: 4px; background: #222; border-bottom: 1px solid #444;">
@@ -124,7 +125,8 @@ export default class ChipMenuManager {
         ? `<div class="j0n4t-pg-chip-popup-item" data-action="locate" title="Locate in Gallery" tabindex="0" role="menuitem">${PresetDOM.icons.eye}</div>`
         : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip" tabindex="0" role="menuitem">${PresetDOM.icons.add}</div>`
       }
-          <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove" tabindex="0" role="menuitem">${PresetDOM.icons.close}</div>
+          <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove" tabindex="0" role="menuitem">${PresetDOM.icons.trash}</div>
+          <div class="j0n4t-pg-chip-popup-item" data-action="close" title="Close" tabindex="0" role="menuitem">${PresetDOM.icons.close}</div>
         </div>
       </div>
     `;
@@ -239,6 +241,11 @@ export default class ChipMenuManager {
 
       const action = actionEl.dataset.action;
 
+      if (action === "close") {
+        this.close();
+        return;
+      }
+
       if (action === "pin") {
         const currentList = this.context.getSelectedArray();
         const rawToken = currentList.slice(startIndex, endIndex).join(', ');
@@ -278,6 +285,7 @@ export default class ChipMenuManager {
       }
 
       this.close();
+
       if (action === "edit") {
         if (item) this.context.openEditorForPreset(coreKey, true);
         else {
@@ -348,7 +356,7 @@ export default class ChipMenuManager {
             return chip.dataset.id === finalNewKey && Number(chip.dataset.start) === startIndex;
           });
           if (replacementChip) {
-            this.activeChipMenuEl = replacementChip;
+            this.activeChipMenuEl = /** @type {HTMLElement} */ (replacementChip);
             replacementChip.classList.add("active-menu");
           } else {
             this.close();
@@ -477,7 +485,7 @@ export default class ChipMenuManager {
             return chip.dataset.id === newStyleKey && Number(chip.dataset.start) === startIndex;
           });
           if (replacementChip) {
-            this.activeChipMenuEl = replacementChip;
+            this.activeChipMenuEl = /** @type {HTMLElement} */ (replacementChip);
             replacementChip.classList.add("active-menu");
           } else {
             this.close();
@@ -513,9 +521,7 @@ export default class ChipMenuManager {
       } else if (e.key === "Escape") {
         e.stopPropagation();
         e.preventDefault();
-        const parentChip = /** @type {HTMLElement} */ (this.activeChipMenuEl);
         this.close();
-        parentChip?.focus();
       }
     });
 
@@ -564,6 +570,7 @@ export default class ChipMenuManager {
     }
     if (this.activeChipMenuEl) {
       this.activeChipMenuEl.classList.remove("active-menu");
+      this.activeChipMenuEl.focus();
       this.activeChipMenuEl = null;
     }
     this.popupEl?.remove();
