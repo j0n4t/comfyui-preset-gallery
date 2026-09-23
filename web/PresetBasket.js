@@ -334,6 +334,25 @@ export default class PresetBasket {
         return; // Prevent further processing
       }
 
+      if (e.key === "p" && !target.closest("input")) {
+        /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
+        if (chip) {
+          e.stopPropagation();
+          e.preventDefault();
+          const currentList = this.context.getSelectedArray();
+          const rawToken = currentList.slice(Number(chip.dataset.start), Number(chip.dataset.end)).join(', ');
+          if (this.context.pinnedChips?.has(rawToken)) {
+            this.context.pinnedChips.delete(rawToken);
+            chip.classList.remove("pinned");
+          } else {
+            this.context.pinnedChips?.add(rawToken);
+            chip.classList.add("pinned");
+          }
+          this.context.savePins();
+        }
+        return;
+      }
+
       if (!target.closest("input") && !e.altKey) {
         /** @type {HTMLElement[]} */ const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
         /** @type {HTMLElement | null} */ const currentElement = target.closest('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn');
