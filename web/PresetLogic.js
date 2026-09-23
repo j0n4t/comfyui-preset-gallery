@@ -145,6 +145,57 @@ const PresetLogic = {
     return null;
   },
 
+  getAllVariants: (/** @type {string} */ text, /** @type {PresetCache | undefined} */ cache, rootGroup = "") => {
+    /** @type {ChipVariantData[]}  */
+    let results = [];
+    let m;
+    const localRegex = new RegExp(VAR_REGEX);
+    while ((m = localRegex.exec(text)) !== null) {
+      const groupRaw = m[1].trim();
+      const groupName = groupRaw.toLowerCase().replace(/\s+/g, "_");
+      const valStr = m[2] ? m[2].trim() : "";
+
+      let baseVal = valStr;
+      let childVarsStr = "";
+      const bIdx = valStr.indexOf('{');
+      if (bIdx !== -1) {
+        baseVal = valStr.substring(0, bIdx).trim();
+        childVarsStr = valStr.substring(bIdx).trim();
+      }
+
+      results.push({
+        groupRaw,
+        groupName,
+        val: baseVal,
+        childVarsStr,
+        rootGroup: rootGroup || groupName,
+        isSub: !!rootGroup
+      });
+
+      if (baseVal && !PresetLogic.isVirtualNull(baseVal)) {
+        const resolvedKey = PresetLogic.resolveVariantKey(groupName, baseVal, cache) || baseVal;
+        const item = cache?.[resolvedKey];
+        if (item && item.preset) {
+          let childTemplate = item.preset;
+          if (childVarsStr) {
+            const childRegex = new RegExp(VAR_REGEX);
+            let cm;
+            while ((cm = childRegex.exec(childVarsStr)) !== null) {
+              const cName = cm[1].trim();
+              const cVal = cm[2] || "";
+              const escapeRegExp = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const replaceRegex = new RegExp(`\\{\\s*${escapeRegExp(cName)}\\s*(?::(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*)?\\}`, 'gi');
+              childTemplate = childTemplate.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
+            }
+          }
+          const childResults = PresetLogic.getAllVariants(childTemplate, cache, rootGroup || groupName);
+          results = results.concat(childResults);
+        }
+      }
+    }
+    return results;
+  },
+
   /**
    * Recursively expands `{group:value}` syntax and references within templates.
    * @param {string} val - Template string to expand.

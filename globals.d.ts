@@ -53,6 +53,22 @@ type ChipGroupInput = {
   subArray: string[];
 };
 
+type ChipVariantData = {
+  groupRaw: string;
+  groupName: string;
+  val: string;
+  childVarsStr: string;
+  rootGroup: string;
+  isSub: boolean;
+};
+
+type AutocompleteConfig = {
+  group: string;
+  gIndex: number;
+  matches: string[];
+  groupRegex: RegExp;
+};
+
 /** Evaluated pure data structure of a chip (free of HTML strings). */
 type ProcessedChip = {
   chipData: ChipGroupInput;
