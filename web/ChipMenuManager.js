@@ -117,9 +117,9 @@ export default class ChipMenuManager {
         ${weightSectionHtml}
         ${varSectionHtml}
         <div class="j0n4t-pg-chip-popup-actions">
+          <div class="j0n4t-pg-chip-popup-item" data-action="swap" title="Swap Preset" tabindex="0" role="menuitem">${swapIcon}</div>
           ${pinBtn}
           ${weightToggleBtn}
-          <div class="j0n4t-pg-chip-popup-item" data-action="swap" title="Swap Preset" tabindex="0" role="menuitem">${swapIcon}</div>
           <div class="j0n4t-pg-chip-popup-item" data-action="edit" title="Edit" tabindex="0" role="menuitem">${PresetDOM.icons.edit}</div>
           ${item
         ? `<div class="j0n4t-pg-chip-popup-item" data-action="locate" title="Locate in Gallery" tabindex="0" role="menuitem">${PresetDOM.icons.eye}</div>`
@@ -560,8 +560,13 @@ export default class ChipMenuManager {
       if (focusWeight) {
         /** @type {HTMLElement} */ (popup.querySelector('.j0n4t-pg-weight-input')).focus();
       } else {
-        /** @type {HTMLElement} */ (Array.from(popup.querySelectorAll("[data-action], button, input"))
-          .find(el => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))).focus();
+        const target = /** @type {HTMLElement} */ (Array.from(popup.querySelectorAll("[data-action], button, input"))
+          .find(el => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })));
+        target.focus();
+        if (target instanceof HTMLInputElement) {
+          target.selectionStart = 0;
+          target.selectionEnd = target.value.length;
+        }
       }
     }, 10);
   }

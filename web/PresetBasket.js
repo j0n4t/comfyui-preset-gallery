@@ -19,7 +19,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus-visible { filter: grayscale(0) brightness(1) !important; transform: scale(1.1); }
     .j0n4t-pg-basket-reroll-btn { transition: transform 0.2s ease; }
     .j0n4t-pg-basket-header.shift-held .j0n4t-pg-basket-reroll-btn { transform: rotate(180deg); }
-    .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; padding: 4px; }
+    .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; height: 100%; align-items: center; align-content: flex-start; padding: 4px; }
     .j0n4t-pg-basket-container .j0n4t-pg-raw-wrapper { display: none; width: auto; }
     .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block; margin: 4px; }
     .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool-wrapper { display: none; }
@@ -47,7 +47,7 @@ export default class PresetBasket {
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
 
     .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; outline: none; }
-    .j0n4t-pg-basket-add-btn:hover, .j0n4t-pg-basket-add-btn:focus-visible { border-color: #007acc; color: #fff; background: #1a242db0; }
+    .j0n4t-pg-basket-add-btn:hover, .j0n4t-pg-basket-add-btn:focus { border-color: #007acc; color: #fff; background: #1a242db0; }
     .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input, .j0n4t-pg-select-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 2px; text-align: center; margin: 0 2px; outline: none; position: relative; cursor: pointer; }
     .j0n4t-pg-text-input:focus, .j0n4t-pg-bool-input:focus, .j0n4t-pg-num-input:focus, .j0n4t-pg-select-input:focus { border-color: #007acc; }
     .j0n4t-pg-bool-input { width: auto; }
@@ -264,6 +264,8 @@ export default class PresetBasket {
         if (!this.context.dom.editor.classList.contains("collapsed") && this.context.editor.isSaved) {
           this.context.openEditorForPreset(targetKey);
         }
+      } else {
+        /** @type {HTMLElement} */ (this.basket.querySelector('.j0n4t-pg-basket-add-btn')).focus();
       }
     });
 

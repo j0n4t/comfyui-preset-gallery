@@ -25,9 +25,9 @@ export default class InlineEditorManager {
     const isNew = !chipElement;
     const inputHtml = `<input type="text" class="j0n4t-pg-inline-edit" enterkeyhint="enter" value="${PresetDOM.escapeHTML(initialValue)}" tabindex="0" />`;
     let input;
+    const addBtn = /** @type {HTMLElement} */(this.basket.querySelector(".j0n4t-pg-basket-add-btn"));
 
     if (isNew) {
-      const addBtn = this.basket.querySelector(".j0n4t-pg-basket-add-btn");
       const newChipHtml = `<div class="j0n4t-pg-basket-chip inline-editing">${inputHtml}</div>`;
       if (addBtn) {
         addBtn.insertAdjacentHTML("beforebegin", newChipHtml);
@@ -64,14 +64,17 @@ export default class InlineEditorManager {
         // DOM element might already be detached
       }
 
-      if (isNew) chipElement.remove();
-      else {
+      if (isNew) {
+        chipElement.remove();
+        addBtn.focus();
+      } else {
         chipElement.classList.remove("inline-editing");
         chipElement.draggable = true;
         const label = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-label"));
         const weight = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-weight"));
         if (label) label.style.display = "";
         if (weight) weight.style.display = "";
+        chipElement.focus();
       }
 
       if (save) {
