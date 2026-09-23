@@ -285,13 +285,8 @@ export default class PresetBasket {
           newValue = dynamicInput.value.trim();
         }
         const newStyleKey = PresetLogic.expandRecursively(styleKey, this.context.cache).replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
-        const selections = this.context.getSelectedArray();
-        if (startIndex < selections.length) {
-          const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
-          this.context.transferPin(oldRawVal, newStyleKey);
-          selections.splice(startIndex, endIndex - startIndex, newStyleKey);
-          this.context.updateWidgetValue(selections);
-        }
+
+        this.updateChipSelection(startIndex, endIndex, newStyleKey);
       }
     });
 
@@ -548,6 +543,23 @@ export default class PresetBasket {
 
     htmlBuffer += `<div class="j0n4t-pg-basket-add-btn" tabindex="0" role="button" title="Add new preset or keyword" aria-label="Add new keyword">+ Add</div>`;
     this.basket.innerHTML = htmlBuffer;
+  }
+
+  /**
+   * @param {number} startIndex 
+   * @param {number} endIndex 
+   * @param {string} newStyleKey 
+   * @returns {boolean}
+   */
+  updateChipSelection(startIndex, endIndex, newStyleKey) {
+    const selections = this.context.getSelectedArray();
+    if (startIndex >= selections.length) return false;
+
+    const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
+    this.context.transferPin(oldRawVal, newStyleKey);
+    selections.splice(startIndex, endIndex - startIndex, newStyleKey);
+    this.context.updateWidgetValue(selections);
+    return true;
   }
 
   getCopyContent() {

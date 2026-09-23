@@ -34,13 +34,7 @@ export default class ChipMenuManager {
    * @param {boolean} coreReplaced 
    */
   _updateChipSelection(startIndex, endIndex, newStyleKey, coreReplaced) {
-    const selections = this.context.getSelectedArray();
-    if (startIndex >= selections.length) return;
-
-    const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
-    this.context.transferPin(oldRawVal, newStyleKey);
-    selections.splice(startIndex, endIndex - startIndex, newStyleKey);
-    this.context.updateWidgetValue(selections);
+    if (!this.basket.updateChipSelection(startIndex, endIndex, newStyleKey)) return;
 
     if (coreReplaced) {
       this.close();
