@@ -56,7 +56,13 @@ export default class InlineEditorManager {
     input.selectionStart = 0;
     input.selectionEnd = input.value.length;
 
+    let isFinishing = false;
+
     const finishEdit = (/** @type {boolean} */ save) => {
+      // Guard against the input.remove() triggering onBlur and running this twice
+      if (isFinishing) return;
+      isFinishing = true;
+
       const newVal = input.value.trim();
       try {
         input.remove();

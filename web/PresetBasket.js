@@ -516,7 +516,7 @@ export default class PresetBasket {
       if (target) {
         /** @type {HTMLElement} */(target).focus();
       }
-    }, 0);
+    }, 50);
   }
 
   /** @param {string[]} activeList  */

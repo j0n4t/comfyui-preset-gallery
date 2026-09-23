@@ -45,7 +45,7 @@ export default class ChipMenuManager {
         this.activeChipMenuEl = replacementChip;
         replacementChip.classList.add("active-menu");
       } else {
-        this.close();
+        this.close(true);
       }
     }
   }
