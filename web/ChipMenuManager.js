@@ -37,7 +37,7 @@ export default class ChipMenuManager {
     if (!this.basket.updateChipSelection(startIndex, endIndex, newStyleKey)) return;
 
     if (coreReplaced) {
-      this.close();
+      this.close(true);
     } else {
       const newChips = /** @type {HTMLElement[]} */ (Array.from(this.basket.basket.querySelectorAll(".j0n4t-pg-basket-chip")));
       const replacementChip = newChips.find(c => c.dataset.id === newStyleKey && Number(c.dataset.start) === startIndex);
@@ -218,7 +218,7 @@ export default class ChipMenuManager {
           rerollBtn.dataset.group,
           rerollBtn.dataset.gindex
         );
-        this.close();
+        this.close(true);
         return;
       }
 
@@ -269,7 +269,7 @@ export default class ChipMenuManager {
       const action = actionEl.dataset.action;
 
       if (action === "close") {
-        this.close();
+        this.close(true);
         return;
       }
 
@@ -311,7 +311,7 @@ export default class ChipMenuManager {
         return;
       }
 
-      this.close();
+      this.close(false);
 
       if (action === "edit") {
         if (item) this.context.openEditorForPreset(coreKey, true);
@@ -470,7 +470,7 @@ export default class ChipMenuManager {
       } else if (e.key === "Escape") {
         e.stopPropagation();
         e.preventDefault();
-        this.close();
+        this.close(true);
       }
     });
 
@@ -497,7 +497,7 @@ export default class ChipMenuManager {
 
     const closeHandler = (/** @type {Event} */e) => {
       if (!popup.contains(/** @type {HTMLElement} */(e.target)) && e.target !== chipElement) {
-        this.close();
+        this.close(false);
         document.removeEventListener("mousedown", closeHandler);
       }
     };
@@ -519,14 +519,16 @@ export default class ChipMenuManager {
     }, 10);
   }
 
-  close() {
+  close(restoreFocus = false) {
     if (this.closeHandler) {
       document.removeEventListener("mousedown", this.closeHandler);
       this.closeHandler = null;
     }
     if (this.activeChipMenuEl) {
       this.activeChipMenuEl.classList.remove("active-menu");
-      this.activeChipMenuEl.focus();
+      if (restoreFocus) {
+        this.basket.focusChip(this.activeChipMenuEl.dataset.start);
+      }
       this.activeChipMenuEl = null;
     }
     this.popupEl?.remove();

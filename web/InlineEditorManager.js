@@ -6,11 +6,12 @@ import PresetLogic from "./PresetLogic.js";
 export default class InlineEditorManager {
   /**
    * @param {import("./PresetGalleryApp.js").default} context
-   * @param {HTMLDivElement} basketElement
+   * @param {import("./PresetBasket.js").default} delegateBasket
    */
-  constructor(context, basketElement) {
+  constructor(context, delegateBasket) {
     this.context = context;
-    this.basket = basketElement;
+    this.delegate = delegateBasket;
+    this.basket = delegateBasket.basket;
   }
 
   /**
@@ -66,7 +67,6 @@ export default class InlineEditorManager {
 
       if (isNew) {
         chipElement.remove();
-        addBtn.focus();
       } else {
         chipElement.classList.remove("inline-editing");
         chipElement.draggable = true;
@@ -74,14 +74,16 @@ export default class InlineEditorManager {
         const weight = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-weight"));
         if (label) label.style.display = "";
         if (weight) weight.style.display = "";
-        chipElement.focus();
       }
+
+      let targetFocusIndex = startIndex;
 
       if (save) {
         const selections = this.context.getSelectedArray();
         if (isNew && newVal) {
           selections.push(newVal);
           this.context.updateWidgetValue(selections);
+          targetFocusIndex = selections.length - 1;
         } else if (!isNew && newVal !== initialValue) {
           if (startIndex !== undefined && endIndex !== undefined) {
             const newValues = newVal.includes(",") ? PresetLogic.splitPresets(newVal) : [newVal];
@@ -90,13 +92,20 @@ export default class InlineEditorManager {
           } else {
             const idx = selections.indexOf(initialValue);
             if (idx !== -1) {
-              if (newVal) selections[idx] = newVal;
-              else selections.splice(idx, 1);
+              if (newVal) {
+                selections[idx] = newVal;
+                targetFocusIndex = idx;
+              }
+              else {
+                selections.splice(idx, 1);
+              }
               this.context.updateWidgetValue(selections);
             }
           }
         }
       }
+
+      this.delegate.focusChip(targetFocusIndex);
     };
 
     new AutocompleteManager({

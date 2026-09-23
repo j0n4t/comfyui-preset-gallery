@@ -89,7 +89,7 @@ export default class PresetBasket {
     this.currentMatches = [];
     this.activeIndex = 0;
     this._updatingTextarea = false;
-    this.inlineEditorManager = new InlineEditorManager(this.context, this.basket);
+    this.inlineEditorManager = new InlineEditorManager(this.context, this);
     this.chipMenuManager = new ChipMenuManager(this.context, this);
 
     PresetDOM.injectStyles("j0n4t-pg-basket-container-styles", PresetBasket.BASKET_CONTAINER_STYLES);
@@ -208,7 +208,7 @@ export default class PresetBasket {
       /** @type {HTMLElement | null} */ const chip = /** @type {HTMLElement} */ (e.target).closest('.j0n4t-pg-basket-chip');
       if (chip) {
         e.stopPropagation();
-        this.chipMenuManager.close();
+        this.chipMenuManager.close(false);
 
         const styleKey = chip.dataset.id || "";
         let editVal = styleKey;
@@ -317,10 +317,7 @@ export default class PresetBasket {
           let finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
 
           if (this.updateChipSelection(startIndex, endIndex, finalNewKey)) {
-            setTimeout(() => {
-              /** @type {HTMLElement | null} */ const newChip = this.basket.querySelector(`[data-start="${startIndex}"]`);
-              if (newChip) newChip.focus();
-            }, 0);
+            this.focusChip(startIndex);
           }
         }
         return;
@@ -338,16 +335,11 @@ export default class PresetBasket {
           if (startIndex >= 0 && endIndex <= selections.length) {
             selections.splice(startIndex, endIndex - startIndex);
             this.context.updateWidgetValue(selections);
-            this.chipMenuManager.close();
-            // Focus the next chip or add button if available
-            /** @type {HTMLElement[]} */ const focusableElements = Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
-            const newIndex = Math.min(startIndex, focusableElements.length - 1);
-            if (newIndex >= 0) {
-              focusableElements[newIndex]?.focus();
-            }
+            this.chipMenuManager.close(false);
+            this.focusChip(startIndex);
           }
         }
-        return; // Prevent further processing
+        return;
       }
 
       if (e.key === "p" && !target.closest("input")) {
@@ -405,10 +397,7 @@ export default class PresetBasket {
             const prevItems = selections.slice(prevStart, prevEnd);
             selections.splice(prevStart, endIndex - prevStart, ...itemsToMove, ...prevItems);
             this.context.updateWidgetValue(selections);
-            setTimeout(() => {
-              /** @type {HTMLElement | null} */ const newChip = this.basket.querySelector(`[data-start="${prevStart}"]`);
-              if (newChip) newChip.focus();
-            }, 0);
+            this.focusChip(prevStart);
           }
         } else if (e.key === 'ArrowRight') {
           const nextChip = /** @type {HTMLElement | null} */ (chip.nextElementSibling);
@@ -419,10 +408,7 @@ export default class PresetBasket {
             selections.splice(startIndex, nextEnd - startIndex, ...nextItems, ...itemsToMove);
             this.context.updateWidgetValue(selections);
             const newStart = startIndex + (nextEnd - nextStart);
-            setTimeout(() => {
-              /** @type {HTMLElement | null} */ const newChip = this.basket.querySelector(`[data-start="${newStart}"]`);
-              if (newChip) newChip.focus();
-            }, 0);
+            this.focusChip(newStart);
           }
         }
       }
@@ -505,6 +491,32 @@ export default class PresetBasket {
       }
     }
     this.context.syncUI(this.context.widget.value);
+  }
+
+  /**
+   * Focuses the chip at the specified start index, or falls back to the closest available element.
+   * @param {number | string} [startIndex]
+   */
+  focusChip(startIndex) {
+    setTimeout(() => {
+      let target = null;
+      if (startIndex !== undefined && startIndex !== null && startIndex !== "") {
+        target = this.basket.querySelector(`[data-start="${startIndex}"]`);
+        if (!target) {
+          const chips = Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
+          const idx = Number(startIndex);
+          if (!isNaN(idx)) {
+            target = chips.find(c => Number(/** @type {HTMLElement} */(c).dataset.start) >= idx) || chips[chips.length - 1];
+          }
+        }
+      }
+      if (!target) {
+        target = this.basket.querySelector(".j0n4t-pg-basket-add-btn");
+      }
+      if (target) {
+        /** @type {HTMLElement} */(target).focus();
+      }
+    }, 0);
   }
 
   /** @param {string[]} activeList  */
