@@ -495,7 +495,8 @@ export default class ChipMenuManager {
     });
 
     popup.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
-      /** @type {HTMLInputElement[]} */ const items = Array.from(popup.querySelectorAll("[data-action], button, input"));
+      const items = /** @type {HTMLElement[]} */ (Array.from(popup.querySelectorAll("[data-action], button, input"))
+        .filter(el => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })));
       const currentIndex = document.activeElement ? items.indexOf(/** @type {HTMLInputElement} */(document.activeElement)) : 0;
       const target = /** @type {HTMLInputElement} */(e.target);
 
@@ -553,12 +554,14 @@ export default class ChipMenuManager {
       }
     };
     this.closeHandler = closeHandler;
+
     setTimeout(() => {
       document.addEventListener("mousedown", closeHandler);
       if (focusWeight) {
         /** @type {HTMLElement} */ (popup.querySelector('.j0n4t-pg-weight-input')).focus();
       } else {
-        /** @type {HTMLElement} */ (popup.querySelector("[data-action]")).focus();
+        /** @type {HTMLElement} */ (Array.from(popup.querySelectorAll("[data-action], button, input"))
+          .find(el => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))).focus();
       }
     }, 10);
   }

@@ -57,7 +57,7 @@ export default class PresetBasket {
     .j0n4t-pg-chip-popup-actions { display: flex;  flex-direction: row; justify-content: space-around; padding: 0 2px; }
     .j0n4t-pg-chip-popup-item, .j0n4t-pg-var-edit-btn { padding: 4px; font-size: 11px; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; outline: none; }
     .j0n4t-pg-chip-popup-item svg, .j0n4t-pg-var-edit-btn svg { width: 12px; height: 12px; fill: currentColor; }
-    .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus-visible, .j0n4t-pg-var-edit-btn:hover, .j0n4t-pg-var-edit-btn:focus-visible { background: #333; color: #fff; }
+    .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus, .j0n4t-pg-var-edit-btn:hover, .j0n4t-pg-var-edit-btn:focus-visible { background: #555; color: #fff; }
     .j0n4t-pg-var-edit-btn { background: transparent; border: 0; }
     .j0n4t-pg-chip-popup-item.danger:hover, .j0n4t-pg-chip-popup-item.danger:focus-visible { background: #912e2e; color: #fff; }
     .j0n4t-pg-var-more { display: flex; font-size: 11px; }
