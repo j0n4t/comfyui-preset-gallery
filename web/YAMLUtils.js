@@ -17,6 +17,7 @@ const YAMLUtils = {
             if (value !== null && typeof value === "object" && !Array.isArray(value)) {
                 yaml += `${spaces}${strKey}:\n${YAMLUtils.stringify(value, indent + 2)}`;
             } else {
+                if (!value) continue;
                 const strVal = String(value ?? "");
                 if (needsQuotes.test(strVal)) {
                     yaml += `${spaces}${strKey}: ${escapeString(strVal)}\n`;
