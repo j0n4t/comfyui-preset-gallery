@@ -27,7 +27,7 @@ export default class PresetGrid {
 
   static ITEM_THUMB_STYLES = /*css*/ `
     .j0n4t-pg-item { cursor: pointer; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 4px; background: #1a1a1a80; transition: 0.1s; height: fit-content; box-sizing: border-box; user-select: none; position: relative; outline: none; }
-    .j0n4t-pg-item:hover, .j0n4t-pg-item:focus-visible { background: #2a2a2a; border-color: #444; }
+    .j0n4t-pg-item:hover, .j0n4t-pg-item:focus-visible { background: #3a3a3a; border-color: #777; }
     .j0n4t-pg-item.selected { border-color: #007acc; background: #252525; }
     .j0n4t-pg-item.editing { border-color: #d1a119 !important; background: #2b271d !important; }
     .j0n4t-pg-item.dragging { opacity: 0.4; }
