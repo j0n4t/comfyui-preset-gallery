@@ -435,12 +435,42 @@ export default class PresetGalleryApp {
 
   bindEvents() {
     this.dom.wrap.addEventListener("keydown", (e) => {
+      const target = /** @type {HTMLElement} */ (e.target);
+      const isInput = ["INPUT", "TEXTAREA"].includes(target.tagName);
+
       if (e.key === "Enter" || e.key === " ") {
-        const triggerable = /** @type {HTMLElement} */ (e.target)?.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-copy-btn, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
+        const triggerable = target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-copy-btn, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
         if (triggerable) {
           e.preventDefault();
           /** @type {HTMLElement} */ (triggerable).click();
+          return;
         }
+      }
+      if (e.key === "Escape") {
+        if (isInput) target.blur();
+        if (this.dom.search.value) this.dom.searchClear.click();
+        return;
+      }
+      if ((e.ctrlKey && e.key === "f") || (!isInput && e.key === "/")) {
+        e.preventDefault();
+        this.dom.search.focus();
+      }
+      else if (e.ctrlKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        this.dom.toggle.click();
+      }
+      else if (e.ctrlKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        this.dom.btnHideGallery.click();
+      }
+      else if (e.ctrlKey && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        const mainBehavior = this.settings?.diceBehavior === "overwrite";
+        this.triggerRoll(e.shiftKey ? !mainBehavior : mainBehavior);
+      }
+      else if (e.altKey && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        this.dom.btnClearBasket.click();
       }
     });
 
