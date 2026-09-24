@@ -190,10 +190,29 @@ export default class ChipMenuManager {
           popupClass: "j0n4t-pg-filter-autocomplete-popup",
           itemClass: "j0n4t-pg-filter-autocomplete-item",
           getMatches: (query) => {
-            const q = query.toLowerCase();
-            return options
+            const q = query.trim().toLowerCase();
+            if (!q) {
+              return options.map(opt => ({
+                item: opt,
+                title: opt.key && opt.key !== 'none'
+                  ? PresetLogic.getPresetTitle(opt.key, this.context.cache)
+                  : opt.display
+              }));
+            }
+            const specialMatches = options.slice(0, 2)
               .filter(opt => opt.display.toLowerCase().includes(q) || opt.key.toLowerCase().includes(q))
-              .map(opt => ({ item: opt, title: PresetLogic.getPresetTitle(opt.key, this.context.cache) }));
+              .map(opt => ({ item: opt, title: opt.display }));
+            const topMatches = PresetLogic.getTopMatches(
+              cfg.matches,
+              q,
+              (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]),
+              this.context.cache
+            );
+            const presetMatches = topMatches.map(match => ({
+              item: options.find(o => o.key === match.item),
+              title: match.title
+            })).filter(m => m.item);
+            return [...specialMatches, ...presetMatches];
           },
           renderItem: (opt) => `
             <span>${PresetDOM.escapeHTML(opt.display)}</span>
