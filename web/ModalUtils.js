@@ -140,7 +140,7 @@ export default class ModalUtils {
             resolve(null);
           }
           cleanup();
-        } else if (e.key === "Enter") {
+        } else if (e.key === "Enter" && !e.ctrlKey) {
           e.preventDefault();
           const defaultBtnEl = /** @type {HTMLElement} */ (modal.querySelector('button[data-default="true"]'));
           if (defaultBtnEl) defaultBtnEl.click();

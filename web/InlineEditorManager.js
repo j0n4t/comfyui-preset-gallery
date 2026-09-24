@@ -201,7 +201,7 @@ export default class InlineEditorManager {
       },
       onKeyDown: (e, { manager }) => {
         if (!manager.isOpen) {
-          if (e.key === "Enter") {
+          if (e.key === "Enter" && !e.ctrlKey) {
             e.stopPropagation();
             e.preventDefault();
             finishEdit(true);

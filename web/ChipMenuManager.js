@@ -460,7 +460,7 @@ export default class ChipMenuManager {
           e.preventDefault();
           items[(currentIndex - 1 + items.length) % items.length].focus();
         }
-      } else if (e.key === "Enter" || e.key === " ") {
+      } else if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
         const actionEl = /** @type {HTMLButtonElement} */(target.closest("[data-action], button"));
         if (actionEl) {
           e.stopPropagation();

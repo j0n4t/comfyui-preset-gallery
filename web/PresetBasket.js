@@ -292,7 +292,7 @@ export default class PresetBasket {
 
     this.basket.addEventListener("keydown", (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
-      if (e.key === "Enter" || e.key === " ") {
+      if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
         /** @type {HTMLElement | null} */ const triggerable = target.closest(".j0n4t-pg-basket-add-btn, .j0n4t-pg-basket-chip");
         if (triggerable && !target.closest("input")) {
           e.stopPropagation();

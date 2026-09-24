@@ -438,7 +438,7 @@ export default class PresetGalleryApp {
       const target = /** @type {HTMLElement} */ (e.target);
       const isInput = ["INPUT", "TEXTAREA"].includes(target.tagName);
 
-      if (e.key === "Enter" || e.key === " ") {
+      if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
         const triggerable = target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-copy-btn, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
         if (triggerable) {
           e.preventDefault();
@@ -580,7 +580,7 @@ export default class PresetGalleryApp {
         this.dom.search.focus();
       },
       onKeyDown: (e) => {
-        if (!manager.isOpen && e.key === "Enter" && !e.shiftKey) {
+        if (!manager.isOpen && e.key === "Enter" && !e.ctrlKey && !e.shiftKey) {
           const searchValue = this.dom.search.value.trim();
           if (searchValue) {
             const sel = this.getSelectedArray();

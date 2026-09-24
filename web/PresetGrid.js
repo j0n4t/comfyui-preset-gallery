@@ -431,7 +431,7 @@ export default class PresetGrid {
         return;
       }
 
-      if (e.shiftKey && (e.key === "Enter" || e.key === " ")) {
+      if (e.shiftKey && (e.key === "Enter" && !e.ctrlKey || e.key === " ")) {
         e.stopPropagation();
         e.preventDefault();
         if (target.classList.contains("j0n4t-pg-item")) {
@@ -443,7 +443,7 @@ export default class PresetGrid {
         return;
       }
 
-      if (e.key === "Enter" || e.key === " ") {
+      if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
         e.stopPropagation();
         e.preventDefault();
         target.click();

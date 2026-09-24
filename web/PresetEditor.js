@@ -282,7 +282,7 @@ export default class PresetEditor {
     });
 
     this.dom.editorPreview.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter" || e.key === " ") {
+      if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
         e.preventDefault();
         if (/** @type {HTMLElement} */ (e.target)?.closest("#j0n4t-pg-rm-img-btn")) {
           e.stopPropagation();
@@ -305,7 +305,7 @@ export default class PresetEditor {
     });
 
     const handleQuickSave = (/** @type {KeyboardEvent} */ e) => {
-      if (e.key === "Enter" && e.shiftKey) {
+      if (e.key === "Enter" && !e.ctrlKey && e.shiftKey) {
         e.preventDefault();
         this.dom.btnSave.click();
       }
