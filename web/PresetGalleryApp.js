@@ -16,6 +16,9 @@ const MIN_NODE_HEIGHT = 640;
 const MIN_NODE_WIDTH = 400;
 
 export default class PresetGalleryApp {
+  static instancesByNode = new WeakMap();
+  static instancesByWrap = new WeakMap();
+
   static WRAP_STYLES = /*css*/ `
     .j0n4t-pg-wrap { display: flex; flex: auto; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; min-height: 100%; font-family: sans-serif; position: relative; outline: none; overflow: hidden; resize: vertical; }
     .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-more-options-wrap { display: none; }
@@ -99,6 +102,8 @@ export default class PresetGalleryApp {
     this.rollManager = new PresetLogic.RollManager();
     this.settings = new PresetGallerySettings(this);
     this.dom = this.buildDOMStructure();
+    PresetGalleryApp.instancesByNode.set(this.node, this);
+    PresetGalleryApp.instancesByWrap.set(this.dom.wrap, this);
 
     this.basket = new PresetBasket(
       this.dom.basketContainer,
@@ -561,6 +566,29 @@ export default class PresetGalleryApp {
     }
   }
 
+  focusSearch() {
+    this.dom.search.focus();
+  }
+
+  static focusActiveSearch() {
+    const activeWrap = document.activeElement?.closest(".j0n4t-pg-wrap");
+    const activeInstance = activeWrap
+      ? PresetGalleryApp.instancesByWrap.get(activeWrap)
+      : null;
+    const selectedNodes = /** @type {any} */ (app.canvas)?.selected_nodes;
+    const selectedInstances = Object.values(selectedNodes ?? [])
+      .map((node) => PresetGalleryApp.instancesByNode.get(node))
+      .filter(Boolean);
+    const visibleInstances = [...document.querySelectorAll(".j0n4t-pg-wrap")]
+      .map((wrap) => PresetGalleryApp.instancesByWrap.get(wrap))
+      .filter(Boolean);
+    const target = activeInstance
+      ?? (selectedInstances.length === 1 ? selectedInstances[0] : null)
+      ?? (visibleInstances.length === 1 ? visibleInstances[0] : null);
+
+    target?.focusSearch();
+  }
+
   initFilterAutocomplete() {
     const manager = new AutocompleteManager({
       input: this.dom.search,
@@ -629,6 +657,19 @@ export default class PresetGalleryApp {
 
 app.registerExtension({
   name: "Comfy.PresetGallery",
+  commands: [
+    {
+      id: "PresetGallery.FocusSearch",
+      label: "Preset Gallery: Focus Search",
+      function: () => PresetGalleryApp.focusActiveSearch(),
+    },
+  ],
+  keybindings: [
+    {
+      combo: { key: "p", ctrl: true, shift: true },
+      commandId: "PresetGallery.FocusSearch",
+    },
+  ],
   /**
    * @param {{ prototype: { onNodeCreated: (...args: any[]) => void; widgets: ComfyUiWidget[]; addDOMWidget: Function }}} nodeType
    * @param {{ name: string; }} nodeData

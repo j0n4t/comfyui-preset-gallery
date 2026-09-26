@@ -59,6 +59,13 @@ test.describe('Preset Gallery Extension - Full Suite', () => {
         await expect(galleryWrap).toBeVisible();
     });
 
+    test('Ctrl+Shift+P should focus the search bar globally', async ({ page }) => {
+        const searchInput = page.locator('.j0n4t-pg-search');
+        await page.locator('body').click();
+        await page.keyboard.press('Control+Shift+P');
+        await expect(searchInput).toBeFocused();
+    });
+
     test('should toggle the management panel', async ({ page }) => {
         const toggleBtn = page.locator('#j0n4t-pg-toggle');
         const editorPanel = page.locator('.j0n4t-pg-editor');

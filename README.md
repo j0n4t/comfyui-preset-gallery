@@ -36,7 +36,7 @@ Restart ComfyUI to load the extension.
 ### 🔍 Live Grid Layouts & Filter Search
 
 * **Dynamic Views:** Toggle between small grids, large visual grids, or clean list views instantly.
-* **Live Search & Grouping:** Filter presets instantly by keyword, path, or tag. Keep things organized with subfolder groups.
+* **Live Search & Grouping:** Filter presets instantly by keyword, path, or tag. Press **Ctrl+Shift+P** anywhere in ComfyUI to focus the search bar. Keep things organized with subfolder groups.
 
 ### ⚙️ Management & Preset Editor
 

@@ -27,6 +27,7 @@ The `PresetGalleryApp` serves as an interactive graphical interface attached to 
 ### 2.3. Search & Autocomplete
 
 - **Real-time Filtering:** A search bar instantly filters the gallery grid.
+- **Global Search Shortcut:** Press `Ctrl+Shift+P` anywhere in ComfyUI to focus the active Preset Gallery search bar.
 - **Autocomplete Manager:** Features an intelligent autocomplete dropdown that suggests top matches as the user types. Hitting `Enter` automatically selects the matched preset and adds it to the basket.
 - **Clear Search:** A quick-clear button ("x") resets the search bar and restores the full gallery view.
 
@@ -47,3 +48,4 @@ The `PresetGalleryApp` serves as an interactive graphical interface attached to 
 - **Recursive Evaluation:** As selections change, the app expands preset references recursively using `PresetLogic.expandRecursively`, handling dynamic roll counts and nested preset logic before passing the final string to the backend widget.
 - **State Persistence:** User preferences—such as the collapsed state of folders, the editor panel, and the gallery visibility mode—are saved to and loaded from `localStorage` (`pg_collapsed_folders_list`, `comfy_preset_gallery_collapsed`, `comfy_preset_gallery_hidden`).
 - **Keyboard Accessibility:** Event listeners allow navigating and triggering primary actions (search, clear, toggle) using `Enter` or `Space` keys.
+- **Global Keybinding:** Registers `Ctrl+Shift+P` through ComfyUI's extension keybinding API and focuses the active gallery instance.
