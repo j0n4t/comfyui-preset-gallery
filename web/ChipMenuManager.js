@@ -159,7 +159,6 @@ export default class ChipMenuManager {
         : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip" tabindex="0" role="menuitem">${PresetDOM.icons.add}</div>`
       }
           <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove" tabindex="0" role="menuitem">${PresetDOM.icons.trash}</div>
-          <div class="j0n4t-pg-chip-popup-item" data-action="close" title="Close" tabindex="0" role="menuitem">${PresetDOM.icons.close}</div>
         </div>
       </div>
     `;
@@ -286,11 +285,6 @@ export default class ChipMenuManager {
       e.stopPropagation();
 
       const action = actionEl.dataset.action;
-
-      if (action === "close") {
-        this.close(true);
-        return;
-      }
 
       if (action === "pin") {
         const currentList = this.context.getSelectedArray();
