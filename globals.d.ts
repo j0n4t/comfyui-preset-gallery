@@ -119,6 +119,14 @@ type DataURLParseResult = {
   base64: string;
 };
 
+type BasketTab = {
+  id: string;
+  title: string;
+  basket: string[];
+  pins: string[];
+  rolls: Record<string, string>;
+};
+
 interface Window {
   JSZip: any;
   clipboardData: any;

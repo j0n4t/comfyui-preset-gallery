@@ -303,6 +303,7 @@ export default class ChipMenuManager {
           actionEl.title = "Unpin";
         }
         this.context.savePins();
+        this.basket.saveCurrentState();
         return;
       }
 

@@ -275,7 +275,11 @@ export default class PresetGalleryApp {
     if (this.pinnedChips) {
       let pinsChanged = false;
       for (const val of this.pinnedChips) {
-        if (!arr.includes(val)) {
+        const pinnedItems = PresetLogic.splitPresets(val);
+        const isStillSelected = pinnedItems.length > 0 && arr.some((_, start) =>
+          pinnedItems.every((item, offset) => arr[start + offset] === item)
+        );
+        if (!isStillSelected) {
           this.pinnedChips.delete(val);
           pinsChanged = true;
         }

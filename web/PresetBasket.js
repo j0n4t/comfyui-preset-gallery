@@ -23,6 +23,18 @@ export default class PresetBasket {
     .j0n4t-pg-basket-container .j0n4t-pg-raw-wrapper { display: none; width: auto; }
     .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block; margin: 4px; }
     .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-basket-pool-wrapper { display: none; }
+
+    .j0n4t-pg-basket-tabs-sidebar { display: flex; flex-direction: column; background: #1a1a1a; border-right: 1px solid #333; width: 27px; align-items: center; padding: 4px 0; gap: 4px; user-select: none; }
+    .j0n4t-pg-basket-tabs-list { display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center; overflow-y: auto; flex: 1; max-height: calc(100% - 30px); }
+    .j0n4t-pg-basket-tab-item { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #aaa; font-size: 10px; font-weight: bold; cursor: pointer; position: relative; transition: 0.15s; outline: none; }
+    .j0n4t-pg-basket-tab-item:hover, .j0n4t-pg-basket-tab-item:focus-visible { background: #3a3a3a; color: #fff; border-color: #007acc; }
+    .j0n4t-pg-basket-tab-item.active { background: #007acc; color: #fff; border-color: #007acc; }
+    .j0n4t-pg-basket-tab-add-btn { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #666; border-radius: 4px; color: #aaa; font-size: 14px; cursor: pointer; transition: 0.15s; outline: none; }
+    .j0n4t-pg-basket-tab-add-btn:hover, .j0n4t-pg-basket-tab-add-btn:focus-visible { background: #2a2a2a; border-color: #007acc; color: #fff; }
+    .j0n4t-pg-basket-tab-menu { position: fixed; z-index: 10000; display: flex; flex-direction: column; min-width: 100px; padding: 3px; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); }
+    .j0n4t-pg-basket-tab-menu button { padding: 5px 8px; background: transparent; border: 0; border-radius: 2px; color: #ccc; text-align: left; font-size: 11px; cursor: pointer; }
+    .j0n4t-pg-basket-tab-menu button:hover, .j0n4t-pg-basket-tab-menu button:focus-visible { background: #444; color: #fff; outline: none; }
+    .j0n4t-pg-basket-tab-menu button:disabled { color: #666; cursor: default; }
   `;
 
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
@@ -95,6 +107,47 @@ export default class PresetBasket {
     PresetDOM.injectStyles("j0n4t-pg-basket-container-styles", PresetBasket.BASKET_CONTAINER_STYLES);
     PresetDOM.injectStyles("j0n4t-pg-basket-chip-etc-styles", PresetBasket.BASKET_CHIP_ETC_STYLES);
 
+    // Restructure container to include the side tabs sidebar
+    this.container.style.display = "flex";
+    this.container.style.flexDirection = "row";
+
+    const mainPane = document.createElement("div");
+    mainPane.style.cssText = "flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;";
+    while (this.container.firstChild) {
+      mainPane.appendChild(this.container.firstChild);
+    }
+
+    const sidebar = document.createElement("div");
+    sidebar.className = "j0n4t-pg-basket-tabs-sidebar";
+    sidebar.innerHTML = `
+      <div class="j0n4t-pg-basket-tabs-list"></div>
+      <button class="j0n4t-pg-basket-tab-add-btn" title="New Basket Tab">+</button>
+    `;
+
+    this.container.appendChild(sidebar);
+    this.container.appendChild(mainPane);
+
+    this.tabsSidebarList = /** @type {HTMLElement} */ (sidebar.querySelector(".j0n4t-pg-basket-tabs-list"));
+    this.tabAddBtn = /** @type {HTMLElement} */ (sidebar.querySelector(".j0n4t-pg-basket-tab-add-btn"));
+
+    /** @type {BasketTab[]} */
+    this.tabs = [];
+    /** @type {string | null} */
+    this.activeTabId = null;
+    /** @type {HTMLElement | null} */
+    this.tabMenu = null;
+    this.initTabs();
+
+    this.tabAddBtn.addEventListener("click", () => this.createNewTab());
+    document.addEventListener("pointerdown", (e) => {
+      if (this.tabMenu && !this.tabMenu.contains(/** @type {Node} */(e.target))) {
+        this.closeTabMenu();
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") this.closeTabMenu();
+    });
+
     this.rawManager = new RawTextareaManager(this.textarea, this.context, null, (val) => {
       const tokens = PresetLogic.parseTokens(val, this.context.cache);
       const selections = tokens
@@ -105,6 +158,263 @@ export default class PresetBasket {
 
     this.initDragAndDrop();
     this.initBasketActions();
+  }
+
+  initTabs() {
+    const saved = localStorage.getItem("comfy_preset_gallery_basket_tabs");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.tabs) && parsed.tabs.length > 0) {
+          this.tabs = parsed.tabs;
+          this.activeTabId = parsed.activeTabId && this.tabs.some(t => t.id === parsed.activeTabId)
+            ? parsed.activeTabId
+            : this.tabs[0].id;
+
+          const activeTab = this.tabs.find(t => t.id === this.activeTabId);
+          if (activeTab) {
+            this.context.widget.value = (activeTab.basket || []).join(", ");
+            this.context.pinnedChips = new Set(activeTab.pins || []);
+            if (typeof this.context.savePins === "function") {
+              this.context.savePins();
+            }
+            if (this.context.rollManager) {
+              this.context.rollManager.rolls = JSON.parse(JSON.stringify(activeTab.rolls || {}));
+            }
+          }
+          this.renderTabsList();
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to parse basket tabs from localStorage", e);
+      }
+    }
+
+    // Default initial tab
+    const defaultId = "tab_" + Date.now();
+    this.tabs = [{
+      id: defaultId,
+      title: "Tab 1",
+      basket: [...this.context.getSelectedArray()],
+      pins: this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [],
+      rolls: this.context.rollManager?.rolls ? JSON.parse(JSON.stringify(this.context.rollManager.rolls)) : {}
+    }];
+    this.activeTabId = defaultId;
+    this.renderTabsList();
+    this.persistTabs();
+  }
+
+  persistTabs() {
+    localStorage.setItem("comfy_preset_gallery_basket_tabs", JSON.stringify({
+      tabs: this.tabs,
+      activeTabId: this.activeTabId
+    }));
+  }
+
+  saveCurrentState() {
+    if (!this.activeTabId) return;
+    const tab = this.tabs.find(t => t.id === this.activeTabId);
+    if (tab) {
+      tab.basket = [...this.context.getSelectedArray()];
+      tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];
+      tab.rolls = this.context.rollManager?.rolls ? JSON.parse(JSON.stringify(this.context.rollManager.rolls)) : {};
+    }
+    this.persistTabs();
+  }
+
+  /** @param {string} tabId */
+  switchTab(tabId) {
+    if (this.activeTabId === tabId) return;
+    this.saveCurrentState();
+
+    const tab = this.tabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    this.activeTabId = tabId;
+
+    this.context.pinnedChips = new Set(tab.pins || []);
+    if (this.context.rollManager) {
+      this.context.rollManager.rolls = JSON.parse(JSON.stringify(tab.rolls || {}));
+    }
+    this.context.updateWidgetValue(tab.basket || []);
+    this.context.savePins();
+
+    this.render(this.context.getSelectedArray());
+    this.renderTabsList();
+    this.persistTabs();
+  }
+
+  createNewTab() {
+    this.saveCurrentState();
+
+    const newId = this.createTabId();
+    const newTitle = `Tab ${this.tabs.length + 1}`;
+
+    const newTab = {
+      id: newId,
+      title: newTitle,
+      basket: [],
+      pins: [],
+      rolls: {}
+    };
+
+    this.tabs.push(newTab);
+    this.activeTabId = newId;
+
+    this.context.updateWidgetValue([]);
+    this.context.pinnedChips = new Set();
+    if (typeof this.context.savePins === "function") {
+      this.context.savePins();
+    }
+    if (this.context.rollManager) {
+      this.context.rollManager.rolls = {};
+    }
+
+    this.render([]);
+    this.renderTabsList();
+    this.persistTabs();
+  }
+
+  createTabId() {
+    /** @type {string} */
+    let id;
+    do {
+      id = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    } while (this.tabs.some(tab => tab.id === id));
+    return id;
+  }
+
+  /** @param {string} tabId */
+  duplicateTab(tabId) {
+    this.saveCurrentState();
+    const sourceTab = this.tabs.find(tab => tab.id === tabId);
+    if (!sourceTab) return;
+
+    const duplicate = {
+      ...sourceTab,
+      id: this.createTabId(),
+      title: `${sourceTab.title || `Tab ${this.tabs.indexOf(sourceTab) + 1}`} Copy`,
+      basket: [...(sourceTab.basket || [])],
+      pins: [...(sourceTab.pins || [])],
+      rolls: JSON.parse(JSON.stringify(sourceTab.rolls || {}))
+    };
+    this.tabs.push(duplicate);
+    this.activeTabId = duplicate.id;
+    this.context.pinnedChips = new Set(duplicate.pins);
+    if (this.context.rollManager) {
+      this.context.rollManager.rolls = JSON.parse(JSON.stringify(duplicate.rolls));
+    }
+    this.context.updateWidgetValue(duplicate.basket);
+    this.context.savePins();
+    this.render(this.context.getSelectedArray());
+    this.renderTabsList();
+    this.persistTabs();
+  }
+
+  closeTabMenu() {
+    this.tabMenu?.remove();
+    this.tabMenu = null;
+  }
+
+  /**
+   * @param {string} tabId
+   * @param {DOMRect} tabRect
+   */
+  openTabMenu(tabId, tabRect) {
+    this.closeTabMenu();
+    const menu = document.createElement("div");
+    menu.className = "j0n4t-pg-basket-tab-menu";
+    menu.setAttribute("role", "menu");
+    menu.innerHTML = `
+      <button type="button" role="menuitem">Duplicate</button>
+      <button type="button" role="menuitem" ${this.tabs.length <= 1 ? "disabled" : ""}>Close</button>
+    `;
+    menu.style.left = `${tabRect.right + 4}px`;
+    menu.style.top = `${tabRect.top}px`;
+    document.body.appendChild(menu);
+    this.tabMenu = menu;
+
+    const menuRect = menu.getBoundingClientRect();
+    if (menuRect.right > window.innerWidth) {
+      menu.style.left = `${Math.max(0, tabRect.left - menuRect.width - 4)}px`;
+    }
+    if (menuRect.bottom > window.innerHeight) {
+      menu.style.top = `${Math.max(0, window.innerHeight - menuRect.height - 4)}px`;
+    }
+
+    const [duplicateButton, closeButton] = menu.querySelectorAll("button");
+    duplicateButton.addEventListener("click", () => {
+      this.closeTabMenu();
+      this.duplicateTab(tabId);
+    });
+    closeButton.addEventListener("click", () => {
+      this.closeTabMenu();
+      this.deleteTab(tabId);
+    });
+    duplicateButton.focus();
+  }
+
+  /**
+   * @param {string | null} tabId
+   */
+  deleteTab(tabId) {
+    if (this.tabs.length <= 1) return;
+
+    const index = this.tabs.findIndex(t => t.id === tabId);
+    if (index === -1) return;
+
+    this.tabs.splice(index, 1);
+
+    if (this.activeTabId === tabId) {
+      const nextTab = this.tabs[Math.max(0, index - 1)];
+      this.activeTabId = null;
+      this.switchTab(nextTab.id);
+    } else {
+      this.renderTabsList();
+      this.persistTabs();
+    }
+  }
+
+  renderTabsList() {
+    if (!this.tabsSidebarList) return;
+    this.closeTabMenu();
+    let html = "";
+    this.tabs.forEach((tab, index) => {
+      const isActive = tab.id === this.activeTabId;
+      const displayName = `${index + 1}`;
+      html += `
+        <div class="j0n4t-pg-basket-tab-item ${isActive ? 'active' : ''}"
+             data-tab-id="${tab.id}"
+             title="${PresetDOM.escapeHTML(tab.title || ('Tab ' + (index + 1)))}${(this.activeTabId === tab.id ? " (Click for tab options)" : "")}"
+             tabindex="0" role="tab" aria-selected="${isActive}">
+          ${displayName}
+        </div>
+      `;
+    });
+    this.tabsSidebarList.innerHTML = html;
+
+    this.tabsSidebarList.querySelectorAll(".j0n4t-pg-basket-tab-item").forEach(item => {
+      const openOptions = () => {
+        const tabId = item.getAttribute("data-tab-id");
+        if (tabId) {
+          if (this.activeTabId === tabId) {
+            const tabRect = item.getBoundingClientRect();
+            this.openTabMenu(tabId, tabRect);
+          }
+          else {
+            this.switchTab(tabId);
+          }
+        }
+      };
+      item.addEventListener("click", openOptions);
+      // @ts-ignore
+      item.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openOptions();
+        }
+      });
+    });
   }
 
   initDragAndDrop() {
@@ -323,7 +633,6 @@ export default class PresetBasket {
         return;
       }
 
-      // Handle Delete key to remove selected chip
       if (e.key === "Delete" && !target.closest("input")) {
         /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
         if (chip) {
@@ -347,16 +656,7 @@ export default class PresetBasket {
         if (chip) {
           e.stopPropagation();
           e.preventDefault();
-          const currentList = this.context.getSelectedArray();
-          const rawToken = currentList.slice(Number(chip.dataset.start), Number(chip.dataset.end)).join(', ');
-          if (this.context.pinnedChips?.has(rawToken)) {
-            this.context.pinnedChips.delete(rawToken);
-            chip.classList.remove("pinned");
-          } else {
-            this.context.pinnedChips?.add(rawToken);
-            chip.classList.add("pinned");
-          }
-          this.context.savePins();
+          this.togglePin(chip);
         }
         return;
       }
@@ -558,11 +858,36 @@ export default class PresetBasket {
       }
     }, 50);
   }
+  /** @param {HTMLElement} chip */
+  togglePin(chip) {
+    const currentList = this.context.getSelectedArray();
+    const rawToken = currentList.slice(Number(chip.dataset.start), Number(chip.dataset.end)).join(', ');
+    if (this.context.pinnedChips?.has(rawToken)) {
+      this.context.pinnedChips.delete(rawToken);
+      chip.classList.remove("pinned");
+    } else {
+      this.context.pinnedChips?.add(rawToken);
+      chip.classList.add("pinned");
+    }
+    this.context.savePins();
+    this.saveCurrentState();
+  }
 
   /** @param {string[]} activeList  */
   render(activeList) {
+    // Automatically synchronize state of the active tab
+    if (this.activeTabId) {
+      const tab = this.tabs.find(t => t.id === this.activeTabId);
+      if (tab) {
+        tab.basket = [...activeList];
+        tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];
+        tab.rolls = this.context.rollManager?.rolls ? JSON.parse(JSON.stringify(this.context.rollManager.rolls)) : {};
+        this.persistTabs();
+      }
+    }
+
     if (!this._updatingTextarea) {
-      this.context.rollManager.resetCounts(); // Clear counts before processing text
+      this.context.rollManager.resetCounts();
       const expandedList = activeList.map((/** @type {string} */ itemStr) => {
         const { core: coreKey, weightStr, isWeighted } = PresetLogic.parseWeight(itemStr);
         if (isWeighted) {
@@ -578,7 +903,7 @@ export default class PresetBasket {
     let htmlBuffer = "";
     const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
 
-    this.context.rollManager.resetCounts(); // Reset once more before UI paint
+    this.context.rollManager.resetCounts();
 
     chipsData.forEach((chipData, index) => {
       const chip = PresetDOM.renderBasketChip(
