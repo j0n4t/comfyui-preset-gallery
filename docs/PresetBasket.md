@@ -34,7 +34,8 @@
 - **Spatial Navigation**: Users can traverse chips using the `ArrowLeft`, `ArrowRight`, `ArrowUp`, and `ArrowDown` keys.
 - **Multi-selection**: Click a chip to select it, Ctrl/Cmd-click to toggle chips, and Shift-click or Shift+Arrow to select a range. Ctrl/Cmd+Arrow toggles the adjacent chip; Ctrl/Cmd+A selects all chips.
 - **Copy and Paste**: Ctrl/Cmd+C copies selected chips and Ctrl/Cmd+V appends them. Preset text remains compatible with plain-text clipboards, while rich clipboard support also carries each chip's pinned state and resolved rolling choices.
-- **Keyboard Reordering**: Holding `Alt` + `ArrowLeft`/`ArrowRight` swaps the currently focused chip with its adjacent neighbor, dynamically moving the array index.
+- **Bulk Actions**: Delete removes all selected chips, `P` pins all selected chips (or unpins them when all are already pinned), and Alt+Arrow or dragging moves the selected chips together while preserving their order.
+- **Keyboard Reordering**: Holding `Alt` + an arrow moves the selected chips together past the adjacent chip in that direction.
 - **Quick Deletion**: Pressing `Delete` removes the currently focused chip and intelligently shifts focus to the nearest remaining item.
 - **Trigger Support**: Pressing `Enter` or `Space` on a chip acts as a click event.
 

@@ -6,6 +6,9 @@ import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 
 const BASKET_CLIPBOARD_TYPE = "web application/x-comfy-preset-gallery-basket+json";
+/**
+ * @type {{ text: string; type?: string; version?: number; chips?: { items: string[]; styleKey: string; pinned: boolean; rolls: Record<string, Array<{ offset: number; value: string; }>>; }[]; } | null}
+ */
 let basketClipboard = null;
 
 export default class PresetBasket {
@@ -470,12 +473,48 @@ export default class PresetBasket {
       const styleKey = e.dataTransfer?.getData("text/plain");
       if (!styleKey) return;
 
+      const closest = this.getClosestChip(e.clientX, e.clientY);
+      const isBasketMove = e.dataTransfer?.getData("source/basket") === "true";
+      let draggedIndexes = [];
+      if (isBasketMove) {
+        try {
+          draggedIndexes = JSON.parse(e.dataTransfer?.getData("source/basket_indexes") || "[]");
+        } catch (error) {
+          console.warn("Could not read dragged basket chip selection", error);
+        }
+      }
+      if (isBasketMove && Array.isArray(draggedIndexes) && draggedIndexes.length) {
+        const chips = PresetLogic.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
+        const selectedIndexes = new Set(
+          draggedIndexes.filter(index => Number.isInteger(index) && index >= 0 && index < chips.length)
+        );
+        const moved = chips.filter((_, index) => selectedIndexes.has(index));
+        if (moved.length === 0) return;
+        const remaining = chips.filter((_, index) => !selectedIndexes.has(index));
+        const targetIndex = closest.element ? Number(closest.element.dataset.index) : -1;
+        const target = chips[targetIndex];
+        const insertionTarget = remaining.findIndex(chip => chip === target);
+        const insertionIndex = insertionTarget < 0
+          ? remaining.length
+          : insertionTarget + (closest.box && e.clientX > closest.box.left + closest.box.width / 2 ? 1 : 0);
+        remaining.splice(insertionIndex, 0, ...moved);
+        const newSelections = remaining.flatMap(chip => chip.subArray);
+        const newSelectedIndexes = new Set();
+        remaining.forEach((chip, index) => {
+          if (moved.includes(chip)) newSelectedIndexes.add(index);
+        });
+        this.selectedChipIndexes = newSelectedIndexes;
+        this.selectionAnchorIndex = Math.min(...newSelectedIndexes);
+        this.context.updateWidgetValue(newSelections);
+        this.applyChipSelection(Math.max(...newSelectedIndexes));
+        return;
+      }
+
       let selections = this.context.getSelectedArray();
       const sourceStartStr = e.dataTransfer?.getData("source/basket_start");
       const sourceEndStr = e.dataTransfer?.getData("source/basket_end");
-
       let movedItems = [styleKey];
-      if (e.dataTransfer?.getData("source/basket") && sourceStartStr !== "" && sourceEndStr !== "") {
+      if (isBasketMove && sourceStartStr !== "" && sourceEndStr !== "") {
         const start = Number(sourceStartStr);
         const end = Number(sourceEndStr);
         if (!isNaN(start) && !isNaN(end) && start < end) {
@@ -483,7 +522,6 @@ export default class PresetBasket {
         }
       }
 
-      const closest = this.getClosestChip(e.clientX, e.clientY);
       if (closest.element && closest.box) {
         const targetStartStr = closest.element.dataset.start;
         let insertionIndex = targetStartStr !== undefined ? parseInt(targetStartStr, 10) : selections.length;
@@ -616,10 +654,10 @@ export default class PresetBasket {
     this.basket.addEventListener("keydown", (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
       const modifierKey = e.ctrlKey || e.metaKey;
-      const focusedChip = /** @type {HTMLElement | null} */ (target.closest(".j0n4t-pg-basket-chip"));
+      const focusedChip = /** @type {HTMLElement} */ (target.closest(".j0n4t-pg-basket-chip"));
 
       if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "c" &&
-          (focusedChip || this.selectedChipIndexes.size > 0)) {
+        (focusedChip || this.selectedChipIndexes.size > 0)) {
         e.preventDefault();
         e.stopPropagation();
         this.copySelectedChips(focusedChip);
@@ -636,7 +674,7 @@ export default class PresetBasket {
         e.stopPropagation();
         this.selectedChipIndexes = new Set(
           Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"), chip =>
-            Number(/** @type {HTMLElement} */ (chip).dataset.index)
+            Number(/** @type {HTMLElement} */(chip).dataset.index)
           )
         );
         this.selectionAnchorIndex = Number(focusedChip.dataset.index);
@@ -645,8 +683,8 @@ export default class PresetBasket {
       }
 
       if (!target.closest("input") && focusedChip && !e.altKey &&
-          (e.shiftKey || modifierKey) &&
-          ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+        (e.shiftKey || modifierKey) &&
+        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
         const chipElements = /** @type {HTMLElement[]} */ (
           Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"))
         );
@@ -700,7 +738,12 @@ export default class PresetBasket {
 
       if (e.key === "Delete" && !target.closest("input")) {
         /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
-        if (chip) {
+        if (chip && this.selectedChipIndexes.size > 1 &&
+          this.selectedChipIndexes.has(Number(chip.dataset.index))) {
+          e.stopPropagation();
+          e.preventDefault();
+          this.deleteSelectedChips();
+        } else if (chip) {
           e.stopPropagation();
           e.preventDefault();
           const startIndex = Number(chip.dataset.start);
@@ -721,7 +764,12 @@ export default class PresetBasket {
         if (chip) {
           e.stopPropagation();
           e.preventDefault();
-          this.togglePin(chip);
+          if (this.selectedChipIndexes.size > 1 &&
+            this.selectedChipIndexes.has(Number(chip.dataset.index))) {
+            this.toggleSelectedPins();
+          } else {
+            this.togglePin(chip);
+          }
         }
         return;
       }
@@ -735,7 +783,7 @@ export default class PresetBasket {
             e.preventDefault();
             targetEl.focus();
             if (targetEl.classList.contains("j0n4t-pg-basket-chip")) {
-              const index = Number(/** @type {HTMLElement} */ (targetEl).dataset.index);
+              const index = Number(/** @type {HTMLElement} */(targetEl).dataset.index);
               this.selectedChipIndexes = new Set([index]);
               this.selectionAnchorIndex = index;
               this.applyChipSelection(index);
@@ -748,31 +796,19 @@ export default class PresetBasket {
         /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
         if (!chip) return;
         const chipElements = /** @type {HTMLElement[]} */(Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip')));
-        const targetChip = /** @type {HTMLElement | null} */ (this.getSpatialTarget(chip, e.key, chipElements));
+        const selectedIndexes = this.selectedChipIndexes.has(Number(chip.dataset.index))
+          ? this.selectedChipIndexes
+          : new Set([Number(chip.dataset.index)]);
+        const moving = chipElements.filter(item => selectedIndexes.has(Number(item.dataset.index)));
+        const targetChip = /** @type {HTMLElement | null} */ (
+          this.getSpatialTarget(chip, e.key, chipElements.filter(item => !selectedIndexes.has(Number(item.dataset.index))))
+        );
 
-        if (targetChip) {
+        if (targetChip && moving.length) {
           e.stopPropagation();
           e.preventDefault();
-
-          const startIndex = Number(chip.dataset.start);
-          const endIndex = Number(chip.dataset.end);
-          const targetStart = Number(targetChip.dataset.start);
-          const targetEnd = Number(targetChip.dataset.end);
-
-          const selections = this.context.getSelectedArray();
-          const itemsToMove = selections.splice(startIndex, endIndex - startIndex);
-          const moveLen = itemsToMove.length;
-
-          let newStart = targetStart;
-          if (targetStart > startIndex) {
-            newStart = targetEnd - moveLen;
-            selections.splice(newStart, 0, ...itemsToMove);
-          } else {
-            selections.splice(targetStart, 0, ...itemsToMove);
-          }
-
-          this.context.updateWidgetValue(selections);
-          this.focusChip(newStart);
+          const placeAfter = e.key === "ArrowRight" || e.key === "ArrowDown";
+          this.moveSelectedChips(Number(targetChip.dataset.index), placeAfter, selectedIndexes);
         }
       }
     });
@@ -781,11 +817,20 @@ export default class PresetBasket {
       const target = /** @type {HTMLElement} */ (e.target);
       /** @type {HTMLElement | null} */ const chip = target.closest(".j0n4t-pg-basket-chip");
       if (chip) {
-        chip.classList.add("dragging");
+        const chipIndex = Number(chip.dataset.index);
+        if (!this.selectedChipIndexes.has(chipIndex)) {
+          this.selectedChipIndexes = new Set([chipIndex]);
+          this.selectionAnchorIndex = chipIndex;
+          this.applyChipSelection(chipIndex);
+        }
+        const draggedChips = Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"))
+          .filter(item => this.selectedChipIndexes.has(Number(/** @type {HTMLElement} */(item).dataset.index)));
+        draggedChips.forEach(item => item.classList.add("dragging"));
         e.dataTransfer?.setData("text/plain", chip.dataset.id || "");
         e.dataTransfer?.setData("source/basket", "true");
         e.dataTransfer?.setData("source/basket_start", chip.dataset.start || "");
         e.dataTransfer?.setData("source/basket_end", chip.dataset.end || "");
+        e.dataTransfer?.setData("source/basket_indexes", JSON.stringify([...this.selectedChipIndexes]));
       }
     });
 
@@ -939,7 +984,7 @@ export default class PresetBasket {
       chip.setAttribute("aria-selected", String(selected));
     });
     if (index !== undefined && index >= 0) {
-      chips[index]?.focus();
+      /** @type {HTMLElement} */ (chips[index]).focus();
     }
   }
 
@@ -978,6 +1023,81 @@ export default class PresetBasket {
       this.selectionAnchorIndex = index;
       this.applyChipSelection(index);
     }
+  }
+
+  deleteSelectedChips() {
+    const chips = PresetLogic.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
+    const selectedIndexes = [...this.selectedChipIndexes].sort((a, b) => b - a);
+    const selections = this.context.getSelectedArray();
+    let focusStart = selections.length;
+    for (const index of selectedIndexes) {
+      const chip = chips[index];
+      if (!chip) continue;
+      focusStart = Math.min(focusStart, chip.startIndex);
+      selections.splice(chip.startIndex, chip.endIndex - chip.startIndex);
+    }
+    this.selectedChipIndexes.clear();
+    this.selectionAnchorIndex = null;
+    this.context.updateWidgetValue(selections);
+    this.chipMenuManager.close(false);
+    this.focusChip(focusStart);
+  }
+
+  toggleSelectedPins() {
+    const focusedChip = /** @type {HTMLElement | null} */ (
+      document.activeElement?.closest?.(".j0n4t-pg-basket-chip")
+    );
+    const focusedIndex = focusedChip ? Number(focusedChip.dataset.index) : -1;
+    const selections = this.context.getSelectedArray();
+    const chips = PresetLogic.getGroupedChips(selections, this.context.cache);
+    const selectedChips = [...this.selectedChipIndexes]
+      .sort((a, b) => a - b)
+      .map(index => chips[index])
+      .filter(Boolean);
+    if (!selectedChips.length) return;
+
+    const allPinned = selectedChips.every(chip =>
+      this.context.pinnedChips?.has(selections.slice(chip.startIndex, chip.endIndex).join(", "))
+    );
+    for (const chip of selectedChips) {
+      const key = selections.slice(chip.startIndex, chip.endIndex).join(", ");
+      if (allPinned) this.context.pinnedChips?.delete(key);
+      else this.context.pinnedChips?.add(key);
+    }
+    this.context.savePins();
+    this.saveCurrentState();
+    this.context.syncUI(this.context.widget.value);
+    this.applyChipSelection(focusedIndex);
+  }
+
+  /**
+   * @param {number} targetIndex
+   * @param {boolean} placeAfter
+   * @param {Set<number>} [selection=this.selectedChipIndexes]
+   */
+  moveSelectedChips(targetIndex, placeAfter, selection = this.selectedChipIndexes) {
+    const chips = PresetLogic.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
+    const target = chips[targetIndex];
+    const moved = chips.filter((_, index) => selection.has(index));
+    if (!target || moved.length === 0 || selection.has(targetIndex)) return;
+
+    const remaining = chips.filter((_, index) => !selection.has(index));
+    const insertionTarget = remaining.findIndex(chip => chip === target);
+    if (insertionTarget < 0) return;
+    const insertionIndex = insertionTarget + (placeAfter ? 1 : 0);
+    remaining.splice(insertionIndex, 0, ...moved);
+
+    const newSelections = remaining.flatMap(chip => chip.subArray);
+    const newSelectedIndexes = new Set();
+    remaining.forEach((chip, index) => {
+      if (moved.includes(chip)) newSelectedIndexes.add(index);
+    });
+    if (newSelectedIndexes.size === 0) return;
+    const firstSelected = Math.min(...newSelectedIndexes);
+    this.context.updateWidgetValue(newSelections);
+    this.selectedChipIndexes = newSelectedIndexes;
+    this.selectionAnchorIndex = firstSelected;
+    this.applyChipSelection(Math.max(...newSelectedIndexes));
   }
 
   /** @param {HTMLElement} [focusedChip] */
@@ -1055,7 +1175,7 @@ export default class PresetBasket {
         chip && typeof chip === "object" &&
         Array.isArray(chip.items) &&
         chip.items.length > 0 &&
-        chip.items.every(item => typeof item === "string") &&
+        chip.items.every((/** @type {any} */ item) => typeof item === "string") &&
         typeof chip.styleKey === "string" &&
         typeof chip.pinned === "boolean" &&
         chip.rolls && typeof chip.rolls === "object" &&
@@ -1119,7 +1239,7 @@ export default class PresetBasket {
     existingChips.forEach(chip =>
       PresetLogic.expandRecursively(chip.styleKey, this.context.cache, new Set(), tracer)
     );
-    payload.chips.forEach(chip => {
+    payload.chips.forEach((/** @type {{ styleKey: string; rolls: any; pinned: any; items: any[]; }} */ chip) => {
       const beforeCounts = tracer.cloneCounts();
       PresetLogic.expandRecursively(chip.styleKey, this.context.cache, new Set(), tracer);
       for (const [group, rolls] of Object.entries(chip.rolls || {})) {
