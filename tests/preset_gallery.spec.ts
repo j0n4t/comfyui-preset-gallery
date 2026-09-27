@@ -133,6 +133,21 @@ test.describe('Preset Gallery Extension - Full Suite', () => {
             await expect(page.locator('.j0n4t-pg-basket-chip')).toBeVisible();
         });
 
+        test('Double-clicking a chip should keep its inline editor open', async ({ page }) => {
+            await page.locator('.j0n4t-pg-basket-add-btn').click();
+            const addInput = page.locator('.j0n4t-pg-inline-edit');
+            await addInput.fill('regression chip');
+            await addInput.press('Enter');
+
+            const chip = page.locator('.j0n4t-pg-basket-chip').first();
+            await chip.dblclick();
+
+            const input = page.locator('.j0n4t-pg-inline-edit');
+            await page.waitForTimeout(100);
+            await expect(input).toBeVisible();
+            await expect(input).toBeFocused();
+        });
+
         // B-02: Drag and drop simulation
         test('Drag and drop should move item to basket', async ({ page }) => {
             const source = page.locator('.j0n4t-pg-item').first();

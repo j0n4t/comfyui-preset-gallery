@@ -418,7 +418,7 @@ export default class PresetBasket {
         }
       };
       item.addEventListener("click", openOptions);
-      // @ts-ignore
+      // @ts-expect-error blah ts boring
       item.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -584,6 +584,11 @@ export default class PresetBasket {
     });
 
     this.basket.addEventListener("click", (e) => {
+      if (e.detail > 1) {
+        this.chipMenuManager.close(false);
+        return;
+      }
+
       const target = /** @type {HTMLElement} */ (e.target);
       const addBtn = target.closest('.j0n4t-pg-basket-add-btn');
       if (addBtn) return this.inlineEditorManager.spawn(null, "");
