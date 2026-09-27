@@ -5,6 +5,9 @@ import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 
+const BASKET_CLIPBOARD_TYPE = "web application/x-comfy-preset-gallery-basket+json";
+let basketClipboard = null;
+
 export default class PresetBasket {
   static BASKET_CONTAINER_STYLES = /*css*/ `
     .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
@@ -45,6 +48,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
     .j0n4t-pg-basket-chip:focus { border-width: 2px; border-color: #007acc; }
+    .j0n4t-pg-basket-chip.selected { box-shadow: inset 0 0 0 2px #007acc; }
     .j0n4t-pg-basket-chip-segments { display: flex; gap: 0.2em; width: 100%; align-items: center; }
     .j0n4t-pg-basket-chip-segment { flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
@@ -101,6 +105,10 @@ export default class PresetBasket {
     this.currentMatches = [];
     this.activeIndex = 0;
     this._updatingTextarea = false;
+    /** @type {Set<number>} */
+    this.selectedChipIndexes = new Set();
+    /** @type {number | null} */
+    this.selectionAnchorIndex = null;
     this.inlineEditorManager = new InlineEditorManager(this.context, this);
     this.chipMenuManager = new ChipMenuManager(this.context, this);
 
@@ -549,6 +557,11 @@ export default class PresetBasket {
 
       if (chip) {
         e.stopPropagation();
+        this.handleChipSelection(chip, e);
+        if (e.ctrlKey || e.metaKey || e.shiftKey) {
+          this.chipMenuManager.close(false);
+          return;
+        }
         const styleKey = chip.dataset.id || "";
         const { core: coreKey } = PresetLogic.parseWeight(styleKey);
         const evalId = chip.dataset.evalId || coreKey;
@@ -602,6 +615,58 @@ export default class PresetBasket {
 
     this.basket.addEventListener("keydown", (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
+      const modifierKey = e.ctrlKey || e.metaKey;
+      const focusedChip = /** @type {HTMLElement | null} */ (target.closest(".j0n4t-pg-basket-chip"));
+
+      if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "c" &&
+          (focusedChip || this.selectedChipIndexes.size > 0)) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.copySelectedChips(focusedChip);
+        return;
+      }
+      if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.pasteChips();
+        return;
+      }
+      if (!target.closest("input") && focusedChip && modifierKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.selectedChipIndexes = new Set(
+          Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"), chip =>
+            Number(/** @type {HTMLElement} */ (chip).dataset.index)
+          )
+        );
+        this.selectionAnchorIndex = Number(focusedChip.dataset.index);
+        this.applyChipSelection(Number(focusedChip.dataset.index));
+        return;
+      }
+
+      if (!target.closest("input") && focusedChip && !e.altKey &&
+          (e.shiftKey || modifierKey) &&
+          ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+        const chipElements = /** @type {HTMLElement[]} */ (
+          Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"))
+        );
+        const targetChip = this.getSpatialTarget(focusedChip, e.key, chipElements);
+        if (targetChip) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.shiftKey) {
+            this.selectionAnchorIndex ??= Number(focusedChip.dataset.index);
+            this.selectChipRange(
+              this.selectionAnchorIndex,
+              Number(targetChip.dataset.index)
+            );
+          } else {
+            this.handleChipSelection(targetChip, e);
+          }
+        }
+        return;
+      }
+
       if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
         /** @type {HTMLElement | null} */ const triggerable = target.closest(".j0n4t-pg-basket-add-btn, .j0n4t-pg-basket-chip");
         if (triggerable && !target.closest("input")) {
@@ -669,6 +734,12 @@ export default class PresetBasket {
             e.stopPropagation();
             e.preventDefault();
             targetEl.focus();
+            if (targetEl.classList.contains("j0n4t-pg-basket-chip")) {
+              const index = Number(/** @type {HTMLElement} */ (targetEl).dataset.index);
+              this.selectedChipIndexes = new Set([index]);
+              this.selectionAnchorIndex = index;
+              this.applyChipSelection(index);
+            }
           }
         }
       }
@@ -858,6 +929,220 @@ export default class PresetBasket {
       }
     }, 50);
   }
+
+  /** @param {number} [index] */
+  applyChipSelection(index) {
+    const chips = Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
+    chips.forEach((chip, chipIndex) => {
+      const selected = this.selectedChipIndexes.has(chipIndex);
+      chip.classList.toggle("selected", selected);
+      chip.setAttribute("aria-selected", String(selected));
+    });
+    if (index !== undefined && index >= 0) {
+      chips[index]?.focus();
+    }
+  }
+
+  /**
+   * @param {number} start
+   * @param {number} end
+   */
+  selectChipRange(start, end) {
+    this.selectedChipIndexes.clear();
+    for (let index = Math.min(start, end); index <= Math.max(start, end); index++) {
+      this.selectedChipIndexes.add(index);
+    }
+    this.applyChipSelection(end);
+  }
+
+  /**
+   * @param {HTMLElement} chip
+   * @param {MouseEvent | KeyboardEvent} event
+   */
+  handleChipSelection(chip, event) {
+    const index = Number(chip.dataset.index);
+    const multiSelect = event.ctrlKey || event.metaKey;
+    if (event.shiftKey) {
+      this.selectChipRange(this.selectionAnchorIndex ?? index, index);
+    } else if (multiSelect) {
+      if (this.selectedChipIndexes.has(index)) {
+        this.selectedChipIndexes.delete(index);
+      } else {
+        this.selectedChipIndexes.add(index);
+      }
+      this.selectionAnchorIndex = index;
+      this.applyChipSelection(index);
+    } else {
+      this.selectedChipIndexes.clear();
+      this.selectedChipIndexes.add(index);
+      this.selectionAnchorIndex = index;
+      this.applyChipSelection(index);
+    }
+  }
+
+  /** @param {HTMLElement} [focusedChip] */
+  async copySelectedChips(focusedChip) {
+    const activeList = this.context.getSelectedArray();
+    const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
+    let selectedIndexes = [...this.selectedChipIndexes].sort((a, b) => a - b);
+    if (selectedIndexes.length === 0 && focusedChip) {
+      selectedIndexes = [Number(focusedChip.dataset.index)];
+    }
+    if (selectedIndexes.length === 0) return;
+
+    const selected = new Set(selectedIndexes);
+    const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls).resetCounts();
+    /** @type {Array<{items: string[], styleKey: string, pinned: boolean, rolls: Record<string, Array<{offset: number, value: string}>>}>} */
+    const copiedChips = [];
+
+    chipsData.forEach((chipData, index) => {
+      const beforeCounts = tracer.cloneCounts();
+      PresetLogic.expandRecursively(chipData.styleKey, this.context.cache, new Set(), tracer);
+      if (!selected.has(index)) return;
+
+      const items = activeList.slice(chipData.startIndex, chipData.endIndex);
+      const rawValue = items.join(", ");
+      /** @type {Record<string, Array<{offset: number, value: string}>>} */
+      const rolls = {};
+      for (const [group, endCount] of Object.entries(tracer.counts)) {
+        const startCount = beforeCounts[group] || 0;
+        for (let rollIndex = startCount; rollIndex < endCount; rollIndex++) {
+          const value = this.context.rollManager.peekRoll(group, rollIndex);
+          if (value !== undefined) {
+            (rolls[group] ||= []).push({ offset: rollIndex - startCount, value });
+          }
+        }
+      }
+      copiedChips.push({
+        items,
+        styleKey: chipData.styleKey,
+        pinned: this.context.pinnedChips?.has(rawValue) || false,
+        rolls
+      });
+    });
+
+    const text = copiedChips.flatMap(chip => chip.items).join(", ");
+    basketClipboard = { type: "comfy-preset-gallery-basket", version: 1, chips: copiedChips, text };
+
+    try {
+      if (navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
+        const clipboardItem = new ClipboardItem({
+          "text/plain": new Blob([text], { type: "text/plain" }),
+          [BASKET_CLIPBOARD_TYPE]: new Blob([JSON.stringify(basketClipboard)], { type: "application/x-comfy-preset-gallery-basket+json" })
+        });
+        await navigator.clipboard.write([clipboardItem]);
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch (error) {
+      console.warn("Could not write basket chips to the clipboard", error);
+      try {
+        await navigator.clipboard?.writeText(text);
+      } catch (fallbackError) {
+        console.warn("Could not write basket text to the clipboard", fallbackError);
+      }
+    }
+  }
+
+  /** @param {unknown} value */
+  isBasketClipboardPayload(value) {
+    if (!value || typeof value !== "object") return false;
+    const payload = /** @type {Record<string, unknown>} */ (value);
+    return payload.type === "comfyui-preset-gallery-basket" &&
+      payload.version === 1 &&
+      Array.isArray(payload.chips) &&
+      payload.chips.every(chip =>
+        chip && typeof chip === "object" &&
+        Array.isArray(chip.items) &&
+        chip.items.length > 0 &&
+        chip.items.every(item => typeof item === "string") &&
+        typeof chip.styleKey === "string" &&
+        typeof chip.pinned === "boolean" &&
+        chip.rolls && typeof chip.rolls === "object" &&
+        Object.values(chip.rolls).every(rolls =>
+          Array.isArray(rolls) &&
+          rolls.every(roll =>
+            roll && Number.isInteger(roll.offset) && roll.offset >= 0 && typeof roll.value === "string"
+          )
+        )
+      );
+  }
+
+  async readBasketClipboard() {
+    let plainText = "";
+    try {
+      if (navigator.clipboard?.read) {
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+          if (item.types.includes(BASKET_CLIPBOARD_TYPE)) {
+            const data = await (await item.getType(BASKET_CLIPBOARD_TYPE)).text();
+            const parsed = JSON.parse(data);
+            if (this.isBasketClipboardPayload(parsed)) return parsed;
+          }
+          if (item.types.includes("text/plain")) {
+            plainText = await (await item.getType("text/plain")).text();
+          }
+        }
+      } else if (navigator.clipboard?.readText) {
+        plainText = await navigator.clipboard.readText();
+      }
+    } catch (error) {
+      console.warn("Could not read rich basket clipboard data", error);
+    }
+    if (!plainText && navigator.clipboard?.readText) {
+      try {
+        plainText = await navigator.clipboard.readText();
+      } catch (error) {
+        console.warn("Could not read plain basket clipboard text", error);
+      }
+    }
+
+    if (basketClipboard && plainText === basketClipboard.text) return basketClipboard;
+    if (!plainText && basketClipboard) return basketClipboard;
+    const items = PresetLogic.splitPresets(plainText).filter(Boolean);
+    return items.length
+      ? { type: "comfyui-preset-gallery-basket", version: 1, chips: items.map(item => ({ items: [item], styleKey: item, pinned: false, rolls: {} })) }
+      : null;
+  }
+
+  async pasteChips() {
+    const payload = await this.readBasketClipboard();
+    if (!payload || !Array.isArray(payload.chips) || payload.chips.length === 0) return;
+
+    const activeList = this.context.getSelectedArray();
+    const originalLength = activeList.length;
+    const existingChips = PresetLogic.getGroupedChips(activeList, this.context.cache);
+    const selections = [...activeList];
+    for (const chip of payload.chips) selections.push(...chip.items);
+
+    const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls).resetCounts();
+    existingChips.forEach(chip =>
+      PresetLogic.expandRecursively(chip.styleKey, this.context.cache, new Set(), tracer)
+    );
+    payload.chips.forEach(chip => {
+      const beforeCounts = tracer.cloneCounts();
+      PresetLogic.expandRecursively(chip.styleKey, this.context.cache, new Set(), tracer);
+      for (const [group, rolls] of Object.entries(chip.rolls || {})) {
+        for (const roll of rolls) {
+          tracer.rolls[`${group}_${(beforeCounts[group] || 0) + roll.offset}`] = roll.value;
+        }
+      }
+      if (chip.pinned) this.context.pinnedChips?.add(chip.items.join(", "));
+    });
+    this.context.rollManager.rolls = tracer.rolls;
+    this.context.updateWidgetValue(selections);
+    this.context.savePins();
+
+    const updatedChips = PresetLogic.getGroupedChips(selections, this.context.cache);
+    const pastedIndexes = updatedChips
+      .map((chip, index) => chip.startIndex >= originalLength ? index : -1)
+      .filter(index => index >= 0);
+    this.selectedChipIndexes = new Set(pastedIndexes);
+    this.selectionAnchorIndex = pastedIndexes[0] ?? null;
+    this.applyChipSelection(pastedIndexes[pastedIndexes.length - 1]);
+    this.saveCurrentState();
+  }
+
   /** @param {HTMLElement} chip */
   togglePin(chip) {
     const currentList = this.context.getSelectedArray();
@@ -924,7 +1209,7 @@ export default class PresetBasket {
       }
 
       htmlBuffer += `
-        <div class="j0n4t-pg-basket-chip ${isPinned ? 'pinned' : ''}" tabindex="0" role="option" aria-selected="false" 
+        <div class="j0n4t-pg-basket-chip ${isPinned ? 'pinned' : ''} ${this.selectedChipIndexes.has(index) ? 'selected' : ''}" tabindex="0" role="option" aria-selected="${this.selectedChipIndexes.has(index)}"
              draggable="true" 
              title="${PresetDOM.escapeHTML(chip.processed.tooltipTitle)}"
              data-id="${PresetDOM.escapeHTML(chip.processed.joinedStr)}"
