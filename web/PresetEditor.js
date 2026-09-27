@@ -24,12 +24,12 @@ export default class PresetEditor {
     .j0n4t-pg-editor .j0n4t-pg-raw-wrapper { background: #15151580; }
     .j0n4t-pg-row { display: flex; gap: 6px; align-items: center; }
     .j0n4t-pg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #007acc; border: none; color: #fff; padding: 6px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; text-align: center; box-sizing: border-box; height: 24px; outline: none; }
-    .j0n4t-pg-btn:hover, .j0n4t-pg-btn:focus-visible { background: #0062a3; outline: 2px solid #fff; outline-offset: -2px; }
+    .j0n4t-pg-btn:hover, .j0n4t-pg-btn:focus { background: #0062a3; outline: 2px solid #fff; outline-offset: -2px; }
   `;
 
   static EDITOR_PREVIEW_STYLES = /*css*/ `
     .j0n4t-pg-editor-preview { position: relative; width: 84px; flex-shrink: 0; border-radius: 3px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #111; cursor: pointer; border: 1px dashed #444; transition: border-color 0.2s; min-height: 84px; outline: none; }
-    .j0n4t-pg-editor-preview:hover, .j0n4t-pg-editor-preview:focus-visible { border-color: #007acc; }
+    .j0n4t-pg-editor-preview:hover, .j0n4t-pg-editor-preview:focus { border-color: #007acc; }
     .j0n4t-pg-editor-preview .j0n4t-pg-corner-edit { top: 4px; right: 4px; background: #b23b3b; border-color: #b23b3b; z-index: 10; display: none; }
     .j0n4t-pg-editor-preview:hover .j0n4t-pg-corner-edit, .j0n4t-pg-editor-preview:focus-within .j0n4t-pg-corner-edit { display: flex; }
     .j0n4t-pg-editor-preview img { width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; }

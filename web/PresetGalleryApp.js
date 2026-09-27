@@ -30,14 +30,14 @@ export default class PresetGalleryApp {
 
   static ACTION_TOPBAR_SEARCH_STYLES = /*css*/ `
     .j0n4t-pg-action-btn { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: #aaa; border-radius: 2px; cursor: pointer; transition: 0.1s; margin-left: 1px; outline: none; }
-    .j0n4t-pg-action-btn:hover, .j0n4t-pg-action-btn:focus-visible { background: #555; color: #fff; }
-    .j0n4t-pg-action-btn.del-btn:hover, .j0n4t-pg-action-btn.del-btn:focus-visible { background: #b23b3b; color: #fff; }
+    .j0n4t-pg-action-btn:hover, .j0n4t-pg-action-btn:focus { background: #555; color: #fff; }
+    .j0n4t-pg-action-btn.del-btn:hover, .j0n4t-pg-action-btn.del-btn:focus { background: #b23b3b; color: #fff; }
     .j0n4t-pg-action-btn svg { width: 10px; height: 10px; fill: currentColor; }
     .j0n4t-pg-search-wrapper { position: relative; flex-grow: 1; display: flex; align-items: center; }
     .j0n4t-pg-search { width: 100%; padding: 6px 24px 6px 6px; background: #1a1a1ab0; border: 1px solid #444; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; min-width: 0; outline: none; }
     .j0n4t-pg-search:focus { border-color: #007acc; }
     .j0n4t-pg-search-clear { position: absolute; right: 6px; width: 14px; height: 14px; color: #777; cursor: pointer; display: none; align-items: center; justify-content: center; border-radius: 2px; transition: color 0.1s, background-color 0.1s; outline: none; }
-    .j0n4t-pg-search-clear:hover, .j0n4t-pg-search-clear:focus-visible { color: #fff; background: #b23b3b; }
+    .j0n4t-pg-search-clear:hover, .j0n4t-pg-search-clear:focus { color: #fff; background: #b23b3b; }
     .j0n4t-pg-search-clear svg { width: 10px; height: 10px; fill: currentColor; }
   `;
 
@@ -45,7 +45,7 @@ export default class PresetGalleryApp {
     .j0n4t-pg-control-bar { display: flex; gap: 4px; align-items: center; margin-top: 2px; flex-shrink: 0; width: 100%; }
     .j0n4t-pg-controls { display: flex; gap: 2px; flex-shrink: 0; background: #1a1a1a80; padding: 2px; border-radius: 4px; border: 1px solid #444; }
     .j0n4t-pg-view-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 3px; cursor: pointer; color: #aaa; background: transparent; transition: 0.15s; outline: none; }
-    .j0n4t-pg-view-btn:hover, .j0n4t-pg-view-btn:focus-visible { background: #333; color: #fff; }
+    .j0n4t-pg-view-btn:hover, .j0n4t-pg-view-btn:focus { background: #333; color: #fff; }
     .j0n4t-pg-view-btn.active { background: #007acc; color: #fff; }
     .j0n4t-pg-view-btn svg, .j0n4t-pg-btn svg { width: 14px; height: 14px; fill: currentColor; }
     .j0n4t-pg-view-btn svg.rotatable { transition: transform 0.2s ease; }
@@ -57,7 +57,7 @@ export default class PresetGalleryApp {
     .j0n4t-pg-grid.hide-folders .j0n4t-pg-tag-badge { display: block !important; }
     .j0n4t-pg-checkbox-wrap { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #aaa; user-select: none; cursor: pointer; padding: 3px 2px; height: 20px; box-sizing: border-box; white-space: nowrap; outline: none; }
     .j0n4t-pg-checkbox-wrap input { width: auto; margin: 0; cursor: pointer; outline: none; }
-    .j0n4t-pg-checkbox-wrap input:focus-visible { outline: 1px solid #007acc; outline-offset: 2px; }
+    .j0n4t-pg-checkbox-wrap input:focus { outline: 1px solid #007acc; outline-offset: 2px; }
     .j0n4t-pg-more-options-wrap { position: relative; }
     .j0n4t-pg-popup-menu { position: absolute; bottom: 100%; right: 0; margin-bottom: 6px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; padding: 4px; display: none; gap: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); min-width: fit-content; }
     .j0n4t-pg-popup-menu.show { display: flex; }

@@ -51,6 +51,18 @@ export default class ChipMenuManager {
   }
 
   /**
+  * @param {HTMLElement} chipElement
+  * @param {boolean} [focusWeight]
+  */
+  toggle(chipElement, focusWeight = false) {
+    if (this.activeChipMenuEl && chipElement === this.activeChipMenuEl) {
+      this.close(true);
+    } else {
+      this.show(chipElement, focusWeight);
+    }
+  }
+
+  /**
    * @param {HTMLElement} chipElement
    * @param {boolean} [focusWeight]
    */

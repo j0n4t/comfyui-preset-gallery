@@ -10,13 +10,13 @@ export default class PresetBasket {
     .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
     .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
-    .j0n4t-pg-basket-clear-btn:hover, .j0n4t-pg-basket-clear-btn:focus-visible { background: #912e2e; outline: 2px solid #fff; }
+    .j0n4t-pg-basket-clear-btn:hover, .j0n4t-pg-basket-clear-btn:focus { background: #912e2e; outline: 2px solid #fff; }
     .j0n4t-pg-basket-copy-btn { display: flex; background: none; border: none; outline: none; padding: 0; }
-    .j0n4t-pg-basket-copy-btn:hover, .j0n4t-pg-basket-copy-btn:focus-visible { color: #007acc; transform: scale(1.1); }
+    .j0n4t-pg-basket-copy-btn:hover, .j0n4t-pg-basket-copy-btn:focus { color: #007acc; transform: scale(1.1); }
     .j0n4t-pg-var-reroll-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 13px; padding: 0 4px; outline: none; transition: 0.15s; }
-    .j0n4t-pg-var-reroll-btn:hover, .j0n4t-pg-var-reroll-btn:focus-visible { color: #fff; transform: scale(1.1); }
+    .j0n4t-pg-var-reroll-btn:hover, .j0n4t-pg-var-reroll-btn:focus { color: #fff; transform: scale(1.1); }
     .j0n4t-pg-checkbox-wrap {height:auto; padding:0; margin-right:4px;}
-    .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus-visible { filter: grayscale(0) brightness(1) !important; transform: scale(1.1); }
+    .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus { filter: grayscale(0) brightness(1) !important; transform: scale(1.1); }
     .j0n4t-pg-basket-reroll-btn { transition: transform 0.2s ease; }
     .j0n4t-pg-basket-header.shift-held .j0n4t-pg-basket-reroll-btn { transform: rotate(180deg); }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; height: 100%; align-items: center; align-content: flex-start; padding: 4px; }
@@ -27,13 +27,13 @@ export default class PresetBasket {
     .j0n4t-pg-basket-tabs-sidebar { display: flex; flex-direction: column; background: #1a1a1a; border-right: 1px solid #333; width: 27px; align-items: center; padding: 4px 0; gap: 4px; user-select: none; }
     .j0n4t-pg-basket-tabs-list { display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center; overflow-y: auto; flex: 1; max-height: calc(100% - 30px); }
     .j0n4t-pg-basket-tab-item { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #aaa; font-size: 10px; font-weight: bold; cursor: pointer; position: relative; transition: 0.15s; outline: none; }
-    .j0n4t-pg-basket-tab-item:hover, .j0n4t-pg-basket-tab-item:focus-visible { background: #3a3a3a; color: #fff; border-color: #007acc; }
+    .j0n4t-pg-basket-tab-item:hover, .j0n4t-pg-basket-tab-item:focus { background: #3a3a3a; color: #fff; border-color: #007acc; }
     .j0n4t-pg-basket-tab-item.active { background: #007acc; color: #fff; border-color: #007acc; }
     .j0n4t-pg-basket-tab-add-btn { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #666; border-radius: 4px; color: #aaa; font-size: 14px; cursor: pointer; transition: 0.15s; outline: none; }
-    .j0n4t-pg-basket-tab-add-btn:hover, .j0n4t-pg-basket-tab-add-btn:focus-visible { background: #2a2a2a; border-color: #007acc; color: #fff; }
+    .j0n4t-pg-basket-tab-add-btn:hover, .j0n4t-pg-basket-tab-add-btn:focus { background: #2a2a2a; border-color: #007acc; color: #fff; }
     .j0n4t-pg-basket-tab-menu { position: fixed; z-index: 10000; display: flex; flex-direction: column; min-width: 100px; padding: 3px; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); }
     .j0n4t-pg-basket-tab-menu button { padding: 5px 8px; background: transparent; border: 0; border-radius: 2px; color: #ccc; text-align: left; font-size: 11px; cursor: pointer; }
-    .j0n4t-pg-basket-tab-menu button:hover, .j0n4t-pg-basket-tab-menu button:focus-visible { background: #444; color: #fff; outline: none; }
+    .j0n4t-pg-basket-tab-menu button:hover, .j0n4t-pg-basket-tab-menu button:focus { background: #444; color: #fff; outline: none; }
     .j0n4t-pg-basket-tab-menu button:disabled { color: #666; cursor: default; }
   `;
 
@@ -44,7 +44,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.2); z-index: 0; pointer-events: none; }
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
-    .j0n4t-pg-basket-chip:focus-visible { border-width: 2px; border-color: #007acc; }
+    .j0n4t-pg-basket-chip:focus { border-width: 2px; border-color: #007acc; }
     .j0n4t-pg-basket-chip-segments { display: flex; gap: 0.2em; width: 100%; align-items: center; }
     .j0n4t-pg-basket-chip-segment { flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
@@ -69,13 +69,13 @@ export default class PresetBasket {
     .j0n4t-pg-chip-popup-actions { display: flex;  flex-direction: row; justify-content: space-around; padding: 0 2px; }
     .j0n4t-pg-chip-popup-item, .j0n4t-pg-var-edit-btn { padding: 4px; font-size: 11px; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; outline: none; }
     .j0n4t-pg-chip-popup-item svg, .j0n4t-pg-var-edit-btn svg { width: 12px; height: 12px; fill: currentColor; }
-    .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus, .j0n4t-pg-var-edit-btn:hover, .j0n4t-pg-var-edit-btn:focus-visible { background: #555; color: #fff; }
+    .j0n4t-pg-chip-popup-item:hover, .j0n4t-pg-chip-popup-item:focus, .j0n4t-pg-var-edit-btn:hover, .j0n4t-pg-var-edit-btn:focus { background: #555; color: #fff; }
     .j0n4t-pg-var-edit-btn { background: transparent; border: 0; }
-    .j0n4t-pg-chip-popup-item.danger:hover, .j0n4t-pg-chip-popup-item.danger:focus-visible { background: #912e2e; color: #fff; }
+    .j0n4t-pg-chip-popup-item.danger:hover, .j0n4t-pg-chip-popup-item.danger:focus { background: #912e2e; color: #fff; }
     .j0n4t-pg-var-more { display: flex; font-size: 11px; }
 
     .j0n4t-pg-weight-btn { background: #333; color: #fff; border: 1px solid #555; border-radius: 3px; cursor: pointer; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; outline: none; font-size: 14px; line-height: 1; }
-    .j0n4t-pg-weight-btn:hover, .j0n4t-pg-weight-btn:focus-visible { background: #007acc; border-color: #007acc; }
+    .j0n4t-pg-weight-btn:hover, .j0n4t-pg-weight-btn:focus { background: #007acc; border-color: #007acc; }
     .j0n4t-pg-weight-input { width: 44px; height: 20px; text-align: center; background: #111; color: #fff; border: 1px solid #555; border-radius: 2px; font-size: 11px; outline: none; font-family: monospace; }
     .j0n4t-pg-weight-input:focus { border-color: #007acc; }
 
@@ -553,7 +553,7 @@ export default class PresetBasket {
         const { core: coreKey } = PresetLogic.parseWeight(styleKey);
         const evalId = chip.dataset.evalId || coreKey;
 
-        this.chipMenuManager.show(chip, !!weightBadge);
+        this.chipMenuManager.toggle(chip, !!weightBadge);
 
         let targetKey = styleKey;
         const presetVal = chip.dataset.preset;

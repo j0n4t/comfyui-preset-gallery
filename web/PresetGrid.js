@@ -6,20 +6,20 @@ import PresetLogic from "./PresetLogic.js";
 export default class PresetGrid {
   static GROUP_HEADER_STYLES = /*css*/ `
     .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; cursor: pointer; padding: 4px 0; position: relative; }
-    .j0n4t-pg-group-header:focus-visible { outline: 2px solid #007acc; outline-offset: 2px; border-radius: 2px; }
+    .j0n4t-pg-group-header:focus { outline: 2px solid #007acc; outline-offset: 2px; border-radius: 2px; }
     .j0n4t-pg-group-header::before { content: "▼"; font-size: 8px; color: #888; transition: transform 0.15s ease; }
     .j0n4t-pg-group-header.collapsed::before { transform: rotate(-90deg); }
     .j0n4t-pg-group-color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); transition: transform 0.15s ease, box-shadow 0.15s ease; position: relative; }
-    .j0n4t-pg-group-color-dot:hover, .j0n4t-pg-group-color-dot:focus-visible { transform: scale(1.25); box-shadow: 0 0 4px rgba(255,255,255,0.4); outline: none; }
+    .j0n4t-pg-group-color-dot:hover, .j0n4t-pg-group-color-dot:focus { transform: scale(1.25); box-shadow: 0 0 4px rgba(255,255,255,0.4); outline: none; }
     .j0n4t-pg-group-color-picker { position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer; border: none; padding: 0; margin: 0; }
     .j0n4t-pg-group-line { flex-grow: 1; height: 1px; background: #bdbdbd40; margin-right: 8px; }
     .j0n4t-pg-group-edit { color: #bbb; border-radius: 3px; width: 10px; height: 10px; display: flex; align-items: center; justify-content: center; transition: 0.15s; cursor: pointer; margin-right: 4px; }
-    .j0n4t-pg-group-edit:hover, .j0n4t-pg-group-edit:focus-visible { background: #d1a119; color: #fff; border-color: #d1a119; outline: none; }
+    .j0n4t-pg-group-edit:hover, .j0n4t-pg-group-edit:focus { background: #d1a119; color: #fff; border-color: #d1a119; outline: none; }
     .j0n4t-pg-group-edit svg { width: 11px; height: 11px; fill: currentColor; }
     .j0n4t-pg-group-header[data-group-raw="root_presets"] .j0n4t-pg-group-edit { display: none !important; }
     .j0n4t-pg-grid.hide-folders .j0n4t-pg-group-header, .j0n4t-pg-grid.hide-folders .j0n4t-pg-global-collapse-btn { display: none !important; }
     .j0n4t-pg-group-roll-toggle { color: #bbb; border-radius: 3px; width: 10px; height: 10px; display: flex; align-items: center; justify-content: center; transition: 0.15s; cursor: pointer; margin-right: 4px; }
-    .j0n4t-pg-group-roll-toggle:hover, .j0n4t-pg-group-roll-toggle:focus-visible { color: #fff; outline: none; }
+    .j0n4t-pg-group-roll-toggle:hover, .j0n4t-pg-group-roll-toggle:focus { color: #fff; outline: none; }
     .j0n4t-pg-group-roll-toggle svg { width: 11px; height: 11px; fill: currentColor; }
     .j0n4t-pg-group-roll-toggle.excluded { color: #555; }
     .j0n4t-pg-group-roll-toggle.hidden { display: none; }
@@ -27,7 +27,7 @@ export default class PresetGrid {
 
   static ITEM_THUMB_STYLES = /*css*/ `
     .j0n4t-pg-item { cursor: pointer; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 4px; background: #1a1a1a80; transition: 0.1s; height: fit-content; box-sizing: border-box; user-select: none; position: relative; outline: none; }
-    .j0n4t-pg-item:hover, .j0n4t-pg-item:focus-visible { background: #3a3a3a; border-color: #777; }
+    .j0n4t-pg-item:hover, .j0n4t-pg-item:focus { background: #3a3a3a; border-color: #777; }
     .j0n4t-pg-item.selected { border-color: #007acc; background: #252525; }
     .j0n4t-pg-item.editing { border-color: #d1a119 !important; background: #2b271d !important; }
     .j0n4t-pg-item.dragging { opacity: 0.4; }
@@ -40,7 +40,7 @@ export default class PresetGrid {
     .j0n4t-pg-label { font-size: 10px; color: #ccc; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
     .j0n4t-pg-tag-badge { position: absolute; top: 6px; left: 6px; background: var(--item-color, #444); color: #fff; font-size: 7.5px; font-weight: bold; padding: 1px 4px; border-radius: 2px; text-transform: uppercase; pointer-events: none; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; z-index: 3; }
     .j0n4t-pg-corner-edit { position: absolute; top: 6px; right: 6px; background: #2a2a2a; color: #bbb; border-radius: 3px; width: 18px; height: 18px; display: none; align-items: center; justify-content: center; z-index: 4; border: 1px solid #444; transition: 0.15s; cursor: pointer; outline: none; }
-    .j0n4t-pg-corner-edit:hover, .j0n4t-pg-corner-edit:focus-visible { background: #d1a119; color: #fff; border-color: #d1a119; }
+    .j0n4t-pg-corner-edit:hover, .j0n4t-pg-corner-edit:focus { background: #d1a119; color: #fff; border-color: #d1a119; }
     .j0n4t-pg-corner-edit svg { width: 11px; height: 11px; fill: currentColor; }
     .j0n4t-pg-item:hover .j0n4t-pg-corner-edit, .j0n4t-pg-item:focus-within .j0n4t-pg-corner-edit { display: flex; }
   `;
