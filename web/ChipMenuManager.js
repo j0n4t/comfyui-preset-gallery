@@ -175,8 +175,8 @@ export default class ChipMenuManager {
       </div>
     `;
 
-    document.body.insertAdjacentHTML('beforeend', popupHtml);
-    const popup = /** @type {HTMLElement} */ (document.body.lastElementChild);
+    this.context.dom.wrap.insertAdjacentHTML('beforeend', popupHtml);
+    const popup = /** @type {HTMLElement} */ (this.context.dom.wrap.lastElementChild);
     this.popupEl = popup;
     if (!popup) return;
 
@@ -502,24 +502,31 @@ export default class ChipMenuManager {
 
     popup.addEventListener("mousedown", (e) => e.stopPropagation());
 
-    const rect = chipElement.getBoundingClientRect();
+    const wrapRect = this.context.dom.wrap.getBoundingClientRect();
+    const chipRect = chipElement.getBoundingClientRect();
+    const inset = 4;
+    const wrapWidth = Math.max(0, wrapRect.width - inset * 2);
+    const wrapHeight = Math.max(0, wrapRect.height - inset * 2);
+    const spaceAbove = Math.max(0, chipRect.top - wrapRect.top - inset);
+    const spaceBelow = Math.max(0, wrapRect.bottom - chipRect.bottom - inset);
+    const renderAbove = spaceAbove >= popup.offsetHeight || spaceAbove >= spaceBelow;
+
+    popup.style.boxSizing = "border-box";
+    popup.style.maxWidth = `${wrapWidth}px`;
+    popup.style.maxHeight = `${Math.min(wrapHeight, renderAbove ? spaceAbove : spaceBelow)}px`;
+    popup.style.overflowY = "auto";
+
     const popupWidth = popup.offsetWidth;
-    const topPos = window.scrollY + rect.top - popup.offsetHeight - 4;
-
-    const spaceLeft = rect.right;
-    const spaceRight = window.innerWidth - rect.left;
-
-    let leftPos;
-    if (spaceLeft > spaceRight && rect.right >= popupWidth) {
-      leftPos = Math.max(window.scrollX + 8, window.scrollX + rect.right - popupWidth);
-    } else if (rect.left + popupWidth <= window.innerWidth) {
-      leftPos = window.scrollX + rect.left;
-    } else {
-      leftPos = Math.max(window.scrollX + 8, window.scrollX + rect.right - popupWidth);
-    }
-
-    popup.style.top = `${topPos < window.scrollY ? window.scrollY + rect.bottom + 4 : topPos}px`;
-    popup.style.left = `${leftPos}px`;
+    const popupHeight = popup.offsetHeight;
+    const left = Math.min(
+      Math.max(chipRect.left - wrapRect.left, inset),
+      Math.max(inset, wrapRect.width - popupWidth - inset)
+    );
+    const top = renderAbove
+      ? Math.max(inset, chipRect.top - wrapRect.top - popupHeight - inset)
+      : Math.min(chipRect.bottom - wrapRect.top + inset, wrapRect.height - popupHeight - inset);
+    popup.style.top = `${top}px`;
+    popup.style.left = `${left}px`;
 
     const closeHandler = (/** @type {Event} */e) => {
       if (!popup.contains(/** @type {HTMLElement} */(e.target)) && e.target !== chipElement) {

@@ -133,6 +133,20 @@ test.describe('Preset Gallery Extension - Full Suite', () => {
             await expect(page.locator('.j0n4t-pg-basket-chip')).toBeVisible();
         });
 
+        test('Chip popup should stay within the gallery wrapper', async ({ page }) => {
+            await page.locator('.j0n4t-pg-item').first().click();
+            await page.locator('.j0n4t-pg-basket-chip').first().click();
+
+            const wrap = await page.locator('.j0n4t-pg-wrap').boundingBox();
+            const popup = await page.locator('.j0n4t-pg-chip-popup').boundingBox();
+            expect(wrap).not.toBeNull();
+            expect(popup).not.toBeNull();
+            expect(popup.x).toBeGreaterThanOrEqual(wrap.x);
+            expect(popup.y).toBeGreaterThanOrEqual(wrap.y);
+            expect(popup.x + popup.width).toBeLessThanOrEqual(wrap.x + wrap.width);
+            expect(popup.y + popup.height).toBeLessThanOrEqual(wrap.y + wrap.height);
+        });
+
         test('Ctrl+A and Ctrl+X should select and cut basket chips', async ({ page }) => {
             for (const value of ['first chip', 'second chip']) {
                 await page.locator('.j0n4t-pg-basket-add-btn').click();
