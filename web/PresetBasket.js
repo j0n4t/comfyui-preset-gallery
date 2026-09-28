@@ -55,9 +55,9 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip-segment { flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
-    .j0n4t-pg-basket-chip.pinned { border-color: #e09f3e; }
+    .j0n4t-pg-basket-chip.pinned { border-color: #ff6002bd; }
     .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -1px; top: -2px; font-size: 9px; pointer-events: none; z-index: 2; }
-    .j0n4t-pg-chip-popup-item.active-pin { color: #e09f3e; }
+    .j0n4t-pg-chip-popup-item.active-pin { color: #ff6002bd; }
 
     .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
     .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
@@ -240,6 +240,8 @@ export default class PresetBasket {
     const tab = this.tabs.find(t => t.id === tabId);
     if (!tab) return;
 
+    this.selectedChipIndexes.clear();
+    this.selectionAnchorIndex = null;
     this.activeTabId = tabId;
 
     this.context.pinnedChips = new Set(tab.pins || []);
@@ -269,6 +271,8 @@ export default class PresetBasket {
     };
 
     this.tabs.push(newTab);
+    this.selectedChipIndexes.clear();
+    this.selectionAnchorIndex = null;
     this.activeTabId = newId;
 
     this.context.updateWidgetValue([]);
@@ -309,6 +313,8 @@ export default class PresetBasket {
       rolls: JSON.parse(JSON.stringify(sourceTab.rolls || {}))
     };
     this.tabs.push(duplicate);
+    this.selectedChipIndexes.clear();
+    this.selectionAnchorIndex = null;
     this.activeTabId = duplicate.id;
     this.context.pinnedChips = new Set(duplicate.pins);
     if (this.context.rollManager) {
@@ -626,6 +632,9 @@ export default class PresetBasket {
           this.context.openEditorForPreset(targetKey);
         }
       } else {
+        this.selectedChipIndexes.clear();
+        this.selectionAnchorIndex = null;
+        this.applyChipSelection();
         /** @type {HTMLElement} */ (this.basket.querySelector('.j0n4t-pg-basket-add-btn')).focus();
       }
     });
@@ -820,9 +829,12 @@ export default class PresetBasket {
           ? this.selectedChipIndexes
           : new Set([Number(chip.dataset.index)]);
         const moving = chipElements.filter(item => selectedIndexes.has(Number(item.dataset.index)));
-        const targetChip = /** @type {HTMLElement | null} */ (
-          this.getSpatialTarget(chip, e.key, chipElements.filter(item => !selectedIndexes.has(Number(item.dataset.index))))
-        );
+        let targetChip = this.getSpatialTarget(chip, e.key, chipElements);
+        const visited = new Set([chip]);
+        while (targetChip && selectedIndexes.has(Number(targetChip.dataset.index)) && !visited.has(targetChip)) {
+          visited.add(targetChip);
+          targetChip = this.getSpatialTarget(targetChip, e.key, chipElements);
+        }
 
         if (targetChip && moving.length) {
           e.stopPropagation();
