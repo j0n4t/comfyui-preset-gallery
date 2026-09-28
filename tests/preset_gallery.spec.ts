@@ -139,8 +139,9 @@ test.describe('Preset Gallery Extension - Full Suite', () => {
 
             const wrap = await page.locator('.j0n4t-pg-wrap').boundingBox();
             const popup = await page.locator('.j0n4t-pg-chip-popup').boundingBox();
-            expect(wrap).not.toBeNull();
-            expect(popup).not.toBeNull();
+            if (!wrap || !popup) {
+                throw new Error('Expected gallery wrapper and chip popup to have bounding boxes');
+            }
             expect(popup.x).toBeGreaterThanOrEqual(wrap.x);
             expect(popup.y).toBeGreaterThanOrEqual(wrap.y);
             expect(popup.x + popup.width).toBeLessThanOrEqual(wrap.x + wrap.width);
