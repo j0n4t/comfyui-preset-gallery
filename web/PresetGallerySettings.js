@@ -36,7 +36,7 @@ export default class PresetGallerySettings {
       this.rollOnGeneration = saved.rollOnGeneration !== undefined ? saved.rollOnGeneration : false;
       this.rollOnSeedChange = saved.rollOnSeedChange !== undefined ? saved.rollOnSeedChange : false;
       this.diceBehavior = saved.diceBehavior || "variants";
-    } catch (e) {
+    } catch {
       this.rollMin = 10;
       this.rollMax = 20;
       this.rollOnGeneration = false;

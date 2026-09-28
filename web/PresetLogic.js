@@ -390,17 +390,16 @@ const PresetLogic = {
           ? PresetLogic.resolveVariantKey(groupName, baseVal, cache)
           : rollManager?.getRoll(groupName);
 
-        let baseTitle = "";
         if (resolvedKey && cache) {
           if (!filename && cache[resolvedKey]?.filename) {
             filename = cache[resolvedKey].filename;
           }
-          baseTitle = PresetLogic.toTitleCase(PresetLogic.getPresetName(resolvedKey));
-        } else if (baseVal) {
-          baseTitle = PresetLogic.toTitleCase(baseVal);
-        } else {
-          baseTitle = PresetLogic.toTitleCase(groupRaw);
         }
+        const baseTitle = resolvedKey && cache
+          ? PresetLogic.toTitleCase(PresetLogic.getPresetName(resolvedKey))
+          : baseVal
+            ? PresetLogic.toTitleCase(baseVal)
+            : PresetLogic.toTitleCase(groupRaw);
 
         let childTitles = [];
         if (childVarsStr) {
@@ -502,7 +501,7 @@ const PresetLogic = {
       }
     }
 
-    let cleanLabel, bgImage = null, color, tooltipTitle, evalId;
+    let cleanLabel, bgImage, color, tooltipTitle, evalId;
 
     const tokens = coreStr.match(/<[^>]*>|\{[^{}:]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}|\S+/g) || [];
     let segmentedLabels = null;

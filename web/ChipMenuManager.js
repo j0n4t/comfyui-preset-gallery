@@ -22,8 +22,8 @@ export default class ChipMenuManager {
   _resolveInputValue(inputEl, rawVal) {
     if (!rawVal || rawVal === "🎲 Random") return "";
     if (rawVal === "🚫 None (Omit)") return "none";
-    // @ts-ignore
-    const matchingOpt = inputEl._options?.find(opt => opt.display === rawVal || opt.key === rawVal);
+    const inputWithOptions = /** @type {HTMLInputElement & {_options?: {key: string, display: string}[]}} */ (inputEl);
+    const matchingOpt = inputWithOptions._options?.find(opt => opt.display === rawVal || opt.key === rawVal);
     return matchingOpt ? matchingOpt.key : rawVal;
   }
 
@@ -102,20 +102,13 @@ export default class ChipMenuManager {
           const escapedGroup = PresetDOM.escapeHTML(groupName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const groupRegex = new RegExp(`(^|/)${escapedGroup}(/|$)`, 'i');
 
-          let displayValue = PresetLogic.getPresetName(currentSelectedVal) || "";
-          let dataKey = "";
           const isNullSelected = currentSelectedVal && PresetLogic.isVirtualNull(currentSelectedVal);
-
-          if (!currentSelectedVal) {
-            displayValue = "🎲 Random";
-            dataKey = "";
-          } else if (isNullSelected) {
-            displayValue = "🚫 None (Omit)";
-            dataKey = "none";
-          } else {
-            displayValue = PresetLogic.toTitleCase(displayValue);
-            dataKey = currentSelectedVal;
-          }
+          const displayValue = !currentSelectedVal
+            ? "🎲 Random"
+            : isNullSelected
+              ? "🚫 None (Omit)"
+              : PresetLogic.toTitleCase(PresetLogic.getPresetName(currentSelectedVal) || "");
+          const dataKey = !currentSelectedVal ? "" : isNullSelected ? "none" : currentSelectedVal;
 
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
@@ -192,8 +185,8 @@ export default class ChipMenuManager {
           }))
         ];
 
-        // @ts-ignore
-        inputEl._options = options;
+        const inputWithOptions = /** @type {HTMLInputElement & {_options?: {key: string, display: string}[]}} */ (inputEl);
+        inputWithOptions._options = options;
 
         new AutocompleteManager({
           input: inputEl,

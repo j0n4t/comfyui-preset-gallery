@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error ComfyUI resolves this host-provided module at runtime.
 import { app } from "../../../scripts/app.js";
 
 import AutocompleteManager from "./AutocompleteManager.js";
@@ -679,7 +679,7 @@ app.registerExtension({
     const onNodeCreated = nodeType.prototype.onNodeCreated;
 
     nodeType.prototype.onNodeCreated = function () {
-      // @ts-ignore
+      // @ts-expect-error The host node callback uses a dynamic `this` context.
       onNodeCreated?.apply(this, arguments);
       const widget = this.widgets?.find((/** @type {{ name: string; }} */ w) => w.name === "preset_selection");
       const evaluatedWidget = this.widgets?.find((/** @type {{ name: string; }} */ w) => w.name === "evaluated_preset");
