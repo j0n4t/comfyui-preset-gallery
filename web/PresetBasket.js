@@ -660,6 +660,19 @@ export default class PresetBasket {
       const modifierKey = e.ctrlKey || e.metaKey;
       const focusedChip = /** @type {HTMLElement} */ (target.closest(".j0n4t-pg-basket-chip"));
 
+      if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "x" &&
+        (focusedChip || this.selectedChipIndexes.size > 0)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (focusedChip && !this.selectedChipIndexes.has(Number(focusedChip.dataset.index))) {
+          const index = Number(focusedChip.dataset.index);
+          this.selectedChipIndexes = new Set([index]);
+          this.selectionAnchorIndex = index;
+          this.applyChipSelection(index);
+        }
+        void this.copySelectedChips(focusedChip).then(() => this.deleteSelectedChips());
+        return;
+      }
       if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "c" &&
         (focusedChip || this.selectedChipIndexes.size > 0)) {
         e.preventDefault();
@@ -673,16 +686,19 @@ export default class PresetBasket {
         this.pasteChips();
         return;
       }
-      if (!target.closest("input") && focusedChip && modifierKey && e.key.toLowerCase() === "a") {
+      if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "a" &&
+        (focusedChip || target.closest(".j0n4t-pg-basket-add-btn"))) {
         e.preventDefault();
         e.stopPropagation();
+        const chips = Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
         this.selectedChipIndexes = new Set(
-          Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"), chip =>
-            Number(/** @type {HTMLElement} */(chip).dataset.index)
-          )
+          chips.map(chip => Number(/** @type {HTMLElement} */(chip).dataset.index))
         );
-        this.selectionAnchorIndex = Number(focusedChip.dataset.index);
-        this.applyChipSelection(Number(focusedChip.dataset.index));
+        const anchorIndex = focusedChip
+          ? Number(focusedChip.dataset.index)
+          : Number(/** @type {HTMLElement | undefined} */(chips[0])?.dataset.index);
+        this.selectionAnchorIndex = chips.length ? anchorIndex : null;
+        this.applyChipSelection(chips.length ? anchorIndex : undefined);
         return;
       }
 

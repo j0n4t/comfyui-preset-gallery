@@ -133,6 +133,22 @@ test.describe('Preset Gallery Extension - Full Suite', () => {
             await expect(page.locator('.j0n4t-pg-basket-chip')).toBeVisible();
         });
 
+        test('Ctrl+A and Ctrl+X should select and cut basket chips', async ({ page }) => {
+            for (const value of ['first chip', 'second chip']) {
+                await page.locator('.j0n4t-pg-basket-add-btn').click();
+                await page.locator('.j0n4t-pg-inline-edit').fill(value);
+                await page.locator('.j0n4t-pg-inline-edit').press('Enter');
+            }
+
+            const chips = page.locator('.j0n4t-pg-basket-chip');
+            await chips.first().focus();
+            await page.keyboard.press('Control+a');
+            await expect(page.locator('.j0n4t-pg-basket-chip.selected')).toHaveCount(2);
+
+            await page.keyboard.press('Control+x');
+            await expect(chips).toHaveCount(0);
+        });
+
         test('Double-clicking a chip should keep its inline editor open', async ({ page }) => {
             await page.locator('.j0n4t-pg-basket-add-btn').click();
             const addInput = page.locator('.j0n4t-pg-inline-edit');
