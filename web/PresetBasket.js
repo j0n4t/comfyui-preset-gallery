@@ -46,18 +46,17 @@ export default class PresetBasket {
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
     .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
     .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
-    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 1px solid #3d3d3d; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; }
+    .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 2px solid #5d5d5da0; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; }
     .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.2); z-index: 0; pointer-events: none; }
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
-    .j0n4t-pg-basket-chip.dragging { opacity: 0.4; border-color: #007acc; }
-    .j0n4t-pg-basket-chip:focus { border-width: 2px; border-color: #007acc; }
-    .j0n4t-pg-basket-chip.selected { box-shadow: inset 0 0 0 2px #007acc; }
+    .j0n4t-pg-basket-chip.dragging { opacity: 0.4; }
+    .j0n4t-pg-basket-chip.selected { outline: auto; }
     .j0n4t-pg-basket-chip-segments { display: flex; gap: 0.2em; width: 100%; align-items: center; }
     .j0n4t-pg-basket-chip-segment { flex: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
     .j0n4t-pg-basket-chip.pinned { border-color: #e09f3e; }
-    .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -2px; top: -2px; font-size: 10px; pointer-events: none; z-index: 2; }
+    .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -1px; top: -2px; font-size: 9px; pointer-events: none; z-index: 2; }
     .j0n4t-pg-chip-popup-item.active-pin { color: #e09f3e; }
 
     .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
@@ -65,7 +64,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip.inline-editing::before { display: none; }
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
 
-    .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; outline: none; }
+    .j0n4t-pg-basket-add-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: 2px dashed #777; border-radius: 3px; padding: 2px 8px; cursor: pointer; color: #aaa; font-size: 10px; font-weight: bold; transition: 0.15s; height: 22px; user-select: none; outline: none; }
     .j0n4t-pg-basket-add-btn:hover, .j0n4t-pg-basket-add-btn:focus { border-color: #007acc; color: #fff; background: #1a242db0; }
     .j0n4t-pg-text-input, .j0n4t-pg-bool-input, .j0n4t-pg-num-input, .j0n4t-pg-select-input { width: 38px; height: 16px; background: #1a1a1a; border: 1px solid #444; color: #fff; font-size: 9px; border-radius: 2px; padding: 0 2px; text-align: center; margin: 0 2px; outline: none; position: relative; cursor: pointer; }
     .j0n4t-pg-text-input:focus, .j0n4t-pg-bool-input:focus, .j0n4t-pg-num-input:focus, .j0n4t-pg-select-input:focus { border-color: #007acc; }
