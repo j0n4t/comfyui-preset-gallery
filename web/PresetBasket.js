@@ -1,6 +1,5 @@
 import ChipMenuManager from "./ChipMenuManager.js";
 import InlineEditorManager from "./InlineEditorManager.js";
-import ModalUtils from "./ModalUtils.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
@@ -16,9 +15,10 @@ export default class PresetBasket {
     .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
     .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
-    .j0n4t-pg-basket-clear-btn:hover, .j0n4t-pg-basket-clear-btn:focus { background: #912e2e; outline: 2px solid #fff; }
-    .j0n4t-pg-basket-copy-btn { display: flex; background: none; border: none; outline: none; padding: 0; }
-    .j0n4t-pg-basket-copy-btn:hover, .j0n4t-pg-basket-copy-btn:focus { color: #007acc; transform: scale(1.1); }
+    .j0n4t-pg-basket-action-btn { background: #333; border: 1px solid #555; border-radius: 3px; color: #bbb; cursor: pointer; font-size: 9px; padding: 2px 5px; white-space: nowrap; }
+    .j0n4t-pg-basket-action-btn:hover, .j0n4t-pg-basket-action-btn:focus, .j0n4t-pg-basket-action-btn.active { background: #007acc; border-color: #007acc; color: #fff; outline: none; }
+    .j0n4t-pg-basket-action-btn.danger:hover, .j0n4t-pg-basket-action-btn.danger:focus { background: #912e2e; border-color: #912e2e; }
+    .j0n4t-pg-basket-action-btn:disabled { color: #666; background: #222; border-color: #333; cursor: default; }
     .j0n4t-pg-var-reroll-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 13px; padding: 0 4px; outline: none; transition: 0.15s; }
     .j0n4t-pg-var-reroll-btn:hover, .j0n4t-pg-var-reroll-btn:focus { color: #fff; transform: scale(1.1); }
     .j0n4t-pg-checkbox-wrap {height:auto; padding:0; margin-right:4px;}
@@ -107,6 +107,7 @@ export default class PresetBasket {
     this.currentMatches = [];
     this.activeIndex = 0;
     this._updatingTextarea = false;
+    this.multiSelectionMode = false;
     /** @type {Set<number>} */
     this.selectedChipIndexes = new Set();
     /** @type {number | null} */
@@ -546,17 +547,28 @@ export default class PresetBasket {
   initBasketActions() {
     const { dom } = this.context;
 
-    const copyBtn = dom.btnCopyBasket || this.container.querySelector(".j0n4t-pg-basket-copy-btn");
-    if (copyBtn) {
-      copyBtn.addEventListener("click", () => this.showCopyModal());
-    }
-
-    dom.btnClearBasket.addEventListener("click", async () => {
-      if (this.context.getSelectedArray().length && await ModalUtils.confirm("Empty basket?")) {
-        const pinned = this.context.getSelectedArray().filter(item => this.context.pinnedChips?.has(item));
-        this.context.updateWidgetValue(pinned);
+    dom.btnBasketMultiSelect.addEventListener("click", () => {
+      this.multiSelectionMode = !this.multiSelectionMode;
+      dom.btnBasketMultiSelect.classList.toggle("active", this.multiSelectionMode);
+      dom.btnBasketMultiSelect.setAttribute("aria-pressed", String(this.multiSelectionMode));
+      dom.btnBasketMultiSelect.title = this.multiSelectionMode
+        ? "Exit multi-selection mode"
+        : "Enable multi-selection mode";
+      if (!this.multiSelectionMode) {
+        this.selectedChipIndexes.clear();
+        this.selectionAnchorIndex = null;
+        this.applyChipSelection();
       }
     });
+    dom.btnCopyBasket.addEventListener("click", () => {
+      void this.copySelectedChips();
+    });
+    dom.btnBasketPaste.addEventListener("click", () => {
+      void this.pasteChips();
+    });
+    dom.btnBasketPin.addEventListener("click", () => this.toggleSelectedPins());
+    dom.btnBasketDelete.addEventListener("click", () => this.deleteSelectedChips());
+    this.updateBasketActionButtons();
 
     dom.chkBasketRaw.checked = localStorage.getItem("comfy_preset_gallery_raw_basket") === "true";
     dom.basketContainer.classList.toggle("raw-mode", dom.chkBasketRaw.checked);
@@ -606,6 +618,10 @@ export default class PresetBasket {
       if (chip) {
         e.stopPropagation();
         this.handleChipSelection(chip, e);
+        if (this.multiSelectionMode) {
+          this.chipMenuManager.close(false);
+          return;
+        }
         if (e.ctrlKey || e.metaKey || e.shiftKey) {
           this.chipMenuManager.close(false);
           return;
@@ -1018,6 +1034,32 @@ export default class PresetBasket {
     if (index !== undefined && index >= 0) {
       /** @type {HTMLElement} */ (chips[index]).focus();
     }
+    this.updateBasketActionButtons();
+  }
+
+  updateBasketActionButtons() {
+    const selections = this.context.getSelectedArray();
+    const selectedChips = PresetLogic.getGroupedChips(
+      selections,
+      this.context.cache
+    ).filter((_, index) => this.selectedChipIndexes.has(index));
+    const hasSelection = selectedChips.length > 0;
+    this.context.dom.btnCopyBasket.disabled = !hasSelection;
+    this.context.dom.btnBasketPin.disabled = !hasSelection;
+    this.context.dom.btnBasketDelete.disabled = !hasSelection;
+    const allPinned = selectedChips.length > 0 && selectedChips.every(chip =>
+      this.context.pinnedChips?.has(
+        selections.slice(chip.startIndex, chip.endIndex).join(", ")
+      )
+    );
+    this.context.dom.btnBasketPin.textContent = allPinned ? "Unpin" : "Pin";
+    this.context.dom.btnBasketPin.title = allPinned
+      ? "Unpin selected chips"
+      : "Pin selected chips";
+    this.context.dom.btnBasketPin.setAttribute(
+      "aria-label",
+      this.context.dom.btnBasketPin.title
+    );
   }
 
   /**
@@ -1041,7 +1083,7 @@ export default class PresetBasket {
     const multiSelect = event.ctrlKey || event.metaKey;
     if (event.shiftKey) {
       this.selectChipRange(this.selectionAnchorIndex ?? index, index);
-    } else if (multiSelect) {
+    } else if (multiSelect || this.multiSelectionMode) {
       if (this.selectedChipIndexes.has(index)) {
         this.selectedChipIndexes.delete(index);
       } else {
@@ -1382,6 +1424,7 @@ export default class PresetBasket {
 
     htmlBuffer += `<div class="j0n4t-pg-basket-add-btn" tabindex="0" role="button" title="Add new preset or keyword" aria-label="Add new keyword">+ Add</div>`;
     this.basket.innerHTML = htmlBuffer;
+    this.updateBasketActionButtons();
   }
 
   /**
@@ -1399,56 +1442,6 @@ export default class PresetBasket {
     selections.splice(startIndex, endIndex - startIndex, newStyleKey);
     this.context.updateWidgetValue(selections);
     return true;
-  }
-
-  getCopyContent() {
-    if (this.container.classList.contains("raw-mode")) {
-      return this.textarea.value;
-    }
-    const selections = this.context.getSelectedArray();
-    if (!selections || selections.length === 0) return "";
-    const cache = this.context.cache || {};
-
-    const items = selections.map((/** @type {string} */ key) => {
-      const { core: coreKey, weightStr, isWeighted } = PresetLogic.parseWeight(key);
-      const item = cache[coreKey];
-      if (!item) return key;
-      return isWeighted ? `(${coreKey}:${weightStr})` : coreKey;
-    });
-
-    return items.join(", ");
-  }
-
-  async showCopyModal() {
-    const content = this.getCopyContent();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(content).catch(() => { });
-    }
-    ModalUtils.show({
-      title: "📋 Basket Contents",
-      content: `<textarea readonly style="width: 100%; height: 120px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; box-sizing: border-box; font-family: monospace; font-size: 11px; resize: vertical; margin: 8px 0;">${PresetDOM.escapeHTML(content)}</textarea>`,
-      buttons: [
-        {
-          text: "Copy",
-          className: "",
-          isDefault: true,
-          callback: () => {
-            /** @type {HTMLTextAreaElement | null} */
-            const textarea = document.querySelector(".j0n4t-pg-modal textarea");
-            if (textarea) {
-              textarea.select();
-              navigator.clipboard.writeText(textarea.value);
-              const copyBtn = document.querySelector(".j0n4t-pg-modal .j0n4t-pg-btn");
-              if (copyBtn) {
-                copyBtn.textContent = "Copied!";
-                setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
-              }
-            }
-          }
-        },
-        { text: "Close", closeOnFinish: true }
-      ]
-    });
   }
 
   /** @param {string} styleKey */

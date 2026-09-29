@@ -32,9 +32,9 @@
 ### 5. Keyboard Navigation & Accessibility
 
 - **Spatial Navigation**: Users can traverse chips using the `ArrowLeft`, `ArrowRight`, `ArrowUp`, and `ArrowDown` keys.
-- **Multi-selection**: Click a chip to select it, Ctrl/Cmd-click to toggle chips, and Shift-click or Shift+Arrow to select a range. Ctrl/Cmd+Arrow toggles the adjacent chip; Ctrl/Cmd+A selects all chips.
+- **Multi-selection**: Enable the basket's Select mode to toggle chips by clicking, or use Ctrl/Cmd-click to toggle chips and Shift-click or Shift+Arrow to select a range. Ctrl/Cmd+Arrow toggles the adjacent chip; Ctrl/Cmd+A selects all chips.
 - **Copy and Paste**: Ctrl/Cmd+C copies selected chips and Ctrl/Cmd+V appends them. Preset text remains compatible with plain-text clipboards, while rich clipboard support also carries each chip's pinned state and resolved rolling choices.
-- **Bulk Actions**: Delete removes all selected chips, `P` pins all selected chips (or unpins them when all are already pinned), and Alt+Arrow or dragging moves the selected chips together while preserving their order.
+- **Bulk Actions**: Basket buttons copy, paste, pin/unpin, or delete selected chips. `Delete` removes selected chips, `P` pins them (or unpins them when all are already pinned), and Alt+Arrow or dragging moves the selected chips together while preserving their order.
 - **Keyboard Reordering**: Holding `Alt` + an arrow moves the selected chips together past the adjacent chip in that direction.
 - **Quick Deletion**: Pressing `Delete` removes the currently focused chip and intelligently shifts focus to the nearest remaining item.
 - **Trigger Support**: Pressing `Enter` or `Space` on a chip acts as a click event.
@@ -42,11 +42,11 @@
 ### 6. Reroll Mechanism
 
 - **Variable Rerolling**: The `reRollChipGroup` method allows users to randomly select or cycle through variations of a specific preset group, utilizing `PresetLogic.RollManager` to keep track of roll counts and seeds.
-- **Pinned Chips**: You can pin chips you don't want to lose when clearing/rerolling the basket.
+- **Pinned Chips**: You can pin chips to keep them when rerolling or overwriting the basket.
 
 ### 7. Import/Export & Gallery Integration
 
-- **Copy Functionality**: Features a modal (`showCopyModal`) that compiles the basket's contents into a raw comma-separated text format (expanding prompt variations and weights) and copies it to the user's clipboard.
+- **Copy Functionality**: Copies selected chips to the clipboard as compatible plain text and, when supported, retains pin and roll state for pasting back into the basket.
 - **Gallery Highlighting**: The `locatePreset` method locates the corresponding preset in the main UI gallery, expands its parent folder if collapsed, scrolls it into view, and highlights it with a temporary visual glow.
 
 ## CSS Architecture

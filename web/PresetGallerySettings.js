@@ -121,7 +121,6 @@ export default class PresetGallerySettings {
             <h4>Basket Actions</h4>
             <div class="j0n4t-pg-shortcut-row"><span>Roll Main ${this.diceBehavior === "variants" ? "(variants)" : "(presets)"}</span> <div><span class="j0n4t-pg-kbd">Ctrl</span> + <span class="j0n4t-pg-kbd">D</span></div></div>
             <div class="j0n4t-pg-shortcut-row"><span>Roll Alt ${this.diceBehavior !== "variants" ? "(variants)" : "(presets)"}</span> <div><span class="j0n4t-pg-kbd">Ctrl</span>+<span class="j0n4t-pg-kbd">Shift</span>+<span class="j0n4t-pg-kbd">D</span></div></div>
-            <div class="j0n4t-pg-shortcut-row"><span>Clear Basket</span> <div><span class="j0n4t-pg-kbd">Alt</span> + <span class="j0n4t-pg-kbd">L</span></div></div>
           </div>
 
           <div class="j0n4t-pg-shortcut-group">

@@ -132,10 +132,13 @@ export default class PresetGalleryApp {
         <div class="j0n4t-pg-basket-header">
           <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
           <div style="display: flex; gap: 4px; align-items: center;">
-                  <button type="button" class="j0n4t-pg-basket-copy-btn" title="Copy basket content" aria-label="Copy basket content">${PresetDOM.icons.copy}</button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-multiselect-btn" title="Enable multi-selection mode" aria-label="Multi-selection mode" aria-pressed="false">Select</button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-copy-btn" title="Copy selected chips" aria-label="Copy selected chips" disabled>Copy</button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-paste-btn" title="Paste chips from clipboard" aria-label="Paste chips">Paste</button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-pin-btn" title="Pin selected chips" aria-label="Pin selected chips" disabled>Pin</button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn danger j0n4t-pg-basket-delete-btn" title="Delete selected chips" aria-label="Delete selected chips" disabled>Delete</button>
                   <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?" style="display:flex; font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">${PresetDOM.icons.dice}</button>
                   <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
-                  <button type="button" class="j0n4t-pg-basket-clear-btn" title="Clear basket" aria-label="Clear basket" style="font-size:9px; color:#fff; background:#b23b3b; border:none; padding:2px 6px; border-radius:3px; cursor:pointer;">🗑️ Clear</button>
           </div>
         </div>
         <div class="j0n4t-pg-basket-pool-wrapper">
@@ -221,7 +224,10 @@ export default class PresetGalleryApp {
       btnImport: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-import-btn")),
       btnExport: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-export-btn")),
       btnCopyBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-copy-btn")),
-      btnClearBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-clear-btn")),
+      btnBasketMultiSelect: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-multiselect-btn")),
+      btnBasketPaste: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-paste-btn")),
+      btnBasketPin: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-pin-btn")),
+      btnBasketDelete: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-delete-btn")),
       btnRerollBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-reroll-btn")),
       chkBasketRaw: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-basket-raw-toggle")),
       basketContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-container")),
@@ -448,7 +454,7 @@ export default class PresetGalleryApp {
       const isInput = ["INPUT", "TEXTAREA"].includes(target.tagName);
 
       if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
-        const triggerable = target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-copy-btn, .j0n4t-pg-basket-clear-btn, .j0n4t-pg-basket-reroll-btn");
+        const triggerable = target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-action-btn, .j0n4t-pg-basket-reroll-btn");
         if (triggerable) {
           e.preventDefault();
           /** @type {HTMLElement} */ (triggerable).click();
@@ -476,10 +482,6 @@ export default class PresetGalleryApp {
         e.preventDefault();
         const mainBehavior = this.settings?.diceBehavior === "overwrite";
         this.triggerRoll(e.shiftKey ? !mainBehavior : mainBehavior);
-      }
-      else if (e.altKey && e.key.toLowerCase() === "l") {
-        e.preventDefault();
-        this.dom.btnClearBasket.click();
       }
     });
 

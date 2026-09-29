@@ -164,6 +164,26 @@ test.describe('Preset Gallery Extension - Full Suite', () => {
             await expect(chips).toHaveCount(0);
         });
 
+        test('Multi-selection mode supports pinning and deleting selected chips', async ({ page }) => {
+            for (const value of ['first chip', 'second chip']) {
+                await page.locator('.j0n4t-pg-basket-add-btn').click();
+                await page.locator('.j0n4t-pg-inline-edit').fill(value);
+                await page.locator('.j0n4t-pg-inline-edit').press('Enter');
+            }
+
+            await page.locator('.j0n4t-pg-basket-multiselect-btn').click();
+            const chips = page.locator('.j0n4t-pg-basket-chip');
+            await chips.nth(0).click();
+            await chips.nth(1).click();
+            await expect(page.locator('.j0n4t-pg-basket-chip.selected')).toHaveCount(2);
+
+            await page.locator('.j0n4t-pg-basket-pin-btn').click();
+            await expect(page.locator('.j0n4t-pg-basket-chip.pinned')).toHaveCount(2);
+
+            await page.locator('.j0n4t-pg-basket-delete-btn').click();
+            await expect(chips).toHaveCount(0);
+        });
+
         test('Double-clicking a chip should keep its inline editor open', async ({ page }) => {
             await page.locator('.j0n4t-pg-basket-add-btn').click();
             const addInput = page.locator('.j0n4t-pg-inline-edit');
