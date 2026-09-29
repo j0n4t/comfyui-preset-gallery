@@ -534,7 +534,7 @@ export default class ChipMenuManager {
       if (focusWeight) {
         /** @type {HTMLElement} */ (popup.querySelector('.j0n4t-pg-weight-input')).focus();
       } else {
-        const target = /** @type {HTMLElement} */ (Array.from(popup.querySelectorAll("[data-action], button, input"))
+        const target = /** @type {HTMLElement} */ (Array.from(popup.querySelectorAll("[data-action]"))
           .find(el => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })));
         target.focus();
         if (target instanceof HTMLInputElement) {
