@@ -16,6 +16,12 @@ export default class PresetGallerySettings {
     .j0n4t-pg-shortcut-row:last-child { border-bottom: none; }
     .j0n4t-pg-kbd { background: #2d2d2d ; border: 1px solid #4f4f4f ; border-radius: 3px ; padding: 1px 5px ; color: #eee ; font-family: monospace ; font-size: 10px ; box-shadow: 0 1px 1px rgba(0,0,0,0.4); }
 
+    /* Auto-Roll Dice Visual Indicators */
+    .j0n4t-pg-basket-reroll-btn.auto-roll-overwrite { color: #ff4a4a !important; filter: drop-shadow(0 0 3px rgba(255,74,74,0.6)) !important; }
+    .j0n4t-pg-basket-reroll-btn.auto-roll-variants { color: #4a9eff !important; filter: drop-shadow(0 0 3px rgba(74,158,255,0.6)) !important; }
+    .j0n4t-pg-basket-reroll-btn.auto-roll-overwrite svg, 
+    .j0n4t-pg-basket-reroll-btn.auto-roll-variants svg { fill: currentColor !important; }
+
     @media (max-width: 512px) {
       .j0n4t-pg-shortcuts-grid { grid-template-columns: 1fr; }
     }
@@ -26,6 +32,9 @@ export default class PresetGallerySettings {
     this.context = context;
     this.load();
     PresetDOM.injectStyles('j0n4t-pg-settings-styles', PresetGallerySettings.STYLES);
+
+    // Defer visual update slightly to ensure the main app has finished generating the DOM elements
+    setTimeout(() => this.updateDiceVisuals(), 0);
   }
 
   load() {
@@ -54,6 +63,21 @@ export default class PresetGallerySettings {
       diceBehavior: this.diceBehavior
     };
     localStorage.setItem("pg_settings", JSON.stringify(data));
+  }
+
+  updateDiceVisuals() {
+    // Attempt to grab from context if mapped, fallback to DOM query
+    const diceBtn = document.querySelector('.j0n4t-pg-basket-reroll-btn');
+    if (!diceBtn) return;
+
+    // Reset state
+    diceBtn.classList.remove('auto-roll-overwrite', 'auto-roll-variants');
+
+    // Apply color indicator if auto-roll is active
+    if (this.rollOnGeneration || this.rollOnSeedChange) {
+      const modeClass = this.diceBehavior === 'overwrite' ? 'auto-roll-overwrite' : 'auto-roll-variants';
+      diceBtn.classList.add(modeClass);
+    }
   }
 
   async openModal() {
@@ -157,7 +181,9 @@ export default class PresetGallerySettings {
             this.rollOnGeneration = genCheck?.checked;
             this.rollOnSeedChange = seedCheck?.checked;
             this.diceBehavior = diceSelect?.value;
+
             this.save();
+            this.updateDiceVisuals(); // Instantly update the color indicator
             this.context.syncUI(this.context.widget.value);
             return true;
           }
