@@ -22,7 +22,7 @@ export default class PresetGalleryApp {
   static WRAP_STYLES = /*css*/ `
     .j0n4t-pg-wrap { display: flex; flex: auto; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; min-height: 100%; font-family: sans-serif; position: relative; outline: none; overflow: hidden; resize: vertical; }
     .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-more-options-wrap { display: none; }
-    .j0n4t-pg-basket-container { display: flex; flex-direction: column; min-height: 80px;  resize: vertical; background: #15151580; border: 1px dashed #777; border-radius: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative;  overflow-y: auto; overflow-x: hidden; }
+    .j0n4t-pg-basket-container { display: flex; flex-direction: column; min-height: 80px;  resize: vertical; background: #15151580; border: 1px dashed #777; border-radius: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative;  overflow-y: auto; overflow-x: hidden; container: pg-basket / size; }
     .j0n4t-pg-basket-pool-wrapper { flex: 1 1 auto; overflow-y: auto; position: relative; margin: 4px; display: block; box-sizing: border-box; }
     .j0n4t-pg-basket-raw-textarea { flex: 1 1 auto; resize: none; }
     .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-basket-container { flex: 1 1 100%; resize: none; }
@@ -55,7 +55,7 @@ export default class PresetGalleryApp {
     .j0n4t-pg-grid.view-big { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
     .j0n4t-pg-grid.view-list { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 4px; }
     .j0n4t-pg-grid.hide-folders .j0n4t-pg-tag-badge { display: block !important; }
-    .j0n4t-pg-checkbox-wrap { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #aaa; user-select: none; cursor: pointer; padding: 3px 2px; height: 20px; box-sizing: border-box; white-space: nowrap; outline: none; }
+    .j0n4t-pg-checkbox-wrap { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #aaa; user-select: none; cursor: pointer; padding: 3px 2px; height: 20px; box-sizing: border-box; white-space: nowrap; outline: none; }
     .j0n4t-pg-checkbox-wrap input { width: auto; margin: 0; cursor: pointer; outline: none; }
     .j0n4t-pg-checkbox-wrap input:focus { outline: 1px solid #007acc; outline-offset: 2px; }
     .j0n4t-pg-more-options-wrap { position: relative; }
@@ -132,12 +132,12 @@ export default class PresetGalleryApp {
         <div class="j0n4t-pg-basket-header">
           <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
           <div style="display: flex; gap: 4px; align-items: center;">
-                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-multiselect-btn" title="Enable multi-selection mode" aria-label="Multi-selection mode" aria-pressed="false">Select</button>
-                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-copy-btn" title="Copy selected chips" aria-label="Copy selected chips" disabled>Copy</button>
-                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-paste-btn" title="Paste chips from clipboard" aria-label="Paste chips">Paste</button>
-                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-pin-btn" title="Pin selected chips" aria-label="Pin selected chips" disabled>Pin</button>
-                  <button type="button" class="j0n4t-pg-basket-action-btn danger j0n4t-pg-basket-delete-btn" title="Delete selected chips" aria-label="Delete selected chips" disabled>Delete</button>
-                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?" style="display:flex; font-size:14px; background:transparent; border:none; cursor:pointer; padding:0; outline:none; filter: grayscale(1) brightness(1.5);">${PresetDOM.icons.dice}</button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-multiselect-btn" title="Enable multi-selection mode" aria-label="Multi-selection mode" aria-pressed="false">${PresetDOM.icons.select} <span>Select</span></button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-copy-btn" title="Copy selected chips" aria-label="Copy selected chips" disabled>${PresetDOM.icons.copy} <span>Copy</span></button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-paste-btn" title="Paste chips from clipboard" aria-label="Paste chips">${PresetDOM.icons.paste} <span>Paste</span></button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-pin-btn" title="Pin selected chips" aria-label="Pin selected chips" disabled>${PresetDOM.icons.pin} <span>Pin</span></button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn danger j0n4t-pg-basket-delete-btn" title="Delete selected chips" aria-label="Delete selected chips" disabled>${PresetDOM.icons.trash} <span>Delete</span></button>
+                  <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?">${PresetDOM.icons.dice}</button>
                   <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
           </div>
         </div>

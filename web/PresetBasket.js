@@ -14,17 +14,17 @@ export default class PresetBasket {
   static BASKET_CONTAINER_STYLES = /*css*/ `
     .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
-    .j0n4t-pg-basket-title { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
-    .j0n4t-pg-basket-action-btn { background: #333; border: 1px solid #555; border-radius: 3px; color: #bbb; cursor: pointer; font-size: 9px; padding: 2px 5px; white-space: nowrap; }
+    .j0n4t-pg-basket-title { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
+    .j0n4t-pg-basket-action-btn { background: #333; border: 1px solid #555; border-radius: 3px; color: #bbb; cursor: pointer; font-size: 12px; padding: 1px 3px; white-space: nowrap; display: flex; align-items: center; gap: 2px; }
     .j0n4t-pg-basket-action-btn:hover, .j0n4t-pg-basket-action-btn:focus, .j0n4t-pg-basket-action-btn.active { background: #007acc; border-color: #007acc; color: #fff; outline: none; }
     .j0n4t-pg-basket-action-btn.danger:hover, .j0n4t-pg-basket-action-btn.danger:focus { background: #912e2e; border-color: #912e2e; }
     .j0n4t-pg-basket-action-btn:disabled { color: #666; background: #222; border-color: #333; cursor: default; }
     .j0n4t-pg-var-reroll-btn { display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 13px; padding: 0 4px; outline: none; transition: 0.15s; }
     .j0n4t-pg-var-reroll-btn:hover, .j0n4t-pg-var-reroll-btn:focus { color: #fff; transform: scale(1.1); }
-    .j0n4t-pg-checkbox-wrap {height:auto; padding:0; margin-right:4px;}
-    .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus { filter: grayscale(0) brightness(1) !important; transform: scale(1.1); }
-    .j0n4t-pg-basket-reroll-btn { transition: transform 0.2s ease; }
-    .j0n4t-pg-basket-header.shift-held .j0n4t-pg-basket-reroll-btn { transform: rotate(180deg); }
+    .j0n4t-pg-checkbox-wrap {height: auto; padding: 0; margin-right: 4px;}
+    .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus { transform: scale(1.1); }
+    .j0n4t-pg-basket-reroll-btn { display: flex; font-size: 14px; background: transparent; border: none; cursor: pointer; padding: 0; outline: none; transition: transform 0.2s ease; }
+    .j0n4t-pg-basket-header.shift-held .j0n4t-pg-basket-reroll-btn { filter: invert(1); transform: rotate(180deg); }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; height: 100%; align-items: center; align-content: flex-start; padding: 4px; }
     .j0n4t-pg-basket-container .j0n4t-pg-raw-wrapper { display: none; width: auto; }
     .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block; margin: 4px; }
@@ -90,6 +90,10 @@ export default class PresetBasket {
     .j0n4t-pg-var-popup-row label { font-size: 10px; color: #d1a119; font-weight: 600; min-width: 40px; text-transform: capitalize; }
     .j0n4t-pg-var-input { flex: 1; background: transparent; border: 1px solid #3d3d3d; border-radius: 3px; color: #fff; font-size: 11px; outline: none; padding: 2px 4px; margin: 0 4px; cursor: text; box-sizing: border-box; }
     .j0n4t-pg-var-input:focus { border-color: #d1a119; }
+
+    @container pg-basket (max-width: 500px) {
+      .j0n4t-pg-basket-header span { display: none; }
+    }
   `;
 
   /**
@@ -1069,7 +1073,7 @@ export default class PresetBasket {
         selections.slice(chip.startIndex, chip.endIndex).join(", ")
       )
     );
-    this.context.dom.btnBasketPin.textContent = allPinned ? "Unpin" : "Pin";
+    this.context.dom.btnBasketPin.innerHTML = `${PresetDOM.icons.pin} <span>${allPinned ? "Unpin" : "Pin"}</span>`;
     this.context.dom.btnBasketPin.title = allPinned
       ? "Unpin selected chips"
       : "Pin selected chips";
