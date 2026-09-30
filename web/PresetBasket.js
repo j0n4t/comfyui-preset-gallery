@@ -222,7 +222,7 @@ export default class PresetBasket {
     }));
   }
 
-  saveCurrentState() {
+  saveCurrentState(skipPersist = false) {
     if (!this.activeTabId) return;
     const tab = this.tabs.find(t => t.id === this.activeTabId);
     if (tab) {
@@ -230,13 +230,13 @@ export default class PresetBasket {
       tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];
       tab.rolls = this.context.rollManager?.rolls ? JSON.parse(JSON.stringify(this.context.rollManager.rolls)) : {};
     }
-    this.persistTabs();
+    if (!skipPersist) this.persistTabs();
   }
 
   /** @param {string} tabId */
   switchTab(tabId) {
     if (this.activeTabId === tabId) return;
-    this.saveCurrentState();
+    this.saveCurrentState(true);
 
     const tab = this.tabs.find(t => t.id === tabId);
     if (!tab) return;
@@ -252,8 +252,25 @@ export default class PresetBasket {
     this.context.updateWidgetValue(tab.basket || []);
     this.context.savePins();
 
+    this._isSwitchingTab = true;
     this.render(this.context.getSelectedArray());
-    this.renderTabsList();
+    this._isSwitchingTab = false;
+
+    this.closeTabMenu();
+    if (this.tabsSidebarList) {
+      this.tabsSidebarList.querySelectorAll('.j0n4t-pg-basket-tab-item').forEach((item, index) => {
+        const id = item.getAttribute('data-tab-id');
+        const isActive = id === this.activeTabId;
+        item.classList.toggle('active', isActive);
+        item.setAttribute('aria-selected', String(isActive));
+
+        const targetTab = this.tabs.find(t => t.id === id);
+        const baseTitle = targetTab?.title || `Tab ${index + 1}`;
+        /** @type {HTMLElement} */ (item).title = `${PresetDOM.escapeHTML(baseTitle)}${isActive ? " (Click for tab options)" : ""}`;
+      });
+    }
+
+    // Persist the state exactly once at the end of the switch
     this.persistTabs();
   }
 
@@ -1354,8 +1371,7 @@ export default class PresetBasket {
 
   /** @param {string[]} activeList  */
   render(activeList) {
-    // Automatically synchronize state of the active tab
-    if (this.activeTabId) {
+    if (this.activeTabId && !this._isSwitchingTab) {
       const tab = this.tabs.find(t => t.id === this.activeTabId);
       if (tab) {
         tab.basket = [...activeList];
