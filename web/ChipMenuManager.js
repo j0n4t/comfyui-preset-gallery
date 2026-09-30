@@ -168,8 +168,8 @@ export default class ChipMenuManager {
       </div>
     `;
 
-    this.context.dom.wrap.insertAdjacentHTML('beforeend', popupHtml);
-    const popup = /** @type {HTMLElement} */ (this.context.dom.wrap.lastElementChild);
+    document.body.insertAdjacentHTML('beforeend', popupHtml);
+    const popup = /** @type {HTMLElement} */ (document.body.lastElementChild);
     this.popupEl = popup;
     if (!popup) return;
 
@@ -495,29 +495,39 @@ export default class ChipMenuManager {
 
     popup.addEventListener("mousedown", (e) => e.stopPropagation());
 
-    const wrapRect = this.context.dom.wrap.getBoundingClientRect();
+    const poolRect = this.context.dom.basketPool.getBoundingClientRect();
     const chipRect = chipElement.getBoundingClientRect();
     const inset = 4;
-    const wrapWidth = Math.max(0, wrapRect.width - inset * 2);
-    const wrapHeight = Math.max(0, wrapRect.height - inset * 2);
-    const spaceAbove = Math.max(0, chipRect.top - wrapRect.top - inset);
-    const spaceBelow = Math.max(0, wrapRect.bottom - chipRect.bottom - inset);
-    const renderAbove = spaceAbove >= popup.offsetHeight || spaceAbove >= spaceBelow;
 
+    // 1. Calculate space strictly inside basket pool bounds (viewport coordinates)
+    const spaceAbove = Math.max(0, chipRect.top - poolRect.top - inset);
+    const spaceBelow = Math.max(0, poolRect.bottom - chipRect.bottom - inset);
+
+    // 2. Render above only if there is strictly more space above than below
+    const renderAbove = spaceAbove > spaceBelow;
+
+    // 3. Apply fixed positioning and bound popup dimensions inside the basket pool
+    popup.style.position = "fixed";
+    popup.style.zIndex = "10000";
     popup.style.boxSizing = "border-box";
-    popup.style.maxWidth = `${wrapWidth}px`;
-    popup.style.maxHeight = `${Math.min(wrapHeight, renderAbove ? spaceAbove : spaceBelow)}px`;
+    popup.style.maxWidth = `${Math.max(0, poolRect.width - inset * 2)}px`;
+    popup.style.maxHeight = `${renderAbove ? spaceAbove : spaceBelow}px`;
     popup.style.overflowY = "auto";
 
     const popupWidth = popup.offsetWidth;
     const popupHeight = popup.offsetHeight;
-    const left = Math.min(
-      Math.max(chipRect.left - wrapRect.left, inset),
-      Math.max(inset, wrapRect.width - popupWidth - inset)
-    );
+
+    // 4. Align horizontally with chip, clamped strictly within pool boundaries
+    const idealLeft = chipRect.left;
+    const minLeft = poolRect.left + inset;
+    const maxLeft = poolRect.right - popupWidth - inset;
+    const left = Math.max(minLeft, Math.min(idealLeft, maxLeft));
+
+    // 5. Place strictly right below or right above the clicked chip
     const top = renderAbove
-      ? Math.max(inset, chipRect.top - wrapRect.top - popupHeight - inset)
-      : Math.min(chipRect.bottom - wrapRect.top + inset, wrapRect.height - popupHeight - inset);
+      ? (chipRect.top - popupHeight - inset)
+      : (chipRect.bottom + inset);
+
     popup.style.top = `${top}px`;
     popup.style.left = `${left}px`;
 
