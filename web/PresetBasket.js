@@ -240,6 +240,7 @@ export default class PresetBasket {
   /** @param {string} tabId */
   switchTab(tabId) {
     if (this.activeTabId === tabId) return;
+    // Snapshot current tab state into this.tabs (skip persist — we do one write at the end)
     this.saveCurrentState(true);
 
     const tab = this.tabs.find(t => t.id === tabId);
@@ -249,22 +250,52 @@ export default class PresetBasket {
     this.selectionAnchorIndex = null;
     this.activeTabId = tabId;
 
+    // Restore the new tab's context. Set widget.value directly to skip updateWidgetValue's
+    // pin-pruning loop and widget.callback (no need to prune — the restored tab's basket is
+    // already in sync with its saved pins, and we don't want to fire graph callbacks mid-switch).
     this.context.pinnedChips = new Set(tab.pins || []);
     if (this.context.rollManager) {
       this.context.rollManager.rolls = JSON.parse(JSON.stringify(tab.rolls || {}));
     }
-    this.context.updateWidgetValue(tab.basket || []);
-    this.context.savePins();
+    this.context.widget.value = (tab.basket || []).join(", ");
 
+    // Sync the gallery grid selection without going through the full syncUI pipeline,
+    // which would trigger syncEditorHighlight (unnecessary — editor key unchanged) and
+    // a second basket.render() call.
+    this.context.grid.syncSelection(tab.basket || []);
+
+    // Render basket chips directly under the tab-switching guard so render() skips its
+    // own persistTabs() call and in-render snapshot logic.
     this._isSwitchingTab = true;
-    this.render(this.context.getSelectedArray());
+    this.render(tab.basket || []);
     this._isSwitchingTab = false;
 
     this.closeTabMenu();
-    this.renderTabsList();
+    // Update sidebar tab active states in-place — no HTML rebuild or listener re-attachment
+    // needed since the tab list structure hasn't changed. renderTabsList() is reserved for
+    // structural changes (add/delete tab).
+    this._updateTabSidebarActiveState();
 
-    // Persist the state exactly once at the end of the switch
+    // Single localStorage write for the entire switch
     this.persistTabs();
+  }
+
+  /**
+   * Updates only the active/aria-selected state and titles of existing tab sidebar items
+   * without rebuilding the HTML or re-attaching event listeners.
+   */
+  _updateTabSidebarActiveState() {
+    if (!this.tabsSidebarList) return;
+    this.tabsSidebarList.querySelectorAll(".j0n4t-pg-basket-tab-item").forEach((item, index) => {
+      const id = item.getAttribute("data-tab-id");
+      const isActive = id === this.activeTabId;
+      item.classList.toggle("active", isActive);
+      item.setAttribute("aria-selected", String(isActive));
+
+      const targetTab = this.tabs.find(t => t.id === id);
+      const baseTitle = targetTab?.title || `Tab ${index + 1}`;
+      /** @type {HTMLElement} */ (item).title = `${PresetDOM.escapeHTML(baseTitle)}${isActive ? " (Click for tab options)" : ""}`;
+    });
   }
 
   createNewTab() {
@@ -396,6 +427,9 @@ export default class PresetBasket {
       const nextTab = this.tabs[Math.max(0, index - 1)];
       this.activeTabId = null;
       this.switchTab(nextTab.id);
+      // switchTab uses in-place DOM updates, so we need a full rebuild here to remove
+      // the deleted tab's element from the sidebar.
+      this.renderTabsList();
     } else {
       this.renderTabsList();
       this.persistTabs();
