@@ -261,18 +261,7 @@ export default class PresetBasket {
     this._isSwitchingTab = false;
 
     this.closeTabMenu();
-    if (this.tabsSidebarList) {
-      this.tabsSidebarList.querySelectorAll('.j0n4t-pg-basket-tab-item').forEach((item, index) => {
-        const id = item.getAttribute('data-tab-id');
-        const isActive = id === this.activeTabId;
-        item.classList.toggle('active', isActive);
-        item.setAttribute('aria-selected', String(isActive));
-
-        const targetTab = this.tabs.find(t => t.id === id);
-        const baseTitle = targetTab?.title || `Tab ${index + 1}`;
-        /** @type {HTMLElement} */ (item).title = `${PresetDOM.escapeHTML(baseTitle)}${isActive ? " (Click for tab options)" : ""}`;
-      });
-    }
+    this.renderTabsList();
 
     // Persist the state exactly once at the end of the switch
     this.persistTabs();
