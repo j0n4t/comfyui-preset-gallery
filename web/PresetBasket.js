@@ -163,6 +163,16 @@ export default class PresetBasket {
       if (e.key === "Escape") this.closeTabMenu();
     });
 
+    // Custom event: external code can dispatch this to add chips to a new tab
+    // Usage: container.dispatchEvent(new CustomEvent("preset-gallery:add-chips-to-new-tab", { detail: { chips: ["preset1", "preset2"] } }))
+    this.container.addEventListener("preset-gallery:add-chips-to-new-tab", (e) => {
+      // @ts-expect-error bleh
+      const chips = e.detail?.chips;
+      if (Array.isArray(chips) && chips.length > 0) {
+        this.addChipsToNewTab(chips);
+      }
+    });
+
     this.rawManager = new RawTextareaManager(this.textarea, this.context, null, (val) => {
       const tokens = PresetLogic.parseTokens(val, this.context.cache);
       const selections = tokens
@@ -327,6 +337,42 @@ export default class PresetBasket {
     }
 
     this.render([]);
+    this.renderTabsList();
+    this.persistTabs();
+  }
+
+  /**
+   * Creates a new tab and populates it with the given chips.
+   * @param {string[]} chips - Array of preset keys/strings to add to the new tab
+   */
+  addChipsToNewTab(chips) {
+    this.saveCurrentState();
+
+    const newId = this.createTabId();
+    const newTitle = `Tab ${this.tabs.length + 1}`;
+
+    const newTab = {
+      id: newId,
+      title: newTitle,
+      basket: [...chips],
+      pins: [],
+      rolls: {}
+    };
+
+    this.tabs.push(newTab);
+    this.selectedChipIndexes.clear();
+    this.selectionAnchorIndex = null;
+    this.activeTabId = newId;
+
+    this.context.pinnedChips = new Set();
+    if (typeof this.context.savePins === "function") {
+      this.context.savePins();
+    }
+    if (this.context.rollManager) {
+      this.context.rollManager.rolls = {};
+    }
+
+    this.context.updateWidgetValue([...chips]);
     this.renderTabsList();
     this.persistTabs();
   }
@@ -864,9 +910,11 @@ export default class PresetBasket {
       }
 
       if (!target.closest("input") && !this.chipMenuManager.popupEl) {
+        /** @type {HTMLElement | null} */
         const chip = target.closest('.j0n4t-pg-basket-chip');
         if (chip) {
           const keyMap = { s: "swap", e: "edit", l: "locate", c: "create" };
+          // @ts-expect-error bleh
           const action = keyMap[e.key.toLowerCase()];
           if (action) {
             e.stopPropagation();
