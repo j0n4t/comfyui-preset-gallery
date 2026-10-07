@@ -490,6 +490,20 @@ export default class ChipMenuManager {
         e.stopPropagation();
         e.preventDefault();
         this.close(true);
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.stopPropagation();
+        e.preventDefault();
+        const delEl = /** @type {HTMLElement} */ (popup.querySelector('[data-action="del"]'));
+        if (delEl) delEl.click();
+      } else if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+        const keyMap = { p: "pin", s: "swap", e: "edit", l: "locate", c: "create", w: "toggle-weight" };
+        const action = keyMap[e.key.toLowerCase()];
+        if (action) {
+          e.stopPropagation();
+          e.preventDefault();
+          const actionEl = /** @type {HTMLElement} */ (popup.querySelector(`[data-action="${action}"]`));
+          if (actionEl) actionEl.click();
+        }
       }
     });
 

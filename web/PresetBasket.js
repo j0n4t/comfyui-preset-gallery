@@ -863,6 +863,63 @@ export default class PresetBasket {
         return;
       }
 
+      if (!target.closest("input") && !this.chipMenuManager.popupEl) {
+        const chip = target.closest('.j0n4t-pg-basket-chip');
+        if (chip) {
+          const keyMap = { s: "swap", e: "edit", l: "locate", c: "create" };
+          const action = keyMap[e.key.toLowerCase()];
+          if (action) {
+            e.stopPropagation();
+            e.preventDefault();
+            const styleKey = chip.dataset.id || "";
+            const { core: coreKey, weight: currentWeight, isWeighted } = PresetLogic.parseWeight(styleKey);
+            const startIndex = Number(chip.dataset.start);
+            const endIndex = Number(chip.dataset.end);
+            const item = this.context.cache[coreKey];
+
+            if (action === "swap") {
+              let editVal = this.context.cache[coreKey]?.preset || coreKey;
+              if (isWeighted && editVal) editVal = `(${editVal}:${currentWeight})`;
+              this.inlineEditorManager.spawn(chip, editVal, startIndex, endIndex);
+            } else if (action === "edit") {
+              if (item) {
+                this.context.openEditorForPreset(coreKey, true);
+              } else {
+                let editVal = styleKey;
+                const rawPreset = chip.dataset.preset;
+                if (isWeighted && rawPreset) editVal = `(${rawPreset}:${currentWeight})`;
+                else if (rawPreset) editVal = rawPreset;
+                this.inlineEditorManager.spawn(chip, editVal, startIndex, endIndex);
+              }
+            } else if (action === "locate") {
+              let locateKey = coreKey;
+              const presetVal = chip.dataset.preset;
+              if (presetVal) {
+                const presetMatch = PresetLogic.findPresetMatch(presetVal, this.context.cache);
+                if (presetMatch) locateKey = presetMatch.key;
+              }
+              this.locatePreset(locateKey);
+            } else if (action === "create") {
+              this.context.setPanelCollapseState(false);
+              this.context.editor.clearFields();
+              this.context.editor.dom.inpPreset.value = item && item.preset ? item.preset : coreKey;
+              this.context.editor.rawPresetManager?.updateHighlights();
+              const cleanName = coreKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop()?.replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
+              if (cleanName) this.context.editor.dom.inpName.value = cleanName;
+              this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
+              this.context.editor.dom.inpPreset.focus();
+            }
+            return;
+          }
+          if (e.key.toLowerCase() === "w") {
+            e.stopPropagation();
+            e.preventDefault();
+            this.chipMenuManager.show(chip, true);
+            return;
+          }
+        }
+      }
+
       if (!target.closest("input") && !e.altKey && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
         /** @type {HTMLElement | null} */ const currentElement = target.closest('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn');
         if (currentElement) {
