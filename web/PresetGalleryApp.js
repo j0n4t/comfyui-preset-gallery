@@ -130,7 +130,7 @@ export default class PresetGalleryApp {
     wrap.innerHTML = `
       <div class="j0n4t-pg-basket-container">
         <div class="j0n4t-pg-basket-header">
-          <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Presets Basket</div>
+          <div class="j0n4t-pg-basket-title" aria-label="Presets Basket">🧺 Basket</div>
           <div style="display: flex; gap: 4px; align-items: center;">
                   <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-multiselect-btn" title="Enable multi-selection mode" aria-label="Multi-selection mode" aria-pressed="false">${PresetDOM.icons.select} <span>Select</span></button>
                   <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-copy-btn" title="Copy selected chips" aria-label="Copy selected chips" disabled>${PresetDOM.icons.copy} <span>Copy</span></button>
@@ -232,6 +232,7 @@ export default class PresetGalleryApp {
       chkBasketRaw: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-basket-raw-toggle")),
       basketContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-container")),
       basketHeader: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-header")),
+      basketTitle: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-title")),
       basketPool: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-pool")),
       rawTextarea: /** @type {HTMLTextAreaElement} */ (wrap.querySelector("#j0n4t-pg-raw-input")),
       btnHideGallery: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-hide-gallery-btn")),
@@ -552,6 +553,10 @@ export default class PresetGalleryApp {
     });
     this.dom.basketHeader.addEventListener("keyup", (e) => {
       if (e.key === "Shift") this.dom.basketHeader.classList.remove("shift-held");
+    });
+
+    this.dom.basketTitle.addEventListener("click", () => {
+      this.basket.renameActiveTab();
     });
 
     this.dom.btnHideGallery.addEventListener("click", () => {

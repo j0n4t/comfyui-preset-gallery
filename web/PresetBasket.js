@@ -14,7 +14,7 @@ export default class PresetBasket {
   static BASKET_CONTAINER_STYLES = /*css*/ `
     .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
-    .j0n4t-pg-basket-title { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; pointer-events: none; }
+    .j0n4t-pg-basket-title { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; cursor: pointer; }
     .j0n4t-pg-basket-action-btn { background: #333; border: 1px solid #555; border-radius: 3px; color: #bbb; cursor: pointer; font-size: 12px; padding: 1px 3px; white-space: nowrap; display: flex; align-items: center; gap: 2px; }
     .j0n4t-pg-basket-action-btn:hover, .j0n4t-pg-basket-action-btn:focus, .j0n4t-pg-basket-action-btn.active { background: #007acc; border-color: #007acc; color: #fff; outline: none; }
     .j0n4t-pg-basket-action-btn.danger:hover, .j0n4t-pg-basket-action-btn.danger:focus { background: #912e2e; border-color: #912e2e; }
@@ -44,10 +44,10 @@ export default class PresetBasket {
   `;
 
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
-    .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; pointer-events: none; }
-    .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; pointer-events: none; }
+    .j0n4t-pg-basket-empty { font-size: 10px; color: #555; font-style: italic; cursor: pointer; }
+    .j0n4t-pg-basket-drop-indicator { width: 2px; background-color: #007acc; box-shadow: 0 0 4px #007acc; border-radius: 1px; transition: transform 0.05s ease; cursor: pointer; }
     .j0n4t-pg-basket-chip { display: flex; align-items: center; background-size: cover; background-position: center; border: 2px solid #5d5d5da0; border-radius: 3px; padding: 2px 4px; box-sizing: border-box; cursor: grab; user-select: none; transition: background 0.15s, border-color 0.15s; position: relative; overflow: hidden; min-height: 1.4em; outline: none; }
-    .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.2); z-index: 0; pointer-events: none; }
+    .j0n4t-pg-basket-chip::before { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.2); z-index: 0; cursor: pointer; }
     .j0n4t-pg-basket-chip:active { cursor: grabbing; }
     .j0n4t-pg-basket-chip.dragging { opacity: 0.4; }
     .j0n4t-pg-basket-chip.selected { outline: auto; }
@@ -56,10 +56,10 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip-weight { font-size: 9px; font-weight: bold; font-family: monospace; background: rgba(0, 0, 0, 0.4); color: #fff;  border-radius: 999px; padding: 0 3px; margin-right: 4px; cursor: pointer; z-index: 1; pointer-events: auto; }
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
     .j0n4t-pg-basket-chip.pinned { border-color: #ff6002bd; }
-    .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -1px; top: -2px; font-size: 9px; pointer-events: none; z-index: 2; }
+    .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -1px; top: -2px; font-size: 9px; cursor: pointer; z-index: 2; }
     .j0n4t-pg-chip-popup-item.active-pin { color: #ff6002bd; }
 
-    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
+    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
     .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
     .j0n4t-pg-basket-chip.inline-editing::before { display: none; }
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
@@ -208,6 +208,7 @@ export default class PresetBasket {
             }
           }
           this.renderTabsList();
+          this.updateBasketTitle();
           return;
         }
       } catch (e) {
@@ -219,13 +220,14 @@ export default class PresetBasket {
     const defaultId = "tab_" + Date.now();
     this.tabs = [{
       id: defaultId,
-      title: "Tab 1",
+      title: "Basket",
       basket: [...this.context.getSelectedArray()],
       pins: this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [],
       rolls: this.context.rollManager?.rolls ? JSON.parse(JSON.stringify(this.context.rollManager.rolls)) : {}
     }];
     this.activeTabId = defaultId;
     this.renderTabsList();
+    this.updateBasketTitle();
     this.persistTabs();
   }
 
@@ -285,6 +287,7 @@ export default class PresetBasket {
     // needed since the tab list structure hasn't changed. renderTabsList() is reserved for
     // structural changes (add/delete tab).
     this._updateTabSidebarActiveState();
+    this.updateBasketTitle();
 
     // Single localStorage write for the entire switch
     this.persistTabs();
@@ -312,7 +315,7 @@ export default class PresetBasket {
     this.saveCurrentState();
 
     const newId = this.createTabId();
-    const newTitle = `Tab ${this.tabs.length + 1}`;
+    const newTitle = `Basket ${this.tabs.length + 1}`;
 
     const newTab = {
       id: newId,
@@ -338,6 +341,7 @@ export default class PresetBasket {
 
     this.render([]);
     this.renderTabsList();
+    this.updateBasketTitle();
     this.persistTabs();
   }
 
@@ -349,7 +353,7 @@ export default class PresetBasket {
     this.saveCurrentState();
 
     const newId = this.createTabId();
-    const newTitle = `Tab ${this.tabs.length + 1}`;
+    const newTitle = `Basket ${this.tabs.length + 1}`;
 
     const newTab = {
       id: newId,
@@ -374,6 +378,7 @@ export default class PresetBasket {
 
     this.context.updateWidgetValue([...chips]);
     this.renderTabsList();
+    this.updateBasketTitle();
     this.persistTabs();
   }
 
@@ -412,6 +417,7 @@ export default class PresetBasket {
     this.context.savePins();
     this.render(this.context.getSelectedArray());
     this.renderTabsList();
+    this.updateBasketTitle();
     this.persistTabs();
   }
 
@@ -432,6 +438,8 @@ export default class PresetBasket {
     menu.innerHTML = `
       <button type="button" role="menuitem">Duplicate</button>
       <button type="button" role="menuitem" ${this.tabs.length <= 1 ? "disabled" : ""}>Close</button>
+      <button type="button" role="menuitem">Export Tabs</button>
+      <button type="button" role="menuitem">Import Tabs</button>
     `;
     menu.style.left = `${tabRect.right + 4}px`;
     menu.style.top = `${tabRect.top}px`;
@@ -446,7 +454,7 @@ export default class PresetBasket {
       menu.style.top = `${Math.max(0, window.innerHeight - menuRect.height - 4)}px`;
     }
 
-    const [duplicateButton, closeButton] = menu.querySelectorAll("button");
+    const [duplicateButton, closeButton, exportButton, importButton] = menu.querySelectorAll("button");
     duplicateButton.addEventListener("click", () => {
       this.closeTabMenu();
       this.duplicateTab(tabId);
@@ -454,6 +462,14 @@ export default class PresetBasket {
     closeButton.addEventListener("click", () => {
       this.closeTabMenu();
       this.deleteTab(tabId);
+    });
+    exportButton.addEventListener("click", () => {
+      this.closeTabMenu();
+      this.exportTabs();
+    });
+    importButton.addEventListener("click", () => {
+      this.closeTabMenu();
+      this.importTabs();
     });
     duplicateButton.focus();
   }
@@ -522,6 +538,251 @@ export default class PresetBasket {
         }
       });
     });
+  }
+
+  /**
+   * Opens an inline editor on the basket title to rename the active tab.
+   */
+  renameActiveTab() {
+    const titleEl = this.context.dom.basketTitle;
+    if (!titleEl) return;
+
+    const tab = this.tabs.find(t => t.id === this.activeTabId);
+    if (!tab) return;
+
+    const currentTitle = tab.title || '';
+    titleEl.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'j0n4t-pg-inline-edit';
+    input.value = currentTitle;
+    input.style.width = '100%';
+    input.style.minWidth = '60px';
+    /** @type {HTMLElement} */ (titleEl.parentNode).insertBefore(input, titleEl.nextSibling);
+
+    let isFinishing = false;
+    const finishEdit = (/** @type {boolean} */ save) => {
+      if (isFinishing) return;
+      isFinishing = true;
+
+      const newVal = input.value.trim();
+      input.remove();
+      titleEl.style.display = '';
+
+      if (save && newVal && newVal !== currentTitle) {
+        tab.title = newVal;
+        this.updateBasketTitle();
+        this._updateTabSidebarActiveState();
+        this.persistTabs();
+      }
+    };
+
+    input.focus();
+    input.select();
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishEdit(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishEdit(false);
+      }
+    });
+
+    input.addEventListener('blur', () => finishEdit(true));
+  }
+
+  /**
+   * Updates the basket title element to show the active tab's name.
+   */
+  updateBasketTitle() {
+    const titleEl = this.context.dom.basketTitle;
+    if (!titleEl) return;
+
+    const tab = this.tabs.find(t => t.id === this.activeTabId);
+    if (!tab) return;
+
+    const icon = '\u{1F9FA}';
+    titleEl.textContent = `${icon} ${tab.title || 'Tab'}`;
+  }
+
+  /**
+   * Opens a modal to select tabs and exports them as a JSON file.
+   */
+  async exportTabs() {
+    const { default: ModalUtils } = await import("./ModalUtils.js");
+
+    const tabRows = this.tabs.map((tab, index) => `
+      <label style="display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer;">
+        <input type="checkbox" data-tab-index="${index}" checked />
+        <span>${PresetDOM.escapeHTML(tab.title || `Tab ${index + 1}`)}</span>
+      </label>
+    `).join("");
+
+    /** @type {number[]} */
+    let selectedIndexes = [];
+    /** @type {HTMLElement | null} */
+    let modalRef = null;
+    const result = await ModalUtils.show({
+      title: "Export Tabs",
+      expand: true,
+      content: `
+        <div style="max-height: 300px; overflow-y: auto;">
+          ${tabRows}
+        </div>
+      `,
+      buttons: [
+        { text: "Cancel", closeOnFinish: true, callback: () => null },
+        {
+          text: "Export", isDefault: true, closeOnFinish: true, callback: () => {
+            if (modalRef) {
+              modalRef.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
+                if (/** @type {HTMLInputElement} */ (checkbox).checked) {
+                  const index = Number(/** @type { HTMLInputElement } */(checkbox).dataset.tabIndex);
+                  if (index >= 0 && index < this.tabs.length) {
+                    selectedIndexes.push(index);
+                  }
+                }
+              });
+            }
+            return true;
+          }
+        }
+      ],
+      onOpen: (modal) => {
+        modalRef = modal;
+      }
+    });
+
+    if (!result) return;
+
+    if (selectedIndexes.length === 0) {
+      await ModalUtils.alert("No tabs selected for export.");
+      return;
+    }
+
+    const exportData = {
+      version: 1,
+      tabs: selectedIndexes.map(index => {
+        const tab = this.tabs[index];
+        return {
+          title: tab.title,
+          basket: tab.basket,
+          pins: tab.pins,
+          rolls: tab.rolls
+        };
+      })
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "preset_basket_tabs.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Opens a file picker, reads a JSON file, and shows a modal to select tabs to import.
+   */
+  async importTabs() {
+    const { default: ModalUtils } = await import("./ModalUtils.js");
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+
+    const file = await new Promise((resolve) => {
+      input.addEventListener("change", () => resolve(input.files?.[0] || null));
+      input.click();
+    });
+
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (!data.tabs || !Array.isArray(data.tabs) || data.tabs.length === 0) {
+        await ModalUtils.alert("No tabs found in the selected file.");
+        return;
+      }
+
+      const tabRows = data.tabs.map((/** @type {{ title: any; }} */ tab, /** @type {number} */ index) => `
+        <label style="display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer;">
+          <input type="checkbox" data-tab-index="${index}" checked />
+          <span>${PresetDOM.escapeHTML(tab.title || `Tab ${index + 1}`)}</span>
+        </label>
+      `).join("");
+
+      /** @type {BasketTab[]} */
+      let selectedTabs = [];
+      /** @type {HTMLDivElement | null} */
+      let modalRef = null;
+      const result = await ModalUtils.show({
+        title: "Import Tabs",
+        expand: true,
+        content: `
+          <div style="max-height: 300px; overflow-y: auto;">
+            ${tabRows}
+          </div>
+        `,
+        buttons: [
+          { text: "Cancel", closeOnFinish: true, callback: () => null },
+          {
+            text: "Import", isDefault: true, closeOnFinish: true, callback: () => {
+              if (modalRef) {
+                selectedTabs = [];
+                modalRef.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
+                  if (/** @type { HTMLInputElement } */ (checkbox).checked) {
+                    const index = Number(/** @type { HTMLInputElement } */(checkbox).dataset.tabIndex);
+                    if (index >= 0 && index < data.tabs.length) {
+                      selectedTabs.push(data.tabs[index]);
+                    }
+                  }
+                });
+              }
+              return true;
+            }
+          }
+        ],
+        onOpen: (modal) => {
+          modalRef = modal;
+        }
+      });
+
+      if (!result) return;
+
+      if (selectedTabs.length === 0) {
+        await ModalUtils.alert("No tabs selected for import.");
+        return;
+      }
+
+      for (const tab of selectedTabs) {
+        const newTab = {
+          id: this.createTabId(),
+          title: tab.title || "Imported Tab",
+          basket: Array.isArray(tab.basket) ? tab.basket : [],
+          pins: Array.isArray(tab.pins) ? tab.pins : [],
+          rolls: tab.rolls && typeof tab.rolls === "object" ? tab.rolls : {}
+        };
+        this.tabs.push(newTab);
+      }
+
+      this.renderTabsList();
+      this.updateBasketTitle();
+      this.persistTabs();
+
+      await ModalUtils.alert(`Successfully imported ${selectedTabs.length} tab(s).`);
+    } catch (err) {
+      // @ts-expect-error bleh
+      await ModalUtils.alert("Failed to import tabs: " + err.message);
+    }
   }
 
   initDragAndDrop() {
