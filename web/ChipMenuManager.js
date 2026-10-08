@@ -465,8 +465,14 @@ export default class ChipMenuManager {
       const items = /** @type {HTMLElement[]} */ (Array.from(popup.querySelectorAll("[data-action], button, input"))
         .filter(el => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })));
       const currentIndex = document.activeElement ? items.indexOf(/** @type {HTMLInputElement} */(document.activeElement)) : 0;
-      const target = /** @type {HTMLInputElement} */(e.target);
+      const target = /** @type {HTMLInputElement} */ (e.target);
 
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.basket.copySelectedChips(this.activeChipMenuEl);
+        return;
+      }
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         if (target.tagName !== 'INPUT') {
           e.stopPropagation();
