@@ -19,7 +19,9 @@ export default class PresetGallerySettings {
     /* Auto-Roll Dice Visual Indicators */
     .j0n4t-pg-basket-reroll-btn.roll-overwrite { color: #ff4a4a; filter: drop-shadow(0 0 3px rgba(255,74,74,0.6)); }
     .j0n4t-pg-basket-reroll-btn.roll-variants { color: #00b5b5; filter: drop-shadow(0 0 3px rgba(74,158,255,0.6)); }
-    .j0n4t-pg-basket-reroll-btn.auto-roll { outline: 1px solid; outline-style: dashed; border-radius: 50%; }
+    .j0n4t-pg-basket-reroll-btn.auto-roll { border: 1px dashed; border-radius: 50%; }
+    .j0n4t-pg-basket-reroll-btn.auto-roll-seed { border: 1px dotted; border-radius: 50%; }
+    .j0n4t-pg-basket-reroll-btn.auto-roll.auto-roll-seed { border-style: solid; }
     
     @media (max-width: 512px) {
       .j0n4t-pg-shortcuts-grid { grid-template-columns: 1fr; }
@@ -67,11 +69,14 @@ export default class PresetGallerySettings {
   updateDiceVisuals() {
     const diceBtn = document.querySelector('.j0n4t-pg-basket-reroll-btn');
     if (!diceBtn) return;
-    diceBtn.classList.remove('roll-overwrite', 'roll-variants', 'auto-roll');
+    diceBtn.classList.remove('roll-overwrite', 'roll-variants', 'auto-roll', 'auto-roll-seed');
     const modeClass = this.diceBehavior === 'overwrite' ? 'roll-overwrite' : 'roll-variants';
     diceBtn.classList.add(modeClass);
-    if (this.rollOnGeneration || this.rollOnSeedChange) {
+    if (this.rollOnGeneration) {
       diceBtn.classList.add("auto-roll");
+    }
+    if (this.rollOnSeedChange) {
+      diceBtn.classList.add("auto-roll-seed");
     }
   }
 

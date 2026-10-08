@@ -538,6 +538,24 @@ export default class PresetGalleryApp {
     });
 
     this.dom.btnRerollBasket.addEventListener("click", (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (!this.settings.rollOnGeneration && !this.settings.rollOnSeedChange) {
+          this.settings.rollOnGeneration = true;
+          this.settings.rollOnSeedChange = false;
+        } else if (this.settings.rollOnGeneration && !this.settings.rollOnSeedChange) {
+          this.settings.rollOnGeneration = false;
+          this.settings.rollOnSeedChange = true;
+        } else if (!this.settings.rollOnGeneration && this.settings.rollOnSeedChange) {
+          this.settings.rollOnGeneration = true;
+          this.settings.rollOnSeedChange = true;
+        } else {
+          this.settings.rollOnGeneration = false;
+          this.settings.rollOnSeedChange = false;
+        }
+        this.settings.save();
+        this.settings.updateDiceVisuals();
+        return;
+      }
       const isOverwrite = this.settings?.diceBehavior === "overwrite";
       const overwriteMode = e.shiftKey ? !isOverwrite : isOverwrite;
       this.triggerRoll(overwriteMode);
