@@ -1,5 +1,7 @@
 import ChipMenuManager from "./ChipMenuManager.js";
 import InlineEditorManager from "./InlineEditorManager.js";
+import ModalUtils from "./ModalUtils.js";
+import PngMetadata from "./PngMetadata.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
@@ -827,6 +829,14 @@ export default class PresetBasket {
       e.preventDefault();
       this.container.classList.remove("drag-over");
       this.removeDropIndicator();
+
+      // Check for image file drop
+      const imageFile = this._getImageFileFromDrop(e);
+      if (imageFile) {
+        void this.handleImageDrop(imageFile);
+        return;
+      }
+
       const styleKey = e.dataTransfer?.getData("text/plain");
       if (!styleKey) return;
 
@@ -893,6 +903,132 @@ export default class PresetBasket {
 
       this.context.updateWidgetValue(selections);
     });
+  }
+
+  /**
+   * Extract an image file from a drop event, if present.
+   * @param {DragEvent} e
+   * @returns {File | null}
+   */
+  _getImageFileFromDrop(e) {
+    if (!e.dataTransfer) return null;
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return null;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith("image/")) return file;
+    }
+    return null;
+  }
+
+  /**
+   * Handle an image file dropped onto the basket.
+   * Parses PNG metadata and prompts the user to choose between evaluated and raw.
+   * @param {File} file
+   */
+  async handleImageDrop(file) {
+    try {
+      const metadata = await PngMetadata.extractFromFile(file);
+      const widgets = PngMetadata.getPresetGalleryWidgets(metadata);
+
+      if (!widgets) {
+        await ModalUtils.alert("No Preset Gallery widget data found in this image.");
+        return;
+      }
+
+      const rawText = typeof widgets.preset_selection === "string" ? widgets.preset_selection : "";
+      const evaluatedText = typeof widgets.evaluated_preset === "string" ? widgets.evaluated_preset : "";
+
+      if (!rawText && !evaluatedText) {
+        await ModalUtils.alert("No preset data found in this image.");
+        return;
+      }
+
+      await ModalUtils.show({
+        title: "Image Metadata",
+        expand: true,
+        content: `
+          <div style="font-size: 11px; color: #aaa; margin-bottom: 12px;">Choose which widget value to add:</div>
+          <div style="display: flex; flex-direction: column; gap: 12px; max-width: 60vw;">
+            ${evaluatedText ? `
+            <div style="background: #1a1a1a; border: 1px solid #444; border-radius: 6px; padding: 12px; cursor: pointer;" data-choice="evaluated">
+              <div style="font-size: 11px; font-weight: bold; color: #fff; margin-bottom: 8px;">Evaluated — expanded presets</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px;">${this._renderChipPreview(evaluatedText)}</div>
+            </div>` : ""}
+            ${rawText ? `
+            <div style="background: #1a1a1a; border: 1px solid #444; border-radius: 6px; padding: 12px; cursor: pointer;" data-choice="raw">
+              <div style="font-size: 11px; font-weight: bold; color: #fff; margin-bottom: 8px;">Raw — preset_selection</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px;">${this._renderChipPreview(rawText)}</div>
+            </div>` : ""}
+          </div>
+        `,
+        buttons: [
+          { text: "Cancel", closeOnFinish: true, callback: () => null },
+        ],
+        onOpen: (modal) => {
+          const cancelBtn = modal.querySelector(".j0n4t-pg-modal-actions button");
+          modal.querySelectorAll("[data-choice]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const choice = btn.getAttribute("data-choice");
+              if (cancelBtn) cancelBtn.click();
+              if (choice === "evaluated" && evaluatedText) {
+                this._addPromptAsChips(evaluatedText);
+              } else if (choice === "raw" && rawText) {
+                this._addPromptAsChips(rawText);
+              }
+            });
+          });
+        },
+      });
+    } catch (err) {
+      console.error("Failed to parse image metadata:", err);
+      await ModalUtils.alert("Failed to read image metadata: " + (err instanceof Error ? err.message : String(err)));
+    }
+  }
+
+  /**
+   * Render a mini chip preview HTML string for the modal.
+   * Mimics the real basket chip appearance.
+   * @param {string} text
+   * @returns {string}
+   */
+  _renderChipPreview(text) {
+    const tokens = PresetLogic.parseTokens(text, this.context.cache);
+    const selections = [];
+    for (const token of tokens) {
+      if (token.isDelimiter) continue;
+      const trimmed = token.text.trim();
+      if (!trimmed) continue;
+      selections.push(token.key || trimmed);
+    }
+    if (selections.length === 0) return '<span style="font-size: 10px; color: #666;">(empty)</span>';
+
+    const chipsData = PresetLogic.getGroupedChips(selections, this.context.cache);
+    return chipsData.map((chipData) => {
+      const chip = PresetDOM.renderBasketChip(chipData, this.context.cache, this.context.rollManager);
+      const label = chip.processed.cleanLabel || chip.processed.joinedStr;
+      return `<div class="j0n4t-pg-basket-chip" style='${chip.bgStyle}'><div class="j0n4t-pg-basket-chip-label">${PresetDOM.escapeHTML(label)}</div></div>`;
+    }).join("");
+  }
+
+  /**
+   * Add prompt text as individual chips to the basket.
+   * @param {string} text
+   */
+  _addPromptAsChips(text) {
+    const tokens = PresetLogic.parseTokens(text, this.context.cache);
+    const selections = this.context.getSelectedArray();
+    for (const token of tokens) {
+      if (token.isDelimiter) continue;
+      const trimmed = token.text.trim();
+      if (!trimmed) continue;
+      // Use the key if it's a known preset, otherwise use the raw text
+      const key = token.key || trimmed;
+      selections.push(key);
+    }
+    if (selections.length > 0) {
+      this.context.updateWidgetValue(selections);
+    }
   }
 
   initBasketActions() {
