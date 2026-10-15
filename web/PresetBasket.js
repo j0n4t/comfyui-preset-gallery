@@ -15,7 +15,7 @@ let basketClipboard = null;
 
 export default class PresetBasket {
   static BASKET_CONTAINER_STYLES = /*css*/ `
-    .j0n4t-pg-basket-container.drag-over { border-color: #007acc; background: #1a242db0; }
+    .j0n4t-pg-basket-pool.drag-over { border-color: #007acc; background: #1a242db0; }
     .j0n4t-pg-basket-header { display: flex; justify-content: space-between; align-items: center; background: #222;  position: sticky; top: 0; padding: 4px; z-index: 1; }
     .j0n4t-pg-basket-title { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; cursor: pointer; }
     .j0n4t-pg-basket-action-btn { background: #333; border: 1px solid #555; border-radius: 3px; color: #bbb; cursor: pointer; font-size: 12px; padding: 1px 3px; white-space: nowrap; display: flex; align-items: center; gap: 2px; }
@@ -44,6 +44,9 @@ export default class PresetBasket {
     .j0n4t-pg-basket-tab-menu button { padding: 5px 8px; background: transparent; border: 0; border-radius: 2px; color: #ccc; text-align: left; font-size: 11px; cursor: pointer; }
     .j0n4t-pg-basket-tab-menu button:hover, .j0n4t-pg-basket-tab-menu button:focus { background: #444; color: #fff; outline: none; }
     .j0n4t-pg-basket-tab-menu button:disabled { color: #666; cursor: default; }
+    .j0n4t-pg-basket-tabs-sidebar.drag-over .j0n4t-pg-basket-tabs-list,
+    .j0n4t-pg-basket-tabs-sidebar.drag-over .j0n4t-pg-basket-tab-add-btn { border-color: #007acc; background: #1a242db0; }
+    .j0n4t-pg-basket-tab-item.drop-target { border-color: #007acc; background: #007acc40; box-shadow: 0 0 6px #007acc; }
   `;
 
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
@@ -157,6 +160,9 @@ export default class PresetBasket {
     this.initTabs();
 
     this.tabAddBtn.addEventListener("click", () => this.createNewTab());
+
+    // Track what is being dragged over the tab sidebar
+    this._sidebarDragState = null;
     document.addEventListener("pointerdown", (e) => {
       if (this.tabMenu && !this.tabMenu.contains(/** @type {Node} */(e.target))) {
         this.closeTabMenu();
@@ -185,6 +191,7 @@ export default class PresetBasket {
     });
 
     this.initDragAndDrop();
+    this.initSidebarDragAndDrop();
     this.initBasketActions();
   }
 
@@ -351,12 +358,13 @@ export default class PresetBasket {
   /**
    * Creates a new tab and populates it with the given chips.
    * @param {string[]} chips - Array of preset keys/strings to add to the new tab
+   * @param {string} [title] - Optional title for the new tab (defaults to "Basket N")
    */
-  addChipsToNewTab(chips) {
+  addChipsToNewTab(chips, title) {
     this.saveCurrentState();
 
     const newId = this.createTabId();
-    const newTitle = `Basket ${this.tabs.length + 1}`;
+    const newTitle = title || `Basket ${this.tabs.length + 1}`;
 
     const newTab = {
       id: newId,
@@ -383,6 +391,127 @@ export default class PresetBasket {
     this.renderTabsList();
     this.updateBasketTitle();
     this.persistTabs();
+  }
+
+  /**
+   * Expands a preset key into its individual chip tokens.
+   * @param {string} styleKey
+   * @returns {string[]}
+   */
+  spreadPresetToChips(styleKey) {
+    if (!styleKey) return [];
+    const item = this.context.cache?.[styleKey];
+    const presetText = item?.preset || styleKey;
+    return PresetLogic.splitPresets(presetText);
+  }
+
+  /**
+   * Appends spread chips to an existing tab's basket.
+   * @param {string} tabId
+   * @param {string[]} chips
+   */
+  appendChipsToTab(tabId, chips) {
+    if (!Array.isArray(chips) || chips.length === 0) return;
+    const tab = this.tabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    const currentSelections = [...(tab.basket || [])];
+    currentSelections.push(...chips);
+    tab.basket = currentSelections;
+
+    if (this.activeTabId === tabId) {
+      this.context.updateWidgetValue(currentSelections);
+    }
+    this.persistTabs();
+  }
+
+  /**
+   * Sets up drag-and-drop handlers on the tab sidebar.
+   * Dragging a preset onto the sidebar creates a new tab with the spread contents;
+   * dragging onto an existing tab appends the spread contents to that tab.
+   */
+  initSidebarDragAndDrop() {
+    const sidebar = this.container.querySelector(".j0n4t-pg-basket-tabs-sidebar");
+    if (!sidebar) return;
+
+    sidebar.addEventListener("dragenter", (e) => {
+      if (!e.dataTransfer) return;
+      const types = Array.from(e.dataTransfer.types || []);
+      if (!types.includes("text/plain")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      sidebar.classList.add("drag-over");
+    });
+
+    sidebar.addEventListener("dragover", (e) => {
+      if (!e.dataTransfer) return;
+      const types = Array.from(e.dataTransfer.types || []);
+      if (!types.includes("text/plain")) return;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    sidebar.addEventListener("dragleave", (e) => {
+      if (e.relatedTarget && sidebar.contains(/** @type {Node} */(e.relatedTarget))) return;
+      sidebar.classList.remove("drag-over");
+    });
+
+    sidebar.addEventListener("drop", (e) => {
+      if (!e.dataTransfer) return;
+      e.preventDefault();
+      e.stopPropagation();
+      sidebar.classList.remove("drag-over");
+      this._clearTabDropTargets();
+
+      const styleKey = e.dataTransfer.getData("text/plain");
+      if (!styleKey) return;
+
+      // Ignore basket-internal drags (chip reordering) — those are handled by the basket drop zone
+      if (e.dataTransfer.getData("source/basket") === "true") return;
+
+      const chips = this.spreadPresetToChips(styleKey);
+      if (chips.length === 0) return;
+
+      // Check if we dropped on a specific tab item
+      const tabItem = /** @type {HTMLElement | null} */ (e.target)?.closest?.(".j0n4t-pg-basket-tab-item");
+
+      if (tabItem) {
+        const tabId = tabItem.getAttribute("data-tab-id");
+        if (tabId) {
+          this.appendChipsToTab(tabId, chips);
+          return;
+        }
+      }
+
+      // Dropped on sidebar background or add button — create a new tab with the spread chips
+      const presetName = PresetLogic.getPresetName(styleKey);
+      const tabTitle = presetName ? PresetLogic.toTitleCase(presetName) : undefined;
+      this.addChipsToNewTab(chips, tabTitle);
+    });
+
+    // Highlight individual tab items as drop targets during dragover
+    this.tabsSidebarList?.addEventListener("dragover", (e) => {
+      if (!e.dataTransfer) return;
+      const types = Array.from(e.dataTransfer.types || []);
+      if (!types.includes("text/plain")) return;
+      if (e.dataTransfer.getData("source/basket") === "true") return;
+
+      this._clearTabDropTargets();
+      const tabItem = /** @type {HTMLElement | null} */ (e.target)?.closest?.(".j0n4t-pg-basket-tab-item");
+      if (tabItem) {
+        tabItem.classList.add("drop-target");
+      }
+    });
+
+    this.tabsSidebarList?.addEventListener("dragleave", () => {
+      this._clearTabDropTargets();
+    });
+  }
+
+  _clearTabDropTargets() {
+    this.tabsSidebarList?.querySelectorAll(".j0n4t-pg-basket-tab-item.drop-target").forEach(el => {
+      el.classList.remove("drop-target");
+    });
   }
 
   createTabId() {
@@ -798,19 +927,19 @@ export default class PresetBasket {
   }
 
   initDragAndDrop() {
-    this.container.addEventListener("dragenter", (e) => {
+    this.basket.addEventListener("dragenter", (e) => {
       if (!this.container.classList.contains("raw-mode")) {
         e.stopPropagation();
         e.preventDefault();
-        this.container.classList.add("drag-over");
+        this.basket.classList.add("drag-over");
       }
     });
-    this.container.addEventListener("dragleave", (e) => {
-      if (e.relatedTarget && this.container.contains( /** @type {HTMLElement} */(e.relatedTarget))) return;
-      this.container.classList.remove("drag-over");
+    this.basket.addEventListener("dragleave", (e) => {
+      if (e.relatedTarget && this.basket.contains( /** @type {HTMLElement} */(e.relatedTarget))) return;
+      this.basket.classList.remove("drag-over");
       this.removeDropIndicator();
     });
-    this.container.addEventListener("dragover", (e) => {
+    this.basket.addEventListener("dragover", (e) => {
       if (this.container.classList.contains("raw-mode")) return;
       e.stopPropagation();
       e.preventDefault();
@@ -833,11 +962,11 @@ export default class PresetBasket {
         this.dropIndicator.style.height = "12px";
       }
     });
-    this.container.addEventListener("drop", (e) => {
+    this.basket.addEventListener("drop", (e) => {
       if (this.container.classList.contains("raw-mode")) return;
       e.stopPropagation();
       e.preventDefault();
-      this.container.classList.remove("drag-over");
+      this.basket.classList.remove("drag-over");
       this.removeDropIndicator();
 
       // Check for image file drop
