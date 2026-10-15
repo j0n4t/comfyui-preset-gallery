@@ -554,8 +554,11 @@ export default class PresetBasket {
   }
 
   closeTabMenu() {
-    this.tabMenu?.remove();
+    const menu = this.tabMenu;
     this.tabMenu = null;
+    if (menu) {
+      if (menu.isConnected) menu.remove();
+    }
   }
 
   /**
@@ -577,6 +580,11 @@ export default class PresetBasket {
     menu.style.top = `${tabRect.top}px`;
     document.body.appendChild(menu);
     this.tabMenu = menu;
+
+    menu.addEventListener("blur", (e) => {
+      if (e.relatedTarget && menu.contains(/** @type {Node} */(e.relatedTarget))) return;
+      this.closeTabMenu();
+    }, true);
 
     const menuRect = menu.getBoundingClientRect();
     if (menuRect.right > window.innerWidth) {
