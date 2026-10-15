@@ -5,6 +5,7 @@ import PngMetadata from "./PngMetadata.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
+import YAMLUtils from "./YAMLUtils.js";
 
 const BASKET_CLIPBOARD_TYPE = "web application/x-comfy-preset-gallery-basket+json";
 /**
@@ -673,31 +674,32 @@ export default class PresetBasket {
         const tab = this.tabs[index];
         return {
           title: tab.title,
-          basket: tab.basket,
-          pins: tab.pins,
+          basket: tab.basket.join(", "),
+          pins: tab.pins.join(", "),
           rolls: tab.rolls
         };
       })
     };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const yamlContent = YAMLUtils.stringify(exportData);
+    const blob = new Blob([yamlContent], { type: "text/yaml" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "preset_basket_tabs.json";
+    a.download = "preset_basket_tabs.yaml";
     a.click();
     URL.revokeObjectURL(url);
   }
 
   /**
-   * Opens a file picker, reads a JSON file, and shows a modal to select tabs to import.
+   * Opens a file picker, reads a YAML or JSON file, and shows a modal to select tabs to import.
    */
   async importTabs() {
     const { default: ModalUtils } = await import("./ModalUtils.js");
 
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json,application/json";
+    input.accept = ".yaml,.yml,.json,text/yaml,application/json";
 
     const file = await new Promise((resolve) => {
       input.addEventListener("change", () => resolve(input.files?.[0] || null));
@@ -708,7 +710,13 @@ export default class PresetBasket {
 
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
+      let data;
+      const isYAML = /\.ya?ml$/i.test(file.name);
+      if (isYAML) {
+        data = YAMLUtils.parse(text);
+      } else {
+        data = JSON.parse(text);
+      }
 
       if (!data.tabs || !Array.isArray(data.tabs) || data.tabs.length === 0) {
         await ModalUtils.alert("No tabs found in the selected file.");
@@ -766,11 +774,13 @@ export default class PresetBasket {
       }
 
       for (const tab of selectedTabs) {
+        const basketStr = Array.isArray(tab.basket) ? tab.basket.join(", ") : (tab.basket || "");
+        const pinsStr = Array.isArray(tab.pins) ? tab.pins.join(", ") : (tab.pins || "");
         const newTab = {
           id: this.createTabId(),
           title: tab.title || "Imported Tab",
-          basket: Array.isArray(tab.basket) ? tab.basket : [],
-          pins: Array.isArray(tab.pins) ? tab.pins : [],
+          basket: basketStr ? basketStr.split(",").map(s => s.trim()).filter(Boolean) : [],
+          pins: pinsStr ? pinsStr.split(",").map(s => s.trim()).filter(Boolean) : [],
           rolls: tab.rolls && typeof tab.rolls === "object" ? tab.rolls : {}
         };
         this.tabs.push(newTab);
