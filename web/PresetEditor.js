@@ -164,6 +164,16 @@ export default class PresetEditor {
     if (focus) this.dom.inpPreset.focus();
   }
 
+  static shouldConfirmOverwrite(currentMode, editingKey, uniqueKey, cache) {
+    if (currentMode === "new") {
+      return !!cache[uniqueKey];
+    }
+    if (currentMode === "edit") {
+      return uniqueKey !== editingKey && !!cache[uniqueKey];
+    }
+    return false;
+  }
+
   async handleSave() {
     let name = this.dom.inpName.value.trim().toLowerCase().replace(/ /g, "_");
     if (!name) {
@@ -194,6 +204,13 @@ export default class PresetEditor {
         !(await ModalUtils.confirm(`Overwrite "${uniqueKey}"?`))
       )
         return;
+    } else if (
+      this.currentMode === "edit" &&
+      uniqueKey !== this.editingKey &&
+      this.context.cache[uniqueKey] &&
+      !(await ModalUtils.confirm(`Overwrite "${uniqueKey}"?`))
+    ) {
+      return;
     }
 
     let imageData = null;
