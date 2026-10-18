@@ -36,9 +36,9 @@ const PngMetadata = {
   /**
    * Parse PNG text chunks from a Uint8Array.
    * @param {Uint8Array} bytes
-   * @returns {PngTextChunk[]}
+   * @returns {Promise<PngTextChunk[]>}
    */
-  parseTextChunks(bytes) {
+  async parseTextChunks(bytes) {
     /** @type {PngTextChunk[]} */
     const chunks = [];
     if (!PngMetadata.isPng(bytes)) return chunks;
@@ -81,7 +81,7 @@ const PngMetadata = {
           if (compressionMethod === 0) {
             try {
               const compressed = bytes.subarray(nullIdx + 2, dataEnd);
-              const text = PngMetadata._zlibInflate(compressed);
+              const text = await PngMetadata._zlibInflate(compressed);
               chunks.push({ keyword, text });
             } catch {
               // skip malformed zTXt chunk
@@ -116,7 +116,7 @@ const PngMetadata = {
                 text = PngMetadata._utf8Decode(textBytes);
               } else if (compressionFlag === 1 && compressionMethod === 0) {
                 try {
-                  text = PngMetadata._zlibInflate(textBytes);
+                  text = await PngMetadata._zlibInflate(textBytes);
                 } catch {
                   text = null;
                 }
@@ -162,18 +162,18 @@ const PngMetadata = {
   /**
    * Decompress zlib/deflate data.
    * @param {Uint8Array} data
-   * @returns {string}
+   * @returns {Promise<string>}
    */
-  _zlibInflate(data) {
+  async _zlibInflate(data) {
     try {
       const ds = new DecompressionStream("deflate");
-      const stream = new Blob([data]).stream().pipeThrough(ds);
-      return new Response(stream).text();
+      const stream = new Blob([/** @type {Uint8Array<ArrayBuffer>} */ (data)]).stream().pipeThrough(ds);
+      return await new Response(stream).text();
     } catch {
       // Fallback: try raw deflate
       const ds = new DecompressionStream("deflate-raw");
-      const stream = new Blob([data]).stream().pipeThrough(ds);
-      return new Response(stream).text();
+      const stream = new Blob([/** @type {Uint8Array<ArrayBuffer>} */ (data)]).stream().pipeThrough(ds);
+      return await new Response(stream).text();
     }
   },
 
@@ -191,10 +191,10 @@ const PngMetadata = {
   /**
    * Extract all metadata from PNG bytes.
    * @param {Uint8Array} bytes
-   * @returns {PngMetadata}
+   * @returns {Promise<PngMetadata>}
    */
-  extract(bytes) {
-    const chunks = PngMetadata.parseTextChunks(bytes);
+  async extract(bytes) {
+    const chunks = await PngMetadata.parseTextChunks(bytes);
     /** @type {Record<string, string>} */
     const textChunks = {};
     for (const chunk of chunks) {

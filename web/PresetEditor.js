@@ -164,6 +164,14 @@ export default class PresetEditor {
     if (focus) this.dom.inpPreset.focus();
   }
 
+  /**
+   * Check if saving would overwrite an existing preset.
+   * @param {string} currentMode
+   * @param {string} editingKey
+   * @param {string} uniqueKey
+   * @param {PresetCache} cache - Preset cache lookup dictionary.
+   * @returns {boolean}
+   */
   static shouldConfirmOverwrite(currentMode, editingKey, uniqueKey, cache) {
     if (currentMode === "new") {
       return !!cache[uniqueKey];

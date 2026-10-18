@@ -470,7 +470,7 @@ export default class ChipMenuManager {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
         e.preventDefault();
         e.stopPropagation();
-        this.basket.copySelectedChips(this.activeChipMenuEl);
+        this.basket.copySelectedChips(this.activeChipMenuEl ?? undefined);
         return;
       }
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {

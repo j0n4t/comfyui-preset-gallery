@@ -3,7 +3,7 @@ const YAMLUtils = {
     stringify(obj, indent = 0) {
         let yaml = "";
         const spaces = " ".repeat(indent);
-        const needsQuotes = /[\n:#\"{}@]|^\s|^$/;
+        const needsQuotes = /[\n:#"{}@]|^\s|^$/;
 
         const escapeString = (/** @type {string} */ str) =>
             `"${str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
@@ -48,9 +48,13 @@ const YAMLUtils = {
         }
         return yaml;
     },
-    /** @param {string} yamlStr */
+    /**
+     * @param {string} yamlStr
+     * @returns {Record<string, any>}
+     */
     parse(yamlStr) {
         const lines = yamlStr.split(/\r?\n/);
+        /** @type {Record<string, any>} */
         const result = {};
         /** @type {{ indent: number; obj: any; isArray: boolean }[]} */
         const stack = [{ indent: -1, obj: result, isArray: false }];
@@ -78,10 +82,12 @@ const YAMLUtils = {
                 if (itemContent === "") {
                     const nextLine = lines[i + 1];
                     if (nextLine && /^\s*-(\s|$)/.test(nextLine)) {
+                        /** @type {any[]} */
                         const newArr = [];
                         parent.obj.push(newArr);
                         stack.push({ indent, obj: newArr, isArray: true });
                     } else {
+                        /** @type {Record<string, any>} */
                         const newObj = {};
                         parent.obj.push(newObj);
                         stack.push({ indent, obj: newObj, isArray: false });
@@ -90,6 +96,7 @@ const YAMLUtils = {
                     const colonIdx = itemContent.indexOf(":");
                     const key = YAMLUtils._parseKey(itemContent.slice(0, colonIdx).trim());
                     const val = itemContent.slice(colonIdx + 1).trim();
+                    /** @type {Record<string, any>} */
                     const newObj = {};
                     newObj[key] = YAMLUtils._coerceValue(val);
                     parent.obj.push(newObj);
@@ -128,10 +135,12 @@ const YAMLUtils = {
                     }
                 }
                 if (nextLine && /^\s*-(\s|$)/.test(nextLine) && nextIndent > indent) {
+                    /** @type {any[]} */
                     const newArr = [];
                     current.obj[key] = newArr;
                     stack.push({ indent, obj: newArr, isArray: true });
                 } else {
+                    /** @type {Record<string, any>} */
                     const newObj = {};
                     current.obj[key] = newObj;
                     stack.push({ indent, obj: newObj, isArray: false });

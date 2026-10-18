@@ -6,7 +6,9 @@
   "scripts": {
     "lint": "npm run lint:eslint && npm run typecheck",
     "lint:eslint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.tests.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.json",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json"
   },
   "repository": {
     "type": "git",

@@ -431,10 +431,10 @@ export default class PresetBasket {
    * dragging onto an existing tab appends the spread contents to that tab.
    */
   initSidebarDragAndDrop() {
-    const sidebar = this.container.querySelector(".j0n4t-pg-basket-tabs-sidebar");
+    const sidebar = /** @type {HTMLElement | null} */ (this.container.querySelector(".j0n4t-pg-basket-tabs-sidebar"));
     if (!sidebar) return;
 
-    sidebar.addEventListener("dragenter", (e) => {
+    sidebar.addEventListener("dragenter", (/** @type {DragEvent} */ e) => {
       if (!e.dataTransfer) return;
       const types = Array.from(e.dataTransfer.types || []);
       if (!types.includes("text/plain")) return;
@@ -443,7 +443,7 @@ export default class PresetBasket {
       sidebar.classList.add("drag-over");
     });
 
-    sidebar.addEventListener("dragover", (e) => {
+    sidebar.addEventListener("dragover", (/** @type {DragEvent} */ e) => {
       if (!e.dataTransfer) return;
       const types = Array.from(e.dataTransfer.types || []);
       if (!types.includes("text/plain")) return;
@@ -451,12 +451,12 @@ export default class PresetBasket {
       e.stopPropagation();
     });
 
-    sidebar.addEventListener("dragleave", (e) => {
+    sidebar.addEventListener("dragleave", (/** @type {DragEvent} */ e) => {
       if (e.relatedTarget && sidebar.contains(/** @type {Node} */(e.relatedTarget))) return;
       sidebar.classList.remove("drag-over");
     });
 
-    sidebar.addEventListener("drop", (e) => {
+    sidebar.addEventListener("drop", (/** @type {DragEvent} */ e) => {
       if (!e.dataTransfer) return;
       e.preventDefault();
       e.stopPropagation();
@@ -1113,7 +1113,7 @@ export default class PresetBasket {
           { text: "Cancel", closeOnFinish: true, callback: () => null },
         ],
         onOpen: (modal) => {
-          const cancelBtn = modal.querySelector(".j0n4t-pg-modal-actions button");
+          const cancelBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector(".j0n4t-pg-modal-actions button"));
           modal.querySelectorAll("[data-choice]").forEach((btn) => {
             btn.addEventListener("click", () => {
               const choice = btn.getAttribute("data-choice");
