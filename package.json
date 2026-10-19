@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test \"tests/unit/**/*.test.ts\"",
+    "test:py": "uv run --with pytest pytest",
     "test:e2e": "playwright test",
-    "verify": "npm run lint && npm test",
+    "verify": "npm run lint && npm test && npm run test:py",
     "lint": "npm run lint:eslint && npm run typecheck",
     "lint:eslint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
