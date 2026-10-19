@@ -86,7 +86,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('load', () => {
-  test('mounts the gallery with its parts', async ({ page }) => {
+  test('mounts the gallery with its parts', { tag: '@smoke' }, async ({ page }) => {
     await expect(wrap(page)).toBeVisible();
     await expect(page.locator('.j0n4t-pg-grid')).toBeVisible();
     await expect(page.locator('.j0n4t-pg-search')).toBeVisible();
@@ -94,35 +94,35 @@ test.describe('load', () => {
     await expect(page.locator('.j0n4t-pg-editor')).toBeAttached();
   });
 
-  test('renders the library served by the API', async ({ page }) => {
+  test('renders the library served by the API', { tag: '@smoke' }, async ({ page }) => {
     await expect(page.locator('.j0n4t-pg-item')).toHaveCount(ITEMS_TOTAL);
     await expect(visibleItems(page)).toHaveCount(ITEMS_VISIBLE);
   });
 
-  test('hides the widget it drives', async ({ page }) => {
+  test('hides the widget it drives', { tag: '@smoke' }, async ({ page }) => {
     const hidden = await page.evaluate(
       () => (window as unknown as { __gallery: { widget: { hidden: boolean } } }).__gallery.widget.hidden
     );
     expect(hidden).toBe(true);
   });
 
-  test('restores an initial selection as a chip', async ({ page }) => {
+  test('restores an initial selection as a chip', { tag: '@smoke' }, async ({ page }) => {
     await expect(chips(page)).toHaveCount(1);
   });
 });
 
 test.describe('search', () => {
-  test('hides everything for a query that matches nothing', async ({ page }) => {
+  test('hides everything for a query that matches nothing', { tag: '@smoke' }, async ({ page }) => {
     await page.locator('.j0n4t-pg-search').fill('zzz_no_such_preset_zzz');
     await expect(visibleItems(page)).toHaveCount(0);
   });
 
-  test('keeps matching presets and hides the rest', async ({ page }) => {
+  test('keeps matching presets and hides the rest', { tag: '@smoke' }, async ({ page }) => {
     await page.locator('.j0n4t-pg-search').fill('scenery');
     await expect(visibleItems(page)).toHaveCount(2);
   });
 
-  test('clearing restores the whole grid', async ({ page }) => {
+  test('clearing restores the whole grid', { tag: '@smoke' }, async ({ page }) => {
     await page.locator('.j0n4t-pg-search').fill('scenery');
     await expect(visibleItems(page)).toHaveCount(2);
     await page.locator('.j0n4t-pg-search-clear').click();
@@ -161,13 +161,13 @@ test.describe('grid controls', () => {
 });
 
 test.describe('basket', () => {
-  test('clicking a preset adds a chip and writes the widget', async ({ page }) => {
+  test('clicking a preset adds a chip and writes the widget', { tag: '@smoke' }, async ({ page }) => {
     await page.locator('.j0n4t-pg-item').first().click();
     await expect(chips(page)).toHaveCount(2);
     expect((await widgetValue(page)).length).toBeGreaterThan(0);
   });
 
-  test('raw mode adds chips from typed text', async ({ page }) => {
+  test('raw mode adds chips from typed text', { tag: '@smoke' }, async ({ page }) => {
     await page.locator('#j0n4t-pg-basket-raw-toggle').click();
     const raw = page.locator('#j0n4t-pg-raw-input');
     await raw.fill('Faces/Portrait, Scenery/Hills');

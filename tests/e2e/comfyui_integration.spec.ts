@@ -10,6 +10,13 @@ import { test, expect, type Page } from '@playwright/test';
 const COMFY_URL = 'http://127.0.0.1:8188';
 const NODE_TYPE = 'PresetGalleryNode';
 
+// The frontend is served from a separate repo (ComfyUI_frontend), and this
+// suite's assertions are only valid against the build it was written
+// against. ComfyUI serves that build's manifest at its root; pin the commit
+// so a frontend swap fails here, loudly, instead of failing later as a wall
+// of LiteGraph errors (F15).
+const FRONTEND_COMMIT = 'dc6160bf354a185f010637e79aed1e0327bfdd6a'; // comfyui_frontend 1.58.0
+
 test.beforeAll(async ({ request }) => {
   let reachable = false;
   try {
@@ -19,6 +26,14 @@ test.beforeAll(async ({ request }) => {
     reachable = false;
   }
   test.skip(!reachable, `ComfyUI is not running on ${COMFY_URL}`);
+
+  const manifest = await request.get(`${COMFY_URL}/build-manifest.json`, { timeout: 4000 });
+  const { commit } = (await manifest.json()) as { commit?: string };
+  expect(
+    commit,
+    `the frontend build under test does not match the pin (expected ${FRONTEND_COMMIT}, comfyui_frontend 1.58.0)` +
+      ` - re-validate this suite against the new frontend and update FRONTEND_COMMIT`
+  ).toBe(FRONTEND_COMMIT);
 });
 
 /**

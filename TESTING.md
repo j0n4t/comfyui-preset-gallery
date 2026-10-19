@@ -1,10 +1,12 @@
 # Testing plan
 
 Branch: `test/expand-coverage`
-Status: Phases 0–3 done. 344 unit tests + 23 pytest passing,
+Status: Phases 0–4 done. 344 unit tests + 23 pytest passing,
 `npm run verify` green. Phase 3 covered all nine DOM-dependent modules on the jsdom
-harness, mutation-proven. What stays e2e: canvas data-URL paths and drag/drop
-geometry. Remaining: Phase 4 (e2e harness fixes — 2 checkboxes left) and Phase 5 (CI).
+harness, mutation-proven. Phase 4's e2e suite runs against the dev harness
+(chromium locally, all three browsers in CI, serialized), the smoke split is
+`npm run test:e2e:smoke`, and the live ComfyUI suite pins the frontend build
+(F15). Remaining: Phase 5 (CI).
 
 Checkbox legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` deliberately deferred.
 
@@ -338,27 +340,35 @@ The harness these tests should run against is in place:
       registered, gallery mounted, grid/search/basket/editor present, library loaded from
       the served route, context wiring intact, an initial selection rendered as a chip, and
       `serializeValue` expanding to `portrait, studio lighting`.
-- [ ] Point the Playwright suite at the harness instead of booting ComfyUI.
-- [ ] The scratch library lives under `dev/.data/` and is gitignored. It must never be the
-      repository's own `presets.json` — that file is gitignored too, so an overwrite there
-      is unrecoverable.
-
-
-- [ ] Fix the stale frontend selectors (F15). The suite waits on
-      `.comfy-menu-button-wrapper`, which frontend 1.58.0 removed, so all 20 tests fail
-      before reaching any gallery code. This has to come first or nothing else here is
-      measurable.
-- [ ] Replace the menu-choreography `beforeEach` (F7) with a direct injection harness
-      that mounts the gallery against mock data.
-- [ ] Add `data-testid` hooks so tests stop depending on CSS class names.
-- [ ] Split smoke (injection, search, basket add) from full regression.
-- [ ] Pin the frontend version the suite targets, so this drift cannot recur silently.
+- [x] Point the Playwright suite at the harness instead of booting ComfyUI. Done —
+      `playwright.config.js` boots `dev/serve.py` and nothing opens ComfyUI's menus.
+- [x] The scratch library under `dev/.data/` — the suite no longer uses it; the
+      library is served from an in-memory fixture via `page.route` (below).
+- [x] Fix the stale frontend selectors (F15) — the harness suite has no ComfyUI
+      selectors at all now. The live suite is the one that targets a real frontend,
+      and it now pins the build (below).
+- [x] Replace the menu-choreography `beforeEach` (F7) — the harness `beforeEach`
+      mounts the gallery against mock data and asserts the harness report; no menu
+      walking anywhere in the repo.
+- [x] "Add `data-testid` hooks" — decided against. The spec drives `#j0n4t-pg-*`
+      element IDs for every control and the namespaced `.j0n4t-pg-*` classes for
+      structure; those names are already pinned by the unit tests, so a rename breaks
+      both suites together. A `data-testid` attribute would duplicate the contract
+      rather than replace a dependency.
+- [x] Split smoke (injection, search, basket add) from full regression — the nine
+      load/search/basket tests carry `{ tag: '@smoke' }`; `npm run test:e2e:smoke`
+      runs just them (`playwright test --grep @smoke`).
+- [x] Pin the frontend version the suite targets — the live suite asserts the
+      served `build-manifest.json` commit equals `FRONTEND_COMMIT`
+      (`dc6160bf…`, comfyui_frontend 1.58.0), so a frontend swap fails up front
+      with instructions instead of as a wall of LiteGraph errors.
 
 Phase 4 outcome:
 
 - [x] The Playwright suite now runs against the harness. `playwright.config.js` starts
       `dev/serve.py` as its `webServer` and uses it as `baseURL`; the menu choreography is
-      gone. `tests/e2e/gallery.spec.ts` is 18 tests, all three browsers, ~8s.
+      gone. `tests/e2e/gallery.spec.ts` is 18 tests; locally they run on chromium,
+      in CI on all three browsers.
 - [x] The library is served from an in-memory fixture via `page.route`, so tests are
       isolated and the POST payload is observable. That pinned two real behaviours: the API
       normalises keys to lowercase (`Faces/HarnessPreset` -> `faces/harnesspreset`), and
@@ -368,9 +378,22 @@ Phase 4 outcome:
       created node registers its `preset_gallery_ui` DOM widget with grid/search/basket and
       renders items, the two driven widgets are hidden, and `/object_info` reports the
       declared sockets (`base_preset` as `forceInput`, `final_preset` out).
-- [ ] `npx playwright install` — Firefox and WebKit binaries are not present on this
-      machine, so those two projects fail on launch. Chromium is green.
-- [ ] Pin the frontend version the live suite targets (F15).
+- [x] `npx playwright install` — done; Firefox and WebKit 150.0.2 / 26.4 binaries are
+      installed. They are CI-only projects: locally the suite runs chromium
+      (enough to gate a push), in CI all three run, serialized.
+- [x] Pin the frontend version the live suite targets (F15) — `FRONTEND_COMMIT`
+      in `comfyui_integration.spec.ts`, asserted from the server-served
+      `build-manifest.json` in `beforeAll`.
+
+One more fix landed in `dev/index.html` while stabilising the suite: the harness
+polled a fixed 120ms for `init()` and then took its report against whatever state
+existed — under parallel browser load the API fetch outlasted the delay, every
+check read the empty state, and the `ok`-defaulted checks reported 15/15 anyway.
+It now polls until the grid has actually rendered presets, and the content checks
+(`grid rendered presets`, `session cache loaded`, `initial selection rendered as
+chips`) fail when the count is 0. The config also serializes runs (`workers: 1`) —
+on this throttled machine the default 4-way parallelism starved firefox into
+intermittent mount races.
 
 Two things the live test deliberately does not assert: whether ComfyUI *draws* the node
 (and therefore attaches the DOM widget to the document) depends on where the graph places

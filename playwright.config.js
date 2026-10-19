@@ -21,7 +21,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Serialized rather than the default (half the cores): this machine is
+  // throttled, and parallel workers put several full browser pages in flight
+  // at once, which starved firefox into intermittent mount races.
+  workers: 1,
   reporter: 'html',
   use: {
     baseURL: `http://127.0.0.1:${HARNESS_PORT}`,
@@ -35,12 +38,14 @@ export default defineConfig({
     timeout: 30_000,
   },
 
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-
-    // Enable these after `npx playwright install` - the binaries are not
-    // present on this machine, so the projects fail on launch.
-    // { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    // { name: 'webkit', use: { ...devices['Desktop Safari'] } },
-  ],
+  projects: (() => {
+    const projects = [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }];
+    if (process.env.CI) {
+      projects.push(
+        { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+        { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+      );
+    }
+    return projects;
+  })(),
 });

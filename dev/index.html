@@ -74,17 +74,26 @@ try {
   window.__gallery = gallery;
   window.__pgNode = node;
 
+  // init() fetches the library asynchronously, so the report is meaningless
+  // until the grid has actually rendered the loaded presets. Poll rather than
+  // sleeping a fixed amount: under parallel browser load the fetch can outlast
+  // any delay that looked safe locally, and every check below reads the empty
+  // state (a race seen as "initial selection rendered as chips: 0").
+  for (let i = 0; i < 60 && wrap.querySelectorAll(".j0n4t-pg-item").length === 0; i++) {
+    await delay(50);
+  }
+
   add("gallery mounted", !!gallery);
   add("both widgets hidden", node.widgets.every((w) => w.hidden === true));
   add("widget added to the host", node.domWidgets[0]?.name === "preset_gallery_ui");
 
   const q = (sel) => wrap.querySelectorAll(sel).length;
-  add("grid rendered presets", q(".j0n4t-pg-item"));
+  add("grid rendered presets", q(".j0n4t-pg-item"), q(".j0n4t-pg-item") > 0);
   add("search present", !!wrap.querySelector(".j0n4t-pg-search"));
   add("basket present", !!wrap.querySelector(".j0n4t-pg-basket-container"));
   add("editor present", !!wrap.querySelector(".j0n4t-pg-editor"));
 
-  add("session cache loaded from the API", Object.keys(gallery.session.cache).length);
+  add("session cache loaded from the API", Object.keys(gallery.session.cache).length, Object.keys(gallery.session.cache).length > 0);
   add("context is not the app", gallery.context !== gallery);
   add("context.cache is the session cache", gallery.context.cache === gallery.session.cache);
 
@@ -93,7 +102,7 @@ try {
   node.widgets[0].value = presetKey;
   gallery.syncUI(presetKey);
   await delay(50);
-  add("initial selection rendered as chips", q(".j0n4t-pg-basket-chip"));
+  add("initial selection rendered as chips", q(".j0n4t-pg-basket-chip"), q(".j0n4t-pg-basket-chip") > 0);
 
   // The engine's core promise, entirely frontend-side.
   const expanded = node.widgets[1].serializeValue();

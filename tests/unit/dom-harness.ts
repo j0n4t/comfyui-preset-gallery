@@ -18,6 +18,7 @@ g.CSS = dom.window.CSS;
 g.KeyboardEvent = dom.window.KeyboardEvent;
 g.MouseEvent = dom.window.MouseEvent;
 g.Event = dom.window.Event;
+g.CustomEvent = dom.window.CustomEvent;
 g.HTMLElement = dom.window.HTMLElement;
 g.HTMLInputElement = dom.window.HTMLInputElement;
 g.HTMLDivElement = dom.window.HTMLDivElement;
