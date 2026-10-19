@@ -294,6 +294,31 @@ The harness these tests should run against is in place:
 - [ ] Split smoke (injection, search, basket add) from full regression.
 - [ ] Pin the frontend version the suite targets, so this drift cannot recur silently.
 
+Phase 4 outcome:
+
+- [x] The Playwright suite now runs against the harness. `playwright.config.js` starts
+      `dev/serve.py` as its `webServer` and uses it as `baseURL`; the menu choreography is
+      gone. `tests/e2e/gallery.spec.ts` is 18 tests, all three browsers, ~8s.
+- [x] The library is served from an in-memory fixture via `page.route`, so tests are
+      isolated and the POST payload is observable. That pinned two real behaviours: the API
+      normalises keys to lowercase (`Faces/HarnessPreset` -> `faces/harnesspreset`), and
+      every edit POSTs the *whole* library back.
+- [x] `tests/e2e/comfyui_integration.spec.ts` — 4 live assertions against `:8188`, skipped
+      automatically when ComfyUI is not running: the extension is in `app.extensions`, a
+      created node registers its `preset_gallery_ui` DOM widget with grid/search/basket and
+      renders items, the two driven widgets are hidden, and `/object_info` reports the
+      declared sockets (`base_preset` as `forceInput`, `final_preset` out).
+- [ ] `npx playwright install` — Firefox and WebKit binaries are not present on this
+      machine, so those two projects fail on launch. Chromium is green.
+- [ ] Pin the frontend version the live suite targets (F15).
+
+Two things the live test deliberately does not assert: whether ComfyUI *draws* the node
+(and therefore attaches the DOM widget to the document) depends on where the graph places
+it, which is incidental — the assertion is on the registered widget, whose element is
+queryable while detached. And `IS_CHANGED` forcing re-execution is covered by the pytest
+wiring test (`value != value`) rather than by queueing twice, because ComfyUI's history
+does not expose whether a node was cached.
+
 ### Phase 5 — CI
 
 - [ ] `.github/workflows/test.yml` running `npm run verify` on push/PR.

@@ -72,6 +72,7 @@ try {
   const wrap = node.domWidgets[0]?.el;
   const gallery = PresetGalleryApp.instancesByWrap.get(wrap);
   window.__gallery = gallery;
+  window.__pgNode = node;
 
   add("gallery mounted", !!gallery);
   add("both widgets hidden", node.widgets.every((w) => w.hidden === true));
