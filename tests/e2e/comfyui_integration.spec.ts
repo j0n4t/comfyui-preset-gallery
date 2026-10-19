@@ -68,6 +68,9 @@ test('mounts the gallery when the node is created', async ({ page }) => {
       widgets: Array<{ name: string; element?: HTMLElement; el?: HTMLElement }>;
     };
     w.comfyAPI.app.app.graph.add(node);
+    // Hold the created node: the graph may already contain a gallery node from
+    // a restored workflow, so searching by type could pick up the wrong one.
+    (window as unknown as { __pgTestNode?: unknown }).__pgTestNode = node;
 
     const domWidget = node.widgets.find((x) => x.name === 'preset_gallery_ui');
     const el = domWidget?.element ?? domWidget?.el;
@@ -107,7 +110,9 @@ test('mounts the gallery when the node is created', async ({ page }) => {
               };
             };
           };
-          const node = w.comfyAPI.app.app.graph.nodes.find((n) => n.type === type);
+          const node = (window as unknown as {
+            __pgTestNode?: { widgets: Array<{ name: string; element?: HTMLElement; el?: HTMLElement }> };
+          }).__pgTestNode;
           const domWidget = node?.widgets.find((x) => x.name === 'preset_gallery_ui');
           const el = domWidget?.element ?? domWidget?.el;
           return el?.querySelectorAll('.j0n4t-pg-item').length ?? 0;
