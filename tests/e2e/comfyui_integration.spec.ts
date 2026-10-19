@@ -95,28 +95,14 @@ test('mounts the gallery when the node is created', async ({ page }) => {
   await expect
     .poll(
       async () =>
-        page.evaluate((type) => {
-          const w = window as unknown as {
-            comfyAPI: {
-              app: {
-                app: {
-                  graph: {
-                    nodes: Array<{
-                      type: string;
-                      widgets: Array<{ name: string; element?: HTMLElement; el?: HTMLElement }>;
-                    }>;
-                  };
-                };
-              };
-            };
-          };
+        page.evaluate(() => {
           const node = (window as unknown as {
             __pgTestNode?: { widgets: Array<{ name: string; element?: HTMLElement; el?: HTMLElement }> };
           }).__pgTestNode;
           const domWidget = node?.widgets.find((x) => x.name === 'preset_gallery_ui');
           const el = domWidget?.element ?? domWidget?.el;
           return el?.querySelectorAll('.j0n4t-pg-item').length ?? 0;
-        }, NODE_TYPE),
+        }),
       { timeout: 30_000 }
     )
     .toBeGreaterThan(0);
