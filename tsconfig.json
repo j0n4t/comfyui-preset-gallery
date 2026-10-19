@@ -4,12 +4,12 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": [],
+    "types": ["node"],
     "checkJs": true,
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["web/**/*", "globals.d.ts"],
+  "include": ["tests/**/*.ts", "web/**/*", "globals.d.ts"],
   "exclude": ["node_modules", "dist", "web/lib"]
 }

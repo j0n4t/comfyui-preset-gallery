@@ -6,9 +6,7 @@
   "scripts": {
     "lint": "npm run lint:eslint && npm run typecheck",
     "lint:eslint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
-    "typecheck:web": "tsc --noEmit -p tsconfig.json",
-    "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "repository": {
     "type": "git",
@@ -25,7 +23,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.60.0",
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.9",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
     "prettier": "3.8.3",

@@ -68,7 +68,11 @@ export default class RawTextareaManager {
       } else if (token.isTag) {
         html += `<span class="j0n4t-pg-raw-token" style="color: #4fc1ff;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else if (token.isVar || /^\{[^{}]+\}$/.test(token.text)) {
-        html += `<span class="j0n4t-pg-raw-token" style="color: #d1a119; font-weight: bold;">${PresetDOM.escapeHTML(token.text)}</span>`;
+        const inner = token.text.slice(1, -1);
+        const colonIdx = inner.indexOf(":");
+        const groupName = (colonIdx === -1 ? inner : inner.slice(0, colonIdx)).trim();
+        const varColor = PresetLogic.getPresetColor(groupName, this.context.cache);
+        html += `<span class="j0n4t-pg-raw-token" style="color: ${varColor}; font-weight: bold;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else {
         const itemKey = token.key || "";
         const item = token.item;
