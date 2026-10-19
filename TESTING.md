@@ -57,6 +57,11 @@ npx playwright test variant_color.spec.ts --list   # → "No tests found", 0 tes
   outside a ComfyUI server. `PresetGalleryApp` is e2e-only unless that import is stubbed.
 - **F10 — Node 22.23.2 strips TypeScript types natively.** The `.ts` node:test files run
   with no loader, no `tsx`, no build step. `node --test` is sufficient.
+- **F11 — Two of the three node:test files assert against inlined copies, not the source.**
+  `preset_editor.test.ts` re-implements `shouldConfirmOverwrite` (F5); `variant_color.spec.ts`
+  re-implements `extractGroupName`, a copy of `web/RawTextareaManager.js:71-73`. 5 of its
+  10 tests assert on the copy, so those 5 cannot detect divergence either. Making the suite
+  runnable is not the same as making it meaningful.
 
 ### Coverage gap
 
@@ -99,9 +104,12 @@ npx playwright test variant_color.spec.ts --list   # → "No tests found", 0 tes
   - `test:e2e` → `playwright test`
   - `verify` → `lint && typecheck && test`
 - [ ] Fix `tests/unit/preset_editor.test.ts` to import the real
-      `PresetEditor.shouldConfirmOverwrite` instead of inlining a copy (F5). Verified
+      `PresetEditor.shouldConfirmOverwrite` instead of inlining a copy (F5/F11). Verified
       feasible: the static exists at `web/PresetEditor.js:175` and importing the real
       module works in bare Node.
+- [ ] Fix `tests/unit/variant_color.spec.ts` the same way for `extractGroupName`
+      (F11) — either import the real path from `RawTextareaManager` or drop the 5 copy
+      tests in favour of testing the real one.
 - [ ] Prove the suite fails when a real assertion is broken (guard against a green suite
       that tests nothing).
 
