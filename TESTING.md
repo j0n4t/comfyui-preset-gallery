@@ -51,6 +51,12 @@ npx playwright test variant_color.spec.ts --list   # → "No tests found", 0 tes
   nested node menus. Any ComfyUI UI change breaks all 20 tests at once.
 - **F8 — The e2e suite needs a live backend.** `baseURL` is `http://localhost:8188` and the
   route mock only stubs the gallery API, not ComfyUI itself. It cannot run unattended.
+- **F9 — 17 of 18 `web/` modules import cleanly in bare Node.** Probed by importing every
+  module under `node --test` with no DOM: all pass except `PresetGalleryApp.js`, which
+  imports ComfyUI's runtime `../../../scripts/app.js` and is therefore unresolvable
+  outside a ComfyUI server. `PresetGalleryApp` is e2e-only unless that import is stubbed.
+- **F10 — Node 22.23.2 strips TypeScript types natively.** The `.ts` node:test files run
+  with no loader, no `tsx`, no build step. `node --test` is sufficient.
 
 ### Coverage gap
 
@@ -93,7 +99,9 @@ npx playwright test variant_color.spec.ts --list   # → "No tests found", 0 tes
   - `test:e2e` → `playwright test`
   - `verify` → `lint && typecheck && test`
 - [ ] Fix `tests/unit/preset_editor.test.ts` to import the real
-      `PresetEditor.shouldConfirmOverwrite` instead of inlining a copy (F5).
+      `PresetEditor.shouldConfirmOverwrite` instead of inlining a copy (F5). Verified
+      feasible: the static exists at `web/PresetEditor.js:175` and importing the real
+      module works in bare Node.
 - [ ] Prove the suite fails when a real assertion is broken (guard against a green suite
       that tests nothing).
 
@@ -150,8 +158,11 @@ Needs `document` but not a browser. Decide the harness in §3.
    separate by extension? (F3/F4 push toward directories.)
 2. **Runner.** `node --test` on `.ts` relies on Node's type stripping (works on Node
    22.23.2). Alternative: `tsx` as a devDependency for a more conventional setup.
-3. **DOM harness for Phase 3.** `happy-dom` / `jsdom` as a devDependency, or hand-rolled
-   stubs, or push those modules to e2e instead.
+3. **DOM harness for Phase 3.** F9 narrows this: module *loading* needs no DOM at all.
+   Only the methods that touch `document` do. Options: `happy-dom` / `jsdom` as a
+   devDependency, hand-rolled stubs, or push those methods to e2e instead.
 4. **CI scope.** Unit only, or unit + e2e with a containerised ComfyUI.
 5. **Module boundaries.** Some modules mix pure logic with DOM plumbing. Split the logic
    out (more testable, more churn) or test through the DOM (less churn, slower)?
+6. **`PresetGalleryApp` coverage.** Its `scripts/app.js` import (F9) blocks unit testing
+   entirely. Leave it e2e-only, or stub that import so the app's logic can be tested?
