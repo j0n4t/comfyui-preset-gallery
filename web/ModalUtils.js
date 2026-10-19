@@ -92,7 +92,7 @@ export default class ModalUtils {
    * @param {Object} options - Modal configuration options
    * @param {string} options.title - The modal title
    * @param {string} options.content - The modal content HTML
-   * @param {ModalButton[]} options.buttons - Array of button objects
+   * @param {ModalButton[]} [options.buttons] - Array of button objects
    * @param {boolean} [options.expand] - Whether to expand a modal a little (only useful for ModalUtils.prompt)
    * @param {(modal: HTMLDivElement, overlay: HTMLDivElement) => void} [options.onOpen] - Optional callback executed when modal is opened
    * @returns {Promise<any>} - Resolves with the result from button callbacks

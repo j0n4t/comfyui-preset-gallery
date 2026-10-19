@@ -14,8 +14,19 @@ export default class RawTextareaManager {
   `;
 
   /**
+   * Extracts the group name from a variant token like "{group:preset}".
+   * @param {string} tokenText
+   * @returns {string}
+   */
+  static extractGroupName(tokenText) {
+    const inner = tokenText.slice(1, -1);
+    const colonIdx = inner.indexOf(":");
+    return (colonIdx === -1 ? inner : inner.slice(0, colonIdx)).trim();
+  }
+
+  /**
    * @param {HTMLTextAreaElement | HTMLInputElement} textarea
-   * @param {import("./PresetGalleryApp.js").default} context
+   * @param {GalleryContext} context
    * @param {string|null} ignorePreset
    * @param {(textareaValue: string) => void} onSync
    */
@@ -68,9 +79,7 @@ export default class RawTextareaManager {
       } else if (token.isTag) {
         html += `<span class="j0n4t-pg-raw-token" style="color: #4fc1ff;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else if (token.isVar || /^\{[^{}]+\}$/.test(token.text)) {
-        const inner = token.text.slice(1, -1);
-        const colonIdx = inner.indexOf(":");
-        const groupName = (colonIdx === -1 ? inner : inner.slice(0, colonIdx)).trim();
+        const groupName = RawTextareaManager.extractGroupName(token.text);
         const varColor = PresetLogic.getPresetColor(groupName, this.context.cache);
         html += `<span class="j0n4t-pg-raw-token" style="color: ${varColor}; font-weight: bold;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else {

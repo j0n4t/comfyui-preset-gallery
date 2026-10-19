@@ -35,7 +35,7 @@ export default class PresetEditor {
     .j0n4t-pg-editor-preview img { width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; }
   `;
 
-  /** @param {import("./PresetGalleryApp.js").default} context  */
+  /** @param {GalleryContext} context  */
   constructor(context) {
     this.context = context;
     this.dom = context.dom;

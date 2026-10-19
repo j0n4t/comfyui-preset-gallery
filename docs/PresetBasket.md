@@ -41,7 +41,7 @@
 
 ### 6. Reroll Mechanism
 
-- **Variable Rerolling**: The `reRollChipGroup` method allows users to randomly select or cycle through variations of a specific preset group, utilizing `PresetLogic.RollManager` to keep track of roll counts and seeds.
+- **Variable Rerolling**: The `reRollChipGroup` method allows users to randomly select or cycle through variations of a specific preset group, utilizing `RollManager` (imported directly from `./RollManager.js`) to keep track of roll counts and seeds.
 - **Pinned Chips**: You can pin chips to keep them when rerolling or overwriting the basket.
 
 ### 7. Import/Export & Gallery Integration

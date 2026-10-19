@@ -54,7 +54,7 @@ export default class PresetGrid {
     .view-list .j0n4t-pg-corner-edit svg { width: 9px; height: 9px; }
   `;
 
-  /** @param {import("./PresetGalleryApp.js").default} context  */
+  /** @param {GalleryContext} context  */
   constructor(context) {
     this.context = context;
     this.dom = context.dom;

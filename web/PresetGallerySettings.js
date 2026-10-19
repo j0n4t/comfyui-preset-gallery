@@ -28,7 +28,7 @@ export default class PresetGallerySettings {
     }
   `;
 
-  /** @param {import("./PresetGalleryApp.js").default} context  */
+  /** @param {GalleryContext} context  */
   constructor(context) {
     this.context = context;
     this.load();

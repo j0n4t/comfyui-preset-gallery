@@ -1,39 +1,19 @@
-import os
-import json
 from aiohttp import web
 from server import PromptServer
 
-# File path to save the presets JSON file
-PRESETS_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "presets.json")
-
-def load_presets_from_file():
-    if os.path.exists(PRESETS_FILE):
-        try:
-            with open(PRESETS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"[PresetGallery] Error reading presets.json: {e}")
-    return {}
-
-def save_presets_to_file(data):
-    try:
-        with open(PRESETS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        return True
-    except Exception as e:
-        print(f"[PresetGallery] Error writing presets.json: {e}")
-        return False
+from .preset_compose import compose_final_preset
+from .preset_store import load_presets, save_presets
 
 # Register ComfyUI Server Routes
 @PromptServer.instance.routes.get("/preset_gallery/presets")
 async def get_presets_endpoint(request):
-    return web.json_response(load_presets_from_file())
+    return web.json_response(load_presets())
 
 @PromptServer.instance.routes.post("/preset_gallery/presets")
 async def save_presets_endpoint(request):
     try:
         data = await request.json()
-        if save_presets_to_file(data):
+        if save_presets(data):
             return web.json_response({"status": "success"})
         return web.json_response({"status": "error", "message": "Failed to save file"}, status=500)
     except Exception as e:
@@ -52,22 +32,21 @@ class PresetGalleryNode:
                 "evaluated_preset": ("STRING", {"default": "", "multiline": True})
             }
         }
-    
+
     @classmethod
     def IS_CHANGED(cls, **kwargs):
+        # NaN != NaN, so ComfyUI re-executes this node on every queue. That is
+        # what makes roll-on-generation produce a fresh selection each run; a
+        # constant here would silently freeze the rolls.
         return float("NaN")
 
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("final_preset",)
     FUNCTION = "get_preset"
     CATEGORY = "utils"
-    
+
     def get_preset(self, preset_selection, base_preset="", evaluated_preset=""):
-        # Use evaluated_preset if available; fallback to preset_selection for older workflows
-        active_preset = evaluated_preset if evaluated_preset.strip() else preset_selection
-        parts = [p.strip() for p in [base_preset, active_preset] if p and p.strip()]
-        final_preset = ", ".join(parts)
-        return (final_preset,)
+        return (compose_final_preset(preset_selection, base_preset, evaluated_preset),)
 
 NODE_CLASS_MAPPINGS = {
     "PresetGalleryNode": PresetGalleryNode

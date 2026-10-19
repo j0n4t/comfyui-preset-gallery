@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import YAMLUtils from '../web/YAMLUtils.js';
+import YAMLUtils from '../../web/YAMLUtils.js';
 
 test('stringify produces valid YAML for tabs export data', () => {
   const data = {
