@@ -265,6 +265,25 @@ Needs `document` but not a browser. Decide the harness in §3.
 
 ### Phase 4 — Make the e2e suite survive
 
+The harness these tests should run against is in place:
+
+- [x] `dev/` UI harness — `dev/serve.py` (static + a virtual `/scripts/app.js` + a
+      scratch-backed `/preset_gallery/presets`), `dev/host.js` (a stand-in for ComfyUI's
+      host module that mirrors the real shim, `export const app = window.comfyAPI.app.app`),
+      and `dev/index.html`, which drives the real registration and node-creation hooks
+      against a fake node and exposes `window.__gallery` / `window.__report`.
+      The only thing faked is the host object — if the harness ever needs to fake more,
+      the UI has grown a new host dependency.
+- [x] Verified in a browser with no ComfyUI and no backend: 15/15 checks pass — extension
+      registered, gallery mounted, grid/search/basket/editor present, library loaded from
+      the served route, context wiring intact, an initial selection rendered as a chip, and
+      `serializeValue` expanding to `portrait, studio lighting`.
+- [ ] Point the Playwright suite at the harness instead of booting ComfyUI.
+- [ ] The scratch library lives under `dev/.data/` and is gitignored. It must never be the
+      repository's own `presets.json` — that file is gitignored too, so an overwrite there
+      is unrecoverable.
+
+
 - [ ] Fix the stale frontend selectors (F15). The suite waits on
       `.comfy-menu-button-wrapper`, which frontend 1.58.0 removed, so all 20 tests fail
       before reaching any gallery code. This has to come first or nothing else here is
