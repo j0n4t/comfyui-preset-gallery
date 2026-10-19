@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import PresetLogic from "../web/PresetLogic.js";
+import PresetLogic from "../../web/PresetLogic.js";
 
 // Tests for the group-color-on-variants feature in RawTextareaManager.
 // The variant token coloring logic extracts the group name from tokens like

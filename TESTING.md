@@ -1,11 +1,10 @@
 # Testing plan
 
 Branch: `test/expand-coverage`
-Status: planning — Phase 1 not started
-Goal: make the test suites runnable and trustworthy, then close the coverage gap on the
-`web/` modules.
+Status: Phase 1 plumbing done (committed). Trust fixes deferred by decision — next step is
+an architecture discussion, not more tests.
 
-Checkbox legend: `[ ]` todo, `[~]` in progress, `[x]` done.
+Checkbox legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` deliberately deferred.
 
 ---
 
@@ -95,23 +94,35 @@ npx playwright test variant_color.spec.ts --list   # → "No tests found", 0 tes
 
 ### Phase 1 — Make tests runnable and separable
 
-- [ ] Split the suites by directory: `tests/unit/` (node:test) and `tests/e2e/`
-      (Playwright). Remove the `.spec.ts` / `.test.ts` overlap.
-- [ ] Rename the two node:test `.spec.ts` files to `*.test.ts`.
-- [ ] Point Playwright `testDir` at `./tests/e2e`.
-- [ ] Add scripts:
-  - `test` → node:test over `tests/unit/`
+Decisions taken: directories over flat layout; `.test.ts` for node:test files; plumbing
+only for this phase (trust fixes deliberately deferred).
+
+- [x] Split the suites by directory: `tests/unit/` (node:test) and `tests/e2e/`
+      (Playwright). Removes the `.spec.ts` / `.test.ts` overlap.
+- [x] Rename the two node:test `.spec.ts` files to `*.test.ts`.
+- [x] Point Playwright `testDir` at `./tests/e2e`.
+- [x] Add scripts:
+  - `test` → `node --test "tests/unit/**/*.test.ts"`
   - `test:e2e` → `playwright test`
-  - `verify` → `lint && typecheck && test`
-- [ ] Fix `tests/unit/preset_editor.test.ts` to import the real
+  - `verify` → `npm run lint && npm test`
+- [x] Verified the plumbing:
+  - `npm test` → 25 tests, 25 pass, exit 0.
+  - `npm run test:e2e -- --list` → 60 tests in 1 file (only `preset_gallery.spec.ts`).
+  - `npm run lint` → eslint + tsc clean.
+  - Breaking one assertion by hand makes `npm test` and `npm run verify` exit 1 (probe was
+    reverted, not committed) — the gate is real, not decorative.
+
+Deferred:
+
+- [!] Fix `tests/unit/preset_editor.test.ts` to import the real
       `PresetEditor.shouldConfirmOverwrite` instead of inlining a copy (F5/F11). Verified
       feasible: the static exists at `web/PresetEditor.js:175` and importing the real
       module works in bare Node.
-- [ ] Fix `tests/unit/variant_color.spec.ts` the same way for `extractGroupName`
+- [!] Fix `tests/unit/variant_color.test.ts` the same way for `extractGroupName`
       (F11) — either import the real path from `RawTextareaManager` or drop the 5 copy
       tests in favour of testing the real one.
-- [ ] Prove the suite fails when a real assertion is broken (guard against a green suite
-      that tests nothing).
+- [!] A committed regression test that proves the suite fails on a broken assertion
+      (the one-off probe above is evidence, not a guard).
 
 ### Phase 2 — Unit-test the pure-logic modules
 
