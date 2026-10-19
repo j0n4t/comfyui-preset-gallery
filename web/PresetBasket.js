@@ -5,6 +5,7 @@ import PngMetadata from "./PngMetadata.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
+import RollManager from "./RollManager.js";
 import YAMLUtils from "./YAMLUtils.js";
 
 const BASKET_CLIPBOARD_TYPE = "web application/x-comfy-preset-gallery-basket+json";
@@ -106,7 +107,7 @@ export default class PresetBasket {
    * @param {HTMLDivElement} container
    * @param {HTMLDivElement} basket
    * @param {HTMLTextAreaElement} textarea
-   * @param {import("./PresetGalleryApp.js").default} context
+   * @param {GalleryContext} context
    */
   constructor(container, basket, textarea, context) {
     this.container = container;
@@ -1663,7 +1664,7 @@ export default class PresetBasket {
   reRollChipGroup(chipIndex, groupRaw, gIndex) {
     const activeList = this.context.getSelectedArray();
     const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
-    const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls);
+    const tracer = new RollManager(this.context.rollManager.rolls);
     const targetGroup = groupRaw?.trim().toLowerCase().replace(/\s+/g, "_") || "";
 
     for (let i = 0; i < chipsData.length; i++) {
@@ -1878,7 +1879,7 @@ export default class PresetBasket {
     if (selectedIndexes.length === 0) return;
 
     const selected = new Set(selectedIndexes);
-    const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls).resetCounts();
+    const tracer = new RollManager(this.context.rollManager.rolls).resetCounts();
     /** @type {Array<{items: string[], styleKey: string, pinned: boolean, rolls: Record<string, Array<{offset: number, value: string}>>}>} */
     const copiedChips = [];
 
@@ -2002,7 +2003,7 @@ export default class PresetBasket {
     const selections = [...activeList];
     for (const chip of payload.chips) selections.push(...chip.items);
 
-    const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls).resetCounts();
+    const tracer = new RollManager(this.context.rollManager.rolls).resetCounts();
     existingChips.forEach(chip =>
       PresetLogic.expandRecursively(chip.styleKey, this.context.cache, new Set(), tracer)
     );

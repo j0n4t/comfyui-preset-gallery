@@ -3,8 +3,6 @@ import RollManager from "./RollManager.js";
 const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
 
 const PresetLogic = {
-  RollManager: RollManager,
-
   // 1. Centralize constants
   WEIGHT_REGEX: /^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/,
   NESTED_BRACES_PATTERN: "(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*",
@@ -444,7 +442,7 @@ const PresetLogic = {
    * @param {RollManager} [rollManager] - Dynamic roll tracker state.
    * @returns {ProcessedChip} Evaluated chip pure data structure.
    */
-  parseBasketChip: (chipData, cache = {}, rollManager = new PresetLogic.RollManager()) => {
+  parseBasketChip: (chipData, cache = {}, rollManager = new RollManager()) => {
     const { styleKey, item, subArray } = chipData;
     let joinedStr = subArray.join(", ");
     const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
@@ -510,7 +508,7 @@ const PresetLogic = {
 
     if (tokens.length > 0 && tokens.some(t => /[{<]/.test(t))) {
       segmentedLabels = [];
-      const tempTracer = new PresetLogic.RollManager(rollManager.rolls).restoreCounts(beforeCounts);
+      const tempTracer = new RollManager(rollManager.rolls).restoreCounts(beforeCounts);
 
       for (const token of tokens) {
         const seg = PresetLogic.resolvePresetSegment(token, cache, tempTracer);
@@ -553,7 +551,7 @@ const PresetLogic = {
 
     tooltipTitle = `${tooltipTitle}${rolledText}`;
 
-    const tempManager = new PresetLogic.RollManager();
+    const tempManager = new RollManager();
     const basePreset = item?.preset || PresetLogic.expandRecursively(styleKey, cache, new Set(), tempManager);
     const hasMoreVar = /\{[^{}:]+(?::[^{}]+)?\}/.test(coreStr + basePreset);
 
@@ -934,7 +932,7 @@ const PresetLogic = {
    * @param {RollManager} [rollManager] - Dynamic roll tracker state.
    * @returns {string} Formatted multiline title text.
    */
-  getPresetTitle: (key, cache, rollManager = new PresetLogic.RollManager()) => {
+  getPresetTitle: (key, cache, rollManager = new RollManager()) => {
     if (!key) return "";
     if (PresetLogic.isVirtualNull(key)) return "None [omit variant]";
     const name = PresetLogic.toTitleCase(PresetLogic.getPresetName(key));

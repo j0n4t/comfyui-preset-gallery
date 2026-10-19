@@ -127,6 +127,46 @@ type BasketTab = {
   rolls: Record<string, string>;
 };
 
+/**
+ * The shared context object handed to every gallery sub-component
+ * (PresetBasket, PresetEditor, PresetGrid, PresetGallerySettings and the
+ * managers they own). Built by `createGalleryContext`, not by the app itself,
+ * so tests can construct one without a ComfyUI host.
+ *
+ * `editor` and `grid` are attached by PresetGalleryApp immediately after
+ * construction, because the three siblings reference each other.
+ */
+type GalleryContext = {
+  session: import("./web/PresetSession.js").default;
+  dom: ReturnType<import("./web/PresetGalleryApp.js").default["buildDOMStructure"]>;
+  /** ComfyUI widget; shape is host-provided. */
+  widget: any;
+  editor: import("./web/PresetEditor.js").default;
+  grid: import("./web/PresetGrid.js").default;
+
+  // --- session-backed state (live views onto PresetSession) ---
+  cache: PresetCache;
+  pinnedChips: Set<string>;
+  rollManager: import("./web/RollManager.js").default;
+
+  // --- session-backed methods ---
+  getSelectedArray: () => string[];
+  savePins: () => void;
+  transferPin: (oldVal: string, newVal: string) => void;
+  getCollapsedFolders: () => string[];
+  setCollapsedFolders: (list: string[]) => void;
+  getExcludedRollFolders: () => string[];
+  setExcludedRollFolders: (list: string[]) => void;
+
+  // --- view / host, supplied by PresetGalleryApp ---
+  setPanelCollapseState: (collapsed: boolean) => void;
+  syncEditorHighlight: () => void;
+  openEditorForPreset: (styleKey: string, focus?: boolean) => void;
+  syncUI: (val: string) => void | Promise<void>;
+  loadGallery: () => Promise<void>;
+  updateWidgetValue: (arr: string[]) => void;
+};
+
 interface Window {
   JSZip: any;
   clipboardData: any;

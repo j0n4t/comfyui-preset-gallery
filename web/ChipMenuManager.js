@@ -1,10 +1,11 @@
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import AutocompleteManager from "./AutocompleteManager.js";
+import RollManager from "./RollManager.js";
 
 export default class ChipMenuManager {
   /** 
-   * @param {import("./PresetGalleryApp.js").default} context
+   * @param {GalleryContext} context
    * @param {import("./PresetBasket.js").default} delegateBasket
    */
   constructor(context, delegateBasket) {
@@ -261,7 +262,7 @@ export default class ChipMenuManager {
           if (!isNaN(chipIndex)) {
             const activeList = this.context.getSelectedArray();
             const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
-            const tracer = new PresetLogic.RollManager(this.context.rollManager.rolls);
+            const tracer = new RollManager(this.context.rollManager.rolls);
             const targetGroup = group?.trim().toLowerCase().replace(/\s+/g, "_") || "";
 
             for (let i = 0; i < chipsData.length; i++) {

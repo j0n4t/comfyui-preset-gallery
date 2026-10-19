@@ -5,7 +5,7 @@ import PresetLogic from "./PresetLogic.js";
 
 export default class InlineEditorManager {
   /**
-   * @param {import("./PresetGalleryApp.js").default} context
+   * @param {GalleryContext} context
    * @param {import("./PresetBasket.js").default} delegateBasket
    */
   constructor(context, delegateBasket) {

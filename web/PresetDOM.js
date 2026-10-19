@@ -1,4 +1,5 @@
 import PresetLogic from './PresetLogic.js';
+import RollManager from './RollManager.js';
 
 const PresetDOM = {
     icons: {
@@ -103,10 +104,10 @@ const PresetDOM = {
      * Generates render-ready HTML structure elements for basket display chips.
      * @param {ChipGroupInput} chipData - Input group object.
      * @param {PresetCache} [cache={}] - Preset cache map.
-     * @param {import("./RollManager.js").default} [rollManager=new PresetLogic.RollManager()] - Dynamic roll tracker state.
+     * @param {import("./RollManager.js").default} [rollManager=new RollManager()] - Dynamic roll tracker state.
      * @returns {RenderedChip} Rendered chip definition containing HTML markup snippets.
      */
-    renderBasketChip: (chipData, cache = {}, rollManager = new PresetLogic.RollManager()) => {
+    renderBasketChip: (chipData, cache = {}, rollManager = new RollManager()) => {
         const processed = PresetLogic.parseBasketChip(chipData, cache, rollManager);
 
         const bgStyle = processed.bgImage

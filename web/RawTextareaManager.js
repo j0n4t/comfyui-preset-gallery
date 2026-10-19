@@ -15,7 +15,7 @@ export default class RawTextareaManager {
 
   /**
    * @param {HTMLTextAreaElement | HTMLInputElement} textarea
-   * @param {import("./PresetGalleryApp.js").default} context
+   * @param {GalleryContext} context
    * @param {string|null} ignorePreset
    * @param {(textareaValue: string) => void} onSync
    */

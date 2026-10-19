@@ -1,6 +1,3 @@
-// @ts-expect-error ComfyUI resolves this host-provided module at runtime.
-import { app } from "../../../scripts/app.js";
-
 import AutocompleteManager from "./AutocompleteManager.js";
 import ModalUtils from "./ModalUtils.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
@@ -11,9 +8,11 @@ import PresetLogic from "./PresetLogic.js";
 import ExportUtils from "./ExportUtils.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetGallerySettings from "./PresetGallerySettings.js";
+import PresetSession from "./PresetSession.js";
+import createGalleryContext from "./PresetGalleryContext.js";
 
-const MIN_NODE_HEIGHT = 640;
-const MIN_NODE_WIDTH = 400;
+export const MIN_NODE_HEIGHT = 640;
+export const MIN_NODE_WIDTH = 400;
 
 export default class PresetGalleryApp {
   static instancesByNode = new WeakMap();
@@ -94,25 +93,30 @@ export default class PresetGalleryApp {
   constructor(node, widget) {
     this.node = node;
     this.widget = widget;
-    /** @type {PresetCache}  */
-    this.cache = {};
-    this.pinKey = `j0n4t-pg-pins-${this.node?.id || 'global'}`;
-    const savedPins = localStorage.getItem(this.pinKey);
-    this.pinnedChips = new Set(savedPins ? JSON.parse(savedPins) : []);
-    this.rollManager = new PresetLogic.RollManager();
-    this.settings = new PresetGallerySettings(this);
+    this.session = new PresetSession({ nodeId: node?.id || "global" });
     this.dom = this.buildDOMStructure();
+    this.context = createGalleryContext({
+      session: this.session,
+      dom: this.dom,
+      widget,
+      view: this,
+    });
     PresetGalleryApp.instancesByNode.set(this.node, this);
     PresetGalleryApp.instancesByWrap.set(this.dom.wrap, this);
 
+    this.settings = new PresetGallerySettings(this.context);
     this.basket = new PresetBasket(
       this.dom.basketContainer,
       this.dom.basketPool,
       this.dom.rawTextarea,
-      this
+      this.context
     );
-    this.editor = new PresetEditor(this);
-    this.grid = new PresetGrid(this);
+    this.editor = new PresetEditor(this.context);
+    this.grid = new PresetGrid(this.context);
+    // The three siblings reference each other, so they can only be attached
+    // to the context once all of them exist.
+    this.context.editor = this.editor;
+    this.context.grid = this.grid;
 
     PresetDOM.injectStyles('j0n4t-pg-wrap-styles', PresetGalleryApp.WRAP_STYLES);
     PresetDOM.injectStyles('j0n4t-pg-action-topbar-search-styles', PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES);
@@ -239,65 +243,10 @@ export default class PresetGalleryApp {
     };
   }
 
-  getCollapsedFolders() {
-    return JSON.parse(localStorage.getItem("pg_collapsed_folders_list") || "[]");
-  }
-
-  /** @param {string[]} list  */
-  setCollapsedFolders(list) {
-    localStorage.setItem("pg_collapsed_folders_list", JSON.stringify(list));
-  }
-
-  getExcludedRollFolders() {
-    return JSON.parse(localStorage.getItem("pg_excluded_roll_folders") || "[]");
-  }
-
-  /** @param {string[]} list  */
-  setExcludedRollFolders(list) {
-    localStorage.setItem("pg_excluded_roll_folders", JSON.stringify(list));
-  }
-
-  savePins() {
-    try {
-      localStorage.setItem(this.pinKey, JSON.stringify(Array.from(this.pinnedChips)));
-    } catch (e) { console.warn("Could not save pinned chips", e); }
-  }
-
-  /**
-   * @param {string} oldVal
-   * @param {string} newVal
-   */
-  transferPin(oldVal, newVal) {
-    if (this.pinnedChips?.has(oldVal)) {
-      this.pinnedChips.delete(oldVal);
-      this.pinnedChips.add(newVal);
-      this.savePins();
-    }
-  }
-
-  getSelectedArray() {
-    return this.widget.value
-      ? PresetLogic.splitPresets(this.widget.value)
-      : [];
-  }
-
   /** @param {string[]} arr  */
   updateWidgetValue(arr) {
     this.widget.value = arr.join(", ");
-    if (this.pinnedChips) {
-      let pinsChanged = false;
-      for (const val of this.pinnedChips) {
-        const pinnedItems = PresetLogic.splitPresets(val);
-        const isStillSelected = pinnedItems.length > 0 && arr.some((_, start) =>
-          pinnedItems.every((item, offset) => arr[start + offset] === item)
-        );
-        if (!isStillSelected) {
-          this.pinnedChips.delete(val);
-          pinsChanged = true;
-        }
-      }
-      if (pinsChanged) this.savePins();
-    }
+    this.session.prunePins(arr);
     this.widget.callback?.(this.widget.value);
     this.syncUI(this.widget.value);
     if (this.node.graph) this.node.graph._version++;
@@ -336,8 +285,8 @@ export default class PresetGalleryApp {
   }
 
   async loadGallery() {
-    this.cache = await PresetGalleryAPI.fetchGallery();
-    this.grid.compile(this.cache);
+    this.session.cache = await PresetGalleryAPI.fetchGallery();
+    this.grid.compile(this.session.cache);
   }
 
   /**
@@ -357,96 +306,28 @@ export default class PresetGalleryApp {
 
   /** @param {boolean} overwriteMode */
   triggerRoll(overwriteMode) {
-    this.rollManager.clearAll();
+    this.session.rollManager.clearAll();
     if (!overwriteMode) {
       this.syncUI(this.widget.value);
       return;
     }
-    const groupsMap = new Map();
-    for (const [key, item] of Object.entries(this.cache)) {
-      if (item?.preset) {
-        const folder = PresetLogic.getPresetFolder(key);
-        if (folder) {
-          if (!groupsMap.has(folder)) groupsMap.set(folder, []);
-          groupsMap.get(folder).push(key);
-        }
-      }
-    }
 
-    const excludedFolders = this.getExcludedRollFolders();
-    const availableGroups = Array.from(groupsMap.keys()).filter(key => !key.startsWith("_") && !excludedFolders.includes(key));
-    if (availableGroups.length === 0) return;
+    const selection = this.session.buildRollSelection({
+      cache: this.session.cache,
+      excludedFolders: this.session.getExcludedRollFolders(),
+      min: this.settings?.rollMin ?? 10,
+      max: this.settings?.rollMax ?? 20,
+      selected: this.session.getSelectedArray(this.widget.value),
+    });
+    if (!selection) return;
 
-    const currentList = this.getSelectedArray();
-    const newSelections = currentList.filter(item => this.pinnedChips?.has(item));
-    const addedSet = new Set(newSelections);
-
-    const min = this.settings?.rollMin ?? 10;
-    const max = this.settings?.rollMax ?? 20;
-    const targetTotal = Math.max(Math.floor(Math.random() * (max - min + 1)) + min, newSelections.length + 1);
-
-    while (newSelections.length < targetTotal) {
-      const shuffledGroups = [...availableGroups].sort(() => 0.5 - Math.random());
-      let addedInIteration = false;
-      for (const group of shuffledGroups) {
-        const groupPresets = groupsMap.get(group) || [];
-        if (groupPresets.length === 0) continue;
-
-        const numChips = Math.floor(Math.random() * 2) + 1;
-        for (let i = 0; i < numChips; i++) {
-          const randomPreset = groupPresets[Math.floor(Math.random() * groupPresets.length)];
-          if (!addedSet.has(randomPreset)) {
-            addedSet.add(randomPreset);
-            newSelections.push(randomPreset);
-            addedInIteration = true;
-            if (newSelections.length >= targetTotal) break;
-          }
-        }
-        if (newSelections.length >= targetTotal) break;
-      }
-
-      const totalAvailablePresets = availableGroups.reduce((acc, g) => acc + (groupsMap.get(g)?.length || 0), 0);
-      if (!addedInIteration || addedSet.size >= totalAvailablePresets) {
-        break;
-      }
-    }
-
-    newSelections.sort((a, b) => a.localeCompare(b));
-    if (this.cache["_/combo/_default"]) newSelections.unshift("_/combo/_default");
-    this.updateWidgetValue(newSelections);
+    this.updateWidgetValue(selection);
   }
 
   checkSeedChange() {
     if (!this.settings || !this.settings.rollOnSeedChange) return false;
     if (!this.node.graph) return false;
-    let seedChanged = false;
-    /** @type {{[key: string]: any}} */
-    const currentSeeds = {};
-
-    const checkNodes = (/** @type {any} */ nodes) => {
-      for (const node of nodes || []) {
-        if (node.widgets) {
-          for (const w of node.widgets) {
-            if (w.name && (w.name.toLowerCase().includes("seed") || w.name.toLowerCase().includes("noise"))) {
-              const key = `${node.id}-${w.name}`;
-              currentSeeds[key] = w.value;
-              if (this._lastSeeds && this._lastSeeds[key] !== undefined && this._lastSeeds[key] !== w.value) {
-                seedChanged = true;
-              }
-            }
-          }
-        }
-        // Recursively check sub-graphs
-        if (node.subgraph && node.subgraph._nodes) {
-          checkNodes(node.subgraph._nodes);
-        }
-      }
-    };
-
-    checkNodes(this.node.graph._nodes);
-
-    this._lastSeeds = currentSeeds;
-    return seedChanged;
+    return this.session.detectSeedChange(this.node.graph._nodes);
   }
 
   bindEvents() {
@@ -595,25 +476,6 @@ export default class PresetGalleryApp {
     this.dom.search.focus();
   }
 
-  static focusActiveSearch() {
-    const activeWrap = document.activeElement?.closest(".j0n4t-pg-wrap");
-    const activeInstance = activeWrap
-      ? PresetGalleryApp.instancesByWrap.get(activeWrap)
-      : null;
-    const selectedNodes = /** @type {any} */ (app.canvas)?.selected_nodes;
-    const selectedInstances = Object.values(selectedNodes ?? [])
-      .map((node) => PresetGalleryApp.instancesByNode.get(node))
-      .filter(Boolean);
-    const visibleInstances = [...document.querySelectorAll(".j0n4t-pg-wrap")]
-      .map((wrap) => PresetGalleryApp.instancesByWrap.get(wrap))
-      .filter(Boolean);
-    const target = activeInstance
-      ?? (selectedInstances.length === 1 ? selectedInstances[0] : null)
-      ?? (visibleInstances.length === 1 ? visibleInstances[0] : null);
-
-    target?.focusSearch();
-  }
-
   initFilterAutocomplete() {
     const manager = new AutocompleteManager({
       input: this.dom.search,
@@ -623,14 +485,14 @@ export default class PresetGalleryApp {
       getMatches: (query) => {
         query = query.trim().toLowerCase();
         if (!query) return [];
-        return PresetLogic.getTopMatches(Object.keys(this.cache), query, (k) =>
-          PresetLogic.getSearchBlob(k, this.cache[k]), this.cache
+        return PresetLogic.getTopMatches(Object.keys(this.session.cache), query, (k) =>
+          PresetLogic.getSearchBlob(k, this.session.cache[k]), this.session.cache
         );
       },
       renderItem: (match) =>
         `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
       onSelect: (match) => {
-        const sel = this.getSelectedArray();
+        const sel = this.session.getSelectedArray(this.widget.value);
         if (!sel.includes(match)) this.updateWidgetValue([...sel, match]);
         this.dom.search.value = "";
         this.grid.executeFilterPipeline();
@@ -640,7 +502,7 @@ export default class PresetGalleryApp {
         if (!manager.isOpen && e.key === "Enter" && !e.ctrlKey && !e.shiftKey) {
           const searchValue = this.dom.search.value.trim();
           if (searchValue) {
-            const sel = this.getSelectedArray();
+            const sel = this.session.getSelectedArray(this.widget.value);
             if (!sel.includes(searchValue)) {
               this.updateWidgetValue([...sel, searchValue]);
             }
@@ -668,84 +530,3 @@ export default class PresetGalleryApp {
     ]);
   }
 }
-
-// Registration
-/**
- * @typedef {Object} ComfyUiWidget
- * @property {string} name
- * @property {string} value
- * @property {boolean} hidden
- * @property {Function} callback
- * @property {Function} serializeValue
- */
-
-
-app.registerExtension({
-  name: "Comfy.PresetGallery",
-  commands: [
-    {
-      id: "PresetGallery.FocusSearch",
-      label: "Preset Gallery: Focus Search",
-      function: () => PresetGalleryApp.focusActiveSearch(),
-    },
-  ],
-  keybindings: [
-    {
-      combo: { key: "p", ctrl: true, shift: true },
-      commandId: "PresetGallery.FocusSearch",
-    },
-  ],
-  /**
-   * @param {{ prototype: { onNodeCreated: (...args: any[]) => void; widgets: ComfyUiWidget[]; addDOMWidget: Function }}} nodeType
-   * @param {{ name: string; }} nodeData
-   */
-  async beforeRegisterNodeDef(nodeType, nodeData) {
-    if (nodeData.name !== "PresetGalleryNode") return;
-    const onNodeCreated = nodeType.prototype.onNodeCreated;
-
-    nodeType.prototype.onNodeCreated = function () {
-      // @ts-expect-error The host node callback uses a dynamic `this` context.
-      onNodeCreated?.apply(this, arguments);
-      const widget = this.widgets?.find((/** @type {{ name: string; }} */ w) => w.name === "preset_selection");
-      const evaluatedWidget = this.widgets?.find((/** @type {{ name: string; }} */ w) => w.name === "evaluated_preset");
-      if (!widget || !evaluatedWidget) return;
-      widget.hidden = true;
-      evaluatedWidget.hidden = true;
-
-      const galleryView = new PresetGalleryApp(this, widget);
-      const baseCallback = widget.callback;
-
-      widget.callback = function (/** @type {string} */ value) {
-        galleryView.syncUI(value);
-        galleryView.rollManager.resetCounts();
-        evaluatedWidget.value = PresetLogic.expandRecursively(value || "", galleryView.cache, new Set(), galleryView.rollManager);
-        baseCallback?.apply(this, arguments);
-      };
-
-      evaluatedWidget.serializeValue = function () {
-        const raw = widget.value || "";
-        galleryView.rollManager.resetCounts();
-        const expanded = PresetLogic.expandRecursively(raw, galleryView.cache, new Set(), galleryView.rollManager);
-        const seedChanged = galleryView.checkSeedChange();
-        if (galleryView.settings?.rollOnGeneration || (galleryView.settings?.rollOnSeedChange && seedChanged)) {
-          setTimeout(() => {
-            galleryView.triggerRoll(galleryView.settings?.diceBehavior === "overwrite");
-          }, 150);
-        }
-        return expanded;
-      };
-
-      galleryView.init();
-      this.addDOMWidget("preset_gallery_ui", "HTML", galleryView.dom.wrap);
-    };
-  },
-  /**
-   * @param {{ comfyClass: string; size: number[]; min_size: number[]; properties: {}; }} node
-   */
-  async nodeCreated(node) {
-    if (node.comfyClass === "PresetGalleryNode") {
-      node.size = node.min_size = [MIN_NODE_WIDTH, MIN_NODE_HEIGHT];
-      node.properties = node.properties || {};
-    }
-  },
-});

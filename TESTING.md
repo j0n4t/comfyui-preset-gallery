@@ -1,14 +1,14 @@
 # Testing plan
 
 Branch: `test/expand-coverage`
-Status: Phase 1 plumbing done (committed). Trust fixes deferred by decision — next step is
-an architecture discussion, not more tests.
+Status: Phase 1 (plumbing) and Phase 0 (architecture) done. 60 unit tests passing,
+`npm run verify` green. Trust fixes for the inlined-copy tests still deferred.
 
 Checkbox legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` deliberately deferred.
 
 ---
 
-## 1. Current state (verified by probe, not by reading)
+## 1. State at the start of this work (verified by probe, not by reading)
 
 | File | Runner | Tests | Actually executed today? |
 |---|---|---|---|
@@ -61,6 +61,25 @@ npx playwright test variant_color.spec.ts --list   # → "No tests found", 0 tes
   re-implements `extractGroupName`, a copy of `web/RawTextareaManager.js:71-73`. 5 of its
   10 tests assert on the copy, so those 5 cannot detect divergence either. Making the suite
   runnable is not the same as making it meaningful.
+- **F12 — `PresetGalleryApp` was the `context` object.** 5 components (PresetBasket,
+  PresetEditor, PresetGrid, PresetGallerySettings, and the ChipMenuManager /
+  InlineEditorManager / RawTextareaManager they own) consumed 20 members off the app
+  instance itself. Combined with F9 that meant none of them could be constructed in a
+  test: you needed a live ComfyUI node, a real DOM and localStorage.
+- **F13 — The app's own pure logic had zero coverage.** `triggerRoll` (the dice algorithm,
+  60 lines), `checkSeedChange` (32 lines) and the pin-pruning half of `updateWidgetValue`
+  appear nowhere in `tests/`, unit or e2e. The e2e spec has no dice/roll test at all. The
+  most intricate logic in the repo was entirely unexercised.
+- **F14 — The combo default is prepended on top of the roll target.** `buildRollSelection`
+  picks `targetTotal` presets and *then* unshifts `_/combo/_default` if it is in the cache,
+  so the returned selection can exceed the configured max by one. Pinned by a test now
+  (`buildRollSelection: the combo default is added on top of the target count`).
+- **F15 — The e2e suite is broken against the installed frontend, independently of this
+  work.** All 20 tests fail in `beforeEach` waiting for `.comfy-menu-button-wrapper`, which
+  no longer exists in ComfyUI frontend 1.58.0. Probed live on `127.0.0.1:8188`:
+  `hasLegacyMenuButton: false`, `hasGraphCanvas: true`. Nothing of the gallery is reached,
+  so these failures predate the refactor. This is F7 made concrete: menu choreography
+  against a frontend the suite does not pin.
 
 ### Coverage gap
 
@@ -86,11 +105,88 @@ npx playwright test variant_color.spec.ts --list   # → "No tests found", 0 tes
 | `PresetDOM.js` | 147 | no |
 | `NestedPresetUtils.js` | 90 | no |
 | `RollManager.js` | 66 | no |
-| `PresetGalleryApp.js` | 750 | e2e only |
+| `PresetGalleryApp.js` | 750 → 531 | e2e only (pure logic moved out in Phase 0) |
+
+Modules created by Phase 0, both covered from the start:
+
+| Module | Lines | Unit-tested |
+|---|---|---|
+| `PresetSession.js` | 225 | yes (30 tests) |
+| `PresetGalleryContext.js` | 81 | yes (9 tests) |
+| `PresetGalleryRegistration.js` | 116 | no — needs a ComfyUI host by definition |
 
 ---
 
 ## 2. Plan
+
+### Phase 0 — Architecture: make components constructible (done)
+
+Decisions taken: new `PresetSession.js` for the stateful pure core; both steps in one go
+(session *and* the context factory); `storage` and `rng` injected at construction.
+
+`PresetGalleryApp` carried four jobs at once: ComfyUI host wiring, DOM construction and
+event binding, pure session logic, and orchestration. Three of those now have their own
+module:
+
+- **`web/PresetSession.js`** (new) — the stateful pure core. Owns `cache`, `pinnedChips`,
+  `rollManager`, the persisted view preferences, and the algorithms that used to live on
+  the app: `getSelectedArray`, `prunePins` (the contiguous-run rule), `buildRollSelection`
+  (the dice algorithm) and `detectSeedChange` (subgraph-recursing walk). `storage` and
+  `rng` are constructor-injected with defaults, so both are deterministic in tests.
+- **`web/PresetGalleryContext.js`** (new) — `createGalleryContext({ session, dom, widget,
+  view })` builds the 20-member context. State is exposed as live accessors onto the
+  session, not copies: consumers reassign `context.pinnedChips` (5 sites in
+  `PresetBasket.initTabs`) so the accessor needs a setter that writes through.
+- **`web/PresetGalleryRegistration.js`** (new) — the only module that imports ComfyUI's
+  `../../../scripts/app.js`. Holds `registerExtension` and `focusActiveSearch`. ComfyUI
+  loads every `.js` in the web directory, so importing this is what registers the
+  extension.
+- **`web/PresetGalleryApp.js`** — now 532 lines (was 751): host adapter + view +
+  orchestration. It builds the session and the context and still passes that context to
+  every component, so consumers needed no call-site changes.
+- The `PresetLogic.RollManager` alias was removed as confusing indirection; `RollManager`
+  is imported directly from `./RollManager.js` at each call site (4 files).
+- `globals.d.ts` gained a `GalleryContext` typedef, and the 7 files that typed `context`
+  as `import("./PresetGalleryApp.js").default` now use it.
+
+- [x] Extract `PresetSession` and rewire `PresetGalleryApp` onto it.
+- [x] Split the ComfyUI host wiring out into `PresetGalleryRegistration`.
+- [x] Introduce the context factory and the `GalleryContext` contract.
+- [x] Remove the `PresetLogic.RollManager` alias.
+- [x] Unit-test the extracted logic (see the two new test files below).
+
+Verified:
+
+- 20 of 21 `web/` modules now import in bare Node. The single remaining failure is
+  `PresetGalleryRegistration.js`, which is exactly the one that must import
+  `scripts/app.js`. `PresetGalleryApp` is importable now (it was the failing one, F9).
+- 60 unit tests pass, `npm run verify` exits 0.
+- The typecheck still enforces the context: a throwaway probe with
+  `ctx.dom.definitelyNotAKey` and `ctx.notAMethod()` was caught, and `ctx.dom` still
+  carries the full 40-key inferred type rather than degrading to `any`.
+- Behaviour preserved: the dice algorithm, seed detection, pin pruning and the storage
+  keys are byte-for-byte the same logic, moved rather than rewritten.
+- **Verified live against the real ComfyUI on `127.0.0.1:8188`** (frontend 1.58.0 from
+  `ComfyUI_frontend/dist`, extension served from this working tree):
+  - `Comfy.PresetGallery` appears in the frontend's extension registry.
+  - Creating a `PresetGalleryNode` mounts the gallery: 1 `.j0n4t-pg-wrap`, grid, search,
+    basket, editor and reroll button all present, and **477 preset items** rendered from
+    the real API through the refactored `PresetSession.cache` → `PresetGrid.compile`.
+  - Clicking a tile set the hidden widget to `action/cook` and rendered the `Cook` chip —
+    the full `PresetGrid` → `context.updateWidgetValue` → `prunePins` → `syncUI` →
+    `PresetBasket.render` chain.
+  - Shift-clicking reroll produced an 11-preset selection across real folders with 11
+    chips: `triggerRoll` → `session.buildRollSelection` → `updateWidgetValue` → `syncUI`.
+  - Panel toggle flipped `collapsed` false→true→false (`setPanelCollapseState`).
+  - Search filter: 332 visible → 0 for a bogus query → 12 for `genshin` → 332 restored,
+    with the clear button shown. (The first probe of this checked `style.display` and read
+    477/477; the real mechanism is the `j0n4t-pg-hidden` class. The probe was wrong, not
+    the app.)
+
+Deferred from this phase:
+
+- [!] `PresetBasket` still takes `(container, basket, textarea, context)` and builds its
+  own three managers. It is constructible now, but it is not yet split.
 
 ### Phase 1 — Make tests runnable and separable
 
@@ -128,6 +224,16 @@ Deferred:
 
 No DOM needed; import the module and call it with fixtures.
 
+- [x] `PresetSession` (new module, extracted in Phase 0) — `getSelectedArray`, `prunePins`
+      contiguous-run rule, per-node pin persistence, `transferPin`, collapsed/excluded
+      folder round trips, `buildRollSelection` (min/max target, exclusions, dedupe, combo
+      default, unreachable target, 25 seeded rng runs), `detectSeedChange` (first call,
+      change detection, noise widgets, subgraph recursion, removal). 30 tests in
+      `tests/unit/preset_session.test.ts`.
+- [x] `PresetGalleryContext` (new module, extracted in Phase 0) — live accessors onto the
+      session, write-through on `pinnedChips`, widget-value reads, view forwarding, and
+      proof that a real `ChipMenuManager` builds on a fake context with no DOM. 9 tests in
+      `tests/unit/gallery_context.test.ts`.
 - [ ] `NestedPresetUtils` — `flatToNested` / `nestedToFlat`: path nesting, color
       preservation, `presetOnly` filtering, roundtrip fidelity.
 - [ ] `RollManager` — `getRoll`, `peekRoll`, `deleteRoll`, `getCount`, `cloneCounts`,
@@ -159,10 +265,15 @@ Needs `document` but not a browser. Decide the harness in §3.
 
 ### Phase 4 — Make the e2e suite survive
 
+- [ ] Fix the stale frontend selectors (F15). The suite waits on
+      `.comfy-menu-button-wrapper`, which frontend 1.58.0 removed, so all 20 tests fail
+      before reaching any gallery code. This has to come first or nothing else here is
+      measurable.
 - [ ] Replace the menu-choreography `beforeEach` (F7) with a direct injection harness
       that mounts the gallery against mock data.
 - [ ] Add `data-testid` hooks so tests stop depending on CSS class names.
 - [ ] Split smoke (injection, search, basket add) from full regression.
+- [ ] Pin the frontend version the suite targets, so this drift cannot recur silently.
 
 ### Phase 5 — CI
 
@@ -171,17 +282,30 @@ Needs `document` but not a browser. Decide the harness in §3.
 
 ---
 
-## 3. Decisions to make
+## 3. Decisions
 
-1. **Directory layout.** `tests/unit` + `tests/e2e`, or keep one flat `tests/` and
-   separate by extension? (F3/F4 push toward directories.)
-2. **Runner.** `node --test` on `.ts` relies on Node's type stripping (works on Node
-   22.23.2). Alternative: `tsx` as a devDependency for a more conventional setup.
-3. **DOM harness for Phase 3.** F9 narrows this: module *loading* needs no DOM at all.
-   Only the methods that touch `document` do. Options: `happy-dom` / `jsdom` as a
-   devDependency, hand-rolled stubs, or push those methods to e2e instead.
-4. **CI scope.** Unit only, or unit + e2e with a containerised ComfyUI.
-5. **Module boundaries.** Some modules mix pure logic with DOM plumbing. Split the logic
-   out (more testable, more churn) or test through the DOM (less churn, slower)?
-6. **`PresetGalleryApp` coverage.** Its `scripts/app.js` import (F9) blocks unit testing
-   entirely. Leave it e2e-only, or stub that import so the app's logic can be tested?
+Resolved:
+
+1. **Directory layout.** `tests/unit` + `tests/e2e`. Done in Phase 1.
+2. **Runner.** `node --test` with Node's native type stripping. No `tsx`, no build step
+   (F10). Confirmed working on Node 22.23.2.
+3. **Where the session logic lives.** New `web/PresetSession.js`, mirroring how
+   `RollManager.js` was already extracted. Done in Phase 0.
+4. **Randomness and storage.** Constructor-injected `rng` and `storage` with defaults,
+   rather than module-level singletons. Done in Phase 0.
+5. **The `PresetLogic.RollManager` alias.** Removed; `RollManager` is imported directly.
+   Done in Phase 0.
+6. **`PresetGalleryApp` coverage.** Solved by moving the `scripts/app.js` import into
+   `PresetGalleryRegistration.js`, not by stubbing it. The app is now importable (F9).
+
+Still open:
+
+7. **DOM harness for Phase 3.** F9 narrows this: module *loading* needs no DOM at all, and
+   a component's pure methods can be exercised through a fake context (proved by the
+   `ChipMenuManager` test). Only methods that actually touch `document` need a harness.
+   Options: `happy-dom` / `jsdom` as a devDependency, hand-rolled stubs, or push those
+   methods to e2e.
+8. **CI scope.** Unit only, or unit + e2e with a containerised ComfyUI (F8).
+9. **Module boundaries.** Some modules mix pure logic with DOM plumbing. Split the logic
+   out (more testable, more churn) or test through the DOM (less churn, slower)? Phase 0
+   answered this for `PresetGalleryApp`; `PresetBasket` (2168 lines) is the remaining case.
