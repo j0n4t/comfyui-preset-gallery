@@ -1,8 +1,10 @@
 # Testing plan
 
 Branch: `test/expand-coverage`
-Status: Phase 2 (pure-logic modules) done. 202 unit tests passing,
-`npm run verify` green. Trust fixes for the inlined-copy tests still deferred.
+Status: Phases 0–3 done. 344 unit tests + 23 pytest passing,
+`npm run verify` green. Phase 3 covered all nine DOM-dependent modules on the jsdom
+harness, mutation-proven. What stays e2e: canvas data-URL paths and drag/drop
+geometry. Remaining: Phase 4 (e2e harness fixes — 2 checkboxes left) and Phase 5 (CI).
 
 Checkbox legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` deliberately deferred.
 
@@ -88,23 +90,23 @@ npx playwright test variant_color.spec.ts --list   # → "No tests found", 0 tes
 
 | Module | Lines | Unit-tested |
 |---|---|---|
-| `PresetBasket.js` | 2168 | no |
-| `PresetLogic.js` | 1020 | partial (color only) |
-| `ExportUtils.js` | 967 | no |
-| `ChipMenuManager.js` | 593 | no |
-| `PresetGrid.js` | 518 | no |
-| `PresetEditor.js` | 390 | no (inlined copy only) |
-| `RawTextareaManager.js` | 374 | no |
-| `PngMetadata.js` | 319 | no |
-| `AutocompleteManager.js` | 253 | no |
-| `InlineEditorManager.js` | 222 | no |
-| `PresetGallerySettings.js` | 218 | no |
-| `ModalUtils.js` | 193 | no |
+| `PresetBasket.js` | 2168 | yes (25) |
+| `PresetLogic.js` | 1020 | yes (57) |
+| `ExportUtils.js` | 967 | yes (14) |
+| `ChipMenuManager.js` | 593 | yes (14) |
+| `PresetGrid.js` | 518 | yes (16) |
+| `PresetEditor.js` | 390 | yes (25) |
+| `RawTextareaManager.js` | 374 | yes (13) |
+| `PngMetadata.js` | 319 | yes (23) |
+| `AutocompleteManager.js` | 253 | yes (10) |
+| `InlineEditorManager.js` | 222 | yes (8) |
+| `PresetGallerySettings.js` | 218 | yes (10) |
+| `ModalUtils.js` | 193 | yes (11) |
 | `YAMLUtils.js` | 177 | yes |
-| `PresetGalleryAPI.js` | 175 | no |
-| `PresetDOM.js` | 147 | no |
-| `NestedPresetUtils.js` | 90 | no |
-| `RollManager.js` | 66 | no |
+| `PresetGalleryAPI.js` | 175 | yes (21) |
+| `PresetDOM.js` | 147 | yes (13) |
+| `NestedPresetUtils.js` | 90 | yes (16) |
+| `RollManager.js` | 66 | yes (11) |
 | `PresetGalleryApp.js` | 750 → 531 | e2e only (pure logic moved out in Phase 0) |
 
 Modules created by Phase 0, both covered from the start:
@@ -114,6 +116,20 @@ Modules created by Phase 0, both covered from the start:
 | `PresetSession.js` | 225 | yes (30 tests) |
 | `PresetGalleryContext.js` | 81 | yes (9 tests) |
 | `PresetGalleryRegistration.js` | 116 | no — needs a ComfyUI host by definition |
+| `PresetBasket.js` | 2168 | yes (25, jsdom) |
+| `PresetGrid.js` | 518 | yes (16, jsdom) |
+| `PresetEditor.js` | 390 | yes (25, jsdom) |
+| `RawTextareaManager.js` | 374 | yes (13, jsdom) |
+| `ChipMenuManager.js` | 593 | yes (14, jsdom) |
+| `InlineEditorManager.js` | 222 | yes (8, jsdom) |
+| `AutocompleteManager.js` | 253 | yes (10, jsdom) |
+| `PresetGallerySettings.js` | 218 | yes (10, jsdom) |
+| `ModalUtils.js` | 193 | yes (11, jsdom) |
+| `PresetDOM.js` | 147 | yes (13, jsdom) |
+
+Phase 2 covered the six pure-logic modules; Phase 3 covered the nine DOM-dependent
+ones on the jsdom harness. 344 unit tests + 23 pytest, `npm run verify` green,
+8 Phase 3 mutations probed and caught.
 
 ---
 
@@ -277,17 +293,35 @@ source afterwards.
 
 Needs `document` but not a browser. Decide the harness in §3.
 
-- [ ] `PresetDOM` — HTML escaping, data URL validation, weight/boolean rendering.
-- [ ] `ModalUtils` — open/close lifecycle, button resolution, Escape handling, focus
-      restore.
-- [ ] `PresetGallerySettings` — load/save, dice visual state.
-- [ ] `AutocompleteManager` — match filtering, keyboard nav, highlight.
-- [ ] `InlineEditorManager` — edit lifecycle, save/cancel, bracket detection.
-- [ ] `ChipMenuManager` — chip selection, variant replacement, pin/unpin.
-- [ ] `RawTextareaManager` — token highlighting, char-position math, variant detection.
-- [ ] `PresetGrid` — filter pipeline, sort/compile, view switching.
-- [ ] `PresetEditor` — field validation, save/delete flow, image state.
-- [ ] `PresetBasket` — tab state, chip serialization, roll counts, pin persistence.
+Harness settled: jsdom as a devDependency, installed in `tests/unit/dom-harness.ts`
+(window, document, CSS, KeyboardEvent/MouseEvent/Event/CustomEvent, bound rAF,
+a `checkVisibility` polyfill returning true, `pretendToBeVisual: true`).
+8 new mutations across the 9 modules were probed; every one is caught by the
+matching file. What stays e2e: canvas-dependent paths (jsdom fires neither
+onload nor onerror for data URLs) and drag/drop geometry.
+
+- [x] `PresetDOM` — HTML escaping, icon registry, thumbnail validation, injectStyles
+      dedup, basket-chip render matrix.
+- [x] `ModalUtils` — alert/confirm/prompt/show lifecycle, Enter/Escape, backdrop
+      click, focus restore, stylesheet dedup.
+- [x] `PresetGallerySettings` — load/save, modal save/load, clamping, dice classes.
+- [x] `AutocompleteManager` — filtering, keyboard nav, highlight, selection.
+- [x] `InlineEditorManager` — edit lifecycle, save/cancel, bracket detection.
+- [x] `ChipMenuManager` — pin, weight, edit, swap, locate, del, variant rows, re-roll.
+- [x] `RawTextareaManager` — token rendering, ignorePreset, position math, tooltip.
+- [x] `PresetGrid` — compile, filter pipeline (query/folder/hidden/show-hidden/sort),
+      group headers and badges, group/roll toggles, item selection, persistence.
+- [x] `PresetEditor` — real `shouldConfirmOverwrite` static + DOM-driven panel tests.
+- [x] `PresetBasket` — tab restore/create/duplicate/delete/persist (payload carries
+      activeTabId), render, selection updates, pins, deletion (two-token chip range),
+      keyboard edits, focus, inline rename, clipboard payload round-trip.
+
+Verified behaviours pinned while writing these: root presets compile with no group
+header (an empty uiFolder never differs from the initial lastGroup); the filter's
+main-loop hidden clause is redundant while grouped — the group-header branch hides
+underscore presets on its own; `render()` does not sync the widget (the app does
+before calling render); a chip spans two tokens when two selection entries join to
+match the expanded preset; the server normalizes cache keys to lowercase.
 
 ### Phase 4 — Make the e2e suite survive
 
@@ -378,6 +412,9 @@ Still open:
    `allowImportingTsExtensions` enabled in `tsconfig.json` (already `noEmit`) so the
    harness can be imported by its `.ts` extension, which Node's ESM loader requires.
 8. **CI scope.** Unit only, or unit + e2e with a containerised ComfyUI (F8).
-9. **Module boundaries.** Some modules mix pure logic with DOM plumbing. Split the logic
-   out (more testable, more churn) or test through the DOM (less churn, slower)? Phase 0
-   answered this for `PresetGalleryApp`; `PresetBasket` (2168 lines) is the remaining case.
+9. **Module boundaries — answered for `PresetBasket` too: test through the DOM.**
+   The jsdom harness plus the Phase 0 context contract made `PresetBasket` testable
+   without splitting it: its managers construct on a fake context, and its own state
+   (tabs, pins, selection, clipboard) is observable through the DOM it builds. A
+   2168-line split was the wrong trade — the module's cohesion is real, and the harness
+   reaches it as-is.
