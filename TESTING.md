@@ -1,12 +1,10 @@
 # Testing plan
 
 Branch: `test/expand-coverage`
-Status: Phases 0–4 done. 344 unit tests + 23 pytest passing,
-`npm run verify` green. Phase 3 covered all nine DOM-dependent modules on the jsdom
-harness, mutation-proven. Phase 4's e2e suite runs against the dev harness
-(chromium locally, all three browsers in CI, serialized), the smoke split is
-`npm run test:e2e:smoke`, and the live ComfyUI suite pins the frontend build
-(F15). Remaining: Phase 5 (CI).
+Status: All phases done. 344 unit tests + 23 pytest passing, `npm run verify`
+green. CI runs `npm run verify` as a fast gate plus the harness-based e2e
+suite (chromium locally, all three browsers in CI, serialized); the live
+ComfyUI suite skips itself in CI.
 
 Checkbox legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` deliberately deferred.
 
@@ -404,8 +402,19 @@ does not expose whether a node was cached.
 
 ### Phase 5 — CI
 
-- [ ] `.github/workflows/test.yml` running `npm run verify` on push/PR.
-- [ ] Decide whether e2e is in CI at all (needs a ComfyUI harness — see F8).
+- [x] `.github/workflows/test.yml` — two jobs on push/PR. `verify` runs
+      `npm ci` + `npm run verify` (lint, 344 unit tests, 23 pytest) and fails
+      fast without spending browser time. `e2e` caches the Playwright
+      browsers, runs `npx playwright install --with-deps`, then
+      `npx playwright test`.
+- [x] e2e is in CI, via the dev harness — no containerised ComfyUI needed (F8
+      is closed). The gallery suite runs against `dev/serve.py`, which
+      Playwright boots as its `webServer`; the in-memory fixture keeps tests
+      isolated. `comfyui_integration.spec.ts` skips itself when ComfyUI is
+      not running, which is always in CI.
+- [x] Browser split: chromium runs locally (enough to gate a push); CI sets
+      `process.env.CI`, which enables the firefox and webkit projects and the
+      retry policy already in `playwright.config.js`.
 
 ---
 
@@ -434,7 +443,11 @@ Still open:
    result — a mock would reimplement the DOM and pass while the app is broken.
    `allowImportingTsExtensions` enabled in `tsconfig.json` (already `noEmit`) so the
    harness can be imported by its `.ts` extension, which Node's ESM loader requires.
-8. **CI scope.** Unit only, or unit + e2e with a containerised ComfyUI (F8).
+8. **CI scope — decided: unit always, e2e via the dev harness.** Phase 4's
+   harness removed the ComfyUI dependency from the gallery suite, so CI runs
+   `npm run verify` (lint + unit + pytest) as a fast gate and then
+   `npx playwright test` against `dev/serve.py`. The live ComfyUI suite is
+   not in CI — it skips itself when the server is absent.
 9. **Module boundaries — answered for `PresetBasket` too: test through the DOM.**
    The jsdom harness plus the Phase 0 context contract made `PresetBasket` testable
    without splitting it: its managers construct on a fake context, and its own state
