@@ -208,17 +208,21 @@ only for this phase (trust fixes deliberately deferred).
   - Breaking one assertion by hand makes `npm test` and `npm run verify` exit 1 (probe was
     reverted, not committed) — the gate is real, not decorative.
 
-Deferred:
+Deferred — all three now done (commit "test: point the unit tests at the real implementations"):
 
-- [!] Fix `tests/unit/preset_editor.test.ts` to import the real
-      `PresetEditor.shouldConfirmOverwrite` instead of inlining a copy (F5/F11). Verified
-      feasible: the static exists at `web/PresetEditor.js:175` and importing the real
-      module works in bare Node.
-- [!] Fix `tests/unit/variant_color.test.ts` the same way for `extractGroupName`
-      (F11) — either import the real path from `RawTextareaManager` or drop the 5 copy
-      tests in favour of testing the real one.
-- [!] A committed regression test that proves the suite fails on a broken assertion
-      (the one-off probe above is evidence, not a guard).
+- [x] `tests/unit/preset_editor.test.ts` imports the real
+      `PresetEditor.shouldConfirmOverwrite` (web/PresetEditor.js:175); the inlined copy
+      is gone. Mutation-verified: removing the `uniqueKey !== editingKey` guard from the
+      static makes the suite fail.
+- [x] `tests/unit/variant_color.test.ts` calls the real `extractGroupName`, extracted as
+      a static on `RawTextareaManager` (mirroring the `PresetEditor.shouldConfirmOverwrite`
+      precedent) and invoked from `renderHighlights`. Mutation-verified: dropping the
+      colon-split makes the suite fail.
+- [x] The committed regression guard is `tools/mutation_check.py` — applies 8 source
+      mutations, runs the matching test file, expects failure, restores the exact
+      pre-run bytes (write-back, never `git checkout`, so uncommitted work is safe).
+      Run it with `python tools/mutation_check.py`; exits non-zero if any mutation slips
+      through. Currently: 8/8 caught.
 
 ### Phase 2 — Unit-test the pure-logic modules
 

@@ -1,35 +1,31 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import PresetLogic from "../../web/PresetLogic.js";
+import RawTextareaManager from "../../web/RawTextareaManager.js";
 
 // Tests for the group-color-on-variants feature in RawTextareaManager.
 // The variant token coloring logic extracts the group name from tokens like
 // "{groupName:preset}" and uses PresetLogic.getPresetColor to determine the color.
-
-function extractGroupName(tokenText: string): string {
-  const inner = tokenText.slice(1, -1);
-  const colonIdx = inner.indexOf(":");
-  return (colonIdx === -1 ? inner : inner.slice(0, colonIdx)).trim();
-}
+// extractGroupName is the real static on RawTextareaManager, not an inlined copy.
 
 test("extractGroupName: simple group with preset", () => {
-  assert.equal(extractGroupName("{Faces:Portrait}"), "Faces");
+  assert.equal(RawTextareaManager.extractGroupName("{Faces:Portrait}"), "Faces");
 });
 
 test("extractGroupName: nested group path", () => {
-  assert.equal(extractGroupName("{Faces/Portrait:pro}"), "Faces/Portrait");
+  assert.equal(RawTextareaManager.extractGroupName("{Faces/Portrait:pro}"), "Faces/Portrait");
 });
 
 test("extractGroupName: no colon (bare group)", () => {
-  assert.equal(extractGroupName("{Faces}"), "Faces");
+  assert.equal(RawTextareaManager.extractGroupName("{Faces}"), "Faces");
 });
 
 test("extractGroupName: multiple groups uses first", () => {
-  assert.equal(extractGroupName("{Faces:Portrait,Scenery:Landscape}"), "Faces");
+  assert.equal(RawTextareaManager.extractGroupName("{Faces:Portrait,Scenery:Landscape}"), "Faces");
 });
 
 test("extractGroupName: empty braces", () => {
-  assert.equal(extractGroupName("{}"), "");
+  assert.equal(RawTextareaManager.extractGroupName("{}"), "");
 });
 
 test("getPresetColor: returns custom color when set on folder", () => {
@@ -61,7 +57,7 @@ test("getPresetColor: variant token group name gets matching color", () => {
     "Faces/Portrait": { preset: "pro" },
   };
   const tokenText = "{Faces:Portrait}";
-  const groupName = extractGroupName(tokenText);
+  const groupName = RawTextareaManager.extractGroupName(tokenText);
   const color = PresetLogic.getPresetColor(groupName, cache);
   assert.equal(color, "#123456");
 });
@@ -71,8 +67,8 @@ test("getPresetColor: different groups get different colors", () => {
     "Faces": { __color__: "#aaaaaa", preset: "" },
     "Scenery": { __color__: "#bbbbbb", preset: "" },
   };
-  const facesColor = PresetLogic.getPresetColor(extractGroupName("{Faces:Portrait}"), cache);
-  const sceneryColor = PresetLogic.getPresetColor(extractGroupName("{Scenery:Landscape}"), cache);
+  const facesColor = PresetLogic.getPresetColor(RawTextareaManager.extractGroupName("{Faces:Portrait}"), cache);
+  const sceneryColor = PresetLogic.getPresetColor(RawTextareaManager.extractGroupName("{Scenery:Landscape}"), cache);
   assert.equal(facesColor, "#aaaaaa");
   assert.equal(sceneryColor, "#bbbbbb");
   assert.notEqual(facesColor, sceneryColor);
