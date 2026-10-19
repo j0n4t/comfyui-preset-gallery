@@ -1,7 +1,7 @@
 # Testing plan
 
 Branch: `test/expand-coverage`
-Status: Phase 1 (plumbing) and Phase 0 (architecture) done. 60 unit tests passing,
+Status: Phase 2 (pure-logic modules) done. 202 unit tests passing,
 `npm run verify` green. Trust fixes for the inlined-copy tests still deferred.
 
 Checkbox legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` deliberately deferred.
@@ -234,18 +234,40 @@ No DOM needed; import the module and call it with fixtures.
       session, write-through on `pinnedChips`, widget-value reads, view forwarding, and
       proof that a real `ChipMenuManager` builds on a fake context with no DOM. 9 tests in
       `tests/unit/gallery_context.test.ts`.
-- [ ] `NestedPresetUtils` — `flatToNested` / `nestedToFlat`: path nesting, color
-      preservation, `presetOnly` filtering, roundtrip fidelity.
-- [ ] `RollManager` — `getRoll`, `peekRoll`, `deleteRoll`, `getCount`, `cloneCounts`,
-      `restoreCounts`, count reset semantics.
-- [ ] `PresetLogic` — token splitting (comma vs `,` inside `()`/`<>`/`{}`), variant
-      resolution, weight parsing, `isVirtualNull`, roll selection.
-- [ ] `PngMetadata` — `isPng` signature check, `tEXt`/`iTXt`/`zTXt` chunk parsing,
-      inflate path, malformed/truncated input.
-- [ ] `PresetGalleryAPI` — key normalization, folder/path splitting, hidden-key detection,
-      folder rename/prefix rewrite.
-- [ ] `ExportUtils` — `getSelectionSummary`, `buildPresetSelectorTree`, diff detection.
-      The DOM-driven export flow stays e2e.
+- [x] `NestedPresetUtils` — `flatToNested` / `nestedToFlat`: path nesting, color
+      preservation, `presetOnly` filtering, roundtrip fidelity. 16 tests in
+      `tests/unit/nested_preset_utils.test.ts`. (Roundtrips asserted per-field, not
+      by `deepEqual` on the whole map: `presetOnly=true` drops `filename`, and
+      `nestedToFlat` materialises explicit `undefined` keys.)
+- [x] `RollManager` — `getRoll`, `peekRoll`, `deleteRoll`, `getCount`,
+      `cloneCounts`, `restoreCounts`, count reset semantics. 11 tests in
+      `tests/unit/roll_manager.test.ts`.
+- [x] `PresetLogic` — token splitting (comma vs `,` inside `()`/`<>`/`{}`), variant
+      resolution, weight parsing, `isVirtualNull`, roll selection, plus
+      `getUnrolledTemplate`, `expandRecursively`, `getAllVariants`,
+      `parseChipDetails`, `findPresetMatch`, `getGroupMatches`, `escapeRegExp`,
+      `getWrappedPreset` and the path helpers. 57 tests in
+      `tests/unit/preset_logic.test.ts`.
+- [x] `PngMetadata` — `isPng` signature check, `tEXt`/`iTXt`/`zTXt` chunk parsing,
+      inflate path, malformed/truncated input, `extract` (incl. NaN sanitisation),
+      `extractFromFile`, `getPresetGalleryWidgets`, `getPromptText`. 23 tests in
+      `tests/unit/png_metadata.test.ts`.
+- [x] `PresetGalleryAPI` — key normalization, folder/path splitting, hidden-key
+      detection, folder rename/prefix rewrite, all against a stubbed `fetch`
+      with an in-memory library. 21 tests in
+      `tests/unit/preset_gallery_api.test.ts`. Pinned two real behaviours: a
+      colour on a folder with no presets does not survive `savePresets`
+      (colour-only entries need an active folder), and folderless keys never
+      match a group roll.
+- [x] `ExportUtils` — `getSelectionSummary`, `buildPresetSelectorTree`, diff
+      detection, duplicate strategies. 14 tests in
+      `tests/unit/export_utils.test.ts`. The DOM-driven export flow stays e2e.
+
+Phase 2 verification: mutation probes broke each of the six modules (count
+advance, `includeColors`, depth tracking, the `zTXt` branch, the hidden-key sort,
+the replaced/same classification) and in every case the matching new test file
+failed while the rest of the suite stayed green; `git checkout` restored each
+source afterwards.
 
 ### Phase 3 — Unit-test the DOM-dependent modules
 
@@ -344,11 +366,13 @@ Resolved:
 
 Still open:
 
-7. **DOM harness for Phase 3.** F9 narrows this: module *loading* needs no DOM at all, and
-   a component's pure methods can be exercised through a fake context (proved by the
-   `ChipMenuManager` test). Only methods that actually touch `document` need a harness.
-   Options: `happy-dom` / `jsdom` as a devDependency, hand-rolled stubs, or push those
-   methods to e2e.
+7. **DOM harness for Phase 3 — decided: jsdom.** `jsdom` + `@types/jsdom` added as
+   devDependencies, installed via `tests/unit/dom-harness.ts` (import it before the
+   module under test). Chosen over hand-rolled mock elements because
+   `buildPresetSelectorTree` and the Phase 3 components parse `innerHTML` and query the
+   result — a mock would reimplement the DOM and pass while the app is broken.
+   `allowImportingTsExtensions` enabled in `tsconfig.json` (already `noEmit`) so the
+   harness can be imported by its `.ts` extension, which Node's ESM loader requires.
 8. **CI scope.** Unit only, or unit + e2e with a containerised ComfyUI (F8).
 9. **Module boundaries.** Some modules mix pure logic with DOM plumbing. Split the logic
    out (more testable, more churn) or test through the DOM (less churn, slower)? Phase 0
