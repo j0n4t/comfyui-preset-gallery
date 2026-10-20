@@ -11,7 +11,11 @@ import PresetGallerySettings from "./PresetGallerySettings.js";
 import PresetSession from "./PresetSession.js";
 import createGalleryContext from "./PresetGalleryContext.js";
 
-export const MIN_NODE_HEIGHT = 640;
+// The node's own floor. Below this the gallery cannot show its basket, control
+// bar, editor and a row of grid at once: those come to 303px of wrap content
+// (80 + 28 + 123, three 4px gaps, plus the grid's 60px minimum) and the node
+// adds 92px of chrome around it.
+export const MIN_NODE_HEIGHT = 400;
 export const MIN_NODE_WIDTH = 400;
 
 export default class PresetGalleryApp {
@@ -19,12 +23,52 @@ export default class PresetGalleryApp {
   static instancesByWrap = new WeakMap();
 
   static WRAP_STYLES = /*css*/ `
-    .j0n4t-pg-wrap { display: flex; flex: auto; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; min-height: 100%; font-family: sans-serif; position: relative; outline: none; overflow: hidden; resize: vertical; }
+    .j0n4t-pg-wrap { display: flex; flex: auto; flex-direction: column; gap: 4px; padding: 0; border-radius: 4px; box-sizing: border-box; width: 100%; min-height: 100%; font-family: sans-serif; position: relative; outline: none; overflow: hidden; }
     .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-grid, .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-more-options-wrap { display: none; }
     .j0n4t-pg-basket-container { display: flex; flex-direction: column; min-height: 80px;  resize: vertical; background: #15151580; border: 1px dashed #777; border-radius: 4px; box-sizing: border-box; width: 100%; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s; position: relative;  overflow-y: auto; overflow-x: hidden; container: pg-basket / size; }
     .j0n4t-pg-basket-pool-wrapper { flex: 1 1 auto; overflow-y: auto; position: relative; margin: 4px; display: block; box-sizing: border-box; }
     .j0n4t-pg-basket-raw-textarea { flex: 1 1 auto; resize: none; }
     .j0n4t-pg-wrap.hide-gallery-mode .j0n4t-pg-basket-container { flex: 1 1 100%; resize: none; }
+  `;
+
+  /**
+   * Height modes, keyed off `data-height-mode` on the wrap. Each mode is a
+   * *ceiling* on the gallery viewport, so the grid scrolls inside the gallery
+   * instead of growing its host to the full height of the preset library.
+   * `fit` is the default and needs one rule per host:
+   *
+   *   - graph mode: ComfyUI maps node.size[1] onto `--node-height` and applies
+   *     it as a *min*-height on `.lg-node`, while the Vue node renderer sizes
+   *     the node from the DOM. Capping the wrap by `--node-height` therefore
+   *     makes the node render at exactly the size the user dragged it to.
+   *     92px is the node chrome the wrap sits inside - header (30) + body
+   *     padding (16) + the DOM widget's default 10px margin on both sides
+   *     (20) + the widget grid's row gap - all in CSS px, so canvas zoom does
+   *     not affect it. Where `--node-height` is absent (legacy canvas
+   *     rendering, app mode) the declaration is invalid and `max-height` stays
+   *     `none`, which is what legacy rendering wants anyway: there ComfyUI
+   *     sizes the widget element from the node itself.
+   *   - app mode: there is no node. The promoted widget renders inside
+   *     `[data-testid="app-mode-widget-item"]`, below a label row and an
+   *     optional description row, inside the `[data-testid="linear-widgets"]`
+   *     scroll panel. Capping the wrap at the panel height alone still leaves
+   *     the panel scrolling by that chrome (measured: 46px, so the item is
+   *     497px in a 457px panel), so the item is turned into a definite-height
+   *     flex column and the widget chain is made definite to fill what is left.
+   *
+   * Each `fit` rule sets `min-height` alongside `max-height` because in CSS a
+   * min-height that resolves larger than the max-height *wins*, and the wrap's
+   * inherited `min-height: 100%` otherwise latches onto the host height and
+   * defeats the ceiling. `min(100%, <ceiling>)` keeps the gallery filling its
+   * host when the library is small without ever exceeding the ceiling.
+   */
+  static HEIGHT_STYLES = /*css*/ `
+    .j0n4t-pg-wrap[data-height-mode="fit"] { min-height: min(100%, max(120px, calc(var(--node-height) - 92px))); max-height: max(120px, calc(var(--node-height) - 92px)); }
+    [data-testid="app-mode-widget-item"]:has(.j0n4t-pg-wrap[data-height-mode="fit"]) { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+    [data-testid="app-mode-widget-item"]:has(.j0n4t-pg-wrap[data-height-mode="fit"]) > div:last-child { flex: 1 1 auto; min-height: 0; }
+    [data-testid="app-mode-widget-item"]:has(.j0n4t-pg-wrap[data-height-mode="fit"]) *:has(.j0n4t-pg-wrap[data-height-mode="fit"]) { height: 100%; min-height: 0; }
+    [data-testid="app-mode-widget-item"] .j0n4t-pg-wrap[data-height-mode="fit"] { min-height: 100%; max-height: 100%; }
+    .j0n4t-pg-wrap[data-height-mode="fixed"] { height: var(--pg-fixed-height, 640px); min-height: 120px; resize: vertical; }
   `;
 
   static ACTION_TOPBAR_SEARCH_STYLES = /*css*/ `
@@ -119,6 +163,7 @@ export default class PresetGalleryApp {
     this.context.grid = this.grid;
 
     PresetDOM.injectStyles('j0n4t-pg-wrap-styles', PresetGalleryApp.WRAP_STYLES);
+    PresetDOM.injectStyles('j0n4t-pg-height-styles', PresetGalleryApp.HEIGHT_STYLES);
     PresetDOM.injectStyles('j0n4t-pg-action-topbar-search-styles', PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES);
     PresetDOM.injectStyles('j0n4t-pg-gallery-styles', PresetGalleryApp.GALLERY_STYLES);
     PresetDOM.injectStyles('j0n4t-pg-modal-styles', PresetGalleryApp.MODAL_STYLES);
@@ -470,6 +515,62 @@ export default class PresetGalleryApp {
       this.dom.btnHideGallery.classList.remove("active");
       this.dom.btnHideGallery.setAttribute("aria-pressed", "false");
     }
+
+    this.bindResizeTracking();
+  }
+
+  /**
+   * Records the manual resizes the gallery allows: its own height in fixed
+   * mode, plus the basket and editor panels when the user asked for those to be
+   * remembered.
+   *
+   * A `resize` handle fires no event, so the size is sampled across a
+   * pointerdown/pointerup pair. The pointerup is tracked on the window, because
+   * the pointer leaves the element as soon as the user drags past its edge. The
+   * first handler to run wins: these elements nest, so the innermost one - the
+   * basket or the editor box - claims the gesture and the wrap does not.
+   */
+  bindResizeTracking() {
+    const targets = [this.dom.wrap, this.dom.basketContainer, this.dom.inpPreset];
+    /** @type {HTMLElement | null} */
+    let dragged = null;
+    let startHeight = 0;
+
+    for (const el of targets) {
+      el.addEventListener("pointerdown", () => {
+        if (dragged) return;
+        dragged = el;
+        startHeight = el.offsetHeight;
+      });
+    }
+
+    window.addEventListener("pointerup", () => {
+      const el = dragged;
+      dragged = null;
+      if (!el || el.offsetHeight === startHeight) return;
+      this.recordResize(el);
+    });
+  }
+
+  /** @param {HTMLElement} el */
+  recordResize(el) {
+    const height = el.offsetHeight;
+    if (el === this.dom.wrap) {
+      // Only fixed mode sizes the wrap itself; the other modes are sized by the
+      // node or the app panel, so a height dragged here is not a preference.
+      if (this.settings?.heightMode !== "fixed") return;
+      // The browser wrote an inline height for the drag. Drop it and store the
+      // value instead, so the mode's own rules stay in charge of the element.
+      el.style.height = "";
+      this.settings.heightFixed = height;
+      this.settings.save();
+      this.settings.applyHeightMode();
+      return;
+    }
+    if (!this.settings?.rememberPanelSizes) return;
+    const key = el === this.dom.basketContainer ? "basket" : "editor";
+    this.settings.panelSizes = { ...this.settings.panelSizes, [key]: height };
+    this.settings.save();
   }
 
   focusSearch() {

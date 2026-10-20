@@ -1,6 +1,56 @@
 import ModalUtils from "./ModalUtils.js";
 import PresetDOM from "./PresetDOM.js";
 
+/**
+ * Height modes offered in the Display tab, mirrored onto `data-height-mode` on
+ * the wrap. "fit" caps the gallery viewport at the node's own size in graph
+ * mode and at the app panel in app mode; "fixed" caps it at `heightFixed`;
+ * "unlimited" leaves it uncapped so the gallery grows with the preset library.
+ * Kept in sync with PresetGalleryApp.HEIGHT_STYLES.
+ */
+const HEIGHT_MODES = /** @type {GalleryHeightMode[]} */ (["fit", "fixed", "unlimited"]);
+const DEFAULT_HEIGHT_MODE = /** @type {GalleryHeightMode} */ ("fit");
+const DEFAULT_HEIGHT_FIXED = 640;
+
+/**
+ * Validates a stored or submitted height mode, falling back to the default.
+ * The cast is the narrowing step: `includes` is what actually validates.
+ * @param {unknown} value
+ */
+function toHeightMode(value) {
+  const mode = /** @type {GalleryHeightMode} */ (value);
+  return HEIGHT_MODES.includes(mode) ? mode : DEFAULT_HEIGHT_MODE;
+}
+
+/**
+ * A stored panel size map, keeping only usable positive numbers. Sizes come
+ * back from localStorage as whatever was written, so anything else is dropped
+ * rather than applied as an invalid inline height.
+ * @param {unknown} value
+ * @returns {GalleryPanelSizes}
+ */
+function toPanelSizes(value) {
+  /** @type {GalleryPanelSizes} */
+  const sizes = {};
+  const source = /** @type {Record<string, unknown>} */ (value ?? {});
+  for (const key of /** @type {const} */ (["basket", "editor"])) {
+    const size = Number(source[key]);
+    if (Number.isFinite(size) && size > 0) sizes[key] = Math.round(size);
+  }
+  return sizes;
+}
+
+/**
+ * A stored fixed height, falling back to the default when it is missing or
+ * unusable. An emptied number input reads back as "" (Number("") === 0), which
+ * is not a height.
+ * @param {unknown} value
+ */
+function toFixedHeight(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : DEFAULT_HEIGHT_FIXED;
+}
+
 export default class PresetGallerySettings {
   static STYLES = /*css*/ `
     .j0n4t-pg-tab-nav { display: flex ; gap: 4px ; border-bottom: 1px solid #444 ; margin-bottom: 12px; }
@@ -32,6 +82,8 @@ export default class PresetGallerySettings {
   constructor(context) {
     this.context = context;
     this.load();
+    this.applyHeightMode();
+    this.applyPanelSizes();
     PresetDOM.injectStyles('j0n4t-pg-settings-styles', PresetGallerySettings.STYLES);
 
     // Defer visual update slightly to ensure the main app has finished generating the DOM elements
@@ -46,12 +98,20 @@ export default class PresetGallerySettings {
       this.rollOnGeneration = saved.rollOnGeneration !== undefined ? saved.rollOnGeneration : false;
       this.rollOnSeedChange = saved.rollOnSeedChange !== undefined ? saved.rollOnSeedChange : false;
       this.diceBehavior = saved.diceBehavior || "variants";
+      this.heightMode = toHeightMode(saved.heightMode);
+      this.heightFixed = toFixedHeight(saved.heightFixed);
+      this.rememberPanelSizes = saved.rememberPanelSizes === true;
+      this.panelSizes = toPanelSizes(saved.panelSizes);
     } catch {
       this.rollMin = 10;
       this.rollMax = 20;
       this.rollOnGeneration = false;
       this.rollOnSeedChange = false;
       this.diceBehavior = "variants";
+      this.heightMode = DEFAULT_HEIGHT_MODE;
+      this.heightFixed = DEFAULT_HEIGHT_FIXED;
+      this.rememberPanelSizes = false;
+      this.panelSizes = /** @type {GalleryPanelSizes} */ ({});
     }
   }
 
@@ -61,9 +121,41 @@ export default class PresetGallerySettings {
       rollMax: this.rollMax,
       rollOnGeneration: this.rollOnGeneration,
       rollOnSeedChange: this.rollOnSeedChange,
-      diceBehavior: this.diceBehavior
+      diceBehavior: this.diceBehavior,
+      heightMode: this.heightMode,
+      heightFixed: this.heightFixed,
+      rememberPanelSizes: this.rememberPanelSizes,
+      panelSizes: this.panelSizes
     };
     localStorage.setItem("pg_settings", JSON.stringify(data));
+  }
+
+  /**
+   * Mirrors the height preference onto this gallery's element. The modes are
+   * ceilings on the gallery viewport, so the grid scrolls inside it instead of
+   * growing the node (graph mode) or the app panel to the full height of the
+   * preset library. The rules that read these live in
+   * PresetGalleryApp.HEIGHT_STYLES.
+   */
+  applyHeightMode() {
+    const wrap = this.context.dom?.wrap;
+    if (!wrap) return;
+    wrap.dataset.heightMode = this.heightMode;
+    wrap.style.setProperty("--pg-fixed-height", `${this.heightFixed}px`);
+  }
+
+  /**
+   * Restores the panel sizes the user dragged, when they asked for them to be
+   * remembered. The basket container and the editor's keyword box are the only
+   * resizable elements inside the gallery, and both are plain inline heights -
+   * the same thing the browser writes while dragging the handle.
+   */
+  applyPanelSizes() {
+    const dom = this.context.dom;
+    if (!dom) return;
+    const sizes = /** @type {GalleryPanelSizes} */ (this.rememberPanelSizes ? this.panelSizes : {});
+    dom.basketContainer.style.height = sizes.basket ? `${sizes.basket}px` : "";
+    dom.inpPreset.style.height = sizes.editor ? `${sizes.editor}px` : "";
   }
 
   updateDiceVisuals() {
@@ -91,10 +183,19 @@ export default class PresetGallerySettings {
     let seedCheck;
     /** @type {HTMLInputElement | null} */
     let diceSelect;
+    /** @type {HTMLSelectElement | null} */
+    let heightModeSelect;
+    /** @type {HTMLInputElement | null} */
+    let heightFixedInput;
+    /** @type {HTMLDivElement | null} */
+    let heightFixedField;
+    /** @type {HTMLInputElement | null} */
+    let rememberPanelsCheck;
 
     const content = `
       <div class="j0n4t-pg-tab-nav">
         <button type="button" class="j0n4t-pg-tab-btn active" data-tab="settings">Rolling Options</button>
+        <button type="button" class="j0n4t-pg-tab-btn" data-tab="display">Display</button>
         <button type="button" class="j0n4t-pg-tab-btn" data-tab="shortcuts">Keyboard Shortcuts</button>
       </div>
 
@@ -128,6 +229,36 @@ export default class PresetGallerySettings {
             <input type="checkbox" id="j0n4t-pg-roll-on-seed" ${this.rollOnSeedChange ? "checked" : ""} />
             Dice roll on generation seed changes
           </label>
+        </div>
+      </div>
+
+      <div id="j0n4t-pg-tab-display" class="j0n4t-pg-tab-panel">
+        <div class="j0n4t-pg-modal-field">
+          <label>Gallery Height</label>
+          <select id="j0n4t-pg-height-mode">
+            <option value="fit" ${this.heightMode === "fit" ? "selected" : ""}>Fit to node / panel</option>
+            <option value="fixed" ${this.heightMode === "fixed" ? "selected" : ""}>Fixed height</option>
+            <option value="unlimited" ${this.heightMode === "unlimited" ? "selected" : ""}>Unlimited</option>
+          </select>
+        </div>
+
+        <div class="j0n4t-pg-modal-field" id="j0n4t-pg-height-fixed-field">
+          <label>Fixed Height (px)</label>
+          <input type="number" id="j0n4t-pg-height-fixed" value="${this.heightFixed}" min="120" max="4000" />
+        </div>
+
+        <div class="j0n4t-pg-modal-field">
+          <label class="j0n4t-pg-checkbox-wrap" style="height: auto; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <input type="checkbox" id="j0n4t-pg-remember-panels" ${this.rememberPanelSizes ? "checked" : ""} />
+            Remember basket and editor sizes
+          </label>
+        </div>
+
+        <div style="font-size: 10px; color: #888; line-height: 1.4;">
+          Every mode caps the gallery viewport, so the grid scrolls inside it.
+          <br /><b>Fit</b> follows the node size in graph mode and the app panel in app mode - resize the node to resize the gallery.
+          <br /><b>Fixed height</b> is drag-resizable: pull the gallery's bottom-right corner to adjust the value.
+          <br /><b>Unlimited</b> grows the gallery with the preset library.
         </div>
       </div>
 
@@ -181,8 +312,13 @@ export default class PresetGallerySettings {
             this.rollOnGeneration = genCheck?.checked;
             this.rollOnSeedChange = seedCheck?.checked;
             this.diceBehavior = diceSelect?.value;
+            this.heightMode = toHeightMode(heightModeSelect?.value);
+            this.heightFixed = toFixedHeight(heightFixedInput?.value);
+            this.rememberPanelSizes = rememberPanelsCheck?.checked === true;
 
             this.save();
+            this.applyHeightMode();
+            this.applyPanelSizes();
             this.updateDiceVisuals(); // Instantly update the color indicator
             this.context.syncUI(this.context.widget.value);
             return true;
@@ -195,6 +331,19 @@ export default class PresetGallerySettings {
         genCheck = modal.querySelector("#j0n4t-pg-roll-on-gen");
         seedCheck = modal.querySelector("#j0n4t-pg-roll-on-seed");
         diceSelect = modal.querySelector("#j0n4t-pg-dice-behavior");
+        heightModeSelect = modal.querySelector("#j0n4t-pg-height-mode");
+        heightFixedInput = modal.querySelector("#j0n4t-pg-height-fixed");
+        heightFixedField = modal.querySelector("#j0n4t-pg-height-fixed-field");
+        rememberPanelsCheck = modal.querySelector("#j0n4t-pg-remember-panels");
+
+        // The pixel field only means anything in fixed mode.
+        const syncFixedField = () => {
+          if (heightFixedField) {
+            heightFixedField.style.display = heightModeSelect?.value === "fixed" ? "" : "none";
+          }
+        };
+        heightModeSelect?.addEventListener("change", syncFixedField);
+        syncFixedField();
 
         const tabButtons = modal.querySelectorAll(".j0n4t-pg-tab-btn");
         const tabPanels = modal.querySelectorAll(".j0n4t-pg-tab-panel");

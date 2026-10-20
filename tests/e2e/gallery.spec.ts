@@ -246,3 +246,107 @@ test.describe('persistence', () => {
     await expect(page.locator('.j0n4t-pg-grid')).toHaveClass(/view-list/);
   });
 });
+
+test.describe('display height', () => {
+  // The gallery caps its own viewport so the grid scrolls inside it instead of
+  // growing the node / app panel to the full height of the library. Unit tests
+  // cover the persisted setting and the attribute; only a real browser can show
+  // that the CSS actually clamps a laid-out element.
+  async function openDisplayTab(page: Page) {
+    await page.locator('#j0n4t-pg-config-btn').click();
+    const modal = page.locator('.j0n4t-pg-modal-overlay');
+    await expect(modal).toBeVisible();
+    await modal.locator('.j0n4t-pg-tab-btn[data-tab="display"]').click();
+    return modal;
+  }
+
+  test('the gallery offers a manual resize handle only in fixed mode', async ({ page }) => {
+    // Fit follows the node's own handle; the gallery's handle adjusts a fixed
+    // height.
+    expect(await wrap(page).evaluate((el) => getComputedStyle(el).resize)).toBe('none');
+
+    const modal = await openDisplayTab(page);
+    await modal.locator('#j0n4t-pg-height-mode').selectOption('fixed');
+    await modal.locator('button[data-index="1"]').click();
+    await expect(wrap(page)).toHaveAttribute('data-height-mode', 'fixed');
+    expect(await wrap(page).evaluate((el) => getComputedStyle(el).resize)).toBe('vertical');
+  });
+
+  test('fit is the default height mode', async ({ page }) => {
+    await expect(wrap(page)).toHaveAttribute('data-height-mode', 'fit');
+  });
+
+  test('a fixed height sizes the gallery and unlimited lifts the cap', async ({ page }) => {
+    const modal = await openDisplayTab(page);
+    await modal.locator('#j0n4t-pg-height-mode').selectOption('fixed');
+    await modal.locator('#j0n4t-pg-height-fixed').fill('150');
+    await modal.locator('button[data-index="1"]').click();
+
+    await expect(wrap(page)).toHaveAttribute('data-height-mode', 'fixed');
+    const capped = await wrap(page).evaluate((el) => (el as HTMLElement).offsetHeight);
+    expect(capped).toBe(150);
+
+    const reopened = await openDisplayTab(page);
+    await reopened.locator('#j0n4t-pg-height-mode').selectOption('unlimited');
+    await reopened.locator('button[data-index="1"]').click();
+
+    await expect(wrap(page)).toHaveAttribute('data-height-mode', 'unlimited');
+    const uncapped = await wrap(page).evaluate((el) => (el as HTMLElement).offsetHeight);
+    expect(uncapped).toBeGreaterThan(capped);
+  });
+
+  // A resize handle fires no event: the browser just writes an inline height as
+  // the pointer moves, so the only thing to observe is the down/up pair.
+  const dragTo = async (page: Page, selector: string, height: number) => {
+    const el = page.locator(selector);
+    await el.evaluate((node) => node.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+    await el.evaluate((node, h) => { (node as HTMLElement).style.height = `${h}px`; }, height);
+    await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup')));
+  };
+  const savedSetting = (page: Page, key: string) =>
+    page.evaluate((k) => JSON.parse(localStorage.getItem('pg_settings') ?? '{}')[k], key);
+
+  test('dragging a fixed-height gallery stores the new height', async ({ page }) => {
+    const modal = await openDisplayTab(page);
+    await modal.locator('#j0n4t-pg-height-mode').selectOption('fixed');
+    await modal.locator('#j0n4t-pg-height-fixed').fill('300');
+    await modal.locator('button[data-index="1"]').click();
+    await expect(wrap(page)).toHaveAttribute('data-height-mode', 'fixed');
+
+    await dragTo(page, '.j0n4t-pg-wrap', 260);
+
+    expect(await savedSetting(page, 'heightFixed')).toBe(260);
+    // The inline height the drag left behind is handed to the mode's own rules.
+    expect(await wrap(page).evaluate((el) => (el as HTMLElement).style.height)).toBe('');
+    await expect.poll(() => wrap(page).evaluate((el) => (el as HTMLElement).offsetHeight)).toBe(260);
+  });
+
+  test('a height dragged in another mode is not stored', async ({ page }) => {
+    await expect(wrap(page)).toHaveAttribute('data-height-mode', 'fit');
+    await dragTo(page, '.j0n4t-pg-wrap', 260);
+    expect(await savedSetting(page, 'heightFixed')).toBeUndefined();
+  });
+
+  test('remembers a dragged panel size across a reload', async ({ page }) => {
+    const modal = await openDisplayTab(page);
+    await modal.locator('#j0n4t-pg-remember-panels').check();
+    await modal.locator('button[data-index="1"]').click();
+
+    await dragTo(page, '.j0n4t-pg-basket-container', 200);
+    await expect.poll(() => savedSetting(page, 'panelSizes')).toEqual({ basket: 200 });
+
+    await page.reload();
+    await page.waitForFunction(() => {
+      const w = window as unknown as { __report?: unknown };
+      return w.__report !== undefined;
+    });
+    await expect
+      .poll(() => page.locator('.j0n4t-pg-basket-container').evaluate((el) => (el as HTMLElement).offsetHeight))
+      .toBe(200);
+  });
+
+  test('does not store a dragged panel size while the option is off', async ({ page }) => {
+    await dragTo(page, '.j0n4t-pg-basket-container', 200);
+    expect(await savedSetting(page, 'panelSizes')).toBeUndefined();
+  });
+});

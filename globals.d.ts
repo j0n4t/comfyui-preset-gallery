@@ -128,6 +128,21 @@ type BasketTab = {
 };
 
 /**
+ * How the gallery viewport is capped. Mirrored onto `data-height-mode` on the
+ * wrap, which PresetGalleryApp.HEIGHT_STYLES keys its rules off.
+ */
+type GalleryHeightMode = "fit" | "fixed" | "unlimited";
+
+/**
+ * Heights of the two panels the user can drag - the basket container and the
+ * editor's keyword box - kept only while "remember panel sizes" is on.
+ */
+type GalleryPanelSizes = {
+  basket?: number;
+  editor?: number;
+};
+
+/**
  * The shared context object handed to every gallery sub-component
  * (PresetBasket, PresetEditor, PresetGrid, PresetGallerySettings and the
  * managers they own). Built by `createGalleryContext`, not by the app itself,
