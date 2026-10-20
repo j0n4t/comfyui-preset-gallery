@@ -1,0 +1,10 @@
+# Line-ending policy, committed so it applies to everyone rather than living in
+# each machine's core.autocrlf.
+#
+# text=auto lets git decide text vs binary per file and normalizes text to LF in
+# the repository. The working tree then follows the platform, so a Windows
+# checkout is CRLF and a clone elsewhere is LF - both store the same bytes.
+* text=auto
+
+# Images are content, not text - never let git touch their bytes.
+*.png binary
