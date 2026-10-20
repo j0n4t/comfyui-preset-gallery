@@ -329,8 +329,36 @@ export default class PresetGalleryApp {
     this.editor.openPreset(styleKey, focus);
   }
 
-  async loadGallery() {
-    this.session.cache = await PresetGalleryAPI.fetchGallery();
+  /**
+   * Ask the server which libraries it can serve and pick one. The choice is
+   * global - one library for the whole instance - so it is remembered in
+   * localStorage and every gallery instance follows it.
+   * @returns {Promise<void>}
+   */
+  async loadLibraries() {
+    this.libraries = await PresetGalleryAPI.fetchLibraries();
+    const saved = localStorage.getItem("pg_library");
+    this.libraryId = this.libraries.some((l) => l.id === saved)
+      ? saved
+      : (this.libraries[0]?.id ?? null);
+    PresetGalleryAPI.setActiveLibrary(this.libraryId);
+  }
+
+  /** @param {string} id */
+  async switchLibrary(id) {
+    if (!this.libraries?.some((l) => l.id === id)) return;
+    this.libraryId = id;
+    localStorage.setItem("pg_library", id);
+    PresetGalleryAPI.setActiveLibrary(id);
+    await this.loadGallery();
+    if (this.widget.value) await this.syncUI(this.widget.value);
+  }
+
+  /** @param {string | null} [libraryId] */
+  async loadGallery(libraryId = null) {
+    this.session.cache = await PresetGalleryAPI.fetchGallery(
+      libraryId ?? this.libraryId
+    );
     this.grid.compile(this.session.cache);
   }
 
@@ -618,6 +646,7 @@ export default class PresetGalleryApp {
   }
 
   async init() {
+    await this.loadLibraries();
     await this.loadGallery();
     if (this.widget.value) await this.syncUI(this.widget.value);
 

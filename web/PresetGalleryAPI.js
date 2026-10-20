@@ -3,9 +3,63 @@ import PresetDOM from "./PresetDOM.js";
 export default class PresetGalleryAPI {
   static API_ENDPOINT = "/preset_gallery/presets";
 
-  static async fetchGallery() {
+  /**
+   * Which library every read and write targets. The library is a global choice
+   * - one for the whole instance - so the id is held here rather than threaded
+   * through every call. Null means the bundled default.
+   * @type {string | null}
+   */
+  static activeLibraryId = null;
+
+  /** @param {string | null} id */
+  static setActiveLibrary(id) {
+    PresetGalleryAPI.activeLibraryId = id;
+  }
+
+  /**
+   * The preset routes for one library, or the default's when no id is given.
+   * @param {string | null} [libraryId]
+   * @returns {string}
+   */
+  static libraryUrl(libraryId = PresetGalleryAPI.activeLibraryId) {
+    const id = libraryId || "";
+    return id
+      ? `${PresetGalleryAPI.API_ENDPOINT}?library=${encodeURIComponent(id)}`
+      : PresetGalleryAPI.API_ENDPOINT;
+  }
+
+  /**
+   * The library list this endpoint returns: one entry per file the server can
+   * serve. The shape comes from preset_store.list_libraries().
+   * @typedef {Object} PresetLibrary
+   * @property {string} id
+   * @property {string} name
+   * @property {boolean} default
+   */
+
+  /**
+   * The libraries the server can serve: the bundled default plus everything
+   * dropped into the presets folder.
+   * @returns {Promise<PresetLibrary[]>}
+   */
+  static async fetchLibraries() {
     try {
-      const res = await fetch(PresetGalleryAPI.API_ENDPOINT);
+      const res = await fetch("/preset_gallery/libraries");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (error) {
+      console.error("[PresetGalleryAPI] Error fetching libraries:", error);
+      return [];
+    }
+  }
+
+  /**
+   * @param {string | null} libraryId
+   * @returns {Promise<PresetCache>}
+   */
+  static async fetchGallery(libraryId = PresetGalleryAPI.activeLibraryId) {
+    try {
+      const res = await fetch(PresetGalleryAPI.libraryUrl(libraryId));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const serverPresets = await res.json();
       return serverPresets;
@@ -19,8 +73,11 @@ export default class PresetGalleryAPI {
     return await PresetGalleryAPI.fetchGallery();
   }
 
-  /** @param {PresetCache} presets */
-  static async savePresets(presets) {
+  /**
+   * @param {PresetCache} presets
+   * @param {string | null} [libraryId]
+   */
+  static async savePresets(presets, libraryId = PresetGalleryAPI.activeLibraryId) {
     const activeFolders = new Set();
     for (const [key, item] of Object.entries(presets)) {
       if (!item) continue;
@@ -60,7 +117,7 @@ export default class PresetGalleryAPI {
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
 
     try {
-      const res = await fetch(PresetGalleryAPI.API_ENDPOINT, {
+      const res = await fetch(PresetGalleryAPI.libraryUrl(libraryId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(sortedPresets),

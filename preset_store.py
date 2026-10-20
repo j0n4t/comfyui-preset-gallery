@@ -11,6 +11,54 @@ DEFAULT_PRESETS_FILE = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "presets.json"
 )
 
+# Extra libraries live in one folder: dropping a *.json file in adds a library
+# and removing it drops that one. presets.json itself stays at the root as the
+# bundled default, so nothing moves unless someone adds another library.
+PRESETS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "presets")
+
+DEFAULT_LIBRARY_ID = "default"
+DEFAULT_LIBRARY_NAME = "Presets"
+
+LIBRARY_EXTENSIONS = (".json",)
+
+
+def resolve_library_path(library_id=None):
+    """Resolve a library id to its file, or None when it is not one we serve.
+
+    The id is used as a bare filename stem inside the presets folder, so a value
+    carrying separators can never reach outside it.
+    """
+    if not library_id or library_id == DEFAULT_LIBRARY_ID:
+        return DEFAULT_PRESETS_FILE
+    stem = str(library_id)
+    if os.path.basename(stem) != stem:
+        return None
+    for ext in LIBRARY_EXTENSIONS:
+        candidate = os.path.join(PRESETS_DIR, stem + ext)
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def list_libraries():
+    """The libraries the server can serve, the bundled default first."""
+    libraries = [
+        {"id": DEFAULT_LIBRARY_ID, "name": DEFAULT_LIBRARY_NAME, "default": True}
+    ]
+    if os.path.isdir(PRESETS_DIR):
+        for name in sorted(os.listdir(PRESETS_DIR)):
+            stem, ext = os.path.splitext(name)
+            if not stem or ext.lower() not in LIBRARY_EXTENSIONS:
+                continue
+            libraries.append(
+                {
+                    "id": stem,
+                    "name": stem.replace("_", " ").replace("-", " ").title(),
+                    "default": False,
+                }
+            )
+    return libraries
+
 
 def load_presets(path=None):
     """Return the stored library, or an empty one when it cannot be read.

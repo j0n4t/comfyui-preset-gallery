@@ -274,3 +274,53 @@ test("renameFolder moves a bare folder key (such as a color-only entry)", async 
     "People/Portrait": { preset: "p" },
   });
 });
+
+// --- libraries ---
+
+/** A stub that answers the libraries route without touching the network. */
+function fakeLibraryServer(libraries: unknown[]) {
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify(libraries), { status: 200 })) as typeof fetch;
+}
+
+test("fetchLibraries GETs the libraries route", async () => {
+  fakeLibraryServer([{ id: "default", name: "Presets", default: true }]);
+  assert.deepEqual(await PresetGalleryAPI.fetchLibraries(), [
+    { id: "default", name: "Presets", default: true },
+  ]);
+});
+
+test("fetchLibraries returns an empty list on a network error", async () => {
+  globalThis.fetch = (async () => {
+    throw new Error("offline");
+  }) as typeof fetch;
+  assert.deepEqual(await PresetGalleryAPI.fetchLibraries(), []);
+});
+
+test("libraryUrl leaves the default library unqualified", () => {
+  assert.equal(PresetGalleryAPI.libraryUrl(null), "/preset_gallery/presets");
+  assert.equal(PresetGalleryAPI.libraryUrl("sample"), "/preset_gallery/presets?library=sample");
+});
+
+test("an active library scopes both the read and the write", async () => {
+  const server = fakeServer({ "Faces/Portrait": { preset: "portrait" } });
+  PresetGalleryAPI.setActiveLibrary("sample");
+  try {
+    await PresetGalleryAPI.fetchGallery();
+    await PresetGalleryAPI.savePresets({ "Faces/Portrait": { preset: "portrait" } });
+  } finally {
+    // the id is module-level, so a test that sets it must put it back
+    PresetGalleryAPI.setActiveLibrary(null);
+  }
+  assert.equal(server.calls[0].url, "/preset_gallery/presets?library=sample");
+  assert.equal(server.calls[0].method, "GET");
+  assert.equal(server.calls[1].url, "/preset_gallery/presets?library=sample");
+  assert.equal(server.calls[1].method, "POST");
+});
+
+test("setActiveLibrary records the choice and clears it with null", () => {
+  PresetGalleryAPI.setActiveLibrary("sample");
+  assert.equal(PresetGalleryAPI.activeLibraryId, "sample");
+  PresetGalleryAPI.setActiveLibrary(null);
+  assert.equal(PresetGalleryAPI.activeLibraryId, null);
+});

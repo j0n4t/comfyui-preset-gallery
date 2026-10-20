@@ -155,6 +155,7 @@ test("save writes all preferences", () => {
       heightFixed: 300,
       rememberPanelSizes: true,
       panelSizes: { basket: 120, editor: 60 },
+      libraryId: "",
     })
   );
 });
@@ -251,6 +252,7 @@ test("openModal save persists the inputs and syncs the widget", async () => {
       heightFixed: 640,
       rememberPanelSizes: false,
       panelSizes: {},
+      libraryId: "",
     })
   );
   assert.equal(synced, "Faces/Portrait", "syncUI receives the widget value");
@@ -393,6 +395,67 @@ test("openModal save rounds the fixed height and falls back on an emptied one", 
     (JSON.parse(map.get("pg_settings")!) as Record<string, unknown>).heightFixed,
     640
   );
+});
+
+// --- preset library ---
+
+test("the Display tab lists the libraries the server serves", async () => {
+  fakeStorage();
+  const served = [
+    { id: "default", name: "Presets", default: true },
+    { id: "sample", name: "Sample", default: false },
+  ];
+  // The picker is filled from the fetch the modal kicks off, so it has to answer.
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify(served), { status: 200 })) as typeof fetch;
+
+  const { settings } = makeSettings();
+  settings.libraryId = "sample";
+
+  const promise = settings.openModal();
+  const modal = document.querySelector(".j0n4t-pg-modal-overlay")!;
+  await new Promise((resolve) => setTimeout(resolve, 60));
+
+  const select = modal.querySelector<HTMLSelectElement>("#j0n4t-pg-library")!;
+  assert.equal(select.options.length, 2, "one option per served library");
+  assert.equal(select.value, "sample", "the loaded choice is selected");
+
+  modal.querySelector<HTMLButtonElement>('button[data-index="0"]')?.click(); // Cancel
+  assert.equal(await promise, false);
+});
+
+test("applyLibrary persists the choice and hands it to the gallery", () => {
+  fakeStorage();
+  const dom = makeDom();
+  const calls: string[] = [];
+  const settings = new PresetGallerySettings({
+    syncUI: () => {},
+    widget: { value: "" },
+    dom,
+    switchLibrary: (id: string) => calls.push(id),
+  } as unknown as GalleryContext);
+
+  settings.applyLibrary("sample");
+  assert.equal(settings.libraryId, "sample");
+  assert.deepEqual(calls, ["sample"], "the gallery is asked to switch");
+  assert.equal(
+    (JSON.parse(localStorage.getItem("pg_settings")!) as Record<string, unknown>).libraryId,
+    "sample"
+  );
+});
+
+test("an unknown library id is not persisted", () => {
+  fakeStorage();
+  const dom = makeDom();
+  const settings = new PresetGallerySettings({
+    syncUI: () => {},
+    widget: { value: "" },
+    dom,
+    switchLibrary: () => {},
+  } as unknown as GalleryContext);
+
+  settings.applyLibrary("");
+  assert.equal(settings.libraryId, "");
 });
 
 // --- panel sizes ---

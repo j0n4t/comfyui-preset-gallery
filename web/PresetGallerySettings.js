@@ -1,5 +1,6 @@
 import ModalUtils from "./ModalUtils.js";
 import PresetDOM from "./PresetDOM.js";
+import PresetGalleryAPI from "./PresetGalleryAPI.js";
 
 /**
  * Height modes offered in the Display tab, mirrored onto `data-height-mode` on
@@ -81,6 +82,8 @@ export default class PresetGallerySettings {
   /** @param {GalleryContext} context  */
   constructor(context) {
     this.context = context;
+    /** @type {Array<{ id: string, name: string, default: boolean }>} */
+    this.libraries = [];
     this.load();
     this.applyHeightMode();
     this.applyPanelSizes();
@@ -102,6 +105,7 @@ export default class PresetGallerySettings {
       this.heightFixed = toFixedHeight(saved.heightFixed);
       this.rememberPanelSizes = saved.rememberPanelSizes === true;
       this.panelSizes = toPanelSizes(saved.panelSizes);
+      this.libraryId = saved.libraryId || "";
     } catch {
       this.rollMin = 10;
       this.rollMax = 20;
@@ -125,7 +129,8 @@ export default class PresetGallerySettings {
       heightMode: this.heightMode,
       heightFixed: this.heightFixed,
       rememberPanelSizes: this.rememberPanelSizes,
-      panelSizes: this.panelSizes
+      panelSizes: this.panelSizes,
+      libraryId: this.libraryId
     };
     localStorage.setItem("pg_settings", JSON.stringify(data));
   }
@@ -156,6 +161,34 @@ export default class PresetGallerySettings {
     const sizes = /** @type {GalleryPanelSizes} */ (this.rememberPanelSizes ? this.panelSizes : {});
     dom.basketContainer.style.height = sizes.basket ? `${sizes.basket}px` : "";
     dom.inpPreset.style.height = sizes.editor ? `${sizes.editor}px` : "";
+  }
+
+  /**
+   * Fill the library picker from what the server serves. The list is not in the
+   * template because it is not known until the server is asked.
+   * @param {HTMLDivElement} modal
+   */
+  syncLibrarySelect(modal) {
+    const select = modal.querySelector("#j0n4t-pg-library");
+    if (!select) return;
+    select.innerHTML = (this.libraries || [])
+      .map(
+        (lib) =>
+          `<option value="${PresetDOM.escapeHTML(lib.id)}" ${lib.id === this.libraryId ? "selected" : ""}>${PresetDOM.escapeHTML(lib.name)}</option>`
+      )
+      .join("");
+  }
+
+  /**
+   * Switch every gallery to another library. The library is a global choice, so
+   * this is the one Display option that takes effect outside the modal it was
+   * picked in - the grid reloads for every open instance.
+   * @param {string} id
+   */
+  applyLibrary(id) {
+    this.libraryId = id;
+    this.save();
+    this.context.switchLibrary(id);
   }
 
   updateDiceVisuals() {
@@ -233,6 +266,11 @@ export default class PresetGallerySettings {
       </div>
 
       <div id="j0n4t-pg-tab-display" class="j0n4t-pg-tab-panel">
+        <div class="j0n4t-pg-modal-field">
+          <label>Preset Library</label>
+          <select id="j0n4t-pg-library"></select>
+        </div>
+
         <div class="j0n4t-pg-modal-field">
           <label>Gallery Height</label>
           <select id="j0n4t-pg-height-mode">
@@ -335,6 +373,18 @@ export default class PresetGallerySettings {
         heightFixedInput = modal.querySelector("#j0n4t-pg-height-fixed");
         heightFixedField = modal.querySelector("#j0n4t-pg-height-fixed-field");
         rememberPanelsCheck = modal.querySelector("#j0n4t-pg-remember-panels");
+        const librarySelect = modal.querySelector("#j0n4t-pg-library");
+
+        // The library list comes from the server, so it is fetched on every open
+        // and the picker is filled from whatever is served right now.
+        librarySelect?.addEventListener("change", () => {
+          const value = /** @type {HTMLSelectElement} */ (librarySelect).value;
+          if (value) this.applyLibrary(value);
+        });
+        PresetGalleryAPI.fetchLibraries().then((libs) => {
+          this.libraries = libs;
+          this.syncLibrarySelect(modal);
+        });
 
         // The pixel field only means anything in fixed mode.
         const syncFixedField = () => {

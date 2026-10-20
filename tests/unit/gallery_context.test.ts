@@ -32,6 +32,7 @@ type FakeView = {
   syncUI: (val: string) => void | Promise<void>;
   loadGallery: () => Promise<void>;
   updateWidgetValue: (arr: string[]) => void;
+  switchLibrary: (id: string) => void;
 };
 
 /** Records which view/host methods the context forwarded to. */
@@ -45,6 +46,7 @@ function fakeView(): FakeView & { calls: unknown[][] } {
     openEditorForPreset: record("openEditorForPreset"),
     syncUI: record("syncUI"),
     updateWidgetValue: record("updateWidgetValue"),
+    switchLibrary: record("switchLibrary"),
     loadGallery: () => { calls.push(["loadGallery"]); return Promise.resolve(); },
   };
 }

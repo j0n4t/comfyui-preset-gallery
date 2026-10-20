@@ -18,6 +18,18 @@ const FIXTURE: Library = {
   '_/combo/_default': { preset: 'masterpiece' },
 };
 
+// A second library, so switching has somewhere to go.
+const SAMPLE_LIBRARY: Library = {
+  'Sample/Cinematic': { preset: 'cinematic lighting, dramatic shadows' },
+  'Sample/Portrait': { preset: 'portrait, studio lighting' },
+  'Sample/Pixel': { preset: '16-bit retro pixel art' },
+};
+
+const LIBRARIES = [
+  { id: 'default', name: 'Presets', default: true },
+  { id: 'sample', name: 'Sample', default: false },
+];
+
 const ITEMS_TOTAL = 5;
 const ITEMS_VISIBLE = 4; // the underscore-prefixed combo default is hidden
 
@@ -49,15 +61,35 @@ async function openPanel(page: Page) {
   await expect(editor).not.toHaveClass(/collapsed/);
 }
 
+/** Open the settings modal on its Display tab, where the gallery options live. */
+async function openDisplayTab(page: Page) {
+  await page.locator('#j0n4t-pg-config-btn').click();
+  const modal = page.locator('.j0n4t-pg-modal-overlay');
+  await expect(modal).toBeVisible();
+  await modal.locator('.j0n4t-pg-tab-btn[data-tab="display"]').click();
+  return modal;
+}
+
 test.beforeEach(async ({ page }) => {
   library = structuredClone(FIXTURE);
   posts = [];
 
   // One route for both verbs, so a save round-trips like the real API does.
-  await page.route('**/preset_gallery/presets', async (route) => {
+  // The library comes from ?library=, so switching libraries is observable.
+  const dataByLibrary: Record<string, Library> = {};
+  await page.route('**/preset_gallery/libraries**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(LIBRARIES),
+    });
+  });
+  await page.route('**/preset_gallery/presets**', async (route) => {
+    const id =
+      new URL(route.request().url()).searchParams.get('library') ?? 'default';
     if (route.request().method() === 'POST') {
-      library = JSON.parse(route.request().postData() ?? '{}');
-      posts.push(library);
+      dataByLibrary[id] = JSON.parse(route.request().postData() ?? '{}');
+      posts.push(dataByLibrary[id]);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -65,10 +97,11 @@ test.beforeEach(async ({ page }) => {
       });
       return;
     }
+    const served = dataByLibrary[id] ?? (id === 'sample' ? SAMPLE_LIBRARY : library);
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(library),
+      body: JSON.stringify(served),
     });
   });
 
@@ -248,18 +281,6 @@ test.describe('persistence', () => {
 });
 
 test.describe('display height', () => {
-  // The gallery caps its own viewport so the grid scrolls inside it instead of
-  // growing the node / app panel to the full height of the library. Unit tests
-  // cover the persisted setting and the attribute; only a real browser can show
-  // that the CSS actually clamps a laid-out element.
-  async function openDisplayTab(page: Page) {
-    await page.locator('#j0n4t-pg-config-btn').click();
-    const modal = page.locator('.j0n4t-pg-modal-overlay');
-    await expect(modal).toBeVisible();
-    await modal.locator('.j0n4t-pg-tab-btn[data-tab="display"]').click();
-    return modal;
-  }
-
   test('the gallery offers a manual resize handle only in fixed mode', async ({ page }) => {
     // Fit follows the node's own handle; the gallery's handle adjusts a fixed
     // height.
@@ -346,7 +367,39 @@ test.describe('display height', () => {
   });
 
   test('does not store a dragged panel size while the option is off', async ({ page }) => {
-    await dragTo(page, '.j0n4t-pg-basket-container', 200);
-    expect(await savedSetting(page, 'panelSizes')).toBeUndefined();
+      await dragTo(page, '.j0n4t-pg-basket-container', 200);
+      expect(await savedSetting(page, 'panelSizes')).toBeUndefined();
+    });
   });
-});
+
+  test.describe('preset library', () => {
+    test('the picker lists every served library and switching follows it', async ({ page }) => {
+      await expect(page.locator('.j0n4t-pg-item')).toHaveCount(ITEMS_TOTAL);
+
+      const modal = await openDisplayTab(page);
+      const select = modal.locator('#j0n4t-pg-library');
+      await expect(select.locator('option')).toHaveCount(LIBRARIES.length);
+
+      await select.selectOption('sample');
+      await expect
+        .poll(() => page.locator('.j0n4t-pg-item').count())
+        .toBe(Object.keys(SAMPLE_LIBRARY).length);
+    });
+
+    test('a library choice survives a reload', async ({ page }) => {
+      const modal = await openDisplayTab(page);
+      await modal.locator('#j0n4t-pg-library').selectOption('sample');
+      await expect
+        .poll(() => page.locator('.j0n4t-pg-item').count())
+        .toBe(Object.keys(SAMPLE_LIBRARY).length);
+
+      await page.reload();
+      await page.waitForFunction(() => {
+        const w = window as unknown as { __report?: unknown };
+        return w.__report !== undefined;
+      });
+      await expect
+        .poll(() => page.locator('.j0n4t-pg-item').count())
+        .toBe(Object.keys(SAMPLE_LIBRARY).length);
+    });
+  });

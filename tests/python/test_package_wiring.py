@@ -47,7 +47,10 @@ def test_node_registers_itself():
 def test_routes_register_at_import_time(host_routes):
     _load_package()
 
-    assert [path for path, _ in host_routes.registered["GET"]] == ["/preset_gallery/presets"]
+    assert [path for path, _ in host_routes.registered["GET"]] == [
+        "/preset_gallery/libraries",
+        "/preset_gallery/presets",
+    ]
     assert [path for path, _ in host_routes.registered["POST"]] == ["/preset_gallery/presets"]
 
 
