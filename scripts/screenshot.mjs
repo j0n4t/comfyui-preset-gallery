@@ -34,6 +34,9 @@ const COMFY_URL = process.env.COMFY_URL || "http://127.0.0.1:8188";
 const WORKFLOW = join(ROOT, "workflows", "sample_preset_gallery.json");
 const SAMPLE = join(ROOT, "presets_sample.yml");
 const OUT = join(ROOT, "sample.png");
+// The custom node pack this shot is about. Other packs are not part of the
+// document, so the frontend is only asked for ours.
+const EXTENSION_NAME = "comfyui-preset-gallery";
 
 // A laptop-ish viewport: the README renders this image at roughly 800px wide,
 // so a narrower canvas keeps more rows of the grid on screen instead of
@@ -86,6 +89,31 @@ async function shoot(browser, { sample, workflow }) {
     deviceScaleFactor: SCALE,
   });
   const page = await context.newPage();
+
+  // Load only this extension plus the core ones. Other custom node packs are
+  // not part of the document: they inject their own UI into the canvas - the
+  // output browser's launcher button lands in the frame and its MutationObserver
+  // throws on this frontend - so a shot with them enabled shows a graph the
+  // user did not ask for. The setting the ComfyUI settings panel writes,
+  // `Comfy.Extension.Disabled`, does not help here: the frontend only consults
+  // it when dispatching extension hooks, while the offending code runs at
+  // import time. Filtering the list the frontend fetches stops it before that.
+  await page.route("**/extensions", async (route) => {
+    const response = await route.fetch();
+    const served = await response.json();
+    const kept = served.filter(
+      (path) =>
+        path.includes("extensions/core") || path.includes(`/${EXTENSION_NAME}/`)
+    );
+    console.log(
+      `extensions: ${served.length} served, ${kept.length} kept (${served.length - kept.length} dropped)`
+    );
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(kept),
+    });
+  });
 
   // Serve the sample instead of whatever library the server has. Both routes
   // the gallery reads are covered: the library list (so the picker shows one
