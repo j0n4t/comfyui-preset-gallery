@@ -45,3 +45,14 @@ Expand the **⚙️ Management Panel** to curate your collection:
 * **Save, Edit, Overwrite:** Create brand‑new items or edit existing items on your grid to update text parameters or subfolders.
 * **Image Assets:** Add, replace, or erase reference cover artwork (`.jpg`, `.png`, `.webp`) for any preset entry.
 * **Persistence:** Your presets are saved in browser `localStorage`, and you can import and export via `.yaml`, `.json` or `.zip` files.
+
+### 📐 Display & Panel Sizing
+
+The gallery caps its own viewport instead of growing with your library, so the grid scrolls inside it rather than stretching the node (or the app panel) to the full height of the preset collection. The old manual resize handle is gone — the node's own handle does the work in graph mode.
+
+Open **⚙️ Settings → Display** to choose how tall it should be:
+
+* **Fit to node / panel (default):** follows the node's own size in graph mode and fills the available space in app mode.
+* **Fixed height:** pick a pixel height, then pull the gallery's bottom-right corner to adjust it. The value is remembered.
+* **Unlimited:** no cap at all — the gallery grows with the whole library.
+* **Remember basket and editor sizes:** opt in to keep the basket and editor heights you drag between sessions.
