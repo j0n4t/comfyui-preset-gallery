@@ -612,7 +612,9 @@ const PresetLogic = {
         const subArray = activeList.slice(i, i + len);
         const joined = subArray.join(", ");
         const { core: coreJoined } = PresetLogic.parseWeight(joined);
-        const cached = lookupMap.get(coreJoined) || lookupMap.get(coreJoined.replace(/\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '{$1}'));
+        const cached = (len === 1)
+          ? (lookupMap.get(coreJoined) || lookupMap.get(coreJoined.replace(/\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '{$1}')))
+          : null;
 
         if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}$/)) {
           matched = {

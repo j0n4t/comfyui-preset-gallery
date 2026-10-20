@@ -333,17 +333,16 @@ test("toggleSelectedPins pins every selected chip when not all are pinned", () =
 
 test("deleteSelectedChips removes the selected chip range", () => {
   const { basket, calls, context } = makeBasket();
-  // two entries whose joined text matches the expanded preset form one
-  // two-token chip (startIndex 0, endIndex 2)
+  // two entries that would previously collapse into one two-token chip now
+  // stay as two separate chips (raw contents are not re-grouped)
   basket.render(["portrait", "solo"]);
-  assert.equal(chips(basket).length, 1);
-  assert.equal(chips(basket)[0].dataset.end, "2");
+  assert.equal(chips(basket).length, 2);
   context.updateWidgetValue(["portrait", "solo"]);
   basket.selectedChipIndexes = new Set([0]);
 
   basket.deleteSelectedChips();
 
-  assert.deepEqual(calls.updateWidgetValue.at(-1), [], "both tokens of the chip are removed");
+  assert.deepEqual(calls.updateWidgetValue.at(-1), ["solo"], "only the selected chip is removed");
   assert.equal(basket.selectedChipIndexes.size, 0);
 });
 
