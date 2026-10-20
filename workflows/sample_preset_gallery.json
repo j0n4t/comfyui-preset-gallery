@@ -7,7 +7,7 @@
     {
       "id": 1,
       "type": "PrimitiveStringMultiline",
-      "pos": [60, 250],
+      "pos": [80, 160],
       "size": [300, 120],
       "flags": {},
       "order": 0,
@@ -28,8 +28,8 @@
     {
       "id": 2,
       "type": "PresetGalleryNode",
-      "pos": [440, 160],
-      "size": [400, 700],
+      "pos": [420, 80],
+      "size": [400, 680],
       "flags": {},
       "order": 1,
       "mode": 0,
@@ -55,7 +55,7 @@
     {
       "id": 3,
       "type": "PreviewAny",
-      "pos": [920, 250],
+      "pos": [880, 160],
       "size": [340, 420],
       "flags": {},
       "order": 2,

@@ -73,4 +73,4 @@ Open **⚙️ Settings → Display** to choose how tall it should be:
 npm run screenshot
 ```
 
-It loads `workflows/sample_preset_gallery.json`, serves the sample presets to the gallery, queues a run so the preview node shows the composed prompt, and writes the canvas to `sample.png`. It refuses to write a shot with a toast on screen or a grid row cut at the node's bottom edge, so a failure means the image would have looked wrong.
+It loads `workflows/sample_preset_gallery.json`, serves the sample presets to the gallery, queues a run so the preview node shows the composed prompt, and writes the canvas to `sample.png`. It composes the gallery's own state first — small grid view, the basket and editor panels capped, the management panel open — so the image does not depend on whatever the previous session left in `localStorage`, then sizes the node to a whole number of grid rows. It refuses to write a shot with a toast on screen or a grid row cut at the node's bottom edge, so a failure means the image would have looked wrong.

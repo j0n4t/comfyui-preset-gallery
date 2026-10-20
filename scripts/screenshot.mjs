@@ -35,12 +35,22 @@ const WORKFLOW = join(ROOT, "workflows", "sample_preset_gallery.json");
 const SAMPLE = join(ROOT, "presets_sample.yml");
 const OUT = join(ROOT, "sample.png");
 
-// A desktop viewport, so the canvas is laid out the way a desktop user sees it.
-const VIEWPORT = { width: 1520, height: 900 };
+// A laptop-ish viewport: the README renders this image at roughly 800px wide,
+// so a narrower canvas keeps more rows of the grid on screen instead of
+// spending the height on empty canvas around the nodes.
+const VIEWPORT = { width: 1280, height: 720 };
 // 2x, so the text in the README is crisp rather than upscaled.
 const SCALE = 2;
 // How much of the canvas the nodes should fill after fitting.
-const FIT_ZOOM = 0.8;
+const FIT_ZOOM = 0.85;
+// The gallery starts in the large view, which fills a README shot with empty
+// canvas. The small view packs the same presets into a fraction of the node
+// height, and a smaller node means less canvas is needed to frame it.
+const SHOT_VIEW = "small";
+// Margin kept around the nodes when fitting the view. The whole point of a
+// smaller shot is that the nodes fill the canvas, so this stays tight - it is
+// still enough to keep a node title or the zoom widget off the edge.
+const FIT_PADDING = 16;
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -113,35 +123,125 @@ async function shoot(browser, { sample, workflow }) {
   );
   console.log(`sample:   ${Object.keys(sample).length} presets from ${SAMPLE}`);
 
-  // The grid is capped at the node height, so the row landing on the bottom edge
-  // can be cut in half. Grow the node to the next row boundary instead: the grid
-  // content depends on the library, so a fixed height would drift.
-  await page.evaluate(() => {
+  // Compose the gallery's own state before anything is measured. The panels
+  // below the control bar are draggable and the view is a stored preference, so
+  // the node height this shot ends up with would otherwise depend on the
+  // previous session.
+  await page.evaluate(({ view }) => {
     const wrap = document.querySelector(".j0n4t-pg-wrap");
-    const grid = wrap.querySelector(".j0n4t-pg-grid");
-    const node = window.app.graph._nodes.find(
-      (n) => n.type === "PresetGalleryNode"
-    );
-    const gap = parseFloat(getComputedStyle(grid).rowGap) || 0;
-    const wrapRect = wrap.getBoundingClientRect();
-    const gridRect = grid.getBoundingClientRect();
-    // The grid height tracks the node height one for one, offset by the chrome
-    // above the grid and the node's own chrome.
-    const fixed = gridRect.top - wrapRect.top + (node.size[1] - wrapRect.height);
-    let bottom = 0;
-    const boundaries = Array.from(grid.children).map((child) => {
-      bottom += child.getBoundingClientRect().height + gap;
-      return bottom;
-    });
-    // The first boundary past the current grid height is the bottom of the row
-    // that is currently cut, so growing to it makes that row whole.
-    const next = boundaries.find((b) => b > gridRect.height);
-    if (next) {
-      node.size[1] = Math.round(next + fixed);
-      node.setSize([node.size[0], node.size[1]]);
+
+    // The basket's height is a user preference when "remember panel sizes" is
+    // on, so drop any inline height the last session left and let the stylesheet
+    // decide. Its `min-height` beats an inline `height`, so capping it that way
+    // silently does nothing.
+    const basket = wrap.querySelector(".j0n4t-pg-basket-container");
+    if (basket) {
+      basket.style.height = "";
+      basket.style.minHeight = "";
     }
-  });
+
+    // The management panel is what makes the shot informative, and it starts
+    // collapsed. Open it, then size it to its own content: a fixed height
+    // either clips the preview row or leaves the content overflowing into the
+    // grid, because the editor's `overflow` is `visible` and the grid paints
+    // over whatever spills.
+    const editor = wrap.querySelector(".j0n4t-pg-editor");
+    if (editor) {
+      if (editor.classList.contains("collapsed")) {
+        wrap.querySelector("#j0n4t-pg-toggle")?.click();
+      }
+      // A remembered editor size stretches the keyword box, so clear it before
+      // measuring - otherwise the editor grows past what the shot has room for.
+      const keywords = wrap.querySelector("#j0n4t-pg-preset");
+      if (keywords) keywords.style.height = "";
+      editor.style.height = "auto";
+      editor.style.height = `${editor.offsetHeight}px`;
+    }
+
+    // Small view: the same library in a fraction of the node height. Done last
+    // so it is the grid's own layout that is measured, not the default one.
+    wrap.querySelector(`.j0n4t-pg-view-btn[data-view="${view}"]`)?.click();
+  }, { view: SHOT_VIEW });
+
+  // Two presets into the basket: enough to show the chips and to give the
+  // preview node something to compose, and the last one clicked is the one the
+  // detail card is showing.
+  const items = page.locator(".j0n4t-pg-item:not(.j0n4t-pg-hidden)");
+  const total = await items.count();
+  console.log(`grid:     ${total} visible items`);
+  for (const index of [0, Math.min(4, total - 1)]) {
+    await items.nth(index).click();
+    console.log(`clicked:  item ${index}`);
+  }
+  // The selection changes the grid's own content (the last clicked item is the
+  // one the detail card shows), so the layout has to settle before the node is
+  // sized to it.
+  await delay(800);
+
+  // The grid scrolls inside the node, so the row straddling the node's bottom
+  // edge is cut in half. End the node on a row boundary instead.
+  //
+  // A row boundary is not a child's own bottom: the items of one row are
+  // siblings that share a top and a bottom, so the rows have to be grouped by
+  // top first. And the node's height and the grid's height are in different
+  // units - graph units against CSS px, with the canvas scale between them - so
+  // the relation is measured with a probe step rather than derived from the
+  // node chrome.
+  const readGridState = () =>
+    page.evaluate(() => {
+      const wrap = document.querySelector(".j0n4t-pg-wrap");
+      const grid = wrap.querySelector(".j0n4t-pg-grid");
+      const node = window.app.graph._nodes.find(
+        (n) => n.type === "PresetGalleryNode"
+      );
+      const top = grid.getBoundingClientRect().top;
+      const rows = new Map();
+      for (const child of grid.children) {
+        const rect = child.getBoundingClientRect();
+        const rowTop = Math.round(rect.top - top);
+        const rowBottom = Math.round(rect.bottom - top);
+        rows.set(rowTop, Math.max(rows.get(rowTop) ?? 0, rowBottom));
+      }
+      return {
+        nodeH: node.size[1],
+        gridH: grid.getBoundingClientRect().height,
+        scrolls: grid.scrollHeight > grid.clientHeight + 1,
+        boundaries: [...rows.values()].sort((a, b) => a - b),
+      };
+    });
+
+  const setNodeHeight = (height) =>
+    page.evaluate((h) => {
+      const node = window.app.graph._nodes.find(
+        (n) => n.type === "PresetGalleryNode"
+      );
+      node.size[1] = Math.max(120, Math.round(h));
+      node.setSize([node.size[0], node.size[1]]);
+    }, height);
+
+  // The last boundary the grid already shows is where shrinking to drops the
+  // cut row; the first one past it is where growing to completes that row.
+  // Shrinking is preferred - a smaller node is the point of this shot, and the
+  // grid still scrolls, so the shot does not claim the library fits.
+  const state = await readGridState();
+  const lastShown = [...state.boundaries]
+    .reverse()
+    .find((b) => b <= state.gridH + 0.5);
+  const next = state.boundaries.find((b) => b > state.gridH + 0.5);
+  const target = state.scrolls && lastShown ? lastShown : next;
+  if (!target) throw new Error("the grid has no row boundary to size to");
+
+  await setNodeHeight(state.nodeH + 50);
   await delay(400);
+  const stepped = await readGridState();
+  const slope = (stepped.gridH - state.gridH) / 50;
+  if (!Number.isFinite(slope) || slope <= 0) {
+    throw new Error(`the grid does not track the node height (slope ${slope})`);
+  }
+  await setNodeHeight(stepped.nodeH + (target - stepped.gridH) / slope);
+  // `setSize` re-lays the node out asynchronously, so give it a frame before
+  // reading the grid's row geometry back.
+  await delay(600);
 
   // Report where the grid ended up, so a change in the library or the UI is
   // visible in the run output rather than only in the image.
@@ -172,27 +272,6 @@ async function shoot(browser, { sample, workflow }) {
     };
   });
   console.log(`geometry: ${JSON.stringify(geometry)}`);
-
-  // The management panel is what makes the shot informative, and it starts
-  // expanded; only toggle when it is actually collapsed.
-  await page.evaluate(() => {
-    const editor = document.querySelector(".j0n4t-pg-editor");
-    if (editor?.classList.contains("collapsed")) {
-      document.querySelector("#j0n4t-pg-toggle")?.click();
-    }
-  });
-
-  // Two presets into the basket: enough to show the chips and to give the
-  // preview node something to compose, and the last one clicked is the one the
-  // detail card is showing.
-  const items = page.locator(".j0n4t-pg-item:not(.j0n4t-pg-hidden)");
-  const total = await items.count();
-  console.log(`grid:     ${total} visible items`);
-  for (const index of [0, Math.min(4, total - 1)]) {
-    await items.nth(index).click();
-    console.log(`clicked:  item ${index}`);
-  }
-  await delay(400);
 
   const chips = await page.locator(".j0n4t-pg-basket-chip").count();
 
@@ -249,13 +328,20 @@ async function shoot(browser, { sample, workflow }) {
     20000
   );
 
-  // Fit the whole canvas: nothing selected, so the fit covers every node.
-  await page.evaluate(({ zoom }) => {
+  // Fit the whole canvas: nothing selected, so the fit covers every node. The
+  // nodes are centred in the viewport, so a padding equal on all sides is what
+  // keeps the whole graph inside the crop - `FIT_ZOOM` alone scales a viewport
+  // that is far larger than the graph and leaves the nodes small in the middle.
+  await page.evaluate(({ zoom, padding }) => {
     const canvas = window.app.canvas;
     canvas.selectedItems?.clear();
     const [width, height] = canvas.ds.getViewportSize();
-    canvas.fitViewToSelectionAnimated({ viewport: [0, 0, width, height], zoom });
-  }, { zoom: FIT_ZOOM });
+    canvas.fitViewToSelectionAnimated({
+      viewport: [0, 0, width, height],
+      zoom,
+      padding,
+    });
+  }, { zoom: FIT_ZOOM, padding: FIT_PADDING });
   await delay(700); // let the fit animation finish
 
   const view = await page.evaluate(() => ({
