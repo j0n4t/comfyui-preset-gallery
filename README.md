@@ -64,13 +64,3 @@ Open **⚙️ Settings → Display** to choose how tall it should be:
 * **Fixed height:** pick a pixel height, then pull the gallery's bottom-right corner to adjust it. The value is remembered.
 * **Unlimited:** no cap at all — the gallery grows with the whole library.
 * **Remember basket and editor sizes:** opt in to keep the basket and editor heights you drag between sessions.
-
-## 🛠 Regenerating the Screenshot
-
-`sample.png` above is generated, not hand-cropped. With ComfyUI running:
-
-```bash
-npm run screenshot
-```
-
-It loads `workflows/sample_preset_gallery.json`, serves the sample presets to the gallery, queues a run so the preview node shows the composed prompt, and writes the canvas to `sample.png`. It composes the gallery's own state first — small grid view, the basket and editor panels capped, the management panel open — so the image does not depend on whatever the previous session left in `localStorage`, then sizes the node to a whole number of grid rows. It refuses to write a shot with a toast on screen or a grid row cut at the node's bottom edge, so a failure means the image would have looked wrong.

@@ -5,7 +5,7 @@ Branch: `test/expand-coverage`. All phases done: 344 unit tests + 23 pytest,
 
 This document is the record of how the suite was built: the probe findings
 (F1–F15), the five-phase plan with its checkboxes, and the resolved decisions.
-For how to run and maintain the tests today, see `TESTING.md` at the repo root.
+For how to run and maintain the tests today, see `DEV.md` at the repo root.
 
 Checkbox legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` deliberately deferred.
 

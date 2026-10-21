@@ -1,7 +1,8 @@
-# Testing
+# Development
 
-How to run and maintain the test suites. The plan, phase history and probe
-findings live in `docs/TESTING.md`.
+How to run and maintain the test suites, and how the generated assets in this
+repo are produced. The plan, phase history and probe findings live in
+`docs/TESTING.md`.
 
 ## Running
 
@@ -14,6 +15,7 @@ findings live in `docs/TESTING.md`.
 | `npm run test:e2e:smoke` | The `@smoke`-tagged load/search/basket tests only |
 | `npm run profile` | Whole-app bottleneck report in a browser (see below) |
 | `python tools/mutation_check.py` | Applies source mutations; each must fail its test file |
+| `npm run screenshot` | Regenerates `sample.png` (see below) |
 
 ## Layout
 
@@ -64,6 +66,22 @@ It is deliberately **not** part of `npm run verify`: a wall-clock threshold in C
 would flake, and it needs a browser. The guards that *do* gate a push live in
 `tests/unit/preset_logic.perf.test.ts`, and they compare against a calibration
 for the same reason.
+
+## Regenerating the screenshot
+
+`sample.png` in the README is generated, not hand-cropped. With ComfyUI running:
+
+```
+npm run screenshot
+```
+
+It loads `workflows/sample_preset_gallery.json`, serves the sample presets to the
+gallery, queues a run so the preview node shows the composed prompt, and writes the
+canvas to `sample.png`. It composes the gallery's own state first — small grid view, the
+basket and editor panels capped, the management panel open — so the image does not depend
+on whatever the previous session left in `localStorage`, then sizes the node to a whole
+number of grid rows. It refuses to write a shot with a toast on screen or a grid row cut
+at the node's bottom edge, so a failure means the image would have looked wrong.
 
 ## Conventions
 
