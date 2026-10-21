@@ -1,6 +1,6 @@
 # Plan: Chips parsing/rendering bottleneck improvements
 
-Status: steps 1-2 landed (2026-10-20); steps 3-4 open.
+Status: steps 1-3 landed (2026-10-20); step 4 open.
 Probes: `C:\Users\Jonathan\AppData\Local\hermes\cache\scratch\chips-probe\probe1-10.mjs`
 
 ## Step 1+2 landed: what changed and what it bought
@@ -66,9 +66,66 @@ along with the old cache.
 ## Remaining: renderBasketChip is now the cost
 
 With the cache-wide work gone, what is left of a 120-chip render is per-chip
-work — ~60 ms of the 68 ms. That is `renderBasketChip`, which calls
-`findPresetMatch` once per chip and loops the whole cache each time (step 4).
-Steps 3 and 4 are now the whole remaining budget.
+work — `renderBasketChip`, which calls `findPresetMatch` once per chip and loops
+the whole cache each time (step 4). Step 4 is the whole remaining budget.
+
+## Step 3 landed: the plan's premise was wrong, the fix was elsewhere
+
+The plan said to index `getGroupMatches` and `resolveVariantKey` because they
+held 70% of the render. By the time steps 1+2 landed that was no longer true,
+and re-measuring first is what caught it:
+
+| | pre-refactor | after steps 1+2 |
+|---|---|---|
+| `getGroupMatches` calls / render | 806 | **40** |
+| `resolveVariantKey` calls / render | 553 | **10** |
+| `getGroupMatches` share of profile | 55.6% | **3.5%** |
+
+Indexing those two would have recovered ~4%, and `resolveVariantKey` at 10 calls
+per render is not worth indexing at all. **It was not done, deliberately.**
+
+What the re-profile *did* find was a hotspot no earlier measurement could see,
+because steps 1+2 had just removed the callers that were hiding it:
+
+| | share of profile | calls / render |
+|---|---|---|
+| `getPresetFolder` | **20.7%** (top frame) | **66,136** |
+| `getWrappedPreset` | 4.8% | 42,256 |
+| `parseTokens` (the walk) | 15.8% | 1 |
+| `findPresetMatch` | 10.8% | 145 |
+
+`getPresetFolder` is `key.split("/").slice(0, -1).join("/")` — trivial, and
+called 66,136 times. Tracing its callers: 62% via `getWrappedPreset` (which
+`findPresetMatch` calls once per cache entry, per chip) and **38% via
+`getGroupMatches`' per-key filter** — the function the plan had told us to index,
+for a different reason than the plan gave. `getGroupMatches` ran only 40 times,
+but each scanned all 620 keys and recomputed every key's folder.
+
+So step 3 was right that `getGroupMatches` needed an index, and wrong about why.
+The index is over *group names* rather than keys, which is what makes it exact:
+
+- `getGroupMatches`' predicate is `folder === group`, `folder` starts with
+  `group + "/"`, or `folder` ends with `"/" + group`. The names that can match a
+  folder are therefore its path **prefixes and suffixes** — enumerated once per
+  key, the lookup becomes a map hit.
+- Order is preserved exactly (keys appended in `Object.keys` order). That is not
+  cosmetic: `RollManager.getRoll` picks `matches[Math.floor(Math.random() * n)]`,
+  so reordering changes which preset a roll selects, and
+  `preset_logic.test.ts` pins the order.
+- The result is returned as a copy. Callers sort it in place
+  (`getGroupMatches(...).sort()` appears in the tests), which would otherwise
+  corrupt the shared index.
+
+| | old | new |
+|---|---|---|
+| 31 group lookups (a render asks ~40) | 11.50 ms | 0.007 ms |
+| cost model | 620-key scan each | map hit |
+| index build | — | 1.3 ms, once per library load |
+
+**1692x** on that operation, and `getPresetFolder` calls fell 66,136 → 42,853 —
+exactly the 23,283 the group filter was making. Verified by a differential probe:
+1444 group names across both libraries, 0 mismatches against the old predicate.
+
 
 
 ## Measured baseline
@@ -201,22 +258,25 @@ Landed with step 1, as one change. This is the step that carried the result.
 - A latent duplicate `candidates.push` of the wrapped preset was removed with it; the
   dedupe map had been absorbing it.
 
-### 3. Index the whole-cache scans
+### 3. Index the whole-cache scans — DONE, with the target changed
 
-- **Where:** `getGroupMatches` (PresetLogic.js:138) and `resolveVariantKey` (PresetLogic.js:166).
-- **Change:** precompute, once per cache load, a folder→keys index and a name→key index. Both
-  currently rescan all 621 keys; `resolveVariantKey`'s miss path is 0.37 ms vs 0.000 ms for a
-  cache hit, and it runs 553 times per render.
-- **Expected:** recovers the 70% those two functions hold.
-- **Verify:** the existing variant-resolution tests; add a case for a `{group:value}` whose value
-  is a *name* (not a full key), since that is the branch the name index serves.
+The plan named `getGroupMatches` and `resolveVariantKey`. `resolveVariantKey` turned out to be
+10 calls per render and was left alone; `getGroupMatches` needed the index, but because of the
+`getPresetFolder` calls it made per key, not because of its own scan cost. See "Step 3 landed"
+above for the numbers.
 
-### 4. Replace `findPresetMatch`'s per-call scan
+- **Where:** `buildGroupIndex` + `getGroupMatches` in `PresetLogic.js`.
+- **Result:** 31 group lookups 11.50 → 0.007 ms; `getPresetFolder` calls 66,136 → 42,853.
 
-- **Where:** `findPresetMatch` (PresetLogic.js:655), called per chip from `renderBasketChip`.
+### 4. Replace `findPresetMatch`'s per-call scan — NEXT
+
+- **Where:** `findPresetMatch` (PresetLogic.js), called once per chip from `renderBasketChip`.
 - **Change:** build the same text→key map once per cache load (it is exactly the `wrapped` +
-  `trimmed` + `key` entries step 2 already keeps) and look up in it.
-- **Expected:** recovers 9.1%; makes chip-count scaling linear instead of quadratic.
+  `trimmed` + `key` entries `buildLookupMap` already keeps) and look up in it.
+- **Expected:** recovers `findPresetMatch`'s own share **and** the 62% of `getPresetFolder`
+  calls that reach it through `getWrappedPreset` — measured, stubbing `findPresetMatch` halved
+  a render (346 → 182 ms in one session) and dropped `getWrappedPreset` from 42,256 calls to
+  401. It is now the largest remaining item by a wide margin.
 - **Verify:** existing preset-match tests; add one asserting a *name* match and a *wrapped* match.
 
 ### 5. Tighten the perf budget — DONE, with two corrections

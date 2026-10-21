@@ -80,6 +80,19 @@ MUTATIONS = [
      "    if (item.preset?.trim()) {\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
      "    if (item.preset?.trim()) {\n      PresetLogic.expandRecursively(key, cache);\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
      "tests/unit/preset_logic.perf.test.ts"),
+    # The group index enumerates a folder's prefixes AND suffixes. Dropping the
+    # suffixes silently loses every group named after a leaf folder.
+    ("web/PresetLogic.js",
+     "      groups.add(segments.slice(0, i).join(\"/\"));\n"
+     "      groups.add(segments.slice(segments.length - i).join(\"/\"));",
+     "      groups.add(segments.slice(0, i).join(\"/\"));",
+     "tests/unit/preset_logic.test.ts"),
+    # The index is shared between calls, so the result must be a copy - callers
+    # sort it in place.
+    ("web/PresetLogic.js",
+     "return (derived.groupIndex.get(groupName.toLowerCase()) || []).slice();",
+     "return derived.groupIndex.get(groupName.toLowerCase()) || [];",
+     "tests/unit/preset_logic.test.ts"),
 ]
 
 

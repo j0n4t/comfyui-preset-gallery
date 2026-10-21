@@ -308,6 +308,61 @@ test("getGroupMatches returns an empty list for an unknown group", () => {
   assert.deepEqual(PresetLogic.getGroupMatches("Nobody", CACHE), []);
 });
 
+// The group index is precomputed, so these pin the properties the enumeration
+// relies on: which names a folder answers to, that a key appears once, and that
+// the cached array survives a caller mutating what it was handed.
+
+test("getGroupMatches matches a middle segment of a deeper folder", () => {
+  const cache: PresetCache = {
+    "A/B/C/One": { preset: "p" },
+    "A/B/C/Two": { preset: "p" },
+  };
+  // The folder is "a/b/c", so "b" is a middle segment: neither a prefix nor a
+  // suffix, and the predicate does not match it.
+  assert.deepEqual(PresetLogic.getGroupMatches("b", cache), []);
+  assert.deepEqual(PresetLogic.getGroupMatches("a/b", cache), ["A/B/C/One", "A/B/C/Two"]);
+  assert.deepEqual(PresetLogic.getGroupMatches("b/c", cache), ["A/B/C/One", "A/B/C/Two"]);
+  assert.deepEqual(PresetLogic.getGroupMatches("c", cache), ["A/B/C/One", "A/B/C/Two"]);
+});
+
+test("getGroupMatches lists each key once when a folder repeats a segment", () => {
+  // "a/a" answers to the group "a" as both a prefix and a suffix.
+  const cache: PresetCache = {
+    "A/A/One": { preset: "p" },
+    "A/Two": { preset: "p" },
+  };
+  assert.deepEqual(PresetLogic.getGroupMatches("a", cache), ["A/A/One", "A/Two"]);
+});
+
+test("getGroupMatches keeps cache order", () => {
+  const cache: PresetCache = {
+    "Z/Faces/One": { preset: "p" },
+    "A/Faces/One": { preset: "p" },
+    "M/Faces/One": { preset: "p" },
+  };
+  assert.deepEqual(
+    PresetLogic.getGroupMatches("faces", cache),
+    ["Z/Faces/One", "A/Faces/One", "M/Faces/One"],
+    "rolls pick by index, so the order must not be sorted"
+  );
+});
+
+test("mutating a getGroupMatches result does not corrupt later calls", () => {
+  const cache: PresetCache = {
+    "Faces/Portrait": { preset: "p" },
+    "Faces/Macro": { preset: "p" },
+  };
+  const first = PresetLogic.getGroupMatches("faces", cache);
+  first.sort();
+  first.length = 0;
+
+  assert.deepEqual(
+    PresetLogic.getGroupMatches("faces", cache),
+    ["Faces/Portrait", "Faces/Macro"],
+    "the result must be a copy; the index is shared between calls"
+  );
+});
+
 // --- getAllVariants ---
 
 test("getAllVariants extracts group, name and value from a variant token", () => {

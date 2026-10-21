@@ -22,6 +22,14 @@ const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
  */
 
 /**
+ * Structures derived from one cache object, each built on first use.
+ * @typedef {Object} CacheDerived
+ * @property {Map<string, ChipLookupEntry>} [lookupMap]
+ * @property {ChipCandidate[]} [candidates]
+ * @property {Map<string, string[]>} [groupIndex]
+ */
+
+/**
  * Structures derived from a whole cache that do not depend on the tokens being
  * matched, so they are built once per cache and reused.
  *
@@ -29,12 +37,12 @@ const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
  * (it is never mutated in place), so the entry is dropped along with the cache
  * and nothing has to invalidate it by hand.
  *
- * Both builders are pure functions of `cache` - no rolls, no clock. That is
- * load-bearing: building them from `expandRecursively(key, cache)` made the
- * keys depend on Math.random(), so they differed from one build to the next and
- * could not be memoized at all.
+ * Every builder is a pure function of `cache` - no rolls, no clock. That is
+ * load-bearing: building the lookup from `expandRecursively(key, cache)` made
+ * the keys depend on Math.random(), so they differed from one build to the next
+ * and could not be memoized at all.
  *
- * @type {WeakMap<PresetCache, { lookupMap?: Map<string, ChipLookupEntry>, candidates?: ChipCandidate[] }>}
+ * @type {WeakMap<PresetCache, CacheDerived>}
  */
 const derivedByCache = new WeakMap();
 
@@ -43,7 +51,7 @@ const derivedByCache = new WeakMap();
  * only if something asks for it: parseTokens runs on every keystroke, while
  * getGroupedChips does not, and neither should pay for the other.
  * @param {PresetCache} cache
- * @returns {{ lookupMap?: Map<string, ChipLookupEntry>, candidates?: ChipCandidate[] }}
+ * @returns {CacheDerived}
  */
 function derivedFor(cache) {
   let derived = derivedByCache.get(cache);
@@ -123,6 +131,57 @@ function buildCandidates(cache) {
   return Array.from(byMatchStr.values()).sort(
     (a, b) => b.matchStr.length - a.matchStr.length
   );
+}
+
+/**
+ * Maps every group name that could be asked for to the keys it matches, in
+ * cache order.
+ *
+ * getGroupMatches' predicate is `folder === group`, `folder` starts with
+ * `group + "/"`, or `folder` ends with `"/" + group` - so the group names that
+ * can match a folder are its path prefixes and suffixes. Enumerating them once
+ * per key turns each later lookup into a map hit, instead of rescanning the
+ * whole cache and recomputing every key's folder.
+ *
+ * Order is preserved exactly: keys are appended in `Object.keys` order, and
+ * that order decides which preset a roll selects.
+ *
+ * @param {PresetCache} cache
+ * @returns {Map<string, string[]>}
+ */
+function buildGroupIndex(cache) {
+  /** @type {Map<string, string[]>} */
+  const index = new Map();
+
+  for (const key of Object.keys(cache)) {
+    const item = cache[key];
+    if (!item?.preset) continue;
+    // Config entries carry presets but are not group members.
+    if (key.startsWith("_/config/append") || key.startsWith("_/config/prepend")) {
+      continue;
+    }
+
+    const segments = PresetLogic.getPresetFolder(key).toLowerCase().split("/");
+    if (segments.length === 1 && segments[0] === "") continue; // folderless
+
+    // A Set so a repeated segment (`a/a`) cannot add the key twice.
+    /** @type {Set<string>} */
+    const groups = new Set();
+    for (let i = 1; i <= segments.length; i++) {
+      groups.add(segments.slice(0, i).join("/"));
+      groups.add(segments.slice(segments.length - i).join("/"));
+    }
+
+    for (const group of groups) {
+      let keys = index.get(group);
+      if (!keys) {
+        keys = [];
+        index.set(group, keys);
+      }
+      keys.push(key);
+    }
+  }
+  return index;
 }
 
 const PresetLogic = {
@@ -256,16 +315,15 @@ const PresetLogic = {
    * Finds cache keys matching a specific preset folder group name.
    * @param {string} groupName - Target folder/group name.
    * @param {PresetCache} [cache={}] - Cache lookup map.
-   * @returns {string[]} Matching keys.
+   * @returns {string[]} Matching keys, in cache order.
    */
   getGroupMatches: (groupName, cache = {}) => {
     if (!cache || !groupName) return [];
-    const lowerGroup = groupName.toLowerCase();
-    return Object.keys(cache).filter((k) => {
-      if (!cache[k]?.preset || k.startsWith("_/config/append") || k.startsWith("_/config/prepend")) return false;
-      const folder = PresetLogic.getPresetFolder(k).toLowerCase();
-      return folder === lowerGroup || folder.startsWith(lowerGroup + "/") || folder.endsWith("/" + lowerGroup);
-    });
+    const derived = derivedFor(cache);
+    if (!derived.groupIndex) derived.groupIndex = buildGroupIndex(cache);
+
+    // A copy: callers sort it in place, and the index must survive that.
+    return (derived.groupIndex.get(groupName.toLowerCase()) || []).slice();
   },
 
   /**
