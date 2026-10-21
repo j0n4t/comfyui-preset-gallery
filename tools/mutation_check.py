@@ -74,11 +74,15 @@ MUTATIONS = [
      "matches[Math.floor(Math.random() * matches.length)]",
      "matches[0]",
      "tests/unit/preset_logic.perf.test.ts"),
-    # The build is where the catastrophic regression lives: re-adding the
-    # per-entry expansion that step 2 removed takes it from ~1.5 ms to ~150 ms.
+    # The build is where the catastrophic regression lives - or did. The entry
+    # this once used (re-adding the per-entry expansion step 2 removed) is now
+    # caught by nothing: the group and match indexes made expandRecursively ~35x
+    # cheaper, so it reads 27.5x against a 70x budget. What the budget still
+    # catches is the class it was built for - a whole-cache operation inside the
+    # per-entry loop - which is what this models.
     ("web/PresetLogic.js",
      "    if (item.preset?.trim()) {\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
-     "    if (item.preset?.trim()) {\n      PresetLogic.expandRecursively(key, cache);\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
+     "    if (item.preset?.trim()) {\n      Object.keys(cache).forEach((k) => PresetLogic.getWrappedPreset(k, cache[k]?.preset || \"\", cache));\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
      "tests/unit/preset_logic.perf.test.ts"),
     # The group index enumerates a folder's prefixes AND suffixes. Dropping the
     # suffixes silently loses every group named after a leaf folder.
@@ -105,6 +109,31 @@ MUTATIONS = [
      "    if (!item || !item.preset) continue;\n\n    const wrapped = PresetLogic.getWrappedPreset(key, item.preset, cache);",
      "    if (!item) continue;\n\n    const wrapped = PresetLogic.getWrappedPreset(key, item.preset || \"\", cache);",
      "tests/unit/preset_logic.test.ts"),
+    # The variant index must keep the FIRST key claiming a name: last-wins
+    # silently changes which preset a `{group:value}` resolves to, and 32
+    # lowercased names in a real library are claimed more than once.
+    ("web/PresetLogic.js",
+     "    if (lowerKey && !index.has(lowerKey)) index.set(lowerKey, key);",
+     "    if (lowerKey) index.set(lowerKey, key);",
+     "tests/unit/preset_logic.test.ts"),
+    # ...and it must index the preset name, not only the full key.
+    ("web/PresetLogic.js",
+     "    if (name && !index.has(name)) index.set(name, key);",
+     "    if (false && name) index.set(name, key);",
+     "tests/unit/preset_logic.test.ts"),
+    # The walk finds candidates through a bucket keyed on the first character.
+    # Keying it on the whole string leaves every multi-character candidate
+    # unreachable, and its text degrades to plain text with no error.
+    ("web/PresetLogic.js",
+     "    const first = cand.matchStr[0];",
+     "    const first = cand.matchStr;",
+     "tests/unit/preset_logic.perf.test.ts"),
+    # Candidates are longest-first and the walk takes the first match, so a
+    # bucket in any other order picks the shorter candidate instead.
+    ("web/PresetLogic.js",
+     "    bucket.push(cand);",
+     "    bucket.unshift(cand);",
+     "tests/unit/preset_logic.perf.test.ts"),
 ]
 
 

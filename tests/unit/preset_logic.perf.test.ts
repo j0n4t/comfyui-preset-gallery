@@ -34,14 +34,27 @@ const CACHE: PresetCache = JSON.parse(readFileSync(FIXTURE, "utf8"));
  * down with the machine cancels the load out.
  *
  * Step 1+2 moved the build from ~150 ms to ~1.5 ms by dropping the per-entry
- * expansion; the memo then took the per-call cost to ~0.3 ms. `build` is the
- * budget that bites - the expansion returning is a ~100x regression, and the
- * mutation harness proves it trips. `perCall` is a smoke guard: the memo saves
- * ~0.7 ms, far below what any timing assertion can separate from noise.
+ * expansion; the memo then took the per-call cost to ~0.3 ms.
+ *
+ * What each budget catches, as measured:
+ *
+ * - `build` is a coarse guard. Its original target - the per-entry expansion
+ *   coming back - is no longer catastrophic: the group and match indexes made
+ *   expandRecursively ~35x cheaper, so it now reads 27.5x against this 70x
+ *   budget and trips nothing. Tightening it to catch that would put it inside the
+ *   spread of the candidate build (6.6-9.2x solo, 8.9x in a full-suite run,
+ *   20.9x once on a cold filesystem), which is how a guard dies. What it does
+ *   catch is a whole-cache operation inside a per-entry loop, and the mutation
+ *   harness models that.
+ * - `perCall` catches the candidate walk going back to comparing every candidate
+ *   at every position: 13-17x then, ~2x now.
+ * - `variantCalls` catches resolveVariantKey going back to scanning the cache:
+ *   15x with the scan, 0.01x now, at the same 10 calls a render makes.
  */
 const RATIO_BUDGET = {
   build: 70,
-  perCall: 60,
+  perCall: 8,
+  variantCalls: 3,
 };
 
 /**
@@ -121,6 +134,21 @@ function basket(n: number): string[] {
   return presetKeys()
     .filter((k) => (CACHE[k].preset ?? "").length > 12)
     .slice(0, n);
+}
+
+/**
+ * The `(group, value)` pairs the fixture's presets actually ask for - the
+ * arguments a render passes to resolveVariantKey.
+ */
+function variantCalls(n: number): [string, string][] {
+  const pairs: [string, string][] = [];
+  for (const key of presetKeys()) {
+    for (const match of (CACHE[key].preset ?? "").matchAll(/\{([^{}:]+):([^{}]+)\}/g)) {
+      pairs.push([match[1].trim(), match[2].trim()]);
+      if (pairs.length >= n) return pairs;
+    }
+  }
+  return pairs;
 }
 
 // --- the fixture must stay representative -------------------------------
@@ -207,6 +235,39 @@ test("a memoised lookup stays cheap per call", () => {
   );
 });
 
+test("resolving variant keys stays within budget", () => {
+  // Both measurements matter and they catch different regressions. The per-call
+  // number catches the walk coming back: a basket render makes 10 calls, and
+  // each one used to scan ~550 of 620 keys, lowercasing two strings per key.
+  // Measured at these same 10 calls: 0.01x calibration now, 15x with the scan.
+  // The cold build catches the index itself getting expensive.
+  const calls = variantCalls(10);
+  assert.ok(calls.length >= 10, `fixture has too few variant refs: ${calls.length}`);
+  const run = (cache: PresetCache) =>
+    calls.forEach(([group, val]) => PresetLogic.resolveVariantKey(group, val, cache));
+
+  const build = fastestBuildMs((cache) => run(cache));
+  const perCall = fastestPerCallMs(() => run(CACHE), 5, 8);
+  const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
+
+  logMeasurement("variant index build", build, build / calibration, RATIO_BUDGET.build);
+  logMeasurement(
+    `resolveVariantKey x${calls.length}`,
+    perCall,
+    perCall / calibration,
+    RATIO_BUDGET.variantCalls
+  );
+
+  assert.ok(
+    build / calibration < RATIO_BUDGET.build,
+    `building the variant index cost ${(build / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.build}x`
+  );
+  assert.ok(
+    perCall / calibration < RATIO_BUDGET.variantCalls,
+    `${calls.length} resolveVariantKey calls cost ${(perCall / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.variantCalls}x`
+  );
+});
+
 // --- behaviour the lookup must keep: the guards for step 2 ---------------
 //
 // Dropping the expanded lookup entries is the step most likely to change what
@@ -288,6 +349,61 @@ test("a token equal to a wrapped preset resolves to that preset", () => {
     wrapped,
     "the wrapped text should resolve to the entry that produced it"
   );
+});
+
+// --- the walk: what the first-character buckets must not change -----------
+//
+// parseTokens finds candidates through a bucket keyed on their first character
+// instead of testing all ~1300 of them at every position. That is a pure
+// lookup change, so these pin the three things it could break: reachability,
+// order, and the word boundary.
+
+test("every candidate the library offers is still recognised by the walk", () => {
+  // A bucket keyed wrongly (lowercased, say) silently stops matching, and the
+  // text degrades to plain text with no error. One probe per distinct first
+  // character, using the fixture's own keys and preset texts - the strings the
+  // engine is asked to match on.
+  const probes = new Map<string, string>();
+  for (const key of presetKeys()) {
+    for (const cand of [key.trim(), (CACHE[key].preset ?? "").trim()]) {
+      if (cand && !probes.has(cand[0])) probes.set(cand[0], cand);
+    }
+  }
+  assert.ok(
+    probes.size >= 15,
+    `only ${probes.size} distinct first characters to probe; the fixture went quiet`
+  );
+
+  const unreachable: string[] = [];
+  for (const [first, cand] of probes) {
+    const tokens = PresetLogic.parseTokens(cand, CACHE);
+    const covered =
+      tokens.length === 1 && tokens[0].text === cand && !tokens[0].isPlainText;
+    if (!covered) unreachable.push(`${JSON.stringify(first)} (${JSON.stringify(cand)})`);
+  }
+  assert.deepEqual(
+    unreachable,
+    [],
+    `these candidates no longer match: ${unreachable.join(", ")}`
+  );
+});
+
+test("the walk still takes the longest candidate at a position", () => {
+  // The buckets partition a longest-first list, so the order inside a bucket is
+  // what makes the longest match win. A bucket in any other order picks the
+  // shorter candidate and splits the rest into plain text.
+  const cache: PresetCache = {
+    "A/Short": { preset: "red" },
+    "A/Long": { preset: "red, blue" },
+  };
+  const tokens = PresetLogic.parseTokens("red, blue", cache);
+
+  assert.equal(
+    tokens.length,
+    1,
+    `expected one token, got ${JSON.stringify(tokens.map((t) => t.text))}`
+  );
+  assert.equal(tokens[0].key, "A/Long", "the shorter candidate won");
 });
 
 // --- the memo trap -------------------------------------------------------

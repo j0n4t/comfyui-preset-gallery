@@ -66,7 +66,7 @@ const SCENARIOS = [
   { name: "grid-compile", what: "library load: rebuild the grid" },
   { name: "grid-filter", what: "search: filter the grid" },
   { name: "basket-render", what: "render a 120-chip basket" },
-  { name: "raw-typing", what: "one keystroke in the raw textarea" },
+  { name: "raw-typing", what: "one keystroke in the raw textarea, popup included" },
   { name: "expand", what: "expand the basket into the textarea" },
 ];
 
@@ -79,6 +79,13 @@ const INSTALL_BENCH = () => {
   );
 
   const longText = keys.slice(0, 120).map((k) => cache[k].preset).join(", ");
+
+  // A keystroke in a long prompt that is halfway through a word: the textarea
+  // holds the whole prompt, and the token being typed is what the autocomplete
+  // looks up. Both halves of the cost are real, and only dispatching the event
+  // runs both - the `input` listener calls updateHighlights and the
+  // autocomplete's evaluate().
+  const typingText = `${longText}, gen`;
 
   // A fixed CPU-bound loop over the same data. Everything below is reported as
   // a multiple of this, so the numbers survive a busy machine.
@@ -98,8 +105,12 @@ const INSTALL_BENCH = () => {
     "grid-filter": () => gallery.grid.executeFilterPipeline("gen"),
     "basket-render": () => gallery.basket.render(keys.slice(0, 120)),
     "raw-typing": () => {
-      gallery.basket.textarea.value = longText;
-      gallery.basket.rawManager.updateHighlights();
+      // One keystroke, through the real listener: updateHighlights for the whole
+      // prompt plus the autocomplete's evaluate() for the token being typed.
+      // Calling updateHighlights directly (as this scenario first did) measured
+      // the smaller half and hid the popup entirely.
+      gallery.basket.textarea.value = typingText;
+      gallery.basket.textarea.dispatchEvent(new Event("input", { bubbles: true }));
     },
     expand: () => {
       const rm = gallery.session.rollManager;

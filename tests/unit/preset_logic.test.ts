@@ -166,6 +166,49 @@ test("resolveVariantKey returns null for an unknown value or empty input", () =>
   assert.equal(PresetLogic.resolveVariantKey("Faces", "", CACHE), null);
 });
 
+// The variant index is precomputed, so these pin the two rules the linear scan
+// it replaced had and a plain map does not: the FIRST key claiming a name wins,
+// and the group argument never decided anything.
+
+test("resolveVariantKey returns the first key claiming a name, not the last", () => {
+  const cache: PresetCache = {
+    "Action/Smile": { preset: "smile" },
+    "Pose/Smile": { preset: "smile" },
+  };
+  // Both entries claim "smile"; the scan returned whichever came first, and in a
+  // real library 32 lowercased names are claimed by more than one key.
+  assert.equal(PresetLogic.resolveVariantKey("pose", "smile", cache), "Action/Smile");
+});
+
+test("resolveVariantKey returns the first key claiming a full key, not the last", () => {
+  // The same rule, reached through the whole-key form rather than the preset
+  // name. Two keys can differ only in case, and the lookup is case-insensitive.
+  const cache: PresetCache = {
+    "Pose/Smile": { preset: "a" },
+    "pose/smile": { preset: "b" },
+  };
+  assert.equal(PresetLogic.resolveVariantKey("pose", "POSE/SMILE", cache), "Pose/Smile");
+});
+
+test("resolveVariantKey's group argument does not change the result", () => {
+  const cache: PresetCache = {
+    "Action/Smile": { preset: "smile" },
+    "Pose/Smile": { preset: "smile" },
+  };
+  // The scan's group clause also required `presetName === val`, which the clause
+  // before it already covered - so it could never decide anything, and a group
+  // match must not be preferred over cache order.
+  for (const group of ["", "action", "pose", "zzz"]) {
+    assert.equal(PresetLogic.resolveVariantKey(group, "smile", cache), "Action/Smile");
+  }
+});
+
+test("resolveVariantKey still resolves a key that carries no preset", () => {
+  // The scan never checked for a preset, so the index must not either.
+  const cache: PresetCache = { "Color/Red": { __color__: "#ff0000" } };
+  assert.equal(PresetLogic.resolveVariantKey("color", "red", cache), "Color/Red");
+});
+
 // --- escapeRegExp ---
 
 test("escapeRegExp produces a pattern that matches the literal string", () => {

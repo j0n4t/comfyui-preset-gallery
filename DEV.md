@@ -48,7 +48,8 @@ npm run profile -- --top 20         # more frames per scenario
 ```
 
 Scenarios: `grid-compile` (library load), `grid-filter` (search),
-`basket-render` (120 chips), `raw-typing` (one keystroke), `expand` (basket into
+`basket-render` (120 chips), `raw-typing` (one keystroke, through the real
+`input` listener, so it includes the autocomplete popup), `expand` (basket into
 the textarea).
 
 For each it prints the ranked self-time frames, the call counts of the helpers

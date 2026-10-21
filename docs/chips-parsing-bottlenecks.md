@@ -1,7 +1,13 @@
 # Plan: Chips parsing/rendering bottleneck improvements
 
-Status: steps 1-4 landed (2026-10-20); the plan is complete.
-Probes: `C:\Users\Jonathan\AppData\Local\hermes\cache\scratch\chips-probe\probe1-10.mjs`
+Status: steps 1-7 landed (steps 1-4 on 2026-10-20, steps 6-7 after the profiler
+was committed); the plan is complete.
+
+The timings and call counts below can be re-run with `npm run profile` (see
+`DEV.md`). The differential counts - "0 mismatches over N cases" - were one-off
+comparisons against the implementation being replaced, so they are recorded here
+rather than re-runnable; the committed tests are what keep pinning the behaviour.
+The probes behind the first pass were scratch files and are gone.
 
 ## Step 1+2 landed: what changed and what it bought
 
@@ -92,6 +98,133 @@ Both call counts are 41x down from the original, and the render is ~3x faster
 measured as a ratio against a calibration loop (calibration 214.9 vs 207.3 ms, so
 the comparison is fair — see the note on load below).
 
+## Steps 6+7 landed: the walk's candidate lookup, and resolveVariantKey
+
+Where the time went once step 4 was in, per the committed profiler:
+
+| scenario | ms | ratio |
+|---|---|---|
+| grid-compile | 30.5 | 5.98x |
+| basket-render | 17.1 | 2.90x |
+| raw-typing (highlights only, see below) | 2.7 | 0.59x |
+| expand | 1.6 | 0.37x |
+
+Two frames held the two paths that matter most - every keystroke and every chip
+interaction - and both were the same shape as steps 3-4: a whole-cache structure
+walked per call.
+
+| | share of basket-render | calls / render |
+|---|---|---|
+| `parseTokens` (the walk) | 39.5% | 1 |
+| `resolveVariantKey` | 6.6% | 10 |
+| `updateHighlights` | 2.3% | 1 |
+
+### Step 6: the walk tested every candidate at every position — DONE
+
+`parseTokens` ran `val.startsWith(cand.matchStr, i)` over all ~1300 candidates at
+every position it looked at. Measured on the text a 120-chip render parses
+(4.5 KB): the comparison loop alone was **30 ms**, and it was ~75% of the walk -
+the same walk with an empty candidate list measures 0.53 ms of a 2.14 ms call.
+
+The fix is a bucket per first character. A candidate whose first character is not
+`val[i]` cannot match, so the buckets are a partition of the same longest-first
+list, and the order inside a bucket is the list's own order: the first candidate
+to match at a position is still the first in the whole list. Exact, not
+approximate.
+
+| | before | after |
+|---|---|---|
+| comparison loop, 4.5 KB text | 30 ms | 1.4 ms |
+| `parseTokens` on that text | 6.6 ms | 0.2 ms |
+| `parseTokens`, share of basket-render | 39.5% | **2.1%** |
+| basket-render (back-to-back A/B) | 27.1 ms, 6.45x | **7.2 ms, 2.32x** |
+
+Verified equivalent rather than assumed: the same walk over a corpus built from
+both libraries - every key, every preset text, every wrapped form, every
+`{group}`, `{group:value}` and `<tag>` found in the presets, the joined baskets at
+six sizes, plus the boundary shapes (`""`, `","`, `"{}"`, a candidate glued to a
+word, 400-char runs) - **10,468 cases, 0 mismatches**, compared on token
+boundaries, text, key, item identity and every flag.
+
+The corpus itself was the first trap: it contains expanded text, which
+`expandRecursively` rolls with `Math.random()`, so the two runs parsed *different
+strings* and the first comparison reported 6 mismatches that were nothing of the
+kind. Seeding `Math.random` in the capture is what made it a comparison.
+
+### Step 7: resolveVariantKey scanned the cache per call — DONE
+
+`resolveVariantKey` walked `Object.keys(cache)` on every call, lowercasing the key
+and computing `getPresetName(k).toLowerCase()` for each entry. A 120-chip basket
+render makes **10 calls, each walking 468-613 of the 620 keys** (measured by
+replaying the calls' own arguments): 5,500 key iterations, 11,000 lowercased
+strings, **1.8 ms per render**.
+
+It now reads an index of each key's lowercased form and lowercased preset name.
+
+**The group argument never decided anything.** The scan's third clause was
+`lowerGroup && lowerK.startsWith(lowerGroup + "/") && presetName === lowerVal` -
+which also requires `presetName === lowerVal`, exactly what the clause before it
+tested. So a group match was never preferred over cache order, and the index takes
+no group; the argument stays on the signature for its call sites.
+
+| | before | after |
+|---|---|---|
+| 10 calls (one render's worth) | 1.8 ms | below the timer's resolution |
+| keys walked per render | 5,500 | 0 |
+| share of basket-render | 6.6-12.4% | 0.0% |
+
+The index costs 0.33 ms to build, once per library load.
+
+Verified by differencing against the verbatim scan: 4266 queries x 10 groups =
+**42,660 cases on the real library** and 29,376 on the fixture, **0 mismatches**.
+First-wins is load-bearing - **32 lowercased strings in the real library are
+claimed by more than one key**, so a plain map (last-wins) resolves those
+`{group:value}` refs to a different preset. Entries with no preset are included,
+as the scan included them.
+
+### Measured, and deliberately not done
+
+- **The DOM carrying base64 thumbnails.** It looks like the answer, and it is
+  not. The grid's HTML is 1.93 MB, 54% of it `<img src="data:image/jpeg;base64,...">`;
+  a basket render's chip HTML is 610 KB, 87% of it a `background-image:
+  url("data:...")` per chip. Measured: re-rendering the basket with flat colours
+  instead of the images saves **1.1 ms of 9.8 ms**, and parsing the grid HTML with
+  the data URLs string-replaced saves **4 ms of 15.6 ms**. Blob URLs work in both
+  places (checked in-page) and would cut the strings, but the win is small next to
+  touching every render path, so it was left.
+- **The grid's remaining compile cost.** ~25 ms, of which the `innerHTML` parse is
+  ~15.6 ms and the string building ~7 ms. 267 KB of the 1.93 MB is inline SVG
+  icons repeated per card (two each); `<use href="#id">` would cut ~3-4 ms. Not
+  done - a once-per-load cost, and a broad change across every icon call site.
+- **The autocomplete popup.** The profiler's `raw-typing` scenario called
+  `updateHighlights()` directly, so it measured the smaller half of a keystroke
+  and never ran the popup. Dispatching the real `input` event fixed the scenario;
+  measured, a keystroke in a long prompt is 1.8 ms, most of it the popup's
+  `getTopMatches` over all 620 keys (`getSearchBlob` 5.5% and `renderPopup` 6.8%
+  of the profile against `updateHighlights` 2.6%). The worst case - a
+  single-letter query, which matches everything - is 4.2 ms. It is the largest
+  per-keystroke cost left and an order of magnitude below what steps 6-7 removed,
+  so it is the next thing to look at rather than something to fix now.
+
+### Guards
+
+| artifact | what it pins |
+|---|---|
+| `preset_logic.perf.test.ts` | every candidate still reachable through its first-character bucket; longest match still wins; ratio budgets |
+| `preset_logic.test.ts` | the variant index's first-wins rule through both the name and the whole-key form; the group argument's irrelevance; preset-less keys still resolving |
+| `tools/mutation_check.py` | four new entries - bucket keyed on the whole string, bucket order reversed, variant index last-wins, preset name not indexed - all caught |
+| budgets | `perCall` 60x -> **8x** (`parseTokens / call` went 13-17x -> ~2x, so the budget now sits between them and bites); new `variantCalls` at **3x** (0.01x now, 15x with the scan, at the same 10 calls) |
+
+**A guard that had stopped biting, found on the way.** The `build` budget's
+mutation - re-adding the per-entry expansion step 2 removed - is now **MISSED**.
+The group and match indexes made `expandRecursively` ~35x cheaper, so that
+regression reads **27.5x against the 70x budget** instead of the ~850x it read
+when the entry was written. Tightening the budget to catch it would put it inside
+the spread of the candidate build (6.6-9.2x solo, 8.9x in a full-suite run, 20.9x
+once on a cold filesystem), which is how a guard dies. So the budget is documented
+as a coarse guard for the class it still catches - a whole-cache operation inside
+a per-entry loop - and the mutation entry models that instead.
+
 ## Where the time went, end to end
 
 Every number below is load-independent: call counts, or a Node measurement of the
@@ -103,6 +236,8 @@ see the note at the end.
 | 1+2 | per-entry `expandRecursively` in the cache-wide build | `getGroupedChips` 152 → 0.36 ms |
 | 3 | `getGroupMatches` scanning 620 keys per call | 31 group lookups 11.50 → 0.007 ms |
 | 4 | `findPresetMatch` walking the cache per chip | `getPresetFolder` 66,136 → 1,604 calls |
+| 6 | `parseTokens` testing every candidate at every position | walk 6.6 → 0.2 ms; render 27.1 → 7.2 ms |
+| 7 | `resolveVariantKey` scanning 620 keys per call | 10 calls/render: 1.8 ms → 0 |
 
 ## A note on measuring this machine
 
@@ -332,9 +467,9 @@ above for the numbers.
 
 - **Where:** `RATIO_BUDGET` in `tests/unit/preset_logic.perf.test.ts`.
 - **What shipped:** budgets are now expressed as a multiple of a calibration workload, not in
-  milliseconds — see below. Current readings are 6–12x (lookup build), 21–23x (candidate
-  build), 1.7–2.4x (getGroupedChips/call) and 13–17x (parseTokens/call), against budgets of
-  70x and 60x.
+  milliseconds — see below. Readings after steps 6-7 are 5.3-6.3x (lookup build), 6.6-9.2x
+  (candidate build), 1.5-2.0x (getGroupedChips/call), 1.7-2.0x (parseTokens/call, was 13-17x)
+  and 0.01x (resolveVariantKey x10, was 15x), against budgets of 70x, 8x and 3x.
 - **Correction 1 — a per-call budget cannot be a tight guard.** The memo saves ~0.7 ms, below
   what a timing assertion can separate from noise, and it *absorbs* a build regression into a
   once-per-load cost, so a per-call measurement never sees it. The guard therefore measures
@@ -353,10 +488,11 @@ above for the numbers.
 **Re-run this any time with `npm run profile`** — it drives the same scenarios in a browser and
 reports ranked frames, call counts and a load-normalised ratio. See `DEV.md`.
 
-Steps 1-4 have landed and step 5's budgets are tightened; nothing in this plan is outstanding.
-If more is wanted, the next thing worth measuring is `parseTokens`' walk — one call per render,
-but ~16% of the profile, and it is the per-keystroke cost in the raw textarea. It was not part
-of this plan and has no measurement beyond that profile share.
+Steps 1-4 and 6-7 have landed and step 5's budgets are tightened; nothing in this plan is
+outstanding. The next thing worth measuring is the autocomplete popup, which the profiler's
+`raw-typing` scenario now covers: a keystroke in a long prompt costs 1.8 ms and most of it is
+the popup's whole-cache `getTopMatches` (worst case 4.2 ms for a single-letter query). It was
+not part of this plan, and it is an order of magnitude below what steps 6-7 removed.
 
 These are committed and green; they exist so the refactor can be checked between steps.
 
@@ -388,11 +524,15 @@ fixed calibration workload that slows down with the machine, which cancels the l
 ratios vary ~1.3x across runs where the raw milliseconds vary ~4x. The absolute milliseconds
 are still printed, for tracking between steps.
 
-**The `build` budget is the one that bites; `perCall` is a smoke guard.** The memo saves
-~0.7 ms, below what a timing assertion can separate from noise, and it *absorbs* a build
-regression into a once-per-load cost — so the guard measures the cold build, which is where
-the regression lives. Re-adding the expansion takes the ratio to ~850x against a 70x budget,
-and the mutation harness proves it.
+**`build` is a coarse guard; `perCall` and `variantCalls` are the ones that bite.** The memo
+saves ~0.7 ms, below what a timing assertion can separate from noise, and it *absorbs* a build
+regression into a once-per-load cost — so the build guard measures the cold build, which is
+where that regression lives. But its original target is gone: re-adding the per-entry expansion
+reads **27.5x against the 70x budget** now that steps 3-4 made `expandRecursively` ~35x cheaper,
+and tightening the budget to catch it would put it inside the candidate build's own spread. It
+catches a whole-cache operation inside a per-entry loop, and the mutation harness models that.
+What actually bites is `perCall` (the candidate walk returning is 13-17x against 8x) and
+`variantCalls` (the cache scan returning is 15x against 3x).
 
 **The resolution guards pin what step 2 must not break.** Measured on the real library, the
 `key` / raw-text / wrapped lookup entries carry 100% of a key-based basket's chips, while the
@@ -411,7 +551,7 @@ deterministic without addressing why it was random.
 - `npm test` — 373 tests, all green before starting.
 - `npm run lint` — eslint + tsc clean.
 - `python tools/mutation_check.py` — every mutation caught, no restore warnings.
-- Re-run the perf tests after each step and record the number it recovered; lower `BUDGET_MS`
-  to match.
+- Re-run the perf tests after each step and record the number it recovered; lower the matching
+  entry in `RATIO_BUDGET` to match.
 - Check the dev harness (on :8878) still reports 15/15, and that a render scales with the
   basket rather than costing the same at every size.
