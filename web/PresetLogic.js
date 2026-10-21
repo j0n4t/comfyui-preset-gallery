@@ -27,6 +27,7 @@ const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
  * @property {Map<string, ChipLookupEntry>} [lookupMap]
  * @property {ChipCandidate[]} [candidates]
  * @property {Map<string, string[]>} [groupIndex]
+ * @property {Map<string, ChipLookupEntry>} [presetMatchIndex]
  */
 
 /**
@@ -179,6 +180,43 @@ function buildGroupIndex(cache) {
         index.set(group, keys);
       }
       keys.push(key);
+    }
+  }
+  return index;
+}
+
+/**
+ * Maps every string that names a cache entry to that entry, for
+ * findPresetMatch.
+ *
+ * Deliberately separate from `lookupMap`, which cannot be reused here:
+ *
+ * - `lookupMap` keeps the LAST entry that claims a string; the linear scan this
+ *   replaces returns the FIRST. In a real library 1133 strings are claimed more
+ *   than once - two entries routinely share a preset text - so the tie-break
+ *   decides which preset a chip resolves to. Reusing `lookupMap` changed the
+ *   answer for 106 of 2439 queries.
+ * - `lookupMap` includes keys whose entry has no preset; the scan skips them.
+ *
+ * So this keeps first-wins and preset-only, which is what the scan did.
+ *
+ * @param {PresetCache} cache
+ * @returns {Map<string, ChipLookupEntry>}
+ */
+function buildPresetMatchIndex(cache) {
+  /** @type {Map<string, ChipLookupEntry>} */
+  const index = new Map();
+
+  for (const [key, item] of Object.entries(cache)) {
+    if (!item || !item.preset) continue;
+
+    const wrapped = PresetLogic.getWrappedPreset(key, item.preset, cache);
+    // All three name the same entry, so their order within it does not matter;
+    // `has` is what makes an earlier entry win over a later one.
+    for (const matchStr of [key.trim(), item.preset.trim(), wrapped]) {
+      if (matchStr && !index.has(matchStr)) {
+        index.set(matchStr, { foundKey: key, foundItem: item });
+      }
     }
   }
   return index;
@@ -829,14 +867,12 @@ const PresetLogic = {
       return { key: trimmed, item: cache[trimmed] };
     }
 
-    for (const [key, item] of Object.entries(cache)) {
-      if (!item || !item.preset) continue;
-      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
-      if (key.trim() === trimmed || (item.preset && item.preset.trim() === trimmed) || (wrappedPreset && wrappedPreset === trimmed)) {
-        return { key, item };
-      }
+    const derived = derivedFor(cache);
+    if (!derived.presetMatchIndex) {
+      derived.presetMatchIndex = buildPresetMatchIndex(cache);
     }
-    return null;
+    const hit = derived.presetMatchIndex.get(trimmed);
+    return hit ? { key: hit.foundKey, item: hit.foundItem } : null;
   },
 
   /**

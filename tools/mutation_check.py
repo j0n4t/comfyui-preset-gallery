@@ -93,6 +93,18 @@ MUTATIONS = [
      "return (derived.groupIndex.get(groupName.toLowerCase()) || []).slice();",
      "return derived.groupIndex.get(groupName.toLowerCase()) || [];",
      "tests/unit/preset_logic.test.ts"),
+    # The match index must keep the FIRST claimant; last-wins silently changes
+    # which preset a chip resolves to, and 510 strings in a real library are
+    # claimed more than once.
+    ("web/PresetLogic.js",
+     "      if (matchStr && !index.has(matchStr)) {",
+     "      if (matchStr) {",
+     "tests/unit/preset_logic.test.ts"),
+    # ...and it must skip entries without a preset, as the scan did.
+    ("web/PresetLogic.js",
+     "    if (!item || !item.preset) continue;\n\n    const wrapped = PresetLogic.getWrappedPreset(key, item.preset, cache);",
+     "    if (!item) continue;\n\n    const wrapped = PresetLogic.getWrappedPreset(key, item.preset || \"\", cache);",
+     "tests/unit/preset_logic.test.ts"),
 ]
 
 

@@ -1,6 +1,6 @@
 # Plan: Chips parsing/rendering bottleneck improvements
 
-Status: steps 1-3 landed (2026-10-20); step 4 open.
+Status: steps 1-4 landed (2026-10-20); the plan is complete.
 Probes: `C:\Users\Jonathan\AppData\Local\hermes\cache\scratch\chips-probe\probe1-10.mjs`
 
 ## Step 1+2 landed: what changed and what it bought
@@ -63,11 +63,61 @@ place. Every load and every save replaces the object
 (`PresetGalleryApp.loadGallery`), so a `WeakMap` keyed on it drops the entry
 along with the old cache.
 
-## Remaining: renderBasketChip is now the cost
+## Step 4 landed: findPresetMatch no longer scans the cache
 
-With the cache-wide work gone, what is left of a 120-chip render is per-chip
-work — `renderBasketChip`, which calls `findPresetMatch` once per chip and loops
-the whole cache each time (step 4). Step 4 is the whole remaining budget.
+`findPresetMatch` walked every cache entry, calling `getWrappedPreset` on each
+until something matched — 145 calls per render, each walking ~290 entries. It
+now reads a precomputed index.
+
+**The obvious implementation was wrong, and measuring caught it.** The plan said
+to reuse `buildLookupMap`, which already maps every match string to an entry. It
+does not work: `lookupMap` keeps the **last** entry that claims a string, while
+the scan returns the **first**. In a real library **1133 strings are claimed more
+than once** — two entries routinely share a preset text (`action/smile` and
+`pose/smile` are both `"smile"`) — so the tie-break decides which preset a chip
+resolves to. Reusing `lookupMap` changed the answer for **106 of 2439 queries**.
+`lookupMap` also includes keys whose entry has no preset, which the scan skips.
+
+So step 4 got its own index (`buildPresetMatchIndex`), keeping first-wins and
+preset-only. Verified against the replaced scan over 3684 queries across both
+libraries: **0 mismatches**.
+
+| | before | after |
+|---|---|---|
+| `getPresetFolder` calls / render | 66,136 | **1,604** |
+| `getWrappedPreset` calls / render | 42,256 | **1,007** |
+| render(120), load-normalised ratio | 1.63 | **0.53** |
+
+Both call counts are 41x down from the original, and the render is ~3x faster
+measured as a ratio against a calibration loop (calibration 214.9 vs 207.3 ms, so
+the comparison is fair — see the note on load below).
+
+## Where the time went, end to end
+
+Every number below is load-independent: call counts, or a Node measurement of the
+operation itself. Browser wall-clock was abandoned as evidence partway through —
+see the note at the end.
+
+| step | what it removed | effect |
+|---|---|---|
+| 1+2 | per-entry `expandRecursively` in the cache-wide build | `getGroupedChips` 152 → 0.36 ms |
+| 3 | `getGroupMatches` scanning 620 keys per call | 31 group lookups 11.50 → 0.007 ms |
+| 4 | `findPresetMatch` walking the cache per chip | `getPresetFolder` 66,136 → 1,604 calls |
+
+## A note on measuring this machine
+
+Mid-refactor the host's load made absolute timings unusable: the same render
+measured **60 ms and 350 ms** within the hour, and a fixed calibration loop went
+from 15.8 ms to **214.9 ms** — a 13.6x swing with no code change. Two consequences
+that shaped this work:
+
+- Perf guards in the test suite are **ratios against a calibration workload**, not
+  milliseconds. The ratios vary ~1.3x across runs where the raw milliseconds vary
+  ~4x.
+- Findings are stated as **call counts and Node measurements** wherever possible.
+  One browser profile in this session read 965 ms total against 538 ms earlier
+  purely from load; its percentages were not used.
+
 
 ## Step 3 landed: the plan's premise was wrong, the fix was elsewhere
 
@@ -268,16 +318,15 @@ above for the numbers.
 - **Where:** `buildGroupIndex` + `getGroupMatches` in `PresetLogic.js`.
 - **Result:** 31 group lookups 11.50 → 0.007 ms; `getPresetFolder` calls 66,136 → 42,853.
 
-### 4. Replace `findPresetMatch`'s per-call scan — NEXT
+### 4. Replace `findPresetMatch`'s per-call scan — DONE, with the reuse ruled out
 
-- **Where:** `findPresetMatch` (PresetLogic.js), called once per chip from `renderBasketChip`.
-- **Change:** build the same text→key map once per cache load (it is exactly the `wrapped` +
-  `trimmed` + `key` entries `buildLookupMap` already keeps) and look up in it.
-- **Expected:** recovers `findPresetMatch`'s own share **and** the 62% of `getPresetFolder`
-  calls that reach it through `getWrappedPreset` — measured, stubbing `findPresetMatch` halved
-  a render (346 → 182 ms in one session) and dropped `getWrappedPreset` from 42,256 calls to
-  401. It is now the largest remaining item by a wide margin.
-- **Verify:** existing preset-match tests; add one asserting a *name* match and a *wrapped* match.
+- **Where:** `buildPresetMatchIndex` + `findPresetMatch` in `PresetLogic.js`.
+- **What the plan got wrong:** it said to reuse `buildLookupMap`. That changes the answer for
+  106 of 2439 queries, because `lookupMap` keeps the last claimant where the scan kept the
+  first, and 1133 strings in a real library are claimed more than once. It also includes keys
+  whose entry has no preset, which the scan skipped. A separate index was needed.
+- **Result:** `getPresetFolder` calls 66,136 → 1,604; `getWrappedPreset` 42,256 → 1,007; the
+  load-normalised render ratio 1.63 → 0.53.
 
 ### 5. Tighten the perf budget — DONE, with two corrections
 
@@ -300,6 +349,11 @@ above for the numbers.
   vary by ~1.3x across runs where the raw milliseconds vary by ~4x.
 
 ## Guards that already landed
+
+Steps 1-4 have landed and step 5's budgets are tightened; nothing in this plan is outstanding.
+If more is wanted, the next thing worth measuring is `parseTokens`' walk — one call per render,
+but ~16% of the profile, and it is the per-keystroke cost in the raw textarea. It was not part
+of this plan and has no measurement beyond that profile share.
 
 These are committed and green; they exist so the refactor can be checked between steps.
 

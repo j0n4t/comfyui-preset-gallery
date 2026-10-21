@@ -491,6 +491,38 @@ test("findPresetMatch returns null for an unknown or empty string", () => {
   assert.equal(PresetLogic.findPresetMatch("", CACHE), null);
 });
 
+// The match index is precomputed, so these pin the two rules the linear scan it
+// replaced had and a naive map does not: the FIRST claimant wins, and entries
+// without a preset are not candidates.
+
+test("findPresetMatch returns the first entry claiming a string, not the last", () => {
+  const cache: PresetCache = {
+    "Action/Smile": { preset: "smile" },
+    "Pose/Smile": { preset: "smile" },
+  };
+  // Both entries claim "smile"; the scan returned whichever came first.
+  assert.equal(PresetLogic.findPresetMatch("smile", cache)?.key, "Action/Smile");
+});
+
+test("findPresetMatch ignores entries without a preset", () => {
+  const cache: PresetCache = {
+    Smile: { __color__: "#972140" },
+    "Pose/Smile": { preset: "smile" },
+  };
+  // "Smile" is a colour-only entry and is not a candidate by text...
+  assert.equal(PresetLogic.findPresetMatch("smile", cache)?.key, "Pose/Smile");
+  // ...but an exact key still resolves through the fast path, as it always did.
+  assert.equal(PresetLogic.findPresetMatch("Smile", cache)?.key, "Smile");
+});
+
+test("findPresetMatch prefers an exact key over a later entry's text", () => {
+  const cache: PresetCache = {
+    "Pose/Smile": { preset: "smile" },
+    Smile: { preset: "something else" },
+  };
+  assert.equal(PresetLogic.findPresetMatch("Smile", cache)?.key, "Smile");
+});
+
 // --- path helpers and title casing ---
 
 test("getPresetName returns the last path segment", () => {
