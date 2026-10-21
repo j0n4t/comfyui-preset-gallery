@@ -54,30 +54,31 @@ MUTATIONS = [
     # in the comment, or the guard is decorative.
     # lookup entries the chips resolve through (drop each -> its own test fails)
     ("web/PresetLogic.js",
-     "if (trimmedPreset) lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });",
-     "if (false) lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });",
+     "lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });",
+     "lookupMap.set(trimmedPreset + '\\u0000', { foundKey: key, foundItem: item });",
      "tests/unit/preset_logic.perf.test.ts"),   # raw-text resolution
     ("web/PresetLogic.js",
-     "if (wrappedPreset) lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });",
-     "if (false) lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });",
+     "lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });",
+     "lookupMap.set(wrappedPreset + '\\u0000', { foundKey: key, foundItem: item });",
      "tests/unit/preset_logic.perf.test.ts"),   # wrapped resolution
+    # Both key lines, or the .trim() one still supplies the entry and the
+    # mutation changes nothing.
     ("web/PresetLogic.js",
-     "lookupMap.set(key, { foundKey: key, foundItem: item });\n"
-     "          lookupMap.set(key.trim(), { foundKey: key, foundItem: item });",
-     "lookupMap.set(key + '\\u0000', { foundKey: key, foundItem: item });\n"
-     "          lookupMap.set(key.trim() + '\\u0000', { foundKey: key, foundItem: item });",
+     "      lookupMap.set(key, { foundKey: key, foundItem: item });\n"
+     "      lookupMap.set(key.trim(), { foundKey: key, foundItem: item });",
+     "      lookupMap.set(key + '\\u0000', { foundKey: key, foundItem: item });\n"
+     "      lookupMap.set(key.trim() + '\\u0000', { foundKey: key, foundItem: item });",
      "tests/unit/preset_logic.perf.test.ts"),   # weighted-token resolution
     # the roll must stay observable, or a cache-keyed memo would silently win
     ("web/PresetLogic.js",
      "matches[Math.floor(Math.random() * matches.length)]",
      "matches[0]",
      "tests/unit/preset_logic.perf.test.ts"),
-    # a gross slowdown must trip the budget. The multiplier is large on purpose:
-    # the budget has to absorb parallel-test contention, so it only catches a
-    # multi-fold regression - which is what this proves.
+    # The build is where the catastrophic regression lives: re-adding the
+    # per-entry expansion that step 2 removed takes it from ~1.5 ms to ~150 ms.
     ("web/PresetLogic.js",
-     "    const lookupMap = new Map();\n    if (cache) {",
-     "    const lookupMap = new Map();\n    for (let _dup = 0; _dup < 6; _dup++) if (cache) {",
+     "    if (item.preset?.trim()) {\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
+     "    if (item.preset?.trim()) {\n      PresetLogic.expandRecursively(key, cache);\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
      "tests/unit/preset_logic.perf.test.ts"),
 ]
 

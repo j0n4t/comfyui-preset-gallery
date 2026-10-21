@@ -23,52 +23,91 @@ const FIXTURE = fileURLToPath(
 const CACHE: PresetCache = JSON.parse(readFileSync(FIXTURE, "utf8"));
 
 /**
- * Regression guards, NOT goals. They are set to the pre-refactor measurements
- * with headroom, so the suite stays green while the refactor lands and a step
- * that makes things worse still fails.
+ * Regression guards, expressed as a multiple of `calibrationMs` rather than in
+ * milliseconds.
  *
- * LOWER these as each step of docs/chips-parsing-bottlenecks.md lands. A budget
- * left at the old number stops protecting anything.
+ * Absolute budgets cannot hold here. `node --test` runs every test file at once
+ * and the machine's other load is not ours to control: the same cold build
+ * measured 1.6 ms solo and between 7 ms and 39 ms across runs of the full suite
+ * - a spread wide enough that no absolute budget is both tight enough to catch a
+ * regression and loose enough never to flake. Dividing by a workload that slows
+ * down with the machine cancels the load out.
  *
- * The headroom looks wide because `node --test` runs test *files* in parallel:
- * under that contention the same call measures ~3x its solo cost. The guard is
- * deliberately insensitive to that and sensitive to a real regression.
+ * Step 1+2 moved the build from ~150 ms to ~1.5 ms by dropping the per-entry
+ * expansion; the memo then took the per-call cost to ~0.3 ms. `build` is the
+ * budget that bites - the expansion returning is a ~100x regression, and the
+ * mutation harness proves it trips. `perCall` is a smoke guard: the memo saves
+ * ~0.7 ms, far below what any timing assertion can separate from noise.
  */
-const BUDGET_MS = {
-  getGroupedChips: 800,
-  parseTokens: 800,
-};
-
-/** What the refactor aims for. Printed for tracking; not asserted. */
-const TARGET_MS = {
-  getGroupedChips: 20,
-  parseTokens: 20,
+const RATIO_BUDGET = {
+  build: 70,
+  perCall: 60,
 };
 
 /**
- * Fastest of `runs` timings, with a warm-up pass.
+ * A fixed CPU-bound workload, used to normalise the timings above.
  *
- * The minimum, not the median: test files run in parallel, so most samples are
- * inflated by whatever else is running. The minimum is the closest reading of
- * the call's own cost, and a genuine regression raises that floor too.
+ * It scales with whatever CPU the process is getting, which is exactly the
+ * quantity that makes an absolute budget unusable. `sink` keeps the loop from
+ * being optimised away.
  */
-function fastestMs(fn: () => void, runs = 5): number {
+function calibrationMs(cache: PresetCache): number {
+  const keys = Object.keys(cache);
+  let sink = 0;
+  const start = performance.now();
+  for (let pass = 0; pass < 300; pass++) {
+    for (const key of keys) sink += key.length;
+  }
+  if (sink < 0) throw new Error("unreachable");
+  return performance.now() - start;
+}
+
+/**
+ * Fastest per-iteration cost of `fn`, from `runs` samples of `perSample`
+ * iterations each.
+ *
+ * Amortising is the point. A single cold build is a ~2 ms operation, short
+ * enough that one scheduler hiccup inside the timing window dominates the
+ * reading - measured at 42 ms for work that takes 4 ms solo, purely from
+ * running alongside every other test file. Timing a batch and dividing gives a
+ * hiccup the same weight it would have in a real render, which repeats the work
+ * many times over.
+ */
+function fastestPerCallMs(fn: () => void, runs = 5, perSample = 8): number {
   fn();
   let best = Infinity;
-  for (let i = 0; i < runs; i++) {
+  for (let r = 0; r < runs; r++) {
     const start = performance.now();
-    fn();
-    best = Math.min(best, performance.now() - start);
+    for (let k = 0; k < perSample; k++) fn();
+    best = Math.min(best, (performance.now() - start) / perSample);
   }
   return best;
 }
 
-function logMeasurement(name: string, ms: number, budget: number, target: number): void {
-  const pct = Math.round((ms / budget) * 100);
+/**
+ * Fastest build cost, from `runs` samples of `perSample` builds each, every
+ * build on a cache object nothing has derived from yet so it pays the build
+ * rather than a memo hit. The clones are made before timing starts.
+ */
+function fastestBuildMs(fn: (cache: PresetCache) => void, runs = 5, perSample = 8): number {
+  const caches = Array.from(
+    { length: runs * perSample },
+    () => structuredClone(CACHE)
+  );
+  let next = 0;
+  let best = Infinity;
+  for (let r = 0; r < runs; r++) {
+    const start = performance.now();
+    for (let k = 0; k < perSample; k++) fn(caches[next++]);
+    best = Math.min(best, (performance.now() - start) / perSample);
+  }
+  return best;
+}
+
+function logMeasurement(name: string, ms: number, ratio: number, budget: number): void {
   console.log(
-    `    ${name.padEnd(16)} ${ms.toFixed(1).padStart(7)} ms` +
-      `   budget ${String(budget).padStart(4)} (${String(pct).padStart(3)}%)` +
-      `   target ${target} ms`
+    `    ${name.padEnd(22)} ${ms.toFixed(2).padStart(8)} ms` +
+      `   ${ratio.toFixed(1).padStart(6)}x calib   budget ${budget}x`
   );
 }
 
@@ -119,23 +158,52 @@ test("perf fixture keeps the shape that makes its numbers meaningful", () => {
 
 // --- perf: the numbers the refactor is meant to move ---------------------
 
-test("getGroupedChips stays within budget on a full library", () => {
+test("building the chip lookup stays within budget", () => {
+  // Cold, on a cache nothing has derived from: this is the cost the first
+  // interaction after a library load pays, and the number step 2 moved from
+  // ~150 ms to ~1.5 ms by dropping the per-entry expansion.
   const keys = basket(120);
-  const ms = fastestMs(() => PresetLogic.getGroupedChips(keys, CACHE));
-  logMeasurement("getGroupedChips", ms, BUDGET_MS.getGroupedChips, TARGET_MS.getGroupedChips);
+  const ms = fastestBuildMs((cache) => PresetLogic.getGroupedChips(keys, cache));
+  const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
+  const ratio = ms / calibration;
+
+  logMeasurement("lookup build (cold)", ms, ratio, RATIO_BUDGET.build);
   assert.ok(
-    ms < BUDGET_MS.getGroupedChips,
-    `getGroupedChips took ${ms.toFixed(1)} ms on ${keys.length} chips, budget ${BUDGET_MS.getGroupedChips} ms`
+    ratio < RATIO_BUDGET.build,
+    `building the lookup cost ${ratio.toFixed(1)}x calibration (${ms.toFixed(1)} ms), budget ${RATIO_BUDGET.build}x`
   );
 });
 
-test("parseTokens stays within budget on a full library", () => {
+test("building the token candidates stays within budget", () => {
   const text = basket(120).join(", ");
-  const ms = fastestMs(() => PresetLogic.parseTokens(text, CACHE));
-  logMeasurement("parseTokens", ms, BUDGET_MS.parseTokens, TARGET_MS.parseTokens);
+  const ms = fastestBuildMs((cache) => PresetLogic.parseTokens(text, cache));
+  const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
+  const ratio = ms / calibration;
+
+  logMeasurement("candidate build (cold)", ms, ratio, RATIO_BUDGET.build);
   assert.ok(
-    ms < BUDGET_MS.parseTokens,
-    `parseTokens took ${ms.toFixed(1)} ms, budget ${BUDGET_MS.parseTokens} ms`
+    ratio < RATIO_BUDGET.build,
+    `building the candidates cost ${ratio.toFixed(1)}x calibration (${ms.toFixed(1)} ms), budget ${RATIO_BUDGET.build}x`
+  );
+});
+
+test("a memoised lookup stays cheap per call", () => {
+  const keys = basket(120);
+  const text = keys.join(", ");
+  const grouped = fastestPerCallMs(() => PresetLogic.getGroupedChips(keys, CACHE));
+  const parsed = fastestPerCallMs(() => PresetLogic.parseTokens(text, CACHE));
+  const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
+
+  logMeasurement("getGroupedChips / call", grouped, grouped / calibration, RATIO_BUDGET.perCall);
+  logMeasurement("parseTokens / call", parsed, parsed / calibration, RATIO_BUDGET.perCall);
+
+  assert.ok(
+    grouped / calibration < RATIO_BUDGET.perCall,
+    `getGroupedChips cost ${(grouped / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.perCall}x`
+  );
+  assert.ok(
+    parsed / calibration < RATIO_BUDGET.perCall,
+    `parseTokens cost ${(parsed / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.perCall}x`
   );
 });
 

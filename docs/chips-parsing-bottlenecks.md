@@ -1,7 +1,75 @@
 # Plan: Chips parsing/rendering bottleneck improvements
 
-Status: diagnosis measured (2026-10-20), refactor not started.
+Status: steps 1-2 landed (2026-10-20); steps 3-4 open.
 Probes: `C:\Users\Jonathan\AppData\Local\hermes\cache\scratch\chips-probe\probe1-10.mjs`
+
+## Step 1+2 landed: what changed and what it bought
+
+Both steps were done as one change, because they are not independent — see
+"Step 1 does not need a render generation" below.
+
+`getGroupedChips` and `parseTokens` no longer rebuild a cache-wide structure on
+every call. The structure is built once per cache object and reused, and the
+per-entry `expandRecursively` that dominated the build is gone.
+
+| | before | after |
+|---|---|---|
+| `getGroupedChips` (120 chips) | 152 ms | 0.36 ms |
+| `parseTokens` (120 joined) | 147 ms | 2.8 ms |
+| lookup build, cold | ~150 ms | 1.6 ms |
+| candidate build, cold | ~150 ms | 4.4 ms |
+
+Browser, `PresetBasket.render(activeList)` on the dev harness (620 entries):
+
+| chips | before | after |
+|---|---|---|
+| 20 | 269–293 ms | 11 ms |
+| 60 | 284–298 ms | 29–32 ms |
+| 120 | 366–395 ms | 60–76 ms |
+
+**The cost now scales with the basket, which is the point.** Before, a render
+cost about the same at 1 chip as at 120 — a fixed ~300 ms tax on every
+interaction. It is now per-chip work: 11 / 30 / 68 ms at 20 / 60 / 120.
+
+### Attribution: step 2 is the win, step 1 is a 4x on top
+
+Measured separately, because the two are easy to credit wrongly:
+
+- **Dropping the per-entry expansion (step 2): ~150 ms → ~1.5 ms.** That is
+  essentially the whole result. The expansion was 99.5% of the build.
+- **Memoising the structure (step 1): ~1.5 ms → ~0.36 ms**, i.e. a further 4x,
+  saving ~1.1 ms per call. Worth keeping — `getGroupedChips` runs 13 times per
+  render and `parseTokens` runs on every keystroke — but it is a modest
+  multiplier, not the fix.
+
+### Step 1 does not need a render generation
+
+The plan called for keying the memo on "the cache reference **and** the current
+render generation, so a roll invalidates it". That is not needed, and building
+it would have added machinery for nothing.
+
+The `expanded` entry was the *only* nondeterministic input to either structure:
+it was built from `expandRecursively(key, cache)` with no roll manager, so its
+group picks came from `Math.random()`. Measured: two consecutive builds of the
+lookup map produced different keys. Every other entry — `key`, `key.trim()`,
+`wrappedPreset`, `trimmedPreset` — is a pure function of the cache.
+
+So dropping the expanded entries (step 2) is what makes the memo (step 1) safe
+on the cache reference alone. Doing step 1 first would have required the
+generation key; doing them together removes the need for it.
+
+The cache itself needs no invalidation hook either: it is never mutated in
+place. Every load and every save replaces the object
+(`PresetGalleryApp.loadGallery`), so a `WeakMap` keyed on it drops the entry
+along with the old cache.
+
+## Remaining: renderBasketChip is now the cost
+
+With the cache-wide work gone, what is left of a 120-chip render is per-chip
+work — ~60 ms of the 68 ms. That is `renderBasketChip`, which calls
+`findPresetMatch` once per chip and loops the whole cache each time (step 4).
+Steps 3 and 4 are now the whole remaining budget.
+
 
 ## Measured baseline
 
@@ -103,32 +171,35 @@ object. Prefer the steps below, which avoid memoizing a nondeterministic functio
 
 ## Actionable steps
 
-Ordered by leverage. Each step is independently shippable and testable; steps 1–2 are the
-whole win, 3–4 are the remaining 30%.
+Ordered by leverage. Steps 1–2 have landed and removed the cache-wide work from every
+render; steps 3–4 are what remains — with the cache-wide cost gone, the per-chip
+`renderBasketChip` path is now ~60 ms of a 120-chip render's ~68 ms.
 
-### 1. Build the lookup and candidate lists once per render generation, not per call
+### 1. Build the lookup and candidate lists once per cache, not per call — DONE
 
-- **Where:** `PresetLogic.getGroupedChips` (PresetLogic.js:580) and `PresetLogic.parseTokens`
-  (PresetLogic.js:695). Both rebuild their structure from scratch on every invocation.
-- **Change:** build once per cache load and cache the result. Key the memo on the cache
-  reference **and** the current render generation, so a roll invalidates it. `getGroupedChips`
-  is called twice per render (render + `updateBasketActionButtons`); `parseTokens` once.
-- **Expected:** `getGroupedChips` 152 → ~2 ms, `parseTokens` 147 → ~5 ms.
-- **Verify:** existing `preset_logic.test.ts` and `preset_basket.test.ts` stay green; add a test
-  that the cached value is *recomputed* after the roll generation advances (guards the
-  nondeterminism trap above).
+Landed with step 2, as one change.
 
-### 2. Drop the expanded lookup/candidate entries
+- **Where:** `PresetLogic.getGroupedChips` and `PresetLogic.parseTokens`, plus the
+  module-level `derivedByCache` WeakMap and the `buildLookupMap` / `buildCandidates`
+  helpers.
+- **What shipped:** both structures are built lazily on first use and keyed on the cache
+  object. No render generation is involved (see the section above for why it is unnecessary).
+- **Result:** `getGroupedChips` 152 → 0.36 ms, `parseTokens` 147 → 2.8 ms.
 
-- **Where:** PresetLogic.js:590-591 (`getGroupedChips`) and PresetLogic.js:705-708
-  (`parseTokens`) — the `expandRecursively(key, cache)` calls that feed the map.
-- **Change:** remove them. Keep `key`, `key.trim()`, `wrappedPreset`, `trimmedPreset`.
-- **Expected:** 149 → ~1 ms. Step 1 alone gets most of this; doing both means step 1's memo is
-  cheap to build in the first place.
-- **Verify:** re-run `probe9.mjs` / `probe10.mjs` (the reachability probes) and confirm the
-  surviving entries still resolve the same chips — the expanded entry was winning ~2% of them.
-  This is the step most likely to break an existing test; check `preset_logic.test.ts` for
-  assertions on expanded-form matching and update them deliberately, not by loosening them.
+### 2. Drop the expanded lookup/candidate entries — DONE
+
+Landed with step 1, as one change. This is the step that carried the result.
+
+- **Where:** the `expandRecursively(key, cache)` calls that fed the lookup map and the
+  candidate list, now removed from `buildLookupMap` / `buildCandidates`.
+- **Result:** the build went from ~150 ms to ~1.5 ms — the expansion was 99.5% of it.
+- **Behaviour change, deliberate:** a token equal to a *rolled expansion* of a preset no
+  longer resolves to that preset through the expanded entry. Measured on the real library,
+  that path carried 0 of 120 chips in a key basket and 2 of 60 in an expanded basket, and
+  its keys were unstable across builds, so it could not have been relied on. The `key`,
+  raw-text and wrapped entries carry the rest and are pinned by tests.
+- A latent duplicate `candidates.push` of the wrapped preset was removed with it; the
+  dedupe map had been absorbing it.
 
 ### 3. Index the whole-cache scans
 
@@ -148,15 +219,25 @@ whole win, 3–4 are the remaining 30%.
 - **Expected:** recovers 9.1%; makes chip-count scaling linear instead of quadratic.
 - **Verify:** existing preset-match tests; add one asserting a *name* match and a *wrapped* match.
 
-### 5. Tighten the perf budget as each step lands
+### 5. Tighten the perf budget — DONE, with two corrections
 
-- **Where:** `BUDGET_MS` in `tests/unit/preset_logic.perf.test.ts`.
-- **Change:** the guards already exist (see below). What remains is lowering the budget as
-  steps 1-4 land. A budget left at the pre-refactor number stops protecting anything.
-- **Expected:** once steps 1-2 land, both measurements should fall to well under 20 ms and the
-  budget can drop from 800 ms to ~50 ms.
-- **Verify:** `python tools/mutation_check.py` must still report every mutation caught — it
-  includes a multi-fold slowdown that the budget has to trip.
+- **Where:** `RATIO_BUDGET` in `tests/unit/preset_logic.perf.test.ts`.
+- **What shipped:** budgets are now expressed as a multiple of a calibration workload, not in
+  milliseconds — see below. Current readings are 6–12x (lookup build), 21–23x (candidate
+  build), 1.7–2.4x (getGroupedChips/call) and 13–17x (parseTokens/call), against budgets of
+  70x and 60x.
+- **Correction 1 — a per-call budget cannot be a tight guard.** The memo saves ~0.7 ms, below
+  what a timing assertion can separate from noise, and it *absorbs* a build regression into a
+  once-per-load cost, so a per-call measurement never sees it. The guard therefore measures
+  the **cold build** on a cache nothing has derived from, which is where the catastrophic
+  regression lives. That budget bites, and the mutation harness proves it.
+- **Correction 2 — an absolute budget cannot work here at all.** `node --test` runs every test
+  file at once and the host's other load is not ours to control: the same cold build measured
+  1.6 ms solo and between 7 ms and 39 ms across runs of the full suite. No absolute budget is
+  both tight enough to catch a regression and loose enough never to flake — a budget loose
+  enough to survive the worst run would sit above the regression itself. Dividing by a fixed
+  calibration workload that slows down with the machine cancels the load: the ratios above
+  vary by ~1.3x across runs where the raw milliseconds vary by ~4x.
 
 ## Guards that already landed
 
@@ -166,7 +247,7 @@ These are committed and green; they exist so the refactor can be checked between
 |---|---|
 | `tests/fixtures/presets.synthetic.json` | 621-entry synthetic library, committed |
 | `tools/make_synthetic_library.py` | regenerates the fixture from a real library's skeleton |
-| `tests/unit/preset_logic.perf.test.ts` | 8 tests: 2 perf budgets, 3 resolution guards, the memo trap |
+| `tests/unit/preset_logic.perf.test.ts` | 9 tests: 3 perf budgets, 4 resolution guards, the memo trap |
 | `tools/mutation_check.py` | 5 new entries proving those guards bite |
 
 **The fixture mirrors shape, not size alone.** It was generated from the real library's
@@ -181,12 +262,20 @@ tab entries do.
 Regenerate it with `python tools/make_synthetic_library.py` (reads the local, gitignored
 `presets.json`; writes the committed fixture).
 
-**Budgets are regression guards, not goals.** `node --test` runs test *files* in parallel, so
-the same call measures ~190-270 ms loaded versus ~170 ms solo. The tests take the *fastest* of
-5 runs - the minimum is the closest reading of the call's own cost, and a genuine regression
-raises that floor too - and the budget absorbs the rest of the contention. Consequence worth
-knowing: the budget currently catches only multi-fold regressions. It becomes a tight guard
-once step 5 lowers it.
+**Budgets are ratios, not milliseconds.** `node --test` runs test *files* in parallel and the
+host's other load is not ours to control, so an absolute budget is unusable: the same cold
+build measured 1.6 ms solo and 7–39 ms across full-suite runs. No absolute budget is both
+tight enough to catch a regression and loose enough never to flake — one loose enough to
+survive the worst run would sit above the regression itself. Each measurement is divided by a
+fixed calibration workload that slows down with the machine, which cancels the load out: the
+ratios vary ~1.3x across runs where the raw milliseconds vary ~4x. The absolute milliseconds
+are still printed, for tracking between steps.
+
+**The `build` budget is the one that bites; `perCall` is a smoke guard.** The memo saves
+~0.7 ms, below what a timing assertion can separate from noise, and it *absorbs* a build
+regression into a once-per-load cost — so the guard measures the cold build, which is where
+the regression lives. Re-adding the expansion takes the ratio to ~850x against a 70x budget,
+and the mutation harness proves it.
 
 **The resolution guards pin what step 2 must not break.** Measured on the real library, the
 `key` / raw-text / wrapped lookup entries carry 100% of a key-based basket's chips, while the
@@ -202,10 +291,10 @@ deterministic without addressing why it was random.
 
 ## Verification checklist
 
-- `npm test` — 372 tests, all green before starting.
+- `npm test` — 373 tests, all green before starting.
 - `npm run lint` — eslint + tsc clean.
 - `python tools/mutation_check.py` — every mutation caught, no restore warnings.
 - Re-run the perf tests after each step and record the number it recovered; lower `BUDGET_MS`
   to match.
-- Confirm in the real browser (dev harness on :8878) that `render([])` drops from ~100 ms —
-  that is the floor the user actually feels.
+- Check the dev harness (on :8878) still reports 15/15, and that a render scales with the
+  basket rather than costing the same at every size.

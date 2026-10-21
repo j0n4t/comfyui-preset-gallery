@@ -2,6 +2,129 @@ import RollManager from "./RollManager.js";
 
 const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
 
+/**
+ * Which cache key and item a matched token resolves to.
+ * @typedef {Object} ChipLookupEntry
+ * @property {string} foundKey
+ * @property {PresetCacheItem} foundItem
+ */
+
+/**
+ * A string parseTokens can match, with the entry it belongs to. The scan also
+ * synthesises these for bare `{variant}` and `<tag>` runs it finds directly,
+ * which carry `isVar` / `isTag` instead of a cache entry.
+ * @typedef {Object} ChipCandidate
+ * @property {string} matchStr
+ * @property {string} [key]
+ * @property {PresetCacheItem} [item]
+ * @property {boolean} [isVar]
+ * @property {boolean} [isTag]
+ */
+
+/**
+ * Structures derived from a whole cache that do not depend on the tokens being
+ * matched, so they are built once per cache and reused.
+ *
+ * Keyed by the cache object itself. A library load or save replaces that object
+ * (it is never mutated in place), so the entry is dropped along with the cache
+ * and nothing has to invalidate it by hand.
+ *
+ * Both builders are pure functions of `cache` - no rolls, no clock. That is
+ * load-bearing: building them from `expandRecursively(key, cache)` made the
+ * keys depend on Math.random(), so they differed from one build to the next and
+ * could not be memoized at all.
+ *
+ * @type {WeakMap<PresetCache, { lookupMap?: Map<string, ChipLookupEntry>, candidates?: ChipCandidate[] }>}
+ */
+const derivedByCache = new WeakMap();
+
+/**
+ * The derived structures for a cache, built lazily on first use. Each is built
+ * only if something asks for it: parseTokens runs on every keystroke, while
+ * getGroupedChips does not, and neither should pay for the other.
+ * @param {PresetCache} cache
+ * @returns {{ lookupMap?: Map<string, ChipLookupEntry>, candidates?: ChipCandidate[] }}
+ */
+function derivedFor(cache) {
+  let derived = derivedByCache.get(cache);
+  if (!derived) {
+    derived = {};
+    derivedByCache.set(cache, derived);
+  }
+  return derived;
+}
+
+/**
+ * Maps every string a chip can be matched by to the cache entry it names.
+ * Pure function of `cache`.
+ * @param {PresetCache} cache
+ * @returns {Map<string, ChipLookupEntry>}
+ */
+function buildLookupMap(cache) {
+  /** @type {Map<string, ChipLookupEntry>} */
+  const lookupMap = new Map();
+
+  for (const [key, item] of Object.entries(cache)) {
+    if (!item) continue;
+    if (item.preset?.trim()) {
+      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
+      if (wrappedPreset) {
+        lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });
+      }
+
+      const trimmedPreset = item.preset.trim();
+      if (trimmedPreset) {
+        lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });
+      }
+    }
+    if (key) {
+      lookupMap.set(key, { foundKey: key, foundItem: item });
+      lookupMap.set(key.trim(), { foundKey: key, foundItem: item });
+    }
+  }
+  return lookupMap;
+}
+
+/**
+ * The strings parseTokens matches against, longest first so the greedy scan
+ * prefers the most specific match. Pure function of `cache`.
+ * @param {PresetCache} cache
+ * @returns {ChipCandidate[]}
+ */
+function buildCandidates(cache) {
+  /** @type {ChipCandidate[]} */
+  const candidates = [];
+
+  for (const [key, item] of Object.entries(cache)) {
+    if (item?.preset && item.preset.trim()) {
+      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
+      if (wrappedPreset) {
+        candidates.push({ matchStr: wrappedPreset, key, item });
+      }
+
+      const trimmedPreset = item.preset.trim();
+      if (trimmedPreset && trimmedPreset !== wrappedPreset) {
+        candidates.push({ matchStr: trimmedPreset, key, item });
+      }
+    }
+    if (key && key.trim()) {
+      candidates.push({ matchStr: key.trim(), key, item });
+    }
+  }
+
+  /** @type {Map<string, ChipCandidate>} */
+  const byMatchStr = new Map();
+  for (const cand of candidates) {
+    if (!cand.matchStr || !cand.matchStr.trim()) continue;
+    if (!byMatchStr.has(cand.matchStr) || cand.item) {
+      byMatchStr.set(cand.matchStr, cand);
+    }
+  }
+  return Array.from(byMatchStr.values()).sort(
+    (a, b) => b.matchStr.length - a.matchStr.length
+  );
+}
+
 const PresetLogic = {
   // 1. Centralize constants
   WEIGHT_REGEX: /^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/,
@@ -582,25 +705,12 @@ const PresetLogic = {
     const chips = [];
     if (!activeList || activeList.length === 0) return chips;
 
-    const lookupMap = new Map();
+    /** @type {Map<string, ChipLookupEntry>} */
+    let lookupMap = new Map();
     if (cache) {
-      for (const [key, item] of Object.entries(cache)) {
-        if (!item) continue;
-        if (item.preset?.trim()) {
-          const expanded = PresetLogic.expandRecursively(key, cache);
-          if (expanded) lookupMap.set(expanded, { foundKey: key, foundItem: item });
-
-          const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
-          if (wrappedPreset) lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });
-
-          const trimmedPreset = item.preset.trim();
-          if (trimmedPreset) lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });
-        }
-        if (key) {
-          lookupMap.set(key, { foundKey: key, foundItem: item });
-          lookupMap.set(key.trim(), { foundKey: key, foundItem: item });
-        }
-      }
+      const derived = derivedFor(cache);
+      if (!derived.lookupMap) derived.lookupMap = buildLookupMap(cache);
+      lookupMap = derived.lookupMap;
     }
 
     let i = 0;
@@ -697,50 +807,13 @@ const PresetLogic = {
     const tokens = [];
     if (!val) return tokens;
 
-    const candidates = [];
+    /** @type {ChipCandidate[]} */
+    let sortedCandidates = [];
     if (cache) {
-      for (const [key, item] of Object.entries(cache)) {
-        if (item?.preset && item.preset.trim()) {
-          // 1. Fully expanded preset (inheriting prepends/appends)
-          const expanded = PresetLogic.expandRecursively(key, cache);
-          if (expanded && expanded.trim()) {
-            candidates.push({ matchStr: expanded, key, item });
-          }
-
-          // 2. Wrapped but unexpanded preset
-          const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
-
-          if (wrappedPreset && wrappedPreset !== expanded) {
-            candidates.push({ matchStr: wrappedPreset, key, item });
-          }
-
-          if (wrappedPreset && wrappedPreset !== expanded) {
-            candidates.push({ matchStr: wrappedPreset, key, item });
-          }
-
-          // 3. Raw preset fallback
-          const trimmedPreset = item.preset.trim();
-          if (trimmedPreset && trimmedPreset !== expanded && trimmedPreset !== wrappedPreset) {
-            candidates.push({ matchStr: trimmedPreset, key, item });
-          }
-        }
-        if (key && key.trim()) {
-          candidates.push({ matchStr: key.trim(), key, item });
-        }
-      }
+      const derived = derivedFor(cache);
+      if (!derived.candidates) derived.candidates = buildCandidates(cache);
+      sortedCandidates = derived.candidates;
     }
-
-    const candidateMap = new Map();
-    for (const cand of candidates) {
-      if (!cand.matchStr || !cand.matchStr.trim()) continue;
-      if (!candidateMap.has(cand.matchStr) || cand.item) {
-        candidateMap.set(cand.matchStr, cand);
-      }
-    }
-
-    const sortedCandidates = Array.from(candidateMap.values()).sort(
-      (a, b) => b.matchStr.length - a.matchStr.length
-    );
 
     const isValidBoundary = (/** @type {number} */ startIdx, /** @type {number} */ endIdx) => {
       for (let i = startIdx - 1; i >= 0; i--) {
