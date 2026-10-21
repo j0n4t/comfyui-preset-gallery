@@ -350,6 +350,9 @@ above for the numbers.
 
 ## Guards that already landed
 
+**Re-run this any time with `npm run profile`** — it drives the same scenarios in a browser and
+reports ranked frames, call counts and a load-normalised ratio. See `TESTING.md`.
+
 Steps 1-4 have landed and step 5's budgets are tightened; nothing in this plan is outstanding.
 If more is wanted, the next thing worth measuring is `parseTokens`' walk — one call per render,
 but ~16% of the profile, and it is the per-keystroke cost in the raw textarea. It was not part

@@ -9,6 +9,7 @@
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test --grep @smoke",
     "screenshot": "node scripts/screenshot.mjs",
+    "profile": "node scripts/profile.mjs",
     "verify": "npm run lint && npm test && npm run test:py",
     "lint": "npm run lint:eslint && npm run typecheck",
     "lint:eslint": "eslint .",

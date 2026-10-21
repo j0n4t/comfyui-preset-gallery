@@ -12,6 +12,7 @@ findings live in `docs/TESTING.md`.
 | `npm run verify` | lint + typecheck + unit + pytest — the gate before pushing |
 | `npm run test:e2e` | Playwright suite against the `dev/` harness (chromium, serialized) |
 | `npm run test:e2e:smoke` | The `@smoke`-tagged load/search/basket tests only |
+| `npm run profile` | Whole-app bottleneck report in a browser (see below) |
 | `python tools/mutation_check.py` | Applies source mutations; each must fail its test file |
 
 ## Layout
@@ -28,6 +29,41 @@ findings live in `docs/TESTING.md`.
 - `dev/` — the e2e harness: `serve.py` (static server + virtual
   `/scripts/app.js`), `index.html` (mounts the gallery against a fake node,
   exposes `window.__gallery` / `window.__report`), `host.js`.
+
+## Finding bottlenecks
+
+`npm run profile` drives the real UI through the `dev/` harness in a browser and
+reports where the time goes. It is the tool to reach for before optimising
+anything, and the one that produced the measurements in
+`docs/chips-parsing-bottlenecks.md`.
+
+```
+npm run profile                     # every scenario
+npm run profile -- basket-render    # one of them
+npm run profile -- --headful        # watch it happen
+npm run profile -- --json           # machine-readable
+npm run profile -- --top 20         # more frames per scenario
+```
+
+Scenarios: `grid-compile` (library load), `grid-filter` (search),
+`basket-render` (120 chips), `raw-typing` (one keystroke), `expand` (basket into
+the textarea).
+
+For each it prints the ranked self-time frames, the call counts of the helpers
+that have been hot before, and a **load-normalised ratio**.
+
+**Read the ratio and the counts, not the milliseconds.** This machine's external
+load is not ours to control — the same render has been measured at 60 ms and
+350 ms within the hour, and a fixed calibration loop swung 13.6x with no code
+change. The ratio divides by a calibration loop timed in the same run, which
+cancels the load (~1.3x variation where the raw milliseconds vary ~4x). The call
+counts are load-independent outright, and a count that jumps is a regression the
+timing will not show you.
+
+It is deliberately **not** part of `npm run verify`: a wall-clock threshold in CI
+would flake, and it needs a browser. The guards that *do* gate a push live in
+`tests/unit/preset_logic.perf.test.ts`, and they compare against a calibration
+for the same reason.
 
 ## Conventions
 
