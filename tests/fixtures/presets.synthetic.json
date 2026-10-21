@@ -1,0 +1,1946 @@
+{
+  "action": {
+    "__color__": "#972140"
+  },
+  "action/action_amber": {
+    "preset": "bold moss"
+  },
+  "action/action_amber_2": {
+    "preset": "rich tundra"
+  },
+  "action/action_atlas": {
+    "preset": "bold thicket"
+  },
+  "action/action_cedar": {
+    "preset": "pale slate"
+  },
+  "action/action_cobalt": {
+    "preset": "dense willow"
+  },
+  "action/action_ember": {
+    "preset": "{qty}, bold hollow"
+  },
+  "action/action_harbor": {
+    "preset": "glossy beacon"
+  },
+  "action/action_harbor_2": {
+    "preset": "muted fable"
+  },
+  "action/action_harbor_3": {
+    "preset": "crisp beacon"
+  },
+  "action/action_harbor_4": {
+    "preset": "rich ivory"
+  },
+  "action/action_harbor_5": {
+    "preset": "rich willow"
+  },
+  "action/action_hollow": {
+    "preset": "muted atlas"
+  },
+  "action/action_hollow_2": {
+    "preset": "faded thicket"
+  },
+  "action/action_lantern": {
+    "preset": "warm cedar, crisp prism"
+  },
+  "action/action_marble": {
+    "preset": "muted ribbon"
+  },
+  "action/action_meadow": {
+    "preset": "crisp marble"
+  },
+  "action/action_meadow_2": {
+    "preset": "warm slate"
+  },
+  "action/action_moss": {
+    "preset": "vivid moss"
+  },
+  "action/action_moss_2": {
+    "preset": "soft tundra"
+  },
+  "action/action_quartz": {
+    "preset": "glossy meadow"
+  },
+  "action/action_ribbon": {
+    "preset": "dense harbor"
+  },
+  "action/action_signal": {
+    "preset": "glossy harbor"
+  },
+  "action/action_signal_2": {
+    "preset": "crisp amber"
+  },
+  "action/action_signal_3": {
+    "preset": "cool quartz"
+  },
+  "action/action_slate": {
+    "preset": "{pose}, deep amber"
+  },
+  "action/action_thicket": {
+    "preset": "pale slate"
+  },
+  "action/action_thicket_2": {
+    "preset": "bold harbor"
+  },
+  "action/action_vellum": {
+    "preset": "muted ivory"
+  },
+  "body": {
+    "__color__": "#20ac95"
+  },
+  "body/body_amber": {
+    "preset": "muted moss"
+  },
+  "body/body_amber_2": {
+    "preset": "crisp lantern"
+  },
+  "body/body_beacon": {
+    "preset": "cool thicket"
+  },
+  "body/body_harbor": {
+    "preset": "pale linen, soft beacon"
+  },
+  "body/body_ivory": {
+    "preset": "matte linen"
+  },
+  "body/body_meadow": {
+    "preset": "warm prism"
+  },
+  "body/body_meadow_2": {
+    "preset": "airy vellum"
+  },
+  "body/body_signal": {
+    "preset": "{pattern:slate}, bold tundra, deep willow"
+  },
+  "body/body_signal_2": {
+    "preset": "muted ember"
+  },
+  "body/body_slate": {
+    "preset": "{art}, bright ember"
+  },
+  "body/body_slate_2": {
+    "preset": "airy lantern"
+  },
+  "body/body_thicket": {
+    "preset": "glossy atlas"
+  },
+  "body/body_tundra": {
+    "preset": "muted willow"
+  },
+  "char": {
+    "__color__": "#dc9518"
+  },
+  "char/atlas/atlas_atlas": {
+    "preset": "rich vellum, rich linen",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_fable": {
+    "preset": "airy willow, crisp hollow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_harbor": {
+    "preset": "warm cedar harbor, crisp harbor",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_harbor_2": {
+    "preset": "bold meadow fable, bold slate prism marble",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_hollow": {
+    "preset": "bold marble",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_meadow": {
+    "preset": "faded tundra harbor, dense ivory, faded ivory, subtle lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_prism": {
+    "preset": "airy hollow moss harbor, muted thicket, bright willow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_quartz": {
+    "preset": "crisp beacon",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_ribbon": {
+    "preset": "matte lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_signal": {
+    "preset": "warm cobalt linen, subtle quartz",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/atlas/atlas_vellum": {
+    "preset": "subtle beacon",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_amber": {
+    "preset": "faded quartz",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_amber_2": {
+    "preset": "airy meadow, faded atlas",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_beacon": {
+    "preset": "warm cedar",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_cedar": {
+    "preset": "deep cedar",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_cedar_2": {
+    "preset": "warm slate",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_cobalt": {
+    "preset": "soft prism, matte willow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_ember": {
+    "preset": "faded meadow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_ember_2": {
+    "preset": "bold beacon",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_fable": {
+    "preset": "deep cobalt",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_harbor": {
+    "preset": "matte thicket",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_harbor_2": {
+    "preset": "matte moss",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_ivory": {
+    "preset": "rich prism",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_meadow": {
+    "preset": "matte meadow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_meadow_2": {
+    "preset": "vivid cobalt",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_moss": {
+    "preset": "matte vellum",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_moss_2": {
+    "preset": "matte prism",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_moss_3": {
+    "preset": "faded thicket",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_prism": {
+    "preset": "dense lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_quartz": {
+    "preset": "vivid beacon",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_quartz_2": {
+    "preset": "glossy cobalt",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_quartz_3": {
+    "preset": "airy amber, dense lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_quartz_4": {
+    "preset": "cool thicket",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_signal": {
+    "preset": "cool prism",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_vellum": {
+    "preset": "subtle atlas",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_vellum_2": {
+    "preset": "cool slate",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_willow": {
+    "preset": "rich tundra",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_willow_2": {
+    "preset": "dense ember",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/ember/ember_willow_3": {
+    "preset": "faded meadow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/fable/fable_beacon": {
+    "preset": "matte willow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/fable/fable_beacon_2": {
+    "preset": "bold lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/fable/fable_cedar": {
+    "preset": "warm moss",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/fable/fable_hollow": {
+    "preset": "bright hollow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/fable/fable_marble": {
+    "preset": "dense cobalt",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/fable/fable_prism": {
+    "preset": "vivid tundra",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/fable/fable_signal": {
+    "preset": "warm lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/fable/fable_signal_2": {
+    "preset": "faded cedar",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_amber": {
+    "preset": "<steps:ivory>, crisp willow amber beacon, muted hollow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_cedar": {
+    "preset": "crisp slate atlas, deep quartz",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_hollow": {
+    "preset": "<model:atlas>, deep signal",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_lantern": {
+    "preset": "matte tundra",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_lantern_2": {
+    "preset": "<steps:moss>, pale ivory lantern beacon, glossy harbor",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_marble": {
+    "preset": "muted harbor thicket lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_moss": {
+    "preset": "faded ribbon, soft linen",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_prism": {
+    "preset": "bold linen, subtle linen, muted vellum marble, glossy beacon, muted beacon",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/lantern/lantern_prism_2": {
+    "preset": "crisp harbor",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_amber": {
+    "preset": "glossy ember tundra, warm linen, crisp atlas",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_atlas": {
+    "preset": "dense linen",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_beacon": {
+    "preset": "muted cobalt",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_beacon_2": {
+    "preset": "airy signal",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_harbor": {
+    "preset": "cool ember",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_harbor_2": {
+    "preset": "rich ivory",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_meadow": {
+    "preset": "matte amber",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_meadow_2": {
+    "preset": "subtle prism, dense lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_meadow_3": {
+    "preset": "warm willow slate, bold marble, faded moss, deep cobalt, rich fable",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_prism": {
+    "preset": "airy amber thicket, matte thicket",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/prism/prism_prism_2": {
+    "preset": "faded beacon",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_beacon": {
+    "preset": "soft linen",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_cedar": {
+    "preset": "warm lantern",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_cedar_2": {
+    "preset": "dense cobalt",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_ember": {
+    "preset": "vivid ivory, vivid slate",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_fable": {
+    "preset": "glossy slate moss beacon, vivid moss, deep harbor",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_hollow": {
+    "preset": "rich ember, muted willow, rich linen",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_lantern": {
+    "preset": "cool linen",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_meadow": {
+    "preset": "glossy beacon",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_meadow_2": {
+    "preset": "subtle willow",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_prism": {
+    "preset": "matte slate",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_slate": {
+    "preset": "crisp moss",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_vellum": {
+    "preset": "deep ribbon",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "char/quartz/quartz_willow": {
+    "preset": "glossy lantern, cool marble",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "place": {
+    "__color__": "#1f9342"
+  },
+  "place/place_amber": {
+    "preset": "glossy meadow"
+  },
+  "place/place_atlas": {
+    "preset": "deep moss, crisp tundra, subtle hollow"
+  },
+  "place/place_cobalt": {
+    "preset": "vivid slate"
+  },
+  "place/place_fable": {
+    "preset": "glossy lantern"
+  },
+  "place/place_harbor": {
+    "preset": "crisp cobalt"
+  },
+  "place/place_marble": {
+    "preset": "pale thicket"
+  },
+  "place/place_meadow": {
+    "preset": "vivid atlas"
+  },
+  "place/place_moss": {
+    "preset": "subtle lantern"
+  },
+  "place/place_prism": {
+    "preset": "rich signal marble hollow, matte willow"
+  },
+  "place/place_quartz": {
+    "preset": "subtle slate"
+  },
+  "place/place_quartz_2": {
+    "preset": "crisp vellum"
+  },
+  "place/place_ribbon": {
+    "preset": "dense linen"
+  },
+  "place/place_signal": {
+    "preset": "soft quartz"
+  },
+  "place/place_slate": {
+    "preset": "matte thicket"
+  },
+  "place/place_thicket": {
+    "preset": "subtle cobalt beacon, warm beacon"
+  },
+  "pose": {
+    "__color__": "#4d79ff"
+  },
+  "pose/feel/feel_amber": {
+    "preset": "deep cobalt"
+  },
+  "pose/feel/feel_atlas": {
+    "preset": "faded ivory"
+  },
+  "pose/feel/feel_meadow": {
+    "preset": "warm amber"
+  },
+  "pose/feel/feel_prism": {
+    "preset": "bold marble"
+  },
+  "pose/feel/feel_signal": {
+    "preset": "rich willow"
+  },
+  "pose/feel/feel_willow": {
+    "preset": "pale harbor"
+  },
+  "pose/pose_amber": {
+    "preset": "glossy linen, bright fable"
+  },
+  "pose/pose_amber_2": {
+    "preset": "bold prism willow, airy willow"
+  },
+  "pose/pose_atlas": {
+    "preset": "crisp signal meadow, muted slate, soft ribbon, airy beacon"
+  },
+  "pose/pose_beacon": {
+    "preset": "soft beacon"
+  },
+  "pose/pose_beacon_2": {
+    "preset": "vivid linen"
+  },
+  "pose/pose_beacon_3": {
+    "preset": "bright meadow, soft amber"
+  },
+  "pose/pose_cedar": {
+    "preset": "dense marble"
+  },
+  "pose/pose_cobalt": {
+    "preset": "bold linen"
+  },
+  "pose/pose_cobalt_2": {
+    "preset": "bright cobalt"
+  },
+  "pose/pose_ember": {
+    "preset": "pale linen"
+  },
+  "pose/pose_ember_2": {
+    "preset": "faded tundra"
+  },
+  "pose/pose_fable": {
+    "preset": "{color}, matte lantern"
+  },
+  "pose/pose_fable_2": {
+    "preset": "vivid tundra cobalt prism, matte signal"
+  },
+  "pose/pose_harbor": {
+    "preset": "vivid amber"
+  },
+  "pose/pose_harbor_2": {
+    "preset": "{qty}, glossy marble"
+  },
+  "pose/pose_harbor_3": {
+    "preset": "faded hollow"
+  },
+  "pose/pose_hollow": {
+    "preset": "crisp marble, muted lantern"
+  },
+  "pose/pose_hollow_2": {
+    "preset": "vivid linen"
+  },
+  "pose/pose_ivory": {
+    "preset": "dense hollow"
+  },
+  "pose/pose_ivory_2": {
+    "preset": "matte vellum, glossy linen"
+  },
+  "pose/pose_lantern": {
+    "preset": "vivid amber"
+  },
+  "pose/pose_linen": {
+    "preset": "dense lantern, subtle willow"
+  },
+  "pose/pose_linen_2": {
+    "preset": "matte cedar, subtle tundra"
+  },
+  "pose/pose_marble": {
+    "preset": "matte marble"
+  },
+  "pose/pose_moss": {
+    "preset": "faded beacon"
+  },
+  "pose/pose_moss_2": {
+    "preset": "warm ribbon"
+  },
+  "pose/pose_thicket": {
+    "preset": "rich prism"
+  },
+  "pose/pose_thicket_2": {
+    "preset": "soft cedar"
+  },
+  "pose/pose_thicket_3": {
+    "preset": "soft meadow"
+  },
+  "pose/pose_tundra": {
+    "preset": "bold linen"
+  },
+  "pose/pose_tundra_2": {
+    "preset": "soft slate"
+  },
+  "pose/pose_tundra_3": {
+    "preset": "pale vellum"
+  },
+  "pose/pose_tundra_4": {
+    "preset": "airy ivory"
+  },
+  "pose/pose_tundra_5": {
+    "preset": "crisp ember, crisp moss"
+  },
+  "pose/pose_vellum": {
+    "preset": "bright linen, pale cobalt"
+  },
+  "pose/pose_willow": {
+    "preset": "airy lantern"
+  },
+  "prop": {
+    "__color__": "#558be2"
+  },
+  "prop/deco/deco_amber": {
+    "preset": "pale cedar"
+  },
+  "prop/deco/deco_amber_2": {
+    "preset": "{qty}, deep ribbon"
+  },
+  "prop/deco/deco_atlas": {
+    "preset": "deep meadow"
+  },
+  "prop/deco/deco_cedar": {
+    "preset": "pale lantern"
+  },
+  "prop/deco/deco_cedar_2": {
+    "preset": "{hair}, airy lantern"
+  },
+  "prop/deco/deco_cobalt": {
+    "preset": "dense atlas"
+  },
+  "prop/deco/deco_fable": {
+    "preset": "dense harbor"
+  },
+  "prop/deco/deco_fable_2": {
+    "preset": "airy slate"
+  },
+  "prop/deco/deco_hollow": {
+    "preset": "muted moss"
+  },
+  "prop/deco/deco_ivory": {
+    "preset": "pale amber"
+  },
+  "prop/deco/deco_lantern": {
+    "preset": "airy fable"
+  },
+  "prop/deco/deco_linen": {
+    "preset": "cool beacon"
+  },
+  "prop/deco/deco_marble": {
+    "preset": "{hair}, rich atlas"
+  },
+  "prop/deco/deco_marble_2": {
+    "preset": "cool fable"
+  },
+  "prop/deco/deco_meadow": {
+    "preset": "muted willow"
+  },
+  "prop/deco/deco_moss": {
+    "preset": "dense willow"
+  },
+  "prop/deco/deco_prism": {
+    "preset": "faded quartz"
+  },
+  "prop/deco/deco_prism_2": {
+    "preset": "{artist}, cool meadow"
+  },
+  "prop/deco/deco_prism_3": {
+    "preset": "cool cedar"
+  },
+  "prop/deco/deco_prism_4": {
+    "preset": "dense beacon"
+  },
+  "prop/deco/deco_prism_5": {
+    "preset": "vivid beacon"
+  },
+  "prop/deco/deco_ribbon": {
+    "preset": "soft meadow"
+  },
+  "prop/deco/deco_ribbon_2": {
+    "preset": "vivid linen"
+  },
+  "prop/deco/deco_signal": {
+    "preset": "crisp moss"
+  },
+  "prop/deco/deco_signal_2": {
+    "preset": "soft signal"
+  },
+  "prop/deco/deco_signal_3": {
+    "preset": "faded fable"
+  },
+  "prop/deco/deco_slate": {
+    "preset": "{art}, bright tundra"
+  },
+  "prop/deco/deco_thicket": {
+    "preset": "{art:fable}, glossy harbor"
+  },
+  "prop/deco/deco_tundra": {
+    "preset": "matte harbor"
+  },
+  "prop/deco/deco_vellum": {
+    "preset": "muted meadow"
+  },
+  "prop/furn/furn_atlas": {
+    "preset": "{place:signal}, {artist:cobalt}, dense harbor"
+  },
+  "prop/furn/furn_beacon": {
+    "preset": "soft willow"
+  },
+  "prop/furn/furn_fable": {
+    "preset": "{art}, {qty}, vivid hollow"
+  },
+  "prop/furn/furn_fable_2": {
+    "preset": "vivid prism"
+  },
+  "prop/furn/furn_hollow": {
+    "preset": "pale marble"
+  },
+  "prop/furn/furn_ivory": {
+    "preset": "{artist}, soft willow"
+  },
+  "prop/furn/furn_lantern": {
+    "preset": "cool atlas"
+  },
+  "prop/furn/furn_quartz": {
+    "preset": "{art}, {qty}, {pose}, deep hollow"
+  },
+  "prop/furn/furn_signal": {
+    "preset": "warm slate"
+  },
+  "prop/furn/furn_slate": {
+    "preset": "matte cobalt"
+  },
+  "prop/season/season_amber": {
+    "preset": "glossy atlas"
+  },
+  "prop/season/season_cedar": {
+    "preset": "cool linen"
+  },
+  "prop/season/season_cobalt": {
+    "preset": "bold meadow"
+  },
+  "prop/season/season_tundra": {
+    "preset": "crisp linen"
+  },
+  "scene": {
+    "__color__": "#d0b116"
+  },
+  "scene/scene_beacon": {
+    "preset": "matte ember, faded vellum"
+  },
+  "scene/scene_ivory": {
+    "preset": "{pose:prism}, subtle moss ribbon, subtle marble beacon, crisp ribbon"
+  },
+  "scene/scene_quartz": {
+    "preset": "{pose}, faded vellum quartz, soft cobalt meadow hollow, crisp slate willow, deep willow"
+  },
+  "shade/action/action_beacon": {
+    "preset": "{qty}, {art}, bright ivory"
+  },
+  "shade/action/action_marble": {
+    "preset": "faded moss"
+  },
+  "shade/action/action_marble_2": {
+    "preset": "cool marble"
+  },
+  "shade/action/action_moss": {
+    "preset": "muted vellum ivory, glossy tundra"
+  },
+  "shade/action/action_signal": {
+    "preset": "bright cedar"
+  },
+  "shade/action/action_slate": {
+    "preset": "dense quartz"
+  },
+  "shade/action/action_slate_2": {
+    "preset": "soft atlas"
+  },
+  "shade/action/action_thicket": {
+    "preset": "cool marble"
+  },
+  "shade/action/action_vellum": {
+    "preset": "warm atlas"
+  },
+  "shade/body/body_atlas": {
+    "preset": "matte quartz"
+  },
+  "shade/body/body_cedar": {
+    "preset": "airy moss quartz, faded hollow"
+  },
+  "shade/body/body_hollow": {
+    "preset": "{pose}, dense quartz"
+  },
+  "shade/body/body_ivory": {
+    "preset": "bold ember, subtle fable"
+  },
+  "shade/body/body_ivory_2": {
+    "preset": "dense linen"
+  },
+  "shade/body/body_meadow": {
+    "preset": "{place}, faded ivory, glossy meadow, faded signal"
+  },
+  "shade/body/body_moss": {
+    "preset": "bright moss"
+  },
+  "shade/body/body_quartz": {
+    "preset": "soft atlas"
+  },
+  "shade/deco/deco_meadow": {
+    "preset": "soft meadow"
+  },
+  "shade/deco/deco_moss": {
+    "preset": "faded meadow"
+  },
+  "shade/deco/deco_ribbon": {
+    "preset": "cool linen"
+  },
+  "shade/man/man_beacon": {
+    "preset": "soft ribbon meadow cedar, rich amber",
+    "filename": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  "shade/man/man_prism": {
+    "preset": "rich willow"
+  },
+  "shade/pose/pose_meadow": {
+    "preset": "soft harbor"
+  },
+  "shade/pose/pose_moss": {
+    "preset": "faded vellum harbor beacon, glossy ribbon moss, airy prism moss, bright ribbon tundra, faded willow linen hollow, airy lantern, cool quartz"
+  },
+  "shade/pose/pose_ribbon": {
+    "preset": "matte thicket"
+  },
+  "shade/scene/scene_harbor": {
+    "preset": "muted cobalt fable, matte ember, cool meadow"
+  },
+  "shade/scene/scene_harbor_2": {
+    "preset": "glossy tundra beacon linen, bold amber, warm prism, soft harbor atlas ribbon, crisp beacon"
+  },
+  "shade/scene/scene_ivory": {
+    "preset": "{pattern:vellum}, {artist:cobalt}, pale amber tundra atlas, dense moss ivory, glossy fable tundra vellum, bright ribbon quartz, bold slate, warm thicket willow, soft beacon fable, faded ivory, pale quartz signal ember, pale slate, deep slate, pale meadow linen, cool ivory"
+  },
+  "shade/scene/scene_lantern": {
+    "preset": "cool quartz hollow, rich beacon, bright fable ivory, faded moss, crisp atlas"
+  },
+  "shade/scene/scene_lantern_2": {
+    "preset": "faded thicket signal, soft ember, bold atlas cobalt, cool prism quartz meadow, subtle linen"
+  },
+  "shade/scene/scene_linen": {
+    "preset": "{place}, {pattern}, {place}, {hair}, {hair:hollow}, {color:thicket}, {artist:atlas}, {artist:prism}, {art:meadow}, {place:ribbon}, {art:hollow}, {hair:marble}, {qty:harbor}, {place:willow}, {color:cobalt}, {qty:prism}, {place:vellum}, {hair:ivory}, airy harbor ember, crisp hollow meadow ivory, deep ember willow hollow, deep tundra slate, soft prism, faded harbor, bright ember"
+  },
+  "shade/scene/scene_marble": {
+    "preset": "matte vellum cobalt, cool cobalt, faded fable, glossy cobalt vellum linen"
+  },
+  "shade/scene/scene_meadow": {
+    "preset": "{color:cobalt}, {pose:cedar}, {place:moss}, {qty:hollow}, {artist:ivory}, {pattern:atlas}, {qty:linen}, glossy thicket hollow, matte quartz, crisp harbor, vivid moss, deep cedar, rich atlas, airy marble, dense prism, dense quartz ivory, vivid tundra thicket beacon, pale meadow, pale moss signal, vivid beacon cedar fable, vivid willow, deep prism, matte willow vellum cobalt, vivid fable amber, bold slate ribbon, bright quartz tundra fable, faded signal, vivid linen"
+  },
+  "shade/scene/scene_quartz": {
+    "preset": "{artist:marble}, bold marble, airy fable quartz ivory, muted linen cedar, airy prism lantern signal, faded slate, airy moss, cool ember"
+  },
+  "shade/scene/scene_ribbon": {
+    "preset": "glossy ribbon slate ivory, rich quartz, pale ember"
+  },
+  "shade/scene/scene_thicket": {
+    "preset": "deep thicket, dense fable, bold willow, bold linen, dense cobalt"
+  },
+  "shade/scene/scene_vellum": {
+    "preset": "vivid lantern willow fable, warm fable, glossy quartz"
+  },
+  "shade/scene/scene_willow": {
+    "preset": "pale hollow"
+  },
+  "shade/thing/thing_lantern": {
+    "preset": "soft quartz"
+  },
+  "shade/thing/thing_tundra": {
+    "preset": "{qty}, {art:harbor}, bright moss, cool cedar moss beacon, dense atlas, bold marble"
+  },
+  "shade/wear/cloth/cloth_signal": {
+    "preset": "bold fable"
+  },
+  "style/art": {
+    "__color__": "#b540c4"
+  },
+  "style/art/art_amber": {
+    "preset": "crisp hollow"
+  },
+  "style/art/art_beacon": {
+    "preset": "bold amber"
+  },
+  "style/art/art_beacon_2": {
+    "preset": "subtle linen"
+  },
+  "style/art/art_cedar": {
+    "preset": "dense slate"
+  },
+  "style/art/art_cedar_2": {
+    "preset": "glossy tundra"
+  },
+  "style/art/art_cedar_3": {
+    "preset": "rich thicket"
+  },
+  "style/art/art_cobalt": {
+    "preset": "rich willow"
+  },
+  "style/art/art_fable": {
+    "preset": "bright cedar"
+  },
+  "style/art/art_harbor": {
+    "preset": "airy cobalt"
+  },
+  "style/art/art_hollow": {
+    "preset": "matte fable"
+  },
+  "style/art/art_ivory": {
+    "preset": "crisp marble"
+  },
+  "style/art/art_linen": {
+    "preset": "soft hollow"
+  },
+  "style/art/art_meadow": {
+    "preset": "vivid lantern"
+  },
+  "style/art/art_moss": {
+    "preset": "matte lantern"
+  },
+  "style/art/art_moss_2": {
+    "preset": "warm harbor"
+  },
+  "style/art/art_prism": {
+    "preset": "bright signal"
+  },
+  "style/art/art_prism_2": {
+    "preset": "pale thicket"
+  },
+  "style/art/art_quartz": {
+    "preset": "subtle amber"
+  },
+  "style/art/art_quartz_2": {
+    "preset": "soft thicket"
+  },
+  "style/art/art_ribbon": {
+    "preset": "matte ivory"
+  },
+  "style/art/art_signal": {
+    "preset": "muted thicket"
+  },
+  "style/art/art_slate": {
+    "preset": "muted hollow"
+  },
+  "style/art/art_willow": {
+    "preset": "bold slate"
+  },
+  "style/artist": {
+    "__color__": "#812abb"
+  },
+  "style/artist/artist_amber": {
+    "preset": "bold slate"
+  },
+  "style/artist/artist_amber_2": {
+    "preset": "crisp quartz"
+  },
+  "style/artist/artist_atlas": {
+    "preset": "subtle ember, soft lantern"
+  },
+  "style/artist/artist_atlas_2": {
+    "preset": "crisp cobalt"
+  },
+  "style/artist/artist_cedar": {
+    "preset": "cool ivory"
+  },
+  "style/artist/artist_cobalt": {
+    "preset": "subtle quartz"
+  },
+  "style/artist/artist_cobalt_2": {
+    "preset": "dense ivory, vivid cedar"
+  },
+  "style/artist/artist_cobalt_3": {
+    "preset": "muted beacon"
+  },
+  "style/artist/artist_cobalt_4": {
+    "preset": "bold linen"
+  },
+  "style/artist/artist_ember": {
+    "preset": "warm tundra"
+  },
+  "style/artist/artist_fable": {
+    "preset": "soft beacon"
+  },
+  "style/artist/artist_harbor": {
+    "preset": "bright thicket harbor slate"
+  },
+  "style/artist/artist_hollow": {
+    "preset": "bright hollow"
+  },
+  "style/artist/artist_hollow_2": {
+    "preset": "rich fable, warm hollow"
+  },
+  "style/artist/artist_ivory": {
+    "preset": "bright lantern, subtle thicket"
+  },
+  "style/artist/artist_lantern": {
+    "preset": "glossy harbor"
+  },
+  "style/artist/artist_lantern_2": {
+    "preset": "pale signal"
+  },
+  "style/artist/artist_linen": {
+    "preset": "vivid ivory"
+  },
+  "style/artist/artist_linen_2": {
+    "preset": "warm slate, crisp ember"
+  },
+  "style/artist/artist_marble": {
+    "preset": "rich lantern"
+  },
+  "style/artist/artist_marble_2": {
+    "preset": "rich amber, airy linen"
+  },
+  "style/artist/artist_meadow": {
+    "preset": "cool vellum"
+  },
+  "style/artist/artist_moss": {
+    "preset": "airy amber"
+  },
+  "style/artist/artist_moss_2": {
+    "preset": "airy moss"
+  },
+  "style/artist/artist_prism": {
+    "preset": "pale quartz"
+  },
+  "style/artist/artist_prism_2": {
+    "preset": "airy ivory, cool willow"
+  },
+  "style/artist/artist_prism_3": {
+    "preset": "matte harbor"
+  },
+  "style/artist/artist_ribbon": {
+    "preset": "airy tundra"
+  },
+  "style/artist/artist_signal": {
+    "preset": "cool linen"
+  },
+  "style/artist/artist_thicket": {
+    "preset": "bright atlas"
+  },
+  "style/artist/artist_thicket_2": {
+    "preset": "subtle quartz"
+  },
+  "style/artist/artist_thicket_3": {
+    "preset": "deep fable, rich atlas, pale hollow"
+  },
+  "style/artist/artist_tundra": {
+    "preset": "dense tundra"
+  },
+  "style/artist/artist_vellum": {
+    "preset": "subtle thicket"
+  },
+  "style/artist/artist_willow": {
+    "preset": "bright ember, vivid prism"
+  },
+  "style/combo": {
+    "__color__": "#5125b6"
+  },
+  "style/combo/combo_amber": {
+    "preset": "bold thicket, bright signal, rich fable"
+  },
+  "style/combo/combo_cedar": {
+    "preset": "<steps:marble>, <lora:marble>, crisp linen hollow meadow, soft marble meadow beacon, rich fable cedar, rich thicket"
+  },
+  "style/combo/combo_cobalt": {
+    "preset": "rich marble, faded ribbon"
+  },
+  "style/combo/combo_fable": {
+    "preset": "soft meadow marble, bold cedar, bright amber, bright beacon"
+  },
+  "style/combo/combo_harbor": {
+    "preset": "bold slate moss marble, deep signal, cool marble vellum signal, warm thicket"
+  },
+  "style/combo/combo_harbor_2": {
+    "preset": "{artist}, {pose}, {pattern}, {color}"
+  },
+  "style/combo/combo_ivory": {
+    "preset": "matte harbor vellum, pale beacon, glossy marble lantern, vivid ribbon tundra amber, glossy ribbon"
+  },
+  "style/combo/combo_ivory_2": {
+    "preset": "<model:meadow>, <lora:amber>, matte prism, muted linen vellum, cool hollow amber linen, bright ivory slate, deep tundra ember cedar, rich signal"
+  },
+  "style/combo/combo_ivory_3": {
+    "preset": "cool moss, rich ivory"
+  },
+  "style/combo/combo_ivory_4": {
+    "preset": "<steps:atlas>, <steps:lantern>, soft atlas lantern, faded marble atlas, muted quartz cedar lantern, deep willow"
+  },
+  "style/combo/combo_ivory_5": {
+    "preset": "deep quartz, pale hollow, bold marble hollow, warm meadow, soft ember, dense cobalt"
+  },
+  "style/combo/combo_ivory_6": {
+    "preset": "<model:amber>, <steps:vellum>, muted atlas, rich slate harbor, crisp prism, airy thicket, crisp signal, crisp slate"
+  },
+  "style/combo/combo_lantern": {
+    "preset": "<steps:hollow>, <steps:ivory>, soft ivory fable cobalt, airy marble lantern, vivid ribbon moss, dense prism, faded amber"
+  },
+  "style/combo/combo_linen": {
+    "preset": "soft tundra moss, cool linen, crisp ember, airy atlas"
+  },
+  "style/combo/combo_linen_2": {
+    "preset": "matte vellum prism cedar, dense vellum, airy thicket"
+  },
+  "style/combo/combo_linen_3": {
+    "preset": "muted willow tundra linen, faded willow"
+  },
+  "style/combo/combo_linen_4": {
+    "preset": "<lora:ember>, <cfg:beacon>, airy lantern vellum quartz, subtle cobalt, subtle tundra"
+  },
+  "style/combo/combo_linen_5": {
+    "preset": "bright ember thicket fable, rich hollow, subtle ember, cool cedar"
+  },
+  "style/combo/combo_marble": {
+    "preset": "<steps:fable>, pale marble meadow hollow, bright slate, dense beacon"
+  },
+  "style/combo/combo_marble_2": {
+    "preset": "cool quartz, bold marble"
+  },
+  "style/combo/combo_meadow": {
+    "preset": "soft amber slate atlas, matte quartz, airy fable, dense quartz"
+  },
+  "style/combo/combo_moss": {
+    "preset": "rich tundra thicket, muted tundra, warm ember, crisp ribbon"
+  },
+  "style/combo/combo_moss_2": {
+    "preset": "subtle prism, dense cedar"
+  },
+  "style/combo/combo_moss_3": {
+    "preset": "<model:ember>, <model:lantern>, subtle hollow vellum atlas, rich linen beacon moss, matte ribbon, warm ivory"
+  },
+  "style/combo/combo_prism": {
+    "preset": "muted ember beacon, bold tundra cedar marble, bright meadow, dense harbor"
+  },
+  "style/combo/combo_prism_2": {
+    "preset": "faded slate linen meadow, vivid ribbon"
+  },
+  "style/combo/combo_quartz": {
+    "preset": "deep signal hollow thicket, rich quartz, deep amber"
+  },
+  "style/combo/combo_slate": {
+    "preset": "<lora:fable>, <lora:lantern>, soft slate, crisp tundra meadow signal, subtle quartz, soft cedar meadow ivory, vivid meadow"
+  },
+  "style/combo/combo_slate_2": {
+    "preset": "<lora:ribbon>, <model:harbor>, <cfg:slate>, glossy tundra ivory, vivid marble, vivid fable linen, dense beacon slate ribbon, matte harbor, pale marble, bright cobalt"
+  },
+  "style/combo/combo_slate_3": {
+    "preset": "pale cedar ivory, bold cobalt, bright cobalt signal harbor, muted cedar, dense tundra willow, pale vellum"
+  },
+  "style/combo/combo_slate_4": {
+    "preset": "rich harbor, warm slate"
+  },
+  "style/combo/combo_thicket": {
+    "preset": "pale ivory ribbon, muted tundra, dense lantern"
+  },
+  "style/combo/combo_tundra": {
+    "preset": "<steps:cedar>, <model:tundra>, bold fable, glossy hollow willow, subtle prism ivory moss, dense willow"
+  },
+  "style/combo/combo_tundra_2": {
+    "preset": "<steps:amber>, <lora:lantern>, rich prism meadow, cool ember, cool moss"
+  },
+  "style/combo/combo_tundra_3": {
+    "preset": "<lora:ivory>, <cfg:moss>, subtle quartz, muted moss slate, glossy slate, glossy prism, cool ivory ember, matte harbor"
+  },
+  "style/combo/combo_willow": {
+    "preset": "<steps:quartz>, <cfg:willow>, vivid atlas ribbon beacon, rich moss, faded amber"
+  },
+  "style/combo/combo_willow_2": {
+    "preset": "subtle ribbon harbor, deep beacon"
+  },
+  "thing": {
+    "__color__": "#805100"
+  },
+  "thing/thing_amber": {
+    "preset": "deep beacon"
+  },
+  "thing/thing_beacon": {
+    "preset": "airy moss"
+  },
+  "thing/thing_beacon_2": {
+    "preset": "bold harbor"
+  },
+  "thing/thing_beacon_3": {
+    "preset": "airy cobalt"
+  },
+  "thing/thing_beacon_4": {
+    "preset": "rich amber"
+  },
+  "thing/thing_cedar": {
+    "preset": "deep harbor"
+  },
+  "thing/thing_cobalt": {
+    "preset": "muted thicket"
+  },
+  "thing/thing_cobalt_2": {
+    "preset": "airy quartz"
+  },
+  "thing/thing_fable": {
+    "preset": "matte beacon"
+  },
+  "thing/thing_fable_2": {
+    "preset": "warm prism"
+  },
+  "thing/thing_harbor": {
+    "preset": "matte hollow"
+  },
+  "thing/thing_ivory": {
+    "preset": "subtle vellum"
+  },
+  "thing/thing_lantern": {
+    "preset": "deep hollow"
+  },
+  "thing/thing_lantern_2": {
+    "preset": "subtle linen"
+  },
+  "thing/thing_lantern_3": {
+    "preset": "vivid ribbon"
+  },
+  "thing/thing_marble": {
+    "preset": "warm marble"
+  },
+  "thing/thing_marble_2": {
+    "preset": "airy signal, glossy cobalt"
+  },
+  "thing/thing_meadow": {
+    "preset": "soft slate"
+  },
+  "thing/thing_moss": {
+    "preset": "matte prism"
+  },
+  "thing/thing_prism": {
+    "preset": "bright cobalt"
+  },
+  "thing/thing_signal": {
+    "preset": "subtle meadow"
+  },
+  "thing/thing_signal_2": {
+    "preset": "{hair}, glossy moss"
+  },
+  "thing/thing_slate": {
+    "preset": "subtle atlas"
+  },
+  "thing/thing_vellum": {
+    "preset": "pale slate"
+  },
+  "thing/thing_vellum_2": {
+    "preset": "crisp prism"
+  },
+  "thing/thing_willow": {
+    "preset": "bright fable"
+  },
+  "thing/thing_willow_2": {
+    "preset": "deep quartz"
+  },
+  "thing/thing_willow_3": {
+    "preset": "vivid moss"
+  },
+  "view": {
+    "__color__": "#94bb07"
+  },
+  "view/view_cobalt": {
+    "preset": "faded ribbon signal prism"
+  },
+  "view/view_lantern": {
+    "preset": "deep fable"
+  },
+  "view/view_linen": {
+    "preset": "cool moss"
+  },
+  "view/view_ribbon": {
+    "preset": "warm signal"
+  },
+  "view/view_slate": {
+    "preset": "bold lantern"
+  },
+  "view/view_tundra": {
+    "preset": "deep tundra"
+  },
+  "wear": {
+    "__color__": "#fe2aec"
+  },
+  "wear/acc/acc_amber": {
+    "preset": "vivid signal"
+  },
+  "wear/acc/acc_beacon": {
+    "preset": "cool tundra"
+  },
+  "wear/acc/acc_cedar": {
+    "preset": "{hair}, {artist}, rich vellum"
+  },
+  "wear/acc/acc_ember": {
+    "preset": "vivid quartz, deep moss"
+  },
+  "wear/acc/acc_fable": {
+    "preset": "faded cedar"
+  },
+  "wear/acc/acc_ivory": {
+    "preset": "matte prism"
+  },
+  "wear/acc/acc_ivory_2": {
+    "preset": "warm prism"
+  },
+  "wear/acc/acc_lantern": {
+    "preset": "rich ribbon"
+  },
+  "wear/acc/acc_lantern_2": {
+    "preset": "bold ember"
+  },
+  "wear/acc/acc_linen": {
+    "preset": "crisp meadow"
+  },
+  "wear/acc/acc_linen_2": {
+    "preset": "crisp ribbon"
+  },
+  "wear/acc/acc_marble": {
+    "preset": "airy linen"
+  },
+  "wear/acc/acc_prism": {
+    "preset": "dense amber"
+  },
+  "wear/acc/acc_ribbon": {
+    "preset": "glossy tundra"
+  },
+  "wear/acc/acc_ribbon_2": {
+    "preset": "crisp tundra"
+  },
+  "wear/acc/acc_ribbon_3": {
+    "preset": "{pose}, {pattern}, warm quartz"
+  },
+  "wear/acc/acc_signal": {
+    "preset": "soft beacon"
+  },
+  "wear/acc/acc_vellum": {
+    "preset": "cool thicket"
+  },
+  "wear/acc/acc_willow": {
+    "preset": "faded hollow"
+  },
+  "wear/cloth/cloth_amber": {
+    "preset": "deep willow"
+  },
+  "wear/cloth/cloth_cedar": {
+    "preset": "bold prism"
+  },
+  "wear/cloth/cloth_cedar_2": {
+    "preset": "vivid willow"
+  },
+  "wear/cloth/cloth_ember": {
+    "preset": "dense harbor"
+  },
+  "wear/cloth/cloth_ember_2": {
+    "preset": "pale ember"
+  },
+  "wear/cloth/cloth_fable": {
+    "preset": "warm meadow"
+  },
+  "wear/cloth/cloth_hollow": {
+    "preset": "muted ivory"
+  },
+  "wear/cloth/cloth_ivory": {
+    "preset": "glossy quartz"
+  },
+  "wear/cloth/cloth_ivory_2": {
+    "preset": "deep prism"
+  },
+  "wear/cloth/cloth_ivory_3": {
+    "preset": "cool amber"
+  },
+  "wear/cloth/cloth_lantern": {
+    "preset": "crisp slate"
+  },
+  "wear/cloth/cloth_lantern_2": {
+    "preset": "cool hollow"
+  },
+  "wear/cloth/cloth_linen": {
+    "preset": "airy beacon"
+  },
+  "wear/cloth/cloth_marble": {
+    "preset": "bright harbor"
+  },
+  "wear/cloth/cloth_prism": {
+    "preset": "matte tundra"
+  },
+  "wear/cloth/cloth_ribbon": {
+    "preset": "dense amber"
+  },
+  "wear/cloth/cloth_signal": {
+    "preset": "glossy ember"
+  },
+  "wear/wear_amber": {
+    "preset": "{art}, {place}, {place}, airy cedar, soft quartz"
+  },
+  "wear/wear_amber_2": {
+    "preset": "{art}, {art}, vivid fable"
+  },
+  "wear/wear_cedar": {
+    "preset": "{pattern}, {pose}, airy beacon"
+  },
+  "wear/wear_ivory": {
+    "preset": "warm meadow"
+  },
+  "wear/wear_marble": {
+    "preset": "{color}, {pose}, faded ivory hollow, vivid harbor moss amber, vivid ribbon"
+  },
+  "wear/wear_meadow": {
+    "preset": "{art}, {art}, vivid beacon, pale vellum"
+  },
+  "wear/wear_moss": {
+    "preset": "{art}, {hair}, matte linen"
+  },
+  "wear/wear_prism": {
+    "preset": "bold prism"
+  },
+  "wear/wear_quartz": {
+    "preset": "{art}, {pattern}, {pose}, matte thicket"
+  },
+  "wear/wear_ribbon": {
+    "preset": "{qty}, {art}, vivid cobalt, bold meadow"
+  },
+  "wear/wear_signal": {
+    "preset": "{hair:quartz}, deep signal, bright linen"
+  },
+  "wear/wear_slate": {
+    "preset": "{color}, {pose}, {qty}, vivid slate"
+  },
+  "wear/wear_thicket": {
+    "preset": "bright ribbon"
+  },
+  "wear/wear_thicket_2": {
+    "preset": "{hair}, {pose}, cool ribbon"
+  },
+  "wear/wear_tundra": {
+    "preset": "{qty}, {pose}, soft beacon"
+  },
+  "_": {
+    "__color__": "#828282"
+  },
+  "_/age/age_ivory": {
+    "preset": "bold vellum"
+  },
+  "_/age/age_ivory_2": {
+    "preset": "subtle atlas"
+  },
+  "_/age/age_linen": {
+    "preset": "matte vellum, bright linen"
+  },
+  "_/age/age_moss": {
+    "preset": "pale thicket"
+  },
+  "_/age/age_slate": {
+    "preset": "faded meadow"
+  },
+  "_/age/age_slate_2": {
+    "preset": "vivid tundra"
+  },
+  "_/color/color_beacon": {
+    "preset": "airy ribbon"
+  },
+  "_/color/color_cedar": {
+    "preset": "faded tundra"
+  },
+  "_/color/color_ember": {
+    "preset": "airy harbor"
+  },
+  "_/color/color_ember_2": {
+    "preset": "cool harbor"
+  },
+  "_/color/color_ember_3": {
+    "preset": "pale beacon"
+  },
+  "_/color/color_fable": {
+    "preset": "crisp marble"
+  },
+  "_/color/color_harbor": {
+    "preset": "pale ivory"
+  },
+  "_/color/color_harbor_2": {
+    "preset": "bright signal"
+  },
+  "_/color/color_hollow": {
+    "preset": "warm signal"
+  },
+  "_/color/color_ivory": {
+    "preset": "warm thicket"
+  },
+  "_/color/color_ivory_2": {
+    "preset": "airy ribbon"
+  },
+  "_/color/color_lantern": {
+    "preset": "subtle vellum"
+  },
+  "_/color/color_marble": {
+    "preset": "bold slate"
+  },
+  "_/color/color_marble_2": {
+    "preset": "subtle fable"
+  },
+  "_/color/color_meadow": {
+    "preset": "deep amber"
+  },
+  "_/color/color_meadow_2": {
+    "preset": "airy cobalt"
+  },
+  "_/color/color_moss": {
+    "preset": "glossy signal"
+  },
+  "_/color/color_prism": {
+    "preset": "pale cedar"
+  },
+  "_/color/color_ribbon": {
+    "preset": "crisp ribbon"
+  },
+  "_/color/color_signal": {
+    "preset": "cool tundra"
+  },
+  "_/color/color_thicket": {
+    "preset": "glossy ribbon"
+  },
+  "_/color/color_willow": {
+    "preset": "rich meadow"
+  },
+  "_/config/anima_base": {
+    "preset": "<model:prism>, deep signal, warm amber"
+  },
+  "_/config/append/art": {
+    "preset": "airy linen"
+  },
+  "_/config/append/char/genshin": {
+    "preset": "subtle vellum, rich meadow"
+  },
+  "_/config/append/char/hololive": {
+    "preset": "soft beacon"
+  },
+  "_/config/append/char/rozen": {
+    "preset": "warm meadow"
+  },
+  "_/config/append/char/touhou": {
+    "preset": "subtle ivory"
+  },
+  "_/config/append/char/zzz": {
+    "preset": "cool tundra, warm hollow"
+  },
+  "_/config/base": {
+    "preset": "<steps:meadow>, <lora:fable>, <cfg:cedar>, <model:atlas>, <steps:signal>, deep atlas harbor, cool marble"
+  },
+  "_/config/base_cosmos": {
+    "preset": "<cfg:signal>, <cfg:quartz>, <lora:ivory>, <lora:vellum>, <cfg:atlas>, glossy thicket cedar hollow, warm linen"
+  },
+  "_/config/negative": {
+    "preset": "<lora:amber>, bright ivory"
+  },
+  "_/config/negative_verbose": {
+    "preset": "(<lora:fable>, rich cedar marble, rich slate linen ember, vivid linen meadow, bright marble hollow linen, warm prism tundra slate, warm hollow lantern quartz, glossy beacon, rich tundra atlas harbor, matte linen moss, muted beacon linen signal, subtle vellum, glossy linen, glossy ribbon cedar, soft ember:1.2)"
+  },
+  "_/config/prefix/lewd": {
+    "preset": "<steps:cedar>, matte vellum"
+  },
+  "_/config/prefix/new": {
+    "preset": "<steps:marble>"
+  },
+  "_/config/prefix/nfsw": {
+    "preset": "<steps:linen>, dense vellum"
+  },
+  "_/config/prefix/profile": {
+    "preset": "<lora:fable>, airy amber"
+  },
+  "_/config/prepend/hair": {
+    "preset": "{hair}, {qty}"
+  },
+  "_/config/prepend/shade/wear/cloth": {
+    "preset": "{color}, {art}, {pose:atlas}, {pattern:cedar}"
+  },
+  "_/config/prepend/wear/cloth": {
+    "preset": "{qty}, {pose}, {hair:marble}, {color:vellum}"
+  },
+  "_/config/random/act": {
+    "preset": "{pose}, {pose}, {artist}"
+  },
+  "_/config/random/chara": {
+    "preset": "{artist}, {place}"
+  },
+  "_/config/random/env": {
+    "preset": "{qty}, {hair}, {art}, {art:fable}, {pose:fable}, vivid ivory"
+  },
+  "_/config/random/random_1": {
+    "preset": "{qty}, {pose}, {hair}, {art}, {qty}, {pattern}"
+  },
+  "_/config/random/random_2": {
+    "preset": "{color}, {art}, {art}, {place}, {color}"
+  },
+  "_/config/random/use": {
+    "preset": "{color}, {artist}, {pattern}"
+  },
+  "_/config/real": {
+    "preset": "<lora:cedar>, <lora:hollow>, <lora:quartz>, <lora:fable>, <steps:thicket>, glossy linen thicket, muted hollow, rich slate"
+  },
+  "_/config/seed": {
+    "preset": "<lora:meadow>"
+  },
+  "_/config/tab/basic_1": {
+    "preset": "{qty}, {art}, {art}, {artist}, {color}, {place}, {color:hollow}, warm ribbon, pale thicket"
+  },
+  "_/config/tab/basic_2": {
+    "preset": "{pattern}, {pose:moss}, airy tundra, bright cedar, vivid marble, crisp tundra"
+  },
+  "_/config/tab/basic_xlibrary": {
+    "preset": "<steps:ember>, {hair}, {art}, {pose}, {hair}, {art:signal}, {artist:cobalt}, {pose:hollow}, {pattern:slate}, {pose:ember}, {art:cobalt}, deep ribbon, matte linen, pale cedar"
+  },
+  "_/config/tab/bored_reader": {
+    "preset": "{color}, {hair:ember}, subtle ribbon quartz willow, matte hollow, muted cedar marble hollow, matte linen willow, matte hollow, bold prism linen beacon, airy ivory, pale marble"
+  },
+  "_/config/tab/cunn_twil": {
+    "preset": "(<steps:fable>, {color}, {qty:quartz}, {qty:ribbon}, faded fable, cool lantern fable meadow, warm willow thicket, crisp meadow, muted lantern tundra, cool moss marble cedar, glossy lantern beacon, bright moss, soft linen:1.2)"
+  },
+  "_/config/tab/cute_bath": {
+    "preset": "<cfg:beacon>, {hair}, {art}, {pose}, {art:ribbon}, {art:slate}, {qty:beacon}, {hair:signal}, {color:ribbon}, muted willow slate thicket, dense ivory cedar lantern, airy signal, faded ribbon cedar, glossy thicket ribbon, glossy vellum, warm thicket"
+  },
+  "_/config/tab/cute_tribe": {
+    "preset": "({pose}, {pattern}, {artist}, {art}, {place}, {pose:moss}, {pose:slate}, {qty:cobalt}, {place:ivory}, {artist:meadow}, {artist:cedar}, subtle ember fable atlas, vivid ivory fable meadow, soft moss linen marble, muted atlas, glossy linen ember cedar, glossy cobalt slate, dense meadow, crisp lantern ember, dense moss, glossy signal thicket ribbon, bold moss:1.1)"
+  },
+  "_/config/tab/dark_sweet": {
+    "preset": "<lora:ivory>, {art}, {artist:lantern}, {pattern:ivory}, dense tundra, soft vellum marble, deep ember, cool cobalt, pale linen ember, airy cobalt, cool signal thicket, crisp atlas tundra, crisp ribbon"
+  },
+  "_/config/tab/fluffy_dojiko": {
+    "preset": "{color}, {place}, {color:signal}, airy marble quartz ivory, glossy ivory, bright moss, deep cobalt cedar, deep amber"
+  },
+  "_/config/tab/green_toilet": {
+    "preset": "({artist}, {art}, {color}, {pattern:signal}, {place:prism}, {color:lantern}, {color:hollow}, {pose:marble}, {pattern:signal}, {pattern:lantern}, {place:atlas}, {place:moss}, {qty:quartz}, {pose:ember}, {artist:prism}, warm linen vellum, muted atlas lantern, airy fable vellum atlas, vivid hollow, bright signal:0.9)"
+  },
+  "_/config/tab/leafy_lick": {
+    "preset": "{art}, {art}, {qty:tundra}, {hair:marble}, {art:quartz}, {artist:moss}, {place:ribbon}, {hair:lantern}, {art:lantern}, {pose:cedar}, {place:moss}, deep willow atlas, deep slate ember moss, crisp amber fable thicket, deep moss meadow harbor, crisp willow, rich thicket"
+  },
+  "_/config/tab/leg_play": {
+    "preset": "{place}, {pattern}, {place}, {artist}, {pose}, {pattern}, {art}, {place}, {pattern:quartz}, {color:beacon}, {place:tundra}, {art:cobalt}, vivid linen vellum, crisp prism hollow fable, crisp thicket, warm ribbon, bright harbor, vivid cobalt, bright cedar marble willow, pale vellum"
+  },
+  "_/config/tab/lib_aftnoon": {
+    "preset": "<model:ribbon>, {color}, {artist:harbor}, glossy prism slate, soft harbor, crisp hollow, cool beacon"
+  },
+  "_/config/tab/mmmm": {
+    "preset": "{art}, {hair}, {art}, {art}, {artist}, {place}, {place:amber}, {pattern:thicket}, {color:ribbon}, {pattern:moss}, {place:ivory}, {artist:linen}, {pose:tundra}, {hair:signal}, faded thicket hollow, vivid signal harbor, bright harbor, crisp tundra, faded linen, crisp prism, deep prism, dense harbor"
+  },
+  "_/config/tab/moo_moo": {
+    "preset": "{hair}, {artist}, {pose}, {hair}, {pattern}, {color}, {artist:beacon}, {art:hollow}, {pose:thicket}, airy ribbon beacon, cool lantern hollow vellum, matte slate, bright vellum, deep harbor"
+  },
+  "_/config/tab/mush_push": {
+    "preset": "<model:ember>, {hair:willow}, {qty:quartz}, {hair:vellum}, {pattern:meadow}, {place:cobalt}, subtle signal thicket, pale linen signal ivory, matte harbor, airy fable thicket signal, muted marble cedar willow, soft linen"
+  },
+  "_/config/tab/mushroom": {
+    "preset": "<steps:prism>, <steps:moss>, <lora:prism>, {place:willow}, {pattern:harbor}, matte hollow, bright linen, vivid cedar fable ember, crisp moss marble, muted meadow, matte slate cedar, rich marble, muted cedar, faded amber cobalt moss, bold tundra linen, dense cobalt, soft atlas ivory, vivid ember, matte amber harbor, rich slate, glossy thicket signal tundra, matte fable, pale fable"
+  },
+  "_/config/tab/nfsw_anksok": {
+    "preset": "{color}, {hair}, {place}, {qty}, {artist}, {color}, {pattern}, {pattern:hollow}, {pattern:thicket}, {color:hollow}, faded prism"
+  },
+  "_/config/tab/normal_crazy": {
+    "preset": "{color}, {place}, {artist}, {color}, {pattern}, {pattern}, {pose}, {artist:amber}, crisp beacon"
+  },
+  "_/config/tab/opsie_baby": {
+    "preset": "<lora:hollow>, {place:tundra}, {hair:signal}, rich lantern thicket vellum"
+  },
+  "_/config/tab/raiden_cute_raid": {
+    "preset": "<steps:meadow>, {pose}, {pattern}, {art}, {pattern}, {hair}, {place}, {artist:beacon}, {pattern:cobalt}, {art:ember}, {pose:signal}, {hair:moss}, {hair:tundra}, {place:hollow}, {color:amber}, {art:ribbon}, {artist:amber}, {place:linen}, {pattern:fable}, {artist:slate}, {qty:beacon}, {color:linen}, bold ribbon vellum, faded ribbon atlas, matte ribbon atlas, warm hollow, matte marble"
+  },
+  "_/config/tab/simple_nfsw": {
+    "preset": "{artist}, {hair}, {qty}, {color}, {place:cedar}"
+  },
+  "_/config/tab/something_new": {
+    "preset": "{hair}, {art}, {art}, {place}, {pose}, {qty}, {qty:prism}, bright slate, soft moss"
+  },
+  "_/config/tab/suika_matsuri": {
+    "preset": "{pose}, {place:tundra}, {qty:beacon}, {pose:ivory}, {art:cobalt}, {place:tundra}, {qty:hollow}, {qty:quartz}, {artist:ivory}, {place:linen}, {qty:ivory}, vivid hollow linen vellum, dense hollow, vivid meadow, muted slate"
+  },
+  "_/config/tab/sweat_seiza_kotatsu": {
+    "preset": "{color}, {pattern}, {pose}, {color:ivory}, cool amber slate moss, deep ribbon harbor cobalt, vivid fable quartz, pale quartz, rich quartz"
+  },
+  "_/config/tab/thing_press": {
+    "preset": "({art}, {pose}, {artist}, {art}, {color}, {place:marble}, {qty:marble}, {pose:lantern}, {art:tundra}, airy marble, airy ember ribbon, deep cobalt, warm beacon cedar signal, deep marble, bold moss signal, muted fable, rich tundra cobalt, crisp slate, rich prism slate, crisp prism slate, bold ember hollow, faded beacon linen, warm ember, crisp ember linen, warm prism, glossy ivory willow lantern, vivid ember vellum slate, glossy quartz hollow meadow, cool beacon, matte ember:1.2)"
+  },
+  "_/config/tab/yummy_tus": {
+    "preset": "{pattern}, {qty:cobalt}, {place:ivory}, {pattern:ivory}, {hair:ribbon}, {pose:hollow}, {art:cobalt}, {pose:signal}, {art:quartz}, {pattern:amber}, {art:thicket}, airy signal ivory meadow, soft willow, cool cedar, pale atlas, matte thicket, airy ember"
+  },
+  "_/config/tab/yummy_tus_2": {
+    "preset": "({place:vellum}, {place:signal}, {pattern:marble}, {color:lantern}, {artist:ember}, {art:fable}, {pattern:marble}, {art:slate}, {pose:meadow}, {pose:cedar}, {pattern:hollow}, muted quartz prism meadow, bold linen, warm ember:0.9)"
+  },
+  "_/config/tab/yummy_tus_3": {
+    "preset": "{place}, {art:quartz}, {qty:slate}, {qty:quartz}, {color:moss}, {pattern:vellum}, {color:prism}, {artist:atlas}, {pose:fable}, {pattern:atlas}, {artist:hollow}, {pattern:vellum}, {pattern:hollow}, {pattern:beacon}, {hair:willow}, {color:signal}, subtle ember ivory willow, rich slate linen prism, soft cobalt, cool lantern"
+  },
+  "_/flow/flow_ember": {
+    "preset": "cool prism"
+  },
+  "_/flow/flow_hollow": {
+    "preset": "rich atlas"
+  },
+  "_/flow/flow_hollow_2": {
+    "preset": "bright willow"
+  },
+  "_/flow/flow_linen": {
+    "preset": "faded tundra"
+  },
+  "_/flow/flow_ribbon": {
+    "preset": "bold slate"
+  },
+  "_/flow/flow_willow": {
+    "preset": "faded hollow"
+  },
+  "_/hair/hair_cobalt": {
+    "preset": "rich ribbon"
+  },
+  "_/hair/hair_hollow": {
+    "preset": "glossy hollow"
+  },
+  "_/hair/hair_ivory": {
+    "preset": "deep vellum"
+  },
+  "_/hair/hair_lantern": {
+    "preset": "vivid signal"
+  },
+  "_/hair/hair_meadow": {
+    "preset": "crisp beacon"
+  },
+  "_/hair/hair_prism": {
+    "preset": "soft vellum"
+  },
+  "_/hair/hair_signal": {
+    "preset": "faded ember"
+  },
+  "_/hair/hair_vellum": {
+    "preset": "soft ribbon"
+  },
+  "_/hair/hair_vellum_2": {
+    "preset": "subtle willow"
+  },
+  "_/hair/hair_willow": {
+    "preset": "bright ribbon"
+  },
+  "_/image/image_beacon": {
+    "preset": "<steps:fable>"
+  },
+  "_/image/image_meadow": {
+    "preset": "<steps:ivory>, <lora:quartz>"
+  },
+  "_/image/image_vellum": {
+    "preset": "<model:marble>"
+  },
+  "_/lora/baseline/baseline_amber": {
+    "preset": "<steps:meadow>, dense vellum"
+  },
+  "_/lora/baseline/baseline_cedar": {
+    "preset": "<steps:slate>, bright hollow, soft ribbon"
+  },
+  "_/lora/baseline/baseline_fable": {
+    "preset": "<cfg:thicket>, bright harbor"
+  },
+  "_/lora/baseline/baseline_harbor": {
+    "preset": "<lora:ember>, faded ember"
+  },
+  "_/lora/baseline/baseline_hollow": {
+    "preset": "<steps:cedar>, bold marble"
+  },
+  "_/lora/baseline/baseline_lantern": {
+    "preset": "<lora:willow>, soft prism"
+  },
+  "_/lora/baseline/baseline_lantern_2": {
+    "preset": "<steps:moss>, cool willow"
+  },
+  "_/lora/baseline/baseline_quartz": {
+    "preset": "<lora:ember>, rich ivory"
+  },
+  "_/lora/baseline/baseline_slate": {
+    "preset": "<lora:vellum>, cool prism"
+  },
+  "_/lora/baseline/baseline_slate_2": {
+    "preset": "<steps:cobalt>, <model:willow>, cool ember"
+  },
+  "_/lora/baseline/baseline_thicket": {
+    "preset": "<lora:atlas>, cool meadow, warm vellum"
+  },
+  "_/lora/baseline/baseline_thicket_2": {
+    "preset": "<lora:vellum>, cool hollow"
+  },
+  "_/lora/baseline/baseline_willow": {
+    "preset": "<steps:ember>, muted linen"
+  },
+  "_/pattern/pattern_amber": {
+    "preset": "bold ivory"
+  },
+  "_/pattern/pattern_amber_2": {
+    "preset": "subtle hollow"
+  },
+  "_/pattern/pattern_cedar": {
+    "preset": "crisp cedar"
+  },
+  "_/pattern/pattern_ember": {
+    "preset": "subtle ivory"
+  },
+  "_/pattern/pattern_fable": {
+    "preset": "bright ember"
+  },
+  "_/pattern/pattern_harbor": {
+    "preset": "subtle slate"
+  },
+  "_/pattern/pattern_lantern": {
+    "preset": "bold ribbon"
+  },
+  "_/pattern/pattern_linen": {
+    "preset": "warm ivory"
+  },
+  "_/pattern/pattern_linen_2": {
+    "preset": "deep hollow"
+  },
+  "_/pattern/pattern_marble": {
+    "preset": "matte slate"
+  },
+  "_/pattern/pattern_moss": {
+    "preset": "cool ribbon"
+  },
+  "_/pattern/pattern_moss_2": {
+    "preset": "rich cedar"
+  },
+  "_/pattern/pattern_prism": {
+    "preset": "crisp beacon"
+  },
+  "_/pattern/pattern_prism_2": {
+    "preset": "rich vellum"
+  },
+  "_/pattern/pattern_prism_3": {
+    "preset": "subtle moss"
+  },
+  "_/pattern/pattern_prism_4": {
+    "preset": "cool slate"
+  },
+  "_/pattern/pattern_vellum": {
+    "preset": "glossy ribbon"
+  },
+  "_/pattern/pattern_vellum_2": {
+    "preset": "muted atlas"
+  },
+  "_/pattern/pattern_willow": {
+    "preset": "rich slate"
+  },
+  "_/qty/qty_atlas": {
+    "preset": "deep linen"
+  },
+  "_/qty/qty_ember": {
+    "preset": "cool willow"
+  },
+  "_/qty/qty_signal": {
+    "preset": "glossy slate"
+  },
+  "_/qty/qty_thicket": {
+    "preset": "subtle cedar"
+  },
+  "_/sfx/sfx_amber": {
+    "preset": "faded cobalt"
+  },
+  "_/sfx/sfx_ember": {
+    "preset": "bold cobalt"
+  },
+  "_/sfx/sfx_slate": {
+    "preset": "vivid prism"
+  },
+  "_/sfx/sfx_vellum": {
+    "preset": "bright amber"
+  },
+  "_/sfx/sfx_willow": {
+    "preset": "cool linen"
+  },
+  "_/shade/sfx/sfx_cobalt": {
+    "preset": "muted amber"
+  },
+  "_/shade/sfx/sfx_fable": {
+    "preset": "matte ember"
+  },
+  "_/shade/sfx/sfx_ribbon": {
+    "preset": "warm cobalt"
+  },
+  "_/shade/sfx/sfx_thicket": {
+    "preset": "glossy signal"
+  },
+  "_/size/size_atlas": {
+    "preset": "vivid tundra"
+  },
+  "_/size/size_fable": {
+    "preset": "vivid lantern"
+  },
+  "_/size/size_hollow": {
+    "preset": "airy ember"
+  },
+  "_/size/size_meadow": {
+    "preset": "pale ribbon"
+  },
+  "_/size/size_quartz": {
+    "preset": "matte hollow"
+  },
+  "_/size/size_vellum": {
+    "preset": "airy hollow"
+  },
+  "_/steps/steps_linen": {
+    "preset": "<steps:moss>"
+  },
+  "_/steps/steps_prism": {
+    "preset": "<cfg:lantern>"
+  },
+  "_/steps/steps_vellum": {
+    "preset": "<cfg:cedar>"
+  },
+  "_/target/target_atlas": {
+    "preset": "glossy fable"
+  },
+  "_/target/target_ember": {
+    "preset": "dense slate"
+  },
+  "_/target/target_moss": {
+    "preset": "soft"
+  },
+  "_/target/target_prism": {
+    "preset": "faded amber"
+  },
+  "_/target/target_signal": {
+    "preset": "deep lantern"
+  }
+}

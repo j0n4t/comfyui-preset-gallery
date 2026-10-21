@@ -49,6 +49,36 @@ MUTATIONS = [
      "return (colonIdx === -1 ? inner : inner.slice(0, colonIdx)).trim();",
      "return inner;",
      "tests/unit/variant_color.test.ts"),
+
+    # The perf/behaviour guards. Each of these must be caught by the test named
+    # in the comment, or the guard is decorative.
+    # lookup entries the chips resolve through (drop each -> its own test fails)
+    ("web/PresetLogic.js",
+     "if (trimmedPreset) lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });",
+     "if (false) lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });",
+     "tests/unit/preset_logic.perf.test.ts"),   # raw-text resolution
+    ("web/PresetLogic.js",
+     "if (wrappedPreset) lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });",
+     "if (false) lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });",
+     "tests/unit/preset_logic.perf.test.ts"),   # wrapped resolution
+    ("web/PresetLogic.js",
+     "lookupMap.set(key, { foundKey: key, foundItem: item });\n"
+     "          lookupMap.set(key.trim(), { foundKey: key, foundItem: item });",
+     "lookupMap.set(key + '\\u0000', { foundKey: key, foundItem: item });\n"
+     "          lookupMap.set(key.trim() + '\\u0000', { foundKey: key, foundItem: item });",
+     "tests/unit/preset_logic.perf.test.ts"),   # weighted-token resolution
+    # the roll must stay observable, or a cache-keyed memo would silently win
+    ("web/PresetLogic.js",
+     "matches[Math.floor(Math.random() * matches.length)]",
+     "matches[0]",
+     "tests/unit/preset_logic.perf.test.ts"),
+    # a gross slowdown must trip the budget. The multiplier is large on purpose:
+    # the budget has to absorb parallel-test contention, so it only catches a
+    # multi-fold regression - which is what this proves.
+    ("web/PresetLogic.js",
+     "    const lookupMap = new Map();\n    if (cache) {",
+     "    const lookupMap = new Map();\n    for (let _dup = 0; _dup < 6; _dup++) if (cache) {",
+     "tests/unit/preset_logic.perf.test.ts"),
 ]
 
 
@@ -59,17 +89,24 @@ def main() -> int:
     for src, old, new, testfile in MUTATIONS:
         path = ROOT / src
         before[src] = path.read_bytes()
-        path = ROOT / src
-        original = path.read_text(encoding="utf-8")
+        original = before[src].decode("utf-8")
+
+        # Patterns are written with \n, but these files are CRLF on Windows.
+        # Normalise to the file's own ending, or a multi-line pattern matches
+        # nothing and the mutation silently never applies.
+        eol = "\r\n" if "\r\n" in original else "\n"
+        old = old.replace("\n", eol)
+        new = new.replace("\n", eol)
+
         assert old in original, f"pattern not found in {src}"
-        path.write_text(original.replace(old, new, 1), encoding="utf-8")
+        path.write_bytes(original.replace(old, new, 1).encode("utf-8"))
         try:
             r = subprocess.run(
                 ["node", "--test", testfile],
                 cwd=ROOT,
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=300,
             )
             caught = r.returncode != 0
             first_fail = next(
@@ -81,9 +118,9 @@ def main() -> int:
                 all_caught = False
             print(f"{status:10} {src}: {first_fail}")
         finally:
-            # restore the exact working-tree content, not the committed blob —
-            # git checkout would wipe uncommitted work on the mutated file
-            path.write_text(original, encoding="utf-8")
+            # restore the exact pre-run bytes: text-mode I/O would rewrite the
+            # file's line endings and make the check below fail spuriously
+            path.write_bytes(before[src])
 
     # verify every mutated file was restored to its exact pre-run bytes
     not_restored = [src for src, snapshot in before.items() if (ROOT / src).read_bytes() != snapshot]
