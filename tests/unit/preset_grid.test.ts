@@ -2,6 +2,7 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import "./dom-harness.ts";
 import PresetGrid from "../../web/PresetGrid.js";
+import PresetLogic from "../../web/PresetLogic.js";
 
 // PresetGrid owns the item grid: compile (grouped HTML), the filter
 // pipeline, view switching and selection sync. The context supplies the
@@ -55,6 +56,7 @@ function makeGridContext() {
     widget: { value: "", callback: () => {} },
     getSelectedArray: () => state.widgetValue.split(",").map((s) => s.trim()).filter(Boolean),
     updateWidgetValue: (arr: string[]) => { state.widgetValue = arr.join(", "); },
+    selectionKey: (key: string) => key,
     getCollapsedFolders: () => state.collapsed,
     setCollapsedFolders: (list: string[]) => { state.collapsed = list; },
     getExcludedRollFolders: () => state.excluded,
@@ -310,4 +312,44 @@ test("clicking an item toggles it in the widget selection", () => {
 
   portrait.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   assert.equal(state.widgetValue, "");
+});
+
+// --- library merge ---
+
+test("a name shared by two libraries is listed once per library, each tagged", () => {
+  const { grid, context } = makeGrid();
+  // The merge files the entry the winner displaced under `libraryId#key`.
+  context.session = {
+    isDuplicateKey: (key: string) => PresetLogic.getPresetFolder(key) === "wear/sock",
+    ownerOfKey: (key: string) => (key.startsWith("main#") ? "main" : "socks"),
+    libraryName: (id: string) => id,
+  } as unknown as GalleryContext["session"];
+
+  grid.compile({
+    "wear/sock/ankle": { preset: "socks ankle" },
+    "main#wear/sock/ankle": { preset: "main ankle" },
+    "Faces/Portrait": { preset: "portrait" },
+  });
+
+  const rows = items(grid);
+  const winner = rows.find((el) => el.dataset.style === "wear/sock/ankle")!;
+  const shadowed = rows.find((el) => el.dataset.style === "main#wear/sock/ankle")!;
+  const plain = rows.find((el) => el.dataset.style === "Faces/Portrait")!;
+
+  assert.equal(winner.querySelectorAll(".j0n4t-pg-lib-badge").length, 1, "the winner is tagged too");
+  assert.equal(winner.querySelector(".j0n4t-pg-lib-badge")!.textContent, "socks");
+  assert.equal(shadowed.querySelector(".j0n4t-pg-lib-badge")!.textContent, "main");
+  assert.equal(plain.querySelectorAll(".j0n4t-pg-lib-badge").length, 0, "a unique name is not tagged");
+});
+
+test("clicking an item asks the context for the key it should store", () => {
+  const { grid, context, state } = makeGrid();
+  grid.compile(CACHE);
+  // The context decides whether the chip keeps its library qualifier.
+  context.selectionKey = (key: string) => `socks#${key}`;
+
+  items(grid).find((el) => el.dataset.style === "faces/portrait")!
+    .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+  assert.equal(state.widgetValue, "socks#faces/portrait");
 });

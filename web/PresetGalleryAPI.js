@@ -5,6 +5,12 @@ export default class PresetGalleryAPI {
   static API_ENDPOINT = "/preset_gallery/presets";
 
   /**
+   * The bundled library's id. It is always enabled and always first in the
+   * merge order, so a node with nothing else enabled reads `main`.
+   */
+  static DEFAULT_LIBRARY_ID = "main";
+
+  /**
    * Which library every read and write targets when the caller does not name
    * one. The bundled library by default; the app moves it to the library a
    * node is editing. Null means the bundled library too - the route serves it

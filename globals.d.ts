@@ -180,7 +180,8 @@ type GalleryContext = {
   syncUI: (val: string) => void | Promise<void>;
   loadGallery: () => Promise<void>;
   updateWidgetValue: (arr: string[]) => void;
-  switchLibrary: (id: string) => void;
+  applyLibraries: (ids: string[]) => void;
+  selectionKey: (key: string) => string;
 };
 
 interface Window {

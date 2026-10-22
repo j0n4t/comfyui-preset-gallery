@@ -333,36 +333,88 @@ export default class PresetGalleryApp {
   }
 
   /**
-   * Ask the server which libraries it can serve and pick one. The choice is
-   * global - one library for the whole instance - so it is remembered in
-   * localStorage and every gallery instance follows it.
+   * Ask the server which libraries it can serve and pick the enabled set. The
+   * choice is global - one merge for the whole instance - so it is remembered in
+   * settings and every gallery instance follows it.
    * @returns {Promise<void>}
    */
   async loadLibraries() {
-    this.libraries = await PresetGalleryAPI.fetchLibraries();
-    const saved = localStorage.getItem("pg_library");
-    this.libraryId = this.libraries.some((l) => l.id === saved)
-      ? saved
-      : (this.libraries[0]?.id ?? null);
-    PresetGalleryAPI.setActiveLibrary(this.libraryId);
+    const available = await PresetGalleryAPI.fetchLibraries();
+    this.libraries = available;
+    this.enabledIds = this.reconcileLibraries(this.settings?.enabledLibraries, available);
+    // The first enabled library is the default write target for import/export,
+    // which have no per-key owner to aim at.
+    PresetGalleryAPI.setActiveLibrary(this.enabledIds[0] ?? null);
   }
 
-  /** @param {string} id */
-  async switchLibrary(id) {
-    if (!this.libraries?.some((l) => l.id === id)) return;
-    this.libraryId = id;
-    localStorage.setItem("pg_library", id);
-    PresetGalleryAPI.setActiveLibrary(id);
-    await this.loadGallery();
-    if (this.widget.value) await this.syncUI(this.widget.value);
+  /**
+   * The enabled ids, restricted to libraries the server actually serves and
+   * with `main` always first. A library dropped from disk leaves the list
+   * instead of silently breaking the merge.
+   * @param {string[] | undefined} saved
+   * @param {{id: string}[]} available
+   * @returns {string[]}
+   */
+  reconcileLibraries(saved, available) {
+    const served = new Set((available || []).map((lib) => lib.id));
+    const kept = (saved || []).filter((id) => served.has(id));
+    if (!kept.includes(PresetGalleryAPI.DEFAULT_LIBRARY_ID)) {
+      kept.unshift(PresetGalleryAPI.DEFAULT_LIBRARY_ID);
+    }
+    return kept;
   }
 
-  /** @param {string | null} [libraryId] */
-  async loadGallery(libraryId = null) {
-    this.session.cache = await PresetGalleryAPI.fetchGallery(
-      libraryId ?? this.libraryId
-    );
+  /**
+   * The libraries an id set resolves to, with the names the server gave them.
+   * @param {string[]} ids
+   * @returns {{id: string, name: string}[]}
+   */
+  toLibraryList(ids) {
+    return ids.map((id) => ({
+      id,
+      name: this.libraries?.find((lib) => lib.id === id)?.name || id,
+    }));
+  }
+
+  /**
+   * The key a grid entry contributes to the basket.
+   *
+   * A library the merge shadowed is only reachable under its `library#` prefix,
+   * so with the qualifier on the chip keeps it and expands to that library's
+   * copy. With it off the plain name is stored and the merge order decides -
+   * which for a shared name is the last library in the list.
+   * @param {string} key
+   * @returns {string}
+   */
+  selectionKey(key) {
+    if (this.settings?.qualifyChips === false) {
+      return PresetLogic.splitQualifiedKey(key).key;
+    }
+    return key;
+  }
+
+  /**
+   * Re-merge and re-render. Called with no argument to reload the enabled set,
+   * or with an explicit id list when the user changes which libraries merge.
+   * @param {string[] | null} [ids]
+   */
+  async loadGallery(ids = null) {
+    const enabled = ids ?? this.enabledIds ?? [];
+    const caches = await PresetGalleryAPI.fetchLibraryCaches(enabled);
+    this.session.setLibraries(this.toLibraryList(enabled), caches);
     this.grid.compile(this.session.cache);
+  }
+
+  /**
+   * Merge another set of libraries into every gallery. The set is global, so
+   * this is the one Display option that takes effect outside the modal it was
+   * picked in - the grid reloads for every open instance.
+   * @param {string[]} ids
+   */
+  async applyLibraries(ids) {
+    this.enabledIds = ids;
+    await this.loadGallery(ids);
+    if (this.widget.value) await this.syncUI(this.widget.value);
   }
 
   /**
@@ -624,8 +676,9 @@ export default class PresetGalleryApp {
       renderItem: (match) =>
         `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
       onSelect: (match) => {
-        const sel = this.session.getSelectedArray(this.widget.value);
-        if (!sel.includes(match)) this.updateWidgetValue([...sel, match]);
+        const key = this.selectionKey(match);
+        const sel = this.context.getSelectedArray();
+        if (!sel.includes(key)) this.updateWidgetValue([...sel, key]);
         this.dom.search.value = "";
         this.grid.executeFilterPipeline();
         this.dom.search.focus();

@@ -182,6 +182,15 @@ export default class PresetEditor {
     return false;
   }
 
+  /**
+   * The library the entry being edited belongs to, or null for a new preset -
+   * the API then falls back to the default write target.
+   * @returns {string | null}
+   */
+  editingLibraryId() {
+    return this.context.session?.ownerOfKey?.(this.editingKey) ?? null;
+  }
+
   async handleSave() {
     let name = this.dom.inpName.value.trim().toLowerCase().replace(/ /g, "_");
     if (!name) {
@@ -243,6 +252,7 @@ export default class PresetEditor {
       clearImage,
       editingKey: this.editingKey,
       mode: this.currentMode,
+      libraryId: this.editingLibraryId(),
     });
 
     if (!res.success) {
@@ -275,7 +285,7 @@ export default class PresetEditor {
     }
     if (!(await ModalUtils.confirm(`Delete "${this.editingKey}"?`))) return;
 
-    await PresetGalleryAPI.deletePreset(this.editingKey);
+    await PresetGalleryAPI.deletePreset(this.editingKey, this.editingLibraryId());
     await this.context.loadGallery();
     this.context.updateWidgetValue(
       this.context.getSelectedArray().filter((v) => v !== this.editingKey)

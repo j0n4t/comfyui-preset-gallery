@@ -32,7 +32,8 @@ type FakeView = {
   syncUI: (val: string) => void | Promise<void>;
   loadGallery: () => Promise<void>;
   updateWidgetValue: (arr: string[]) => void;
-  switchLibrary: (id: string) => void;
+  applyLibraries: (ids: string[]) => void;
+  selectionKey: (key: string) => string;
 };
 
 /** Records which view/host methods the context forwarded to. */
@@ -46,7 +47,8 @@ function fakeView(): FakeView & { calls: unknown[][] } {
     openEditorForPreset: record("openEditorForPreset"),
     syncUI: record("syncUI"),
     updateWidgetValue: record("updateWidgetValue"),
-    switchLibrary: record("switchLibrary"),
+    applyLibraries: record("applyLibraries"),
+    selectionKey: (key: string) => { calls.push(["selectionKey", key]); return key; },
     loadGallery: () => { calls.push(["loadGallery"]); return Promise.resolve(); },
   };
 }
@@ -125,6 +127,8 @@ test("view methods forward their arguments to the supplied view", () => {
   context.syncUI("Faces/Portrait");
   context.loadGallery();
   context.updateWidgetValue(["Faces/Portrait"]);
+  context.applyLibraries(["main", "socks"]);
+  context.selectionKey("socks#wear/sock");
 
   assert.deepEqual(view.calls, [
     ["setPanelCollapseState", true],
@@ -133,6 +137,8 @@ test("view methods forward their arguments to the supplied view", () => {
     ["syncUI", "Faces/Portrait"],
     ["loadGallery"],
     ["updateWidgetValue", ["Faces/Portrait"]],
+    ["applyLibraries", ["main", "socks"]],
+    ["selectionKey", "socks#wear/sock"],
   ]);
 });
 

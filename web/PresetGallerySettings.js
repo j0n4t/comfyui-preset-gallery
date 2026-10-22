@@ -52,6 +52,22 @@ function toFixedHeight(value) {
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : DEFAULT_HEIGHT_FIXED;
 }
 
+/**
+ * The stored enabled-library list, keeping only non-empty ids and always
+ * starting with the bundled library. Anything else in storage - a single id
+ * from before the multi-library change, or a corrupt value - falls back to it.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function toLibraryList(value) {
+  if (!Array.isArray(value)) return [PresetGalleryAPI.DEFAULT_LIBRARY_ID];
+  const ids = value.filter((id) => typeof id === "string" && id);
+  if (!ids.includes(PresetGalleryAPI.DEFAULT_LIBRARY_ID)) {
+    ids.unshift(PresetGalleryAPI.DEFAULT_LIBRARY_ID);
+  }
+  return ids;
+}
+
 export default class PresetGallerySettings {
   static STYLES = /*css*/ `
     .j0n4t-pg-tab-nav { display: flex ; gap: 4px ; border-bottom: 1px solid #444 ; margin-bottom: 12px; }
@@ -66,6 +82,16 @@ export default class PresetGallerySettings {
     .j0n4t-pg-shortcut-row { display: flex ; justify-content: space-between ; align-items: center ; padding: 4px 0 ; border-bottom: 1px dashed #2a2a2a ; color: #ccc; }
     .j0n4t-pg-shortcut-row:last-child { border-bottom: none; }
     .j0n4t-pg-kbd { background: #2d2d2d ; border: 1px solid #4f4f4f ; border-radius: 3px ; padding: 1px 5px ; color: #eee ; font-family: monospace ; font-size: 10px ; box-shadow: 0 1px 1px rgba(0,0,0,0.4); }
+
+    /* Preset library list */
+    .j0n4t-pg-library-list { display: flex ; flex-direction: column ; gap: 2px ; max-height: 180px ; overflow-y: auto ; }
+    .j0n4t-pg-library-row { display: flex ; align-items: center ; gap: 6px ; padding: 3px 4px ; background: #161616 ; border: 1px solid #333 ; border-radius: 3px ; font-size: 11px ; }
+    .j0n4t-pg-library-row input { width: auto ; margin: 0 ; cursor: pointer ; }
+    .j0n4t-pg-library-row input:disabled { cursor: not-allowed ; opacity: 0.5 ; }
+    .j0n4t-pg-library-name { flex: 1 ; overflow: hidden ; text-overflow: ellipsis ; white-space: nowrap ; color: #ccc ; }
+    .j0n4t-pg-lib-move { display: flex ; gap: 2px ; }
+    .j0n4t-pg-lib-move button { background: #2a2a2a ; border: 1px solid #444 ; color: #bbb ; border-radius: 2px ; width: 16px ; height: 16px ; font-size: 8px ; line-height: 1 ; cursor: pointer ; padding: 0 ; }
+    .j0n4t-pg-lib-move button:hover, .j0n4t-pg-lib-move button:focus { background: #007acc ; color: #fff ; border-color: #007acc ; }
 
     /* Auto-Roll Dice Visual Indicators */
     .j0n4t-pg-basket-reroll-btn.roll-overwrite { color: #ff4a4a; filter: drop-shadow(0 0 3px rgba(255,74,74,0.6)); }
@@ -84,6 +110,11 @@ export default class PresetGallerySettings {
     this.context = context;
     /** @type {Array<{ id: string, name: string, default: boolean }>} */
     this.libraries = [];
+    /** The modal the library list is rendered into, kept for re-rendering. */
+    /** @type {HTMLDivElement | null} */
+    this.modal = null;
+    /** The libraries this instance merges, in merge order. @type {string[]} */
+    this.enabledLibraries = [PresetGalleryAPI.DEFAULT_LIBRARY_ID];
     this.load();
     this.applyHeightMode();
     this.applyPanelSizes();
@@ -105,7 +136,8 @@ export default class PresetGallerySettings {
       this.heightFixed = toFixedHeight(saved.heightFixed);
       this.rememberPanelSizes = saved.rememberPanelSizes === true;
       this.panelSizes = toPanelSizes(saved.panelSizes);
-      this.libraryId = saved.libraryId || "";
+      this.enabledLibraries = toLibraryList(saved.enabledLibraries);
+      this.qualifyChips = saved.qualifyChips !== false;
     } catch {
       this.rollMin = 10;
       this.rollMax = 20;
@@ -116,6 +148,8 @@ export default class PresetGallerySettings {
       this.heightFixed = DEFAULT_HEIGHT_FIXED;
       this.rememberPanelSizes = false;
       this.panelSizes = /** @type {GalleryPanelSizes} */ ({});
+      this.enabledLibraries = [PresetGalleryAPI.DEFAULT_LIBRARY_ID];
+      this.qualifyChips = true;
     }
   }
 
@@ -130,7 +164,8 @@ export default class PresetGallerySettings {
       heightFixed: this.heightFixed,
       rememberPanelSizes: this.rememberPanelSizes,
       panelSizes: this.panelSizes,
-      libraryId: this.libraryId
+      enabledLibraries: this.enabledLibraries,
+      qualifyChips: this.qualifyChips
     };
     localStorage.setItem("pg_settings", JSON.stringify(data));
   }
@@ -164,31 +199,79 @@ export default class PresetGallerySettings {
   }
 
   /**
-   * Fill the library picker from what the server serves. The list is not in the
+   * Fill the library list from what the server serves. The list is not in the
    * template because it is not known until the server is asked.
-   * @param {HTMLDivElement} modal
+   *
+   * Enabled libraries come first, in merge order (the priority); served but
+   * disabled ones follow, so they can be found and switched on.
+   * @param {HTMLDivElement | null} modal
    */
-  syncLibrarySelect(modal) {
-    const select = modal.querySelector("#j0n4t-pg-library");
-    if (!select) return;
-    select.innerHTML = (this.libraries || [])
-      .map(
-        (lib) =>
-          `<option value="${PresetDOM.escapeHTML(lib.id)}" ${lib.id === this.libraryId ? "selected" : ""}>${PresetDOM.escapeHTML(lib.name)}</option>`
-      )
+  syncLibraryList(modal) {
+    const container = modal?.querySelector("#j0n4t-pg-library-list");
+    if (!container) return;
+    const enabled = this.enabledLibraries;
+    const byId = new Map((this.libraries || []).map((lib) => [lib.id, lib]));
+    const ordered = /** @type {{id: string, name: string}[]} */ ([
+      // the merge order, which is the priority
+      ...enabled.map((id) => byId.get(id)).filter((lib) => !!lib),
+      // served but not enabled, so they can still be found and switched on
+      ...(this.libraries || []).filter((lib) => !enabled.includes(lib.id)),
+    ]);
+
+    container.innerHTML = ordered
+      .map((lib) => {
+        const isMain = lib.id === PresetGalleryAPI.DEFAULT_LIBRARY_ID;
+        const checked = enabled.includes(lib.id);
+        return `
+        <div class="j0n4t-pg-library-row" data-id="${PresetDOM.escapeHTML(lib.id)}">
+          <input type="checkbox" data-role="enabled" ${checked ? "checked" : ""} ${isMain ? "disabled" : ""} aria-label="Enable ${PresetDOM.escapeHTML(lib.name)}" />
+          <span class="j0n4t-pg-library-name">${PresetDOM.escapeHTML(lib.name)}</span>
+          <span class="j0n4t-pg-lib-move">
+            <button type="button" data-role="up" title="Move up - higher priority" aria-label="Move ${PresetDOM.escapeHTML(lib.name)} up">▲</button>
+            <button type="button" data-role="down" title="Move down - lower priority" aria-label="Move ${PresetDOM.escapeHTML(lib.name)} down">▼</button>
+          </span>
+        </div>`;
+      })
       .join("");
   }
 
   /**
-   * Switch every gallery to another library. The library is a global choice, so
+   * Merge another set of libraries into every gallery. The set is global, so
    * this is the one Display option that takes effect outside the modal it was
    * picked in - the grid reloads for every open instance.
-   * @param {string} id
+   * @param {string[]} ids merge order; later entries win a shared key
    */
-  applyLibrary(id) {
-    this.libraryId = id;
+  applyLibraries(ids) {
+    this.enabledLibraries = ids;
     this.save();
-    this.context.switchLibrary(id);
+    this.context.applyLibraries(ids);
+  }
+
+  /** @param {string} id */
+  toggleLibrary(id) {
+    const enabled = this.enabledLibraries.includes(id)
+      ? this.enabledLibraries.filter((lib) => lib !== id)
+      : [...this.enabledLibraries, id];
+    this.syncLibraryList(this.modal);
+    this.applyLibraries(enabled);
+  }
+
+  /**
+   * Move a library one slot along the merge order and re-apply. The order is the
+   * priority: a later library wins a key another one also has.
+   * @param {string} id
+   * @param {number} delta -1 moves up, +1 moves down
+   */
+  moveLibrary(id, delta) {
+    const order = [...this.enabledLibraries];
+    const at = order.indexOf(id);
+    if (at === -1) return;
+    const to = Math.min(Math.max(at + delta, 0), order.length - 1);
+    if (to === at) return;
+    order.splice(at, 1);
+    order.splice(to, 0, id);
+    this.syncLibraryList(/** @type {HTMLDivElement} */ (this.modal));
+    this.applyLibraries(order);
   }
 
   updateDiceVisuals() {
@@ -224,6 +307,8 @@ export default class PresetGallerySettings {
     let heightFixedField;
     /** @type {HTMLInputElement | null} */
     let rememberPanelsCheck;
+    /** @type {HTMLInputElement | null} */
+    let qualifyChipsCheck;
 
     const content = `
       <div class="j0n4t-pg-tab-nav">
@@ -267,8 +352,25 @@ export default class PresetGallerySettings {
 
       <div id="j0n4t-pg-tab-display" class="j0n4t-pg-tab-panel">
         <div class="j0n4t-pg-modal-field">
-          <label>Preset Library</label>
-          <select id="j0n4t-pg-library"></select>
+          <label>Preset Libraries</label>
+          <div id="j0n4t-pg-library-list" class="j0n4t-pg-library-list"></div>
+          <div style="font-size: 10px; color: #888; line-height: 1.4;">
+            Every checked library merges into one grid. A name two libraries share is
+            resolved in favour of the <b>last</b> one in the list, so the arrows set the
+            priority.
+          </div>
+        </div>
+
+        <div class="j0n4t-pg-modal-field">
+          <label class="j0n4t-pg-checkbox-wrap" style="height: auto; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <input type="checkbox" id="j0n4t-pg-qualify-chips" ${this.qualifyChips ? "checked" : ""} />
+            Tag basket chips with their library
+          </label>
+          <div style="font-size: 10px; color: #888; line-height: 1.4;">
+            Keep the <b>library&nbsp;#&nbsp;</b> prefix when a preset is added to the basket, so a
+            chip from a library the merge shadowed still expands to that library's copy.
+            Turn it off to store every chip as a plain preset name.
+          </div>
         </div>
 
         <div class="j0n4t-pg-modal-field">
@@ -353,6 +455,7 @@ export default class PresetGallerySettings {
             this.heightMode = toHeightMode(heightModeSelect?.value);
             this.heightFixed = toFixedHeight(heightFixedInput?.value);
             this.rememberPanelSizes = rememberPanelsCheck?.checked === true;
+            this.qualifyChips = qualifyChipsCheck?.checked !== false;
 
             this.save();
             this.applyHeightMode();
@@ -373,17 +476,32 @@ export default class PresetGallerySettings {
         heightFixedInput = modal.querySelector("#j0n4t-pg-height-fixed");
         heightFixedField = modal.querySelector("#j0n4t-pg-height-fixed-field");
         rememberPanelsCheck = modal.querySelector("#j0n4t-pg-remember-panels");
-        const librarySelect = modal.querySelector("#j0n4t-pg-library");
+        qualifyChipsCheck = modal.querySelector("#j0n4t-pg-qualify-chips");
 
         // The library list comes from the server, so it is fetched on every open
-        // and the picker is filled from whatever is served right now.
-        librarySelect?.addEventListener("change", () => {
-          const value = /** @type {HTMLSelectElement} */ (librarySelect).value;
-          if (value) this.applyLibrary(value);
+        // and filled from whatever is served right now.
+        this.modal = modal;
+        const libraryList = modal.querySelector("#j0n4t-pg-library-list");
+        libraryList?.addEventListener("change", (e) => {
+          const target = e.target instanceof HTMLElement ? e.target : null;
+          const box = target?.closest("input[data-role='enabled']");
+          if (!box) return;
+          const row = box.closest(".j0n4t-pg-library-row");
+          const id = row instanceof HTMLElement ? row.dataset.id || "" : "";
+          if (id) this.toggleLibrary(id);
+        });
+        libraryList?.addEventListener("click", (e) => {
+          const target = e.target instanceof HTMLElement ? e.target : null;
+          const btn = target?.closest("button[data-role]");
+          if (!(btn instanceof HTMLElement)) return;
+          const row = btn.closest(".j0n4t-pg-library-row");
+          const id = row instanceof HTMLElement ? row.dataset.id || "" : "";
+          const delta = btn.dataset.role === "up" ? -1 : 1;
+          this.moveLibrary(id, delta);
         });
         PresetGalleryAPI.fetchLibraries().then((libs) => {
           this.libraries = libs;
-          this.syncLibrarySelect(modal);
+          this.syncLibraryList(modal);
         });
 
         // The pixel field only means anything in fixed mode.

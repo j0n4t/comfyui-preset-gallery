@@ -28,7 +28,8 @@
  *     syncUI: (val: string) => void | Promise<void>,
  *     loadGallery: () => Promise<void>,
  *     updateWidgetValue: (arr: string[]) => void,
- *     switchLibrary: (id: string) => void,
+ *     applyLibraries: (ids: string[]) => void,
+ *     selectionKey: (key: string) => string,
  *   },
  * }} options
  * @returns {GalleryContext}
@@ -59,7 +60,8 @@ export default function createGalleryContext({ session, dom, widget, view }) {
     syncUI: (/** @type {string} */ val) => view.syncUI(val),
     loadGallery: () => view.loadGallery(),
     updateWidgetValue: (/** @type {string[]} */ arr) => view.updateWidgetValue(arr),
-    switchLibrary: (/** @type {string} */ id) => view.switchLibrary(id),
+    applyLibraries: (/** @type {string[]} */ ids) => view.applyLibraries(ids),
+    selectionKey: (/** @type {string} */ key) => view.selectionKey(key),
   };
 
   Object.defineProperties(ctx, {

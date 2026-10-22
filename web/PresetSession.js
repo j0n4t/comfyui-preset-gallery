@@ -159,6 +159,21 @@ export default class PresetSession {
     return this.duplicateKeys.has(PresetLogic.splitQualifiedKey(key).key);
   }
 
+  /**
+   * The library a folder belongs to: the owner of the first key under it. Group
+   * actions (colour, rename) act on a folder path, which several libraries can
+   * hold, so they aim at whichever library the merge put there first.
+   * @param {string} folder
+   * @returns {string | null}
+   */
+  ownerOfFolder(folder) {
+    const prefix = folder ? `${folder}/` : "";
+    for (const [key, owner] of this.keyOwners) {
+      if (key === folder || key.startsWith(prefix)) return owner;
+    }
+    return null;
+  }
+
   savePins() {
     try {
       this.storage?.setItem(this.pinKey, JSON.stringify(Array.from(this.pinnedChips)));
