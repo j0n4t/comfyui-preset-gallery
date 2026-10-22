@@ -30,6 +30,8 @@
  *     updateWidgetValue: (arr: string[]) => void,
  *     applyLibraries: (ids: string[]) => void,
  *     selectionKey: (key: string) => string,
+ *     refreshLibraries: () => Promise<void>,
+ *     settleEmptiedLibrary: (libraryId: string | null) => Promise<void>,
  *   },
  * }} options
  * @returns {GalleryContext}
@@ -62,6 +64,9 @@ export default function createGalleryContext({ session, dom, widget, view }) {
     updateWidgetValue: (/** @type {string[]} */ arr) => view.updateWidgetValue(arr),
     applyLibraries: (/** @type {string[]} */ ids) => view.applyLibraries(ids),
     selectionKey: (/** @type {string} */ key) => view.selectionKey(key),
+    refreshLibraries: () => view.refreshLibraries(),
+    settleEmptiedLibrary: (/** @type {string | null} */ libraryId) =>
+      view.settleEmptiedLibrary(libraryId),
   };
 
   Object.defineProperties(ctx, {

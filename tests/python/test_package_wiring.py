@@ -12,6 +12,7 @@ import of it does not explode; this test asserts the registered node instead.
 Whether ComfyUI actually calls these hooks is the live smoke test's job.
 """
 
+import asyncio
 import importlib.util
 import os
 import sys
@@ -52,6 +53,9 @@ def test_routes_register_at_import_time(host_routes):
         "/preset_gallery/presets",
     ]
     assert [path for path, _ in host_routes.registered["POST"]] == ["/preset_gallery/presets"]
+    assert [path for path, _ in host_routes.registered["DELETE"]] == [
+        "/preset_gallery/presets"
+    ]
 
 
 def test_is_changed_returns_a_value_never_equal_to_itself():
@@ -81,3 +85,59 @@ def test_base_preset_is_declared_as_an_input_socket():
     assert set(inputs["required"]) == {"preset_selection"}
     assert inputs["optional"]["base_preset"][1]["forceInput"] is True
     assert "evaluated_preset" in inputs["optional"]
+
+
+class _DeleteRequest:
+    """Just enough of an aiohttp request for the DELETE route."""
+
+    def __init__(self, library):
+        self.query = {"library": library}
+
+
+def test_deleting_a_library_removes_only_an_empty_one(tmp_path, monkeypatch, host_routes):
+    """The DELETE route is the guard behind "remove when empty".
+
+    The frontend only asks once an edit has emptied a library, so the route
+    refuses everything else: the bundled library, a library that still holds
+    presets, and an id nobody serves.
+    """
+    _load_package()
+    # The package is loaded under a synthetic name, so its `preset_store` is a
+    # module of its own - patching the top-level one would miss the route.
+    gallery = sys.modules[f"{PACKAGE_NAME}.preset_gallery"]
+    store = sys.modules[f"{PACKAGE_NAME}.preset_store"]
+
+    monkeypatch.setattr(store, "PRESETS_DIR", str(tmp_path))
+    monkeypatch.setattr(store, "DEFAULT_PRESETS_FILE", str(tmp_path / "main.json"))
+    # the DELETE handler compares against the copy it imported
+    monkeypatch.setattr(gallery, "DEFAULT_PRESETS_FILE", str(tmp_path / "main.json"))
+    (tmp_path / "main.json").write_text(
+        '{"Faces/Portrait": {"preset": "p"}}', encoding="utf-8"
+    )
+    (tmp_path / "socks.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "hair.json").write_text(
+        '{"hair/long": {"preset": "long"}}', encoding="utf-8"
+    )
+
+    endpoint = host_routes.registered["DELETE"][0][1]
+
+    result = asyncio.run(endpoint(_DeleteRequest("socks")))
+    assert result["json"][0]["status"] == "success"
+    assert not (tmp_path / "socks.json").exists()
+
+    # a library that still holds presets is refused, and left on disk
+    result = asyncio.run(endpoint(_DeleteRequest("hair")))
+    assert result["json"][0]["status"] == "error"
+    assert result["kwargs"]["status"] == 409
+    assert (tmp_path / "hair.json").exists()
+
+    # so is the bundled library, even though it is full
+    result = asyncio.run(endpoint(_DeleteRequest("main")))
+    assert result["json"][0]["status"] == "error"
+    assert result["kwargs"]["status"] == 400
+    assert (tmp_path / "main.json").exists()
+
+    # and an id nobody serves
+    result = asyncio.run(endpoint(_DeleteRequest("ghost")))
+    assert result["json"][0]["status"] == "error"
+    assert result["kwargs"]["status"] == 404

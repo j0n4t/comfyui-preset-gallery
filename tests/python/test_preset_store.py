@@ -113,3 +113,4 @@ def test_list_libraries_survives_a_missing_folder(tmp_path, monkeypatch):
     assert list_libraries() == [
         {"id": "main", "name": "Main", "default": True}
     ]
+

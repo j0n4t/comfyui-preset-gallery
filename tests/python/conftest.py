@@ -29,7 +29,7 @@ class StubRoutes:
     """Stands in for ComfyUI's aiohttp route table."""
 
     def __init__(self):
-        self.registered = {"GET": [], "POST": []}
+        self.registered = {"GET": [], "POST": [], "DELETE": []}
 
     def _register(self, method, path, fn):
         self.registered[method].append((path, fn))
@@ -43,6 +43,11 @@ class StubRoutes:
     def post(self, path):
         def decorator(fn):
             return self._register("POST", path, fn)
+        return decorator
+
+    def delete(self, path):
+        def decorator(fn):
+            return self._register("DELETE", path, fn)
         return decorator
 
 

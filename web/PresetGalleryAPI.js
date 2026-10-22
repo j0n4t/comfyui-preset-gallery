@@ -178,6 +178,23 @@ export default class PresetGalleryAPI {
   }
 
   /**
+   * Remove a whole library from disk. The route only accepts an empty one, so
+   * this is safe to call on a library that just had its last preset moved out.
+   * @param {string | null} libraryId
+   */
+  static async removeLibrary(libraryId) {
+    if (!libraryId || libraryId === PresetGalleryAPI.DEFAULT_LIBRARY_ID) return false;
+    try {
+      const res = await fetch(PresetGalleryAPI.libraryUrl(libraryId), { method: "DELETE" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return true;
+    } catch (error) {
+      console.error("[PresetGalleryAPI] Error removing library:", error);
+      return false;
+    }
+  }
+
+  /**
    * @typedef {Object} SavePresetData
    * @property {string} name
    * @property {string} folder
@@ -187,10 +204,12 @@ export default class PresetGalleryAPI {
    * @property {string} editingKey
    * @property {string} mode
    * @property {string | null} [libraryId] the library to write to
+   * @property {string | null} [sourceLibraryId] the library the entry is being
+   *   moved from, when that is not the target
    */
 
   /** @param {SavePresetData} data */
-  static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode, libraryId }) {
+  static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode, libraryId, sourceLibraryId }) {
     const target = libraryId ?? PresetGalleryAPI.activeLibraryId;
     const presets = await PresetGalleryAPI.getPresets(target);
 
@@ -235,6 +254,14 @@ export default class PresetGalleryAPI {
       filename: finalImage,
     };
     await PresetGalleryAPI.savePresets(presets, target);
+
+    // a move: the entry is leaving the library it was edited from
+    if (mode === "edit" && sourceLibraryId && sourceLibraryId !== target) {
+      const source = await PresetGalleryAPI.getPresets(sourceLibraryId);
+      delete source[existingKey];
+      await PresetGalleryAPI.savePresets(source, sourceLibraryId);
+    }
+
     return { success: true, key: newKey };
   }
 
@@ -246,6 +273,55 @@ export default class PresetGalleryAPI {
     const presets = await PresetGalleryAPI.getPresets(libraryId);
     delete presets[PresetLogic.splitQualifiedKey(uniqueKey).key];
     await PresetGalleryAPI.savePresets(presets, libraryId);
+    return { success: true };
+  }
+
+  /**
+   * Move a whole folder into another library.
+   *
+   * The editor's folder field and the rename prompt both accept `library#path`;
+   * naming a library there moves the folder into it instead of renaming it in
+   * place. The source library is left without the folder, and the target keeps
+   * whatever it already had under the new name.
+   *
+   * @param {string} oldFolder
+   * @param {string} newFolder
+   * @param {string | null} [targetLibraryId]
+   * @param {string | null} [sourceLibraryId]
+   */
+  static async moveFolder(oldFolder, newFolder, targetLibraryId, sourceLibraryId) {
+    const target = targetLibraryId ?? PresetGalleryAPI.activeLibraryId;
+    const sourceId = sourceLibraryId ?? target;
+    const source = await PresetGalleryAPI.getPresets(sourceId);
+
+    /** @type {PresetCache} */
+    const moved = {};
+    /** @type {PresetCache} */
+    const kept = {};
+    const prefix = `${oldFolder}/`;
+
+    for (const [key, item] of Object.entries(source)) {
+      if (key === oldFolder) moved[newFolder] = item;
+      else if (key.startsWith(prefix)) {
+        moved[`${newFolder}/${key.slice(prefix.length)}`] = item;
+      } else {
+        kept[key] = item;
+      }
+    }
+
+    if (Object.keys(moved).length === 0) {
+      return { success: false, error: "No such folder" };
+    }
+
+    const targetPresets = await PresetGalleryAPI.getPresets(target);
+    // renaming in place has to drop the old keys; moving only adds to the target
+    await PresetGalleryAPI.savePresets(
+      sourceId === target ? { ...kept, ...moved } : { ...targetPresets, ...moved },
+      target
+    );
+    if (sourceId !== target) {
+      await PresetGalleryAPI.savePresets(kept, sourceId);
+    }
     return { success: true };
   }
 

@@ -333,7 +333,8 @@ function fakeMultiServer(libraries: Record<string, PresetCache>) {
   const store = { ...libraries };
   globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
     const url = String(input);
-    const id = new URL(url, "http://localhost").searchParams.get("library") ?? "";
+    // no `?library=` and `?library=main` are the same file - the bundled one
+    const id = new URL(url, "http://localhost").searchParams.get("library") ?? "main";
     calls.push({ url, method: init?.method ?? "GET", body: init?.body ? String(init.body) : null });
     if (init?.method === "POST") {
       store[id] = JSON.parse(String(init.body)) as PresetCache;
@@ -446,4 +447,119 @@ test("renameFolder moves the folder inside the named library only", async () => 
   await PresetGalleryAPI.renameFolder("Faces", "People", "socks");
   assert.deepEqual(server.getLibrary("socks"), { "People/Portrait": { preset: "other portrait" } });
   assert.deepEqual(server.getLibrary("main"), { "Faces/Portrait": { preset: "portrait" } });
+});
+
+// --- moveFolder ---
+
+test("moveFolder moves a folder into another library and empties the source", async () => {
+  const server = fakeMultiServer({
+    main: { "Faces/Portrait": { preset: "p" }, "Faces/Macro": { preset: "m" }, Scenery: { preset: "s" } },
+    socks: { "wear/sock/ankle": { preset: "a" } },
+  });
+
+  const res = await PresetGalleryAPI.moveFolder("Faces", "People", "socks", "main");
+  assert.deepEqual(res, { success: true });
+  assert.deepEqual(server.getLibrary("socks"), {
+    "wear/sock/ankle": { preset: "a" },
+    "People/Portrait": { preset: "p" },
+    "People/Macro": { preset: "m" },
+  });
+  assert.deepEqual(server.getLibrary("main"), { Scenery: { preset: "s" } });
+});
+
+test("moveFolder moves a bare folder key (a colour-only entry) too", async () => {
+  const server = fakeMultiServer({
+    main: { Faces: { __color__: "#ff0000" }, "Faces/Portrait": { preset: "p" } },
+    socks: {},
+  });
+  await PresetGalleryAPI.moveFolder("Faces", "People", "socks", "main");
+  assert.deepEqual(server.getLibrary("socks"), {
+    People: { __color__: "#ff0000" },
+    "People/Portrait": { preset: "p" },
+  });
+  assert.deepEqual(server.getLibrary("main"), {});
+});
+
+test("moveFolder reports failure when the folder is not in the source library", async () => {
+  const server = fakeMultiServer({ main: {}, socks: {} });
+  const res = await PresetGalleryAPI.moveFolder("Ghost", "People", "socks", "main");
+  assert.equal(res.success, false);
+  assert.deepEqual(server.getLibrary("socks"), {}, "nothing was written");
+  assert.deepEqual(server.getLibrary("main"), {});
+});
+
+test("moveFolder renames in place when no library is named", async () => {
+  const server = fakeMultiServer({
+    main: { "Faces/Portrait": { preset: "p" }, Scenery: { preset: "s" } },
+  });
+  await PresetGalleryAPI.moveFolder("Faces", "People", null, null);
+  assert.deepEqual(server.getLibrary("main"), {
+    "People/Portrait": { preset: "p" },
+    Scenery: { preset: "s" },
+  });
+});
+
+// --- savePreset moving between libraries ---
+
+test("savePreset edits in place when the target is the library it came from", async () => {
+  const server = fakeMultiServer({ main: { "faces/portrait": { preset: "p" } } });
+  await save({
+    name: "Portrait",
+    folder: "Faces",
+    presetText: "edited",
+    imageData: null,
+    clearImage: false,
+    editingKey: "main#Faces/Portrait",
+    mode: "edit",
+    libraryId: "main",
+    sourceLibraryId: "main",
+  });
+  assert.deepEqual(server.getLibrary("main"), { "faces/portrait": { preset: "edited" } });
+});
+
+test("savePreset deletes the original when the entry moves to another library", async () => {
+  const server = fakeMultiServer({
+    main: { "faces/portrait": { preset: "p" } },
+    socks: { "wear/sock/ankle": { preset: "a" } },
+  });
+  await save({
+    name: "Portrait",
+    folder: "Faces",
+    presetText: "moved",
+    imageData: null,
+    clearImage: false,
+    editingKey: "main#faces/portrait",
+    mode: "edit",
+    libraryId: "socks",
+    sourceLibraryId: "main",
+  });
+  assert.deepEqual(server.getLibrary("main"), {}, "the source no longer holds it");
+  assert.deepEqual(server.getLibrary("socks"), {
+    "wear/sock/ankle": { preset: "a" },
+    "faces/portrait": { preset: "moved" },
+  });
+});
+
+// --- removeLibrary ---
+
+test("removeLibrary sends a DELETE to that library", async () => {
+  const server = fakeMultiServer({ main: { "Faces/Portrait": { preset: "p" } }, socks: {} });
+  const calls = server.calls.filter((c) => c.method === "DELETE");
+  assert.equal(calls.length, 0, "no DELETE before the call");
+
+  assert.equal(await PresetGalleryAPI.removeLibrary("socks"), true);
+  assert.equal(server.calls.at(-1)?.method, "DELETE");
+  assert.equal(server.calls.at(-1)?.url, "/preset_gallery/presets?library=socks");
+});
+
+test("removeLibrary refuses the bundled library and reports a failed request", async () => {
+  const server = fakeMultiServer({ main: { "Faces/Portrait": { preset: "p" } } });
+  assert.equal(await PresetGalleryAPI.removeLibrary("main"), false);
+  assert.equal(await PresetGalleryAPI.removeLibrary(null), false);
+  assert.equal(server.calls.length, 0, "nothing was sent");
+});
+
+test("removeLibrary reports failure when the server refuses", async () => {
+  globalThis.fetch = (async () => new Response("no", { status: 409 })) as typeof fetch;
+  assert.equal(await PresetGalleryAPI.removeLibrary("socks"), false);
 });

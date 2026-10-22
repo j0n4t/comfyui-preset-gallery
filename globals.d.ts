@@ -182,6 +182,8 @@ type GalleryContext = {
   updateWidgetValue: (arr: string[]) => void;
   applyLibraries: (ids: string[]) => void;
   selectionKey: (key: string) => string;
+  refreshLibraries: () => Promise<void>;
+  settleEmptiedLibrary: (libraryId: string | null) => Promise<void>;
 };
 
 interface Window {

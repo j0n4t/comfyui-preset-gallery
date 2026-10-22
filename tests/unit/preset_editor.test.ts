@@ -101,9 +101,15 @@ function makeEditor(dom: FakeDom): {
   const context = {
     dom,
     cache: CACHE,
+    session: {
+      libraryCaches: new Map([["main", CACHE]]),
+      libraries: [{ id: "main", name: "Main" }],
+    },
     syncEditorHighlight: () => { calls.syncEditorHighlight++; },
     setPanelCollapseState: (collapsed: boolean) => { calls.setPanelCollapseState.push(collapsed); },
     loadGallery: () => { calls.loadGallery++; return Promise.resolve(); },
+    refreshLibraries: () => Promise.resolve(),
+    settleEmptiedLibrary: () => Promise.resolve(),
     getSelectedArray: () => [],
     updateWidgetValue: (arr: string[]) => { calls.updateWidgetValue.push(arr); },
   };

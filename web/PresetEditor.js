@@ -167,17 +167,18 @@ export default class PresetEditor {
   /**
    * Check if saving would overwrite an existing preset.
    * @param {string} currentMode
-   * @param {string} editingKey
+   * @param {string} editingKey - may carry a library qualifier
    * @param {string} uniqueKey
    * @param {PresetCache} cache - Preset cache lookup dictionary.
    * @returns {boolean}
    */
   static shouldConfirmOverwrite(currentMode, editingKey, uniqueKey, cache) {
+    const editingPlainKey = PresetLogic.splitQualifiedKey(editingKey).key;
     if (currentMode === "new") {
       return !!cache[uniqueKey];
     }
     if (currentMode === "edit") {
-      return uniqueKey !== editingKey && !!cache[uniqueKey];
+      return uniqueKey !== editingPlainKey && !!cache[uniqueKey];
     }
     return false;
   }
@@ -189,6 +190,29 @@ export default class PresetEditor {
    */
   editingLibraryId() {
     return this.context.session?.ownerOfKey?.(this.editingKey) ?? null;
+  }
+
+  /**
+   * Split the folder field into the library it names and the folder path.
+   *
+   * `sdxl#wear/sock` targets the `sdxl` library; a plain `wear/sock` targets the
+   * library the entry being edited belongs to (or the default for a new one).
+   * @returns {{libraryId: string | null, folder: string}}
+   */
+  targetFolder() {
+    const { libraryId, key } = PresetLogic.splitQualifiedKey(
+      this.dom.inpFolder.value.trim()
+    );
+    return { libraryId, folder: key };
+  }
+
+  /** The cache of the library a save would land in. @param {string} libraryId */
+  targetCache(libraryId) {
+    const own = this.context.session?.libraryCaches?.get(libraryId);
+    // a library the session does not know (a brand new one) has no cache yet;
+    // the merged cache is the best available stand-in, and over-confirming is
+    // always the safe direction
+    return own ?? this.context.cache ?? {};
   }
 
   async handleSave() {
@@ -209,22 +233,20 @@ export default class PresetEditor {
       this.dom.inpName.value = name;
     }
 
-    const uniqueKey =
-      (this.dom.inpFolder.value.trim()
-        ? `${this.dom.inpFolder.value.trim().toLowerCase().replace(/ /g, "_")}/`
-        : "") + name;
+    const { libraryId: namedLibrary, folder } = this.targetFolder();
+    // a folder that names no library writes where the entry being edited lives,
+    // or to the bundled library for a new one
+    const targetLibrary =
+      namedLibrary || this.editingLibraryId() || PresetGalleryAPI.DEFAULT_LIBRARY_ID;
+    const cleanFolder = folder.toLowerCase().replace(/ /g, "_");
+    const uniqueKey = (cleanFolder ? `${cleanFolder}/` : "") + name;
     let selections = this.context.getSelectedArray();
 
-    if (this.currentMode === "new") {
-      if (
-        this.context.cache[uniqueKey] &&
-        !(await ModalUtils.confirm(`Overwrite "${uniqueKey}"?`))
-      )
-        return;
-    } else if (
-      this.currentMode === "edit" &&
-      uniqueKey !== this.editingKey &&
-      this.context.cache[uniqueKey] &&
+    // Overwriting is the one edit that destroys text the user cannot get back,
+    // so it always asks - against the library the save lands in, not the merge.
+    const target = this.targetCache(targetLibrary);
+    if (
+      PresetEditor.shouldConfirmOverwrite(this.currentMode, this.editingKey, uniqueKey, target) &&
       !(await ModalUtils.confirm(`Overwrite "${uniqueKey}"?`))
     ) {
       return;
@@ -246,18 +268,25 @@ export default class PresetEditor {
 
     const res = await PresetGalleryAPI.savePreset({
       name,
-      folder: this.dom.inpFolder.value.trim(),
+      folder: cleanFolder,
       presetText: this.dom.inpPreset.value.trim(),
       imageData,
       clearImage,
       editingKey: this.editingKey,
       mode: this.currentMode,
-      libraryId: this.editingLibraryId(),
+      libraryId: targetLibrary,
+      sourceLibraryId: this.currentMode === "edit" ? this.editingLibraryId() : null,
     });
 
     if (!res.success) {
       await ModalUtils.alert("Save failed.");
       return;
+    }
+
+    // a library named in the folder field that the list does not know yet has
+    // just been created on the server, so re-read the list to pick it up
+    if (namedLibrary && !this.context.session?.libraries?.some((lib) => lib.id === namedLibrary)) {
+      await this.context.refreshLibraries();
     }
 
     if (
@@ -286,6 +315,8 @@ export default class PresetEditor {
     if (!(await ModalUtils.confirm(`Delete "${this.editingKey}"?`))) return;
 
     await PresetGalleryAPI.deletePreset(this.editingKey, this.editingLibraryId());
+    // deleting the last preset may have emptied the library it came from
+    await this.context.settleEmptiedLibrary(this.editingLibraryId());
     await this.context.loadGallery();
     this.context.updateWidgetValue(
       this.context.getSelectedArray().filter((v) => v !== this.editingKey)

@@ -281,18 +281,20 @@ export default class PresetGrid {
 
             if (inputName === null || inputName === undefined) return;
 
-            const newName = inputName
-              .trim()
-              .toLowerCase()
-              .replace(/ /g, "_");
+            // `library#folder` moves the folder into that library instead of
+            // renaming it where it is
+            const { libraryId: namedLibrary, key: typedFolder } =
+              PresetLogic.splitQualifiedKey(inputName.trim());
+            const newName = typedFolder.toLowerCase().replace(/ /g, "_");
+            const source = this.context.session?.ownerOfFolder?.(rawFolder) ?? null;
 
-            if (!newName || newName === rawFolder) return;
+            if (!newName) return;
+            if (!namedLibrary && newName === rawFolder) return;
 
-            const res = await PresetGalleryAPI.renameFolder(
-              rawFolder,
-              newName,
-              this.context.session?.ownerOfFolder?.(rawFolder)
-            );
+            const res = namedLibrary
+              ? await PresetGalleryAPI.moveFolder(rawFolder, newName, namedLibrary, source)
+              : await PresetGalleryAPI.renameFolder(rawFolder, newName, source);
+
             if (res.success) {
               this.context.setCollapsedFolders(
                 this.context.getCollapsedFolders().filter((/** @type {string} */ i) => i !== rawFolder)
@@ -307,6 +309,11 @@ export default class PresetGrid {
                       : i
                   )
               );
+              // a move may have emptied the library the folder came from
+              if (namedLibrary) {
+                await this.context.settleEmptiedLibrary(source);
+                await this.context.loadGallery();
+              }
             } else {
               await ModalUtils.alert("Rename failed");
             }

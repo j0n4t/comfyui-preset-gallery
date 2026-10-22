@@ -238,7 +238,7 @@ export default class PresetGalleryApp {
                 <div id="j0n4t-pg-editor-preview" class="j0n4t-pg-editor-preview" tabindex="0" role="button" aria-label="Edit Preview Image"></div>
                 <div style="display:flex; flex-direction:column; gap:6px; flex-grow:1;">
                     <textarea id="j0n4t-pg-preset" placeholder="Keywords..." spellcheck="false" aria-label="Preset Keywords"></textarea>
-                    <div class="j0n4t-pg-row"><input type="text" id="j0n4t-pg-folder" placeholder="Folder" aria-label="Preset Folder" style="flex:1;" /><input type="text" id="j0n4t-pg-name" placeholder="Name" aria-label="Preset Name" style="flex:1;" /></div>
+                    <div class="j0n4t-pg-row"><input type="text" id="j0n4t-pg-folder" placeholder="Folder (lib#folder for another library)" aria-label="Preset Folder" style="flex:1;" /><input type="text" id="j0n4t-pg-name" placeholder="Name" aria-label="Preset Name" style="flex:1;" /></div>
                 </div>
               </div>
               <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
@@ -358,6 +358,45 @@ export default class PresetGalleryApp {
       id,
       name: this.libraries?.find((lib) => lib.id === id)?.name || id,
     }));
+  }
+
+  /**
+   * Deal with a library an edit may have emptied.
+   *
+   * Nothing left at all - the library goes. Only folder colours left - those are
+   * worth keeping for a library the user means to refill, so it asks. The
+   * bundled library is never touched.
+   *
+   * @param {string | null} libraryId
+   * @returns {Promise<void>}
+   */
+  async settleEmptiedLibrary(libraryId) {
+    if (!libraryId || libraryId === PresetGalleryAPI.DEFAULT_LIBRARY_ID) return;
+
+    const presets = await PresetGalleryAPI.getPresets(libraryId);
+    const keys = Object.keys(presets);
+    if (keys.length === 0) {
+      await PresetGalleryAPI.removeLibrary(libraryId);
+    } else if (!keys.some((key) => presets[key]?.preset)) {
+      const remove = await ModalUtils.confirm(
+        `"${libraryId}" has no presets left, only folder colours. Delete the library?`
+      );
+      if (remove) await PresetGalleryAPI.removeLibrary(libraryId);
+    }
+
+    await this.refreshLibraries();
+  }
+
+  /**
+   * Re-read the library list and re-merge. Used after an edit writes into a
+   * library the list does not know yet: the server has just created the file,
+   * and every served library is enabled by default, so a refresh is all it
+   * takes for the new library to join the merge.
+   * @returns {Promise<void>}
+   */
+  async refreshLibraries() {
+    await this.loadLibraries();
+    await this.loadGallery();
   }
 
   /**

@@ -34,6 +34,8 @@ type FakeView = {
   updateWidgetValue: (arr: string[]) => void;
   applyLibraries: (ids: string[]) => void;
   selectionKey: (key: string) => string;
+  refreshLibraries: () => Promise<void>;
+  settleEmptiedLibrary: (libraryId: string | null) => Promise<void>;
 };
 
 /** Records which view/host methods the context forwarded to. */
@@ -49,6 +51,8 @@ function fakeView(): FakeView & { calls: unknown[][] } {
     updateWidgetValue: record("updateWidgetValue"),
     applyLibraries: record("applyLibraries"),
     selectionKey: (key: string) => { calls.push(["selectionKey", key]); return key; },
+    refreshLibraries: () => Promise.resolve(),
+    settleEmptiedLibrary: () => Promise.resolve(),
     loadGallery: () => { calls.push(["loadGallery"]); return Promise.resolve(); },
   };
 }

@@ -1,9 +1,12 @@
+import os
+
 from aiohttp import web
 from server import PromptServer
 
 from .preset_compose import compose_final_preset
 from .preset_store import (
     DEFAULT_LIBRARY_ID,
+    DEFAULT_PRESETS_FILE,
     list_libraries,
     load_presets,
     resolve_library_path,
@@ -48,6 +51,35 @@ async def save_presets_endpoint(request):
     if save_presets(data, path):
         return web.json_response({"status": "success"})
     return web.json_response({"status": "error", "message": "Failed to save file"}, status=500)
+
+
+@PromptServer.instance.routes.delete("/preset_gallery/presets")
+async def delete_library_endpoint(request):
+    """Remove a whole library.
+
+    Only an empty one: the bundled library is never removed, and a library that
+    still holds presets is refused. The frontend only asks when it has just
+    emptied one, so this is the guard behind that.
+    """
+    path = _requested_path(request)
+    if path is None:
+        return web.json_response(
+            {"status": "error", "message": "Unknown library"}, status=404
+        )
+    if path == DEFAULT_PRESETS_FILE:
+        return web.json_response(
+            {"status": "error", "message": "The bundled library cannot be removed"},
+            status=400,
+        )
+    if load_presets(path):
+        return web.json_response(
+            {"status": "error", "message": "Library is not empty"}, status=409
+        )
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+    return web.json_response({"status": "success"})
 
 
 class PresetGalleryNode:
