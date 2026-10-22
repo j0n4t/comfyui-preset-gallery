@@ -78,7 +78,8 @@ test("loads defaults when nothing is saved", () => {
   assert.equal(settings.heightFixed, 640);
   assert.equal(settings.rememberPanelSizes, false, "panel sizes are opt-in");
   assert.deepEqual(settings.panelSizes, {});
-  assert.deepEqual(settings.enabledLibraries, ["main"], "only the bundled library by default");
+  assert.deepEqual(settings.disabledLibraries, [], "nothing is switched off by default");
+  assert.deepEqual(settings.libraryOrder, [], "the server's order is used until the user picks one");
   assert.equal(settings.qualifyChips, true, "chips keep their library tag by default");
 });
 
@@ -157,8 +158,9 @@ test("save writes all preferences", () => {
       heightFixed: 300,
       rememberPanelSizes: true,
       panelSizes: { basket: 120, editor: 60 },
-      enabledLibraries: ["main"],
       qualifyChips: true,
+      disabledLibraries: [],
+      libraryOrder: [],
     })
   );
 });
@@ -255,8 +257,9 @@ test("openModal save persists the inputs and syncs the widget", async () => {
       heightFixed: 640,
       rememberPanelSizes: false,
       panelSizes: {},
-      enabledLibraries: ["main"],
       qualifyChips: true,
+      disabledLibraries: [],
+      libraryOrder: [],
     })
   );
   assert.equal(synced, "Faces/Portrait", "syncUI receives the widget value");
@@ -414,7 +417,7 @@ test("the Display tab lists the libraries the server serves as a checkbox list",
     new Response(JSON.stringify(served), { status: 200 })) as typeof fetch;
 
   const { settings } = makeSettings();
-  settings.enabledLibraries = ["main", "socks"];
+  settings.disabledLibraries = ["socks"];
 
   const promise = settings.openModal();
   const modal = document.querySelector(".j0n4t-pg-modal-overlay")!;
@@ -422,8 +425,8 @@ test("the Display tab lists the libraries the server serves as a checkbox list",
 
   const rows = modal.querySelectorAll(".j0n4t-pg-library-row");
   assert.equal(rows.length, 2, "one row per served library");
-  assert.equal(rows[0].getAttribute("data-id"), "main", "enabled libraries come first");
-  assert.equal(rows[1].getAttribute("data-id"), "socks");
+  assert.equal(rows[0].getAttribute("data-id"), "main", "the enabled one comes first");
+  assert.equal(rows[1].getAttribute("data-id"), "socks", "the disabled one after it");
   // the bundled library is always on and cannot be switched off
   assert.equal(
     rows[0].querySelector<HTMLInputElement>("input[data-role='enabled']")!.disabled,
@@ -431,14 +434,49 @@ test("the Display tab lists the libraries the server serves as a checkbox list",
   );
   assert.equal(
     rows[1].querySelector<HTMLInputElement>("input[data-role='enabled']")!.checked,
-    true
+    false
   );
 
   modal.querySelector<HTMLButtonElement>('button[data-index="0"]')?.click(); // Cancel
   assert.equal(await promise, false);
 });
 
-test("applyLibraries persists the merge order and hands it to the gallery", () => {
+test("every library the server serves is enabled until the user switches one off", () => {
+  fakeStorage();
+  const dom = makeDom();
+  const settings = new PresetGallerySettings({
+    syncUI: () => {},
+    widget: { value: "" },
+    dom,
+  } as unknown as GalleryContext);
+  settings.libraries = [
+    { id: "main", name: "Main", default: true },
+    { id: "socks", name: "Socks", default: false },
+    { id: "hair", name: "Hair", default: false },
+  ];
+
+  assert.deepEqual(settings.enabledIds(), ["main", "socks", "hair"], "the server's own order");
+  assert.equal(settings.isLibraryEnabled("hair"), true);
+});
+
+test("a saved order is honoured, and a library the server stopped serving is dropped", () => {
+  fakeStorage({ pg_settings: JSON.stringify({ libraryOrder: ["hair", "main"] }) });
+  const dom = makeDom();
+  const settings = new PresetGallerySettings({
+    syncUI: () => {},
+    widget: { value: "" },
+    dom,
+  } as unknown as GalleryContext);
+  settings.libraries = [
+    { id: "main", name: "Main", default: true },
+    { id: "socks", name: "Socks", default: false },
+    { id: "hair", name: "Hair", default: false },
+  ];
+
+  assert.deepEqual(settings.enabledIds(), ["hair", "main", "socks"]);
+});
+
+test("applyLibraries hands the enabled set to the gallery and persists the choice", () => {
   fakeStorage();
   const dom = makeDom();
   const calls: string[][] = [];
@@ -448,32 +486,36 @@ test("applyLibraries persists the merge order and hands it to the gallery", () =
     dom,
     applyLibraries: (ids: string[]) => calls.push(ids),
   } as unknown as GalleryContext);
+  settings.libraries = [
+    { id: "main", name: "Main", default: true },
+    { id: "socks", name: "Socks", default: false },
+  ];
 
   settings.applyLibraries(["main", "socks"]);
-  assert.deepEqual(settings.enabledLibraries, ["main", "socks"]);
   assert.deepEqual(calls, [["main", "socks"]], "the gallery is asked to re-merge");
   assert.deepEqual(
     (JSON.parse(localStorage.getItem("pg_settings")!) as Record<string, unknown>)
-      .enabledLibraries,
+      .libraryOrder,
     ["main", "socks"]
   );
 });
 
-test("a saved list from before the multi-library change falls back to main", () => {
+test("a saved single library id from before the multi-library change means all of them", () => {
   fakeStorage({ pg_settings: JSON.stringify({ libraryId: "sample" }) });
-  const { settings } = makeSettings();
-  assert.deepEqual(settings.enabledLibraries, ["main"]);
+  const dom = makeDom();
+  const settings = new PresetGallerySettings({
+    syncUI: () => {},
+    widget: { value: "" },
+    dom,
+  } as unknown as GalleryContext);
+  settings.libraries = [
+    { id: "main", name: "Main", default: true },
+    { id: "sample", name: "Sample", default: false },
+  ];
+  assert.deepEqual(settings.enabledIds(), ["main", "sample"]);
 });
 
-test("a saved list always keeps the bundled library, and drops empty ids", () => {
-  fakeStorage({
-    pg_settings: JSON.stringify({ enabledLibraries: ["socks", "", "main", 7] }),
-  });
-  const { settings } = makeSettings();
-  assert.deepEqual(settings.enabledLibraries, ["socks", "main"]);
-});
-
-test("toggleLibrary appends a newly enabled library at the end of the merge order", () => {
+test("toggleLibrary switches one library off and leaves the rest alone", () => {
   fakeStorage();
   const dom = makeDom();
   const calls: string[][] = [];
@@ -483,19 +525,26 @@ test("toggleLibrary appends a newly enabled library at the end of the merge orde
     dom,
     applyLibraries: (ids: string[]) => calls.push(ids),
   } as unknown as GalleryContext);
-  settings.enabledLibraries = ["main", "socks"];
+  settings.libraries = [
+    { id: "main", name: "Main", default: true },
+    { id: "socks", name: "Socks", default: false },
+    { id: "hair", name: "Hair", default: false },
+  ];
   settings.modal = document.createElement("div");
 
-  settings.toggleLibrary("hair");
-  assert.deepEqual(settings.enabledLibraries, ["main", "socks", "hair"]);
-  assert.deepEqual(calls, [["main", "socks", "hair"]]);
+  settings.toggleLibrary("socks");
+  assert.deepEqual(settings.disabledLibraries, ["socks"]);
+  assert.deepEqual(settings.enabledIds(), ["main", "hair"]);
+  assert.deepEqual(calls, [["main", "hair"]]);
 
   settings.toggleLibrary("socks");
-  assert.deepEqual(settings.enabledLibraries, ["main", "hair"]);
-  assert.deepEqual(calls[1], ["main", "hair"]);
+  assert.deepEqual(settings.disabledLibraries, [], "switching back on");
+  // the stored merge order has socks at the end, so that is where it returns
+  assert.deepEqual(settings.enabledIds(), ["main", "hair", "socks"]);
+  assert.deepEqual(calls[1], ["main", "hair", "socks"]);
 });
 
-test("moveLibrary reorders the merge order and clamps at both ends", () => {
+test("moveLibrary reorders the priority and clamps at both ends", () => {
   fakeStorage();
   const dom = makeDom();
   const calls: string[][] = [];
@@ -505,20 +554,25 @@ test("moveLibrary reorders the merge order and clamps at both ends", () => {
     dom,
     applyLibraries: (ids: string[]) => calls.push(ids),
   } as unknown as GalleryContext);
-  settings.enabledLibraries = ["main", "socks", "hair"];
+  settings.libraries = [
+    { id: "main", name: "Main", default: true },
+    { id: "socks", name: "Socks", default: false },
+    { id: "hair", name: "Hair", default: false },
+  ];
   settings.modal = document.createElement("div");
 
   settings.moveLibrary("hair", -1);
-  assert.deepEqual(settings.enabledLibraries, ["main", "hair", "socks"]);
+  assert.deepEqual(settings.enabledIds(), ["main", "hair", "socks"]);
+  assert.deepEqual(settings.libraryOrder, ["main", "hair", "socks"]);
 
   settings.moveLibrary("main", -1);
-  assert.deepEqual(settings.enabledLibraries, ["main", "hair", "socks"], "the top is clamped");
+  assert.deepEqual(settings.enabledIds(), ["main", "hair", "socks"], "the top is clamped");
 
   settings.moveLibrary("socks", 1);
-  assert.deepEqual(settings.enabledLibraries, ["main", "hair", "socks"], "the bottom is clamped");
+  assert.deepEqual(settings.enabledIds(), ["main", "hair", "socks"], "the bottom is clamped");
 
   settings.moveLibrary("ghost", -1);
-  assert.deepEqual(settings.enabledLibraries, ["main", "hair", "socks"], "an unknown id is ignored");
+  assert.deepEqual(settings.enabledIds(), ["main", "hair", "socks"], "an unknown id is ignored");
   assert.equal(calls.length, 1, "only the real move re-applied");
 });
 
@@ -535,7 +589,8 @@ test("syncLibraryList puts enabled libraries first and disables the bundled one"
     { id: "main", name: "Main", default: true },
     { id: "socks", name: "Socks", default: false },
   ];
-  settings.enabledLibraries = ["socks", "main"];
+  settings.disabledLibraries = ["hair"];
+  settings.libraryOrder = ["socks", "main"];
 
   const modal = document.createElement("div");
   modal.innerHTML = `<div id="j0n4t-pg-library-list"></div>`;

@@ -367,18 +367,18 @@ test("two libraries without a collision merge to the union", () => {
   ]);
 });
 
-test("a later library wins the plain key and files the displaced entry under its qualifier", () => {
+test("a later library is filed under its qualifier; the first one keeps the plain key", () => {
   const session = makeSession();
   session.setLibraries(
     [{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }],
     { main: MAIN, socks: SOCKS }
   );
 
-  assert.equal(session.cache["wear/sock/ankle"].preset, "socks ankle socks", "socks is later, so it wins");
-  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
+  assert.equal(session.cache["wear/sock/ankle"].preset, "main ankle socks", "main is first, so it wins");
+  assert.equal(session.cache["socks#wear/sock/ankle"].preset, "socks ankle socks");
   // the key only socks has is untouched
   assert.equal(session.cache["wear/sock/crew"].preset, "socks crew socks");
-  assert.equal(session.keyOwners.get("wear/sock/ankle"), "socks");
+  assert.equal(session.keyOwners.get("wear/sock/ankle"), "main");
   assert.deepEqual(session.duplicateKeys, new Set(["wear/sock/ankle"]));
 });
 
@@ -394,9 +394,9 @@ test("three libraries claiming one key leave every entry reachable", () => {
     { main: MAIN, socks: SOCKS, third }
   );
 
-  assert.equal(session.cache["wear/sock/ankle"].preset, "third ankle socks");
+  assert.equal(session.cache["wear/sock/ankle"].preset, "main ankle socks");
   assert.equal(session.cache["socks#wear/sock/ankle"].preset, "socks ankle socks");
-  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
+  assert.equal(session.cache["third#wear/sock/ankle"].preset, "third ankle socks");
 });
 
 test("reordering the list changes which library wins a shared key", () => {
@@ -404,15 +404,15 @@ test("reordering the list changes which library wins a shared key", () => {
   const caches = { main: MAIN, socks: SOCKS };
 
   session.setLibraries([{ id: "socks", name: "Socks" }, { id: "main", name: "Main" }], caches);
-  assert.equal(session.cache["wear/sock/ankle"].preset, "main ankle socks", "main is later now");
-  assert.equal(session.cache["socks#wear/sock/ankle"].preset, "socks ankle socks");
+  assert.equal(session.cache["wear/sock/ankle"].preset, "socks ankle socks", "socks is first now");
+  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
 
   session.setLibraries([{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }], caches);
-  assert.equal(session.cache["wear/sock/ankle"].preset, "socks ankle socks", "socks is later again");
-  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
+  assert.equal(session.cache["wear/sock/ankle"].preset, "main ankle socks", "main is first again");
+  assert.equal(session.cache["socks#wear/sock/ankle"].preset, "socks ankle socks");
 });
 
-test("ownerOfKey reads the qualifier first, then the merge winner", () => {
+test("ownerOfKey reads the qualifier first, then the highest-priority winner", () => {
   const session = makeSession();
   session.setLibraries(
     [{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }],
@@ -421,7 +421,7 @@ test("ownerOfKey reads the qualifier first, then the merge winner", () => {
 
   assert.equal(session.ownerOfKey("socks#wear/sock/ankle"), "socks");
   assert.equal(session.ownerOfKey("main#wear/sock/ankle"), "main");
-  assert.equal(session.ownerOfKey("wear/sock/ankle"), "socks", "the winner owns the plain key");
+  assert.equal(session.ownerOfKey("wear/sock/ankle"), "main", "the first library owns the plain key");
   assert.equal(session.ownerOfKey("Faces/Portrait"), "main");
   assert.equal(session.ownerOfKey("hair/long"), null, "a key no library has");
   assert.equal(session.ownerOfKey(""), null);
@@ -454,10 +454,10 @@ test("a listed library with no entries contributes nothing, and a repeated id is
     { main: MAIN, socks: SOCKS }
   );
 
-  assert.equal(session.cache["wear/sock/ankle"].preset, "socks ankle socks");
-  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
-  // the second `socks` pass must not displace the first
-  assert.equal(session.cache["socks#wear/sock/ankle"], undefined);
+  assert.equal(session.cache["wear/sock/ankle"].preset, "main ankle socks", "main is first");
+  assert.equal(session.cache["socks#wear/sock/ankle"].preset, "socks ankle socks");
+  // the second `socks` pass must not file the entry twice under another name
+  assert.equal(Object.keys(session.cache).filter((k) => k.endsWith("#wear/sock/ankle")).length, 1);
 });
 
 test("setLibraries with nothing leaves an empty cache rather than throwing", () => {

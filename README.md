@@ -48,9 +48,15 @@ Expand the **⚙️ Management Panel** to curate your collection:
 
 ### 📚 Preset Libraries
 
-One gallery, many collections. `presets.json` next to the extension is the default library, and every `.json` file you drop into the `presets/` folder becomes another one — named after its filename, with no registration step. Remove the file and the library goes away.
+One gallery, many collections. `presets.json` next to the extension is the bundled `main` library, and every `.json` file you drop into the `presets/` folder becomes another one — named after its filename, with no registration step. Remove the file and the library goes away.
 
-Choose which one the gallery reads from **⚙️ Settings → Display → Preset Library**. The choice is global (one library for the whole instance) and is remembered between sessions.
+**⚙️ Settings → Display → Preset Libraries** is a checkbox list of everything the server serves. Every checked library merges into one grid, and the choice is global (one merge for the whole instance) and remembered between sessions. The bundled library is always on.
+
+* **Shared names.** A preset name two libraries both have is listed once per library, each tagged with its library. The **last** library in the list wins the plain name — use the ▲ ▼ arrows to set the priority.
+* **`library#name` chips.** A chip from a library the merge shadowed keeps its `library#` prefix, so it still expands to that library's copy; a plain name expands to whoever won. **Tag basket chips with their library** (same panel) turns that prefix off, storing every chip as a plain preset name.
+* **Editing** writes back to the library that owns the key — an edit never leaks from one library's file into another's.
+
+A typical use: one library per base model (anima, SDXL, …), each holding that model's LoRA presets, merged in one node.
 
 A library file is flat JSON in the same shape `presets.json` uses, so a library can also be shared and imported through the normal import button.
 

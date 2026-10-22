@@ -24,7 +24,7 @@ repo are produced. The plan, phase history and probe findings live in
   neither runner). DOM-dependent tests import `./dom-harness.ts` (jsdom) at
   the top of the file, before the module under test.
 - `tests/e2e/` — Playwright. `gallery.spec.ts` drives the real `web/` modules
-  through `dev/index.html` (stubbed ComfyUI host, library served from an
+  through `dev/index.html` (stubbed ComfyUI host, libraries served from an
   in-memory fixture) — no ComfyUI or backend needed. `comfyui_integration.spec.ts`
   needs a live ComfyUI on `:8188` and skips itself otherwise.
 - `tests/python/` — pytest, backend wiring contract.

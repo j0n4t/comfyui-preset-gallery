@@ -59,13 +59,9 @@ function toFixedHeight(value) {
  * @param {unknown} value
  * @returns {string[]}
  */
-function toLibraryList(value) {
-  if (!Array.isArray(value)) return [PresetGalleryAPI.DEFAULT_LIBRARY_ID];
-  const ids = value.filter((id) => typeof id === "string" && id);
-  if (!ids.includes(PresetGalleryAPI.DEFAULT_LIBRARY_ID)) {
-    ids.unshift(PresetGalleryAPI.DEFAULT_LIBRARY_ID);
-  }
-  return ids;
+function toIdList(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((id) => typeof id === "string" && id);
 }
 
 export default class PresetGallerySettings {
@@ -113,8 +109,18 @@ export default class PresetGallerySettings {
     /** The modal the library list is rendered into, kept for re-rendering. */
     /** @type {HTMLDivElement | null} */
     this.modal = null;
-    /** The libraries this instance merges, in merge order. @type {string[]} */
-    this.enabledLibraries = [PresetGalleryAPI.DEFAULT_LIBRARY_ID];
+    /**
+     * Libraries the user switched off. Empty means everything the server serves
+     * is in the merge - the default - so a library dropped into the folder joins
+     * without being ticked first.
+     * @type {string[]}
+     */
+    this.disabledLibraries = [];
+    /**
+     * The priority order the user chose. Empty means the server's own order.
+     * @type {string[]}
+     */
+    this.libraryOrder = [];
     this.load();
     this.applyHeightMode();
     this.applyPanelSizes();
@@ -136,8 +142,9 @@ export default class PresetGallerySettings {
       this.heightFixed = toFixedHeight(saved.heightFixed);
       this.rememberPanelSizes = saved.rememberPanelSizes === true;
       this.panelSizes = toPanelSizes(saved.panelSizes);
-      this.enabledLibraries = toLibraryList(saved.enabledLibraries);
       this.qualifyChips = saved.qualifyChips !== false;
+      this.disabledLibraries = toIdList(saved.disabledLibraries);
+      this.libraryOrder = toIdList(saved.libraryOrder);
     } catch {
       this.rollMin = 10;
       this.rollMax = 20;
@@ -148,7 +155,6 @@ export default class PresetGallerySettings {
       this.heightFixed = DEFAULT_HEIGHT_FIXED;
       this.rememberPanelSizes = false;
       this.panelSizes = /** @type {GalleryPanelSizes} */ ({});
-      this.enabledLibraries = [PresetGalleryAPI.DEFAULT_LIBRARY_ID];
       this.qualifyChips = true;
     }
   }
@@ -164,8 +170,9 @@ export default class PresetGallerySettings {
       heightFixed: this.heightFixed,
       rememberPanelSizes: this.rememberPanelSizes,
       panelSizes: this.panelSizes,
-      enabledLibraries: this.enabledLibraries,
-      qualifyChips: this.qualifyChips
+      qualifyChips: this.qualifyChips,
+      disabledLibraries: this.disabledLibraries,
+      libraryOrder: this.libraryOrder
     };
     localStorage.setItem("pg_settings", JSON.stringify(data));
   }
@@ -199,11 +206,34 @@ export default class PresetGallerySettings {
   }
 
   /**
+   * The libraries to merge, in priority order.
+   *
+   * Everything the server serves is enabled unless the user switched it off,
+   * so a library dropped into the folder joins the merge by itself. The order
+   * is `libraryOrder` when the user chose one and the server's own order
+   * otherwise - the bundled library is first in both.
+   *
+   * @returns {string[]}
+   */
+  enabledIds() {
+    const served = (this.libraries || []).map((lib) => lib.id);
+    const order = this.libraryOrder.filter((id) => served.includes(id));
+    for (const id of served) {
+      if (!order.includes(id)) order.push(id);
+    }
+    return order.filter((id) => !this.disabledLibraries.includes(id));
+  }
+
+  /** @param {string} id */
+  isLibraryEnabled(id) {
+    return !this.disabledLibraries.includes(id);
+  }
+
+  /**
    * Fill the library list from what the server serves. The list is not in the
    * template because it is not known until the server is asked.
    *
-   * Enabled libraries come first, in merge order (the priority); served but
-   * disabled ones follow, so they can be found and switched on.
+   * Rows follow `enabledIds()` - the priority order, disabled ones at the end.
    *
    * Existing rows are reused rather than rebuilt: the list re-renders from
    * inside the very click that toggles or moves a row, and replacing that
@@ -215,13 +245,13 @@ export default class PresetGallerySettings {
   syncLibraryList(modal) {
     const container = modal?.querySelector("#j0n4t-pg-library-list");
     if (!container) return;
-    const enabled = this.enabledLibraries;
+    const enabled = this.enabledIds();
     const byId = new Map((this.libraries || []).map((lib) => [lib.id, lib]));
     const orderedIds = /** @type {string[]} */ ([
-      // the merge order, which is the priority
-      ...enabled.filter((id) => byId.has(id)),
-      // served but not enabled, so they can still be found and switched on
-      ...(this.libraries || []).filter((lib) => !enabled.includes(lib.id)).map((lib) => lib.id),
+      ...enabled,
+      ...(this.libraries || [])
+        .map((lib) => lib.id)
+        .filter((id) => !enabled.includes(id)),
     ]);
 
     /** @type {Map<string, HTMLElement>} */
@@ -267,41 +297,40 @@ export default class PresetGallerySettings {
    * Merge another set of libraries into every gallery. The set is global, so
    * this is the one Display option that takes effect outside the modal it was
    * picked in - the grid reloads for every open instance.
-   * @param {string[]} ids merge order; later entries win a shared key
+   * @param {string[]} ids priority order; the first one wins a shared key
    */
   applyLibraries(ids) {
-    this.enabledLibraries = ids;
+    // record the order that was actually merged, so a reload reproduces it
+    this.libraryOrder = [...ids];
     this.save();
     this.context.applyLibraries(ids);
   }
 
   /** @param {string} id */
   toggleLibrary(id) {
-    const enabled = this.enabledLibraries.includes(id)
-      ? this.enabledLibraries.filter((lib) => lib !== id)
-      : [...this.enabledLibraries, id];
-    // the list reads `enabledLibraries`, so it has to be current before the
-    // re-render or the row would be drawn with the state the user just left
-    this.enabledLibraries = enabled;
+    const disabled = this.isLibraryEnabled(id)
+      ? [...this.disabledLibraries, id]
+      : this.disabledLibraries.filter((lib) => lib !== id);
+    this.disabledLibraries = disabled;
     this.syncLibraryList(this.modal);
-    this.applyLibraries(enabled);
+    this.applyLibraries(this.enabledIds());
   }
 
   /**
-   * Move a library one slot along the merge order and re-apply. The order is the
-   * priority: a later library wins a key another one also has.
+   * Move a library one slot along the priority order and re-apply. The first
+   * library in the list wins a key another one also has.
    * @param {string} id
    * @param {number} delta -1 moves up, +1 moves down
    */
   moveLibrary(id, delta) {
-    const order = [...this.enabledLibraries];
+    const order = this.enabledIds();
     const at = order.indexOf(id);
     if (at === -1) return;
     const to = Math.min(Math.max(at + delta, 0), order.length - 1);
     if (to === at) return;
     order.splice(at, 1);
     order.splice(to, 0, id);
-    this.enabledLibraries = order;
+    this.libraryOrder = order;
     this.syncLibraryList(this.modal);
     this.applyLibraries(order);
   }

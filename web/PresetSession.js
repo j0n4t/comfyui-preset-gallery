@@ -4,11 +4,11 @@ import PresetLogic from "./PresetLogic.js";
 /**
  * One merged library: its id, its display name, and its own entries.
  *
- * `libraries` is the merge order, and later entries win a key collision, so
- * the list order *is* the priority - the user reorders it to change which
- * library's entry a shared key resolves to. `libraryCaches` keeps every
- * library's own entries, because the merged cache files a shadowed entry
- * under `libraryId#key` and a chip can still name it explicitly.
+ * `libraries` is the priority order, and the first library to claim a key keeps
+ * it under the plain key - later libraries' copies are filed under
+ * `libraryId#key`, so reordering the list changes which library a shared key
+ * resolves to. `libraryCaches` keeps every library's own entries, because a
+ * chip can still name a shadowed copy explicitly.
  *
  * @typedef {{id: string, name: string}} MergedLibrary
  */
@@ -46,8 +46,8 @@ export default class PresetSession {
     /** @type {PresetCache} */
     this.cache = {};
     /**
-     * The libraries this node merges, in merge order. Later entries win a key
-     * collision, so the order is the priority.
+     * The libraries this node merges, in priority order. The first one to claim
+     * a key keeps it under the plain key.
      * @type {MergedLibrary[]}
      */
     this.libraries = [];
@@ -78,10 +78,9 @@ export default class PresetSession {
   /**
    * Install the libraries this node merges and rebuild the cache from them.
    *
-   * `libraries` is the merge order: a later library wins a key collision, so
-   * the list order is the priority and reordering it changes what a shared key
-   * resolves to. `cachesById` holds each library's own entries; a library that
-   * is listed without one contributes nothing.
+   * `libraries` is the priority order: the first library to claim a key keeps it
+   * under the plain key, and the rest are filed under `libraryId#key`. A
+   * library listed without a cache in `cachesById` contributes nothing.
    *
    * @param {MergedLibrary[]} [libraries]
    * @param {Record<string, PresetCache>} [cachesById]
@@ -97,8 +96,8 @@ export default class PresetSession {
   /**
    * Rebuild the merged cache from `libraryCaches`.
    *
-   * Every library's entries are kept. The library that wins a key holds it
-   * under the plain key; each entry it displaced is filed under
+   * `libraries` is the priority order: the first library to claim a key keeps
+   * it under the plain key, and every later library's copy is filed under
    * `libraryId#key`, so a chip can still name it. That keeps the engine's key
    * helpers working on the plain path - folder, name, group rolls - while the
    * qualifier stays available for disambiguation.
@@ -113,17 +112,15 @@ export default class PresetSession {
 
     for (const lib of this.libraries) {
       for (const [key, item] of Object.entries(this.libraryCaches.get(lib.id) || {})) {
-        const previous = owners.get(key);
-        if (previous === undefined) {
+        const winner = owners.get(key);
+        if (winner === undefined) {
           owners.set(key, lib.id);
           merged[key] = item;
           continue;
         }
-        if (previous === lib.id) continue; // the same library listed twice
+        if (winner === lib.id) continue; // the same library listed twice
         duplicates.add(key);
-        merged[`${previous}#${key}`] = merged[key];
-        merged[key] = item;
-        owners.set(key, lib.id);
+        merged[`${lib.id}#${key}`] = item;
       }
     }
 

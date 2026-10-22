@@ -341,27 +341,11 @@ export default class PresetGalleryApp {
   async loadLibraries() {
     const available = await PresetGalleryAPI.fetchLibraries();
     this.libraries = available;
-    this.enabledIds = this.reconcileLibraries(this.settings?.enabledLibraries, available);
+    this.settings.libraries = available;
+    this.enabledIds = this.settings.enabledIds();
     // The first enabled library is the default write target for import/export,
     // which have no per-key owner to aim at.
     PresetGalleryAPI.setActiveLibrary(this.enabledIds[0] ?? null);
-  }
-
-  /**
-   * The enabled ids, restricted to libraries the server actually serves and
-   * with `main` always first. A library dropped from disk leaves the list
-   * instead of silently breaking the merge.
-   * @param {string[] | undefined} saved
-   * @param {{id: string}[]} available
-   * @returns {string[]}
-   */
-  reconcileLibraries(saved, available) {
-    const served = new Set((available || []).map((lib) => lib.id));
-    const kept = (saved || []).filter((id) => served.has(id));
-    if (!kept.includes(PresetGalleryAPI.DEFAULT_LIBRARY_ID)) {
-      kept.unshift(PresetGalleryAPI.DEFAULT_LIBRARY_ID);
-    }
-    return kept;
   }
 
   /**

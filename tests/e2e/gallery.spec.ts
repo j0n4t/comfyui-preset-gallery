@@ -31,9 +31,10 @@ const LIBRARIES = [
   { id: 'sample', name: 'Sample', default: false },
 ];
 
-const ITEMS_TOTAL = 5;
-const ITEMS_VISIBLE = 4; // the underscore-prefixed combo default is hidden
-// main (5) + sample (3) - the one name they share, which is listed twice
+const ITEMS_MAIN = 5;
+const ITEMS_MAIN_VISIBLE = 4; // the underscore-prefixed combo default is hidden
+// both libraries enabled by default: main (5) + sample (3), with the one name
+// they share listed twice
 const ITEMS_MERGED = 8;
 const ITEMS_MERGED_VISIBLE = 7;
 
@@ -152,9 +153,9 @@ test.describe('load', () => {
     await expect(page.locator('.j0n4t-pg-editor')).toBeAttached();
   });
 
-  test('renders the library served by the API', { tag: '@smoke' }, async ({ page }) => {
-    await expect(page.locator('.j0n4t-pg-item')).toHaveCount(ITEMS_TOTAL);
-    await expect(visibleItems(page)).toHaveCount(ITEMS_VISIBLE);
+  test('renders the libraries served by the API, merged', { tag: '@smoke' }, async ({ page }) => {
+    await expect(page.locator('.j0n4t-pg-item')).toHaveCount(ITEMS_MERGED);
+    await expect(visibleItems(page)).toHaveCount(ITEMS_MERGED_VISIBLE);
   });
 
   test('hides the widget it drives', { tag: '@smoke' }, async ({ page }) => {
@@ -184,7 +185,7 @@ test.describe('search', () => {
     await page.locator('.j0n4t-pg-search').fill('scenery');
     await expect(visibleItems(page)).toHaveCount(2);
     await page.locator('.j0n4t-pg-search-clear').click();
-    await expect(visibleItems(page)).toHaveCount(ITEMS_VISIBLE);
+    await expect(visibleItems(page)).toHaveCount(ITEMS_MERGED_VISIBLE);
   });
 });
 
@@ -409,8 +410,8 @@ test.describe('display height', () => {
   });
 
   test.describe('preset libraries', () => {
-    test('the list shows every served library and enabling one merges it in', async ({ page }) => {
-      await expect(page.locator('.j0n4t-pg-item')).toHaveCount(ITEMS_TOTAL);
+    test('every served library is merged until the user switches one off', async ({ page }) => {
+      await expect(page.locator('.j0n4t-pg-item')).toHaveCount(ITEMS_MERGED);
 
       const modal = await openDisplayTab(page);
       const rows = modal.locator('.j0n4t-pg-library-row');
@@ -418,46 +419,39 @@ test.describe('display height', () => {
       await expect(rows.nth(0)).toHaveAttribute('data-id', 'main');
       // the bundled library is always on and cannot be switched off
       await expect(rows.nth(0).locator("input[data-role='enabled']")).toBeDisabled();
-      await expect(rows.nth(1).locator("input[data-role='enabled']")).not.toBeChecked();
+      await expect(rows.nth(1).locator("input[data-role='enabled']")).toBeChecked();
 
-      await rows.nth(1).locator("input[data-role='enabled']").check();
+      await rows.nth(1).locator("input[data-role='enabled']").uncheck();
       await expect
         .poll(() => page.locator('.j0n4t-pg-item').count())
-        .toBe(ITEMS_MERGED);
-      await expect(visibleItems(page)).toHaveCount(ITEMS_MERGED_VISIBLE);
+        .toBe(ITEMS_MAIN);
+      await expect(visibleItems(page)).toHaveCount(ITEMS_MAIN_VISIBLE);
     });
 
     test('a name two libraries share is listed once per library, each tagged', async ({ page }) => {
-      const modal = await openDisplayTab(page);
-      await modal.locator('.j0n4t-pg-library-row[data-id="sample"] input[data-role="enabled"]').check();
-      await expect.poll(() => page.locator('.j0n4t-pg-item').count()).toBe(ITEMS_MERGED);
-
       const winner = page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]');
-      const shadowed = page.locator('.j0n4t-pg-item[data-style="main#Faces/Portrait"]');
+      const shadowed = page.locator('.j0n4t-pg-item[data-style="sample#Faces/Portrait"]');
       await expect(winner).toHaveCount(1);
       await expect(shadowed).toHaveCount(1);
-      // sample is later in the list, so it wins the plain key and main is filed aside
-      await expect(winner.locator('.j0n4t-pg-lib-badge')).toHaveText('Sample');
-      await expect(shadowed.locator('.j0n4t-pg-lib-badge')).toHaveText('Main');
+      // main is first in the list, so it wins the plain key and sample is filed aside
+      await expect(winner.locator('.j0n4t-pg-lib-badge')).toHaveText('Main');
+      await expect(shadowed.locator('.j0n4t-pg-lib-badge')).toHaveText('Sample');
     });
 
-    test('the merge order decides which library wins a shared name', async ({ page }) => {
+    test('the first library in the list wins a shared name', async ({ page }) => {
       const modal = await openDisplayTab(page);
-      await modal.locator('.j0n4t-pg-library-row[data-id="sample"] input[data-role="enabled"]').check();
-      await expect.poll(() => page.locator('.j0n4t-pg-item').count()).toBe(ITEMS_MERGED);
-
-      // moving main down the list puts it last, so it wins the shared name
-      await modal.locator('.j0n4t-pg-library-row[data-id="main"] button[data-role="down"]').click();
+      // moving sample up puts it first, so it takes the plain key
+      await modal.locator('.j0n4t-pg-library-row[data-id="sample"] button[data-role="up"]').click();
       await expect
         .poll(() => page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"] .j0n4t-pg-lib-badge').textContent())
-        .toBe('Main');
-      await expect(page.locator('.j0n4t-pg-item[data-style="sample#Faces/Portrait"]')).toHaveCount(1);
+        .toBe('Sample');
+      await expect(page.locator('.j0n4t-pg-item[data-style="main#Faces/Portrait"]')).toHaveCount(1);
     });
 
     test('a library choice survives a reload', async ({ page }) => {
       const modal = await openDisplayTab(page);
-      await modal.locator('.j0n4t-pg-library-row[data-id="sample"] input[data-role="enabled"]').check();
-      await expect.poll(() => page.locator('.j0n4t-pg-item').count()).toBe(ITEMS_MERGED);
+      await modal.locator('.j0n4t-pg-library-row[data-id="sample"] input[data-role="enabled"]').uncheck();
+      await expect.poll(() => page.locator('.j0n4t-pg-item').count()).toBe(ITEMS_MAIN);
 
       await page.reload();
       await page.waitForFunction(() => {
@@ -466,7 +460,7 @@ test.describe('display height', () => {
       });
       await expect
         .poll(() => page.locator('.j0n4t-pg-item').count())
-        .toBe(ITEMS_MERGED);
+        .toBe(ITEMS_MAIN);
     });
 
     test('turning the chip tag off stores a plain preset name', async ({ page }) => {
@@ -475,15 +469,13 @@ test.describe('display height', () => {
       expect(await widgetValue(page)).toBe('');
 
       const modal = await openDisplayTab(page);
-      await modal.locator('.j0n4t-pg-library-row[data-id="sample"] input[data-role="enabled"]').check();
-      await expect.poll(() => page.locator('.j0n4t-pg-item').count()).toBe(ITEMS_MERGED);
       await modal.locator('#j0n4t-pg-qualify-chips').uncheck();
       await modal.locator('button[data-index="1"]').click(); // Save
       await expect(page.locator('.j0n4t-pg-modal-overlay')).toHaveCount(0);
 
       // with the tag off, the shadowed entry contributes the plain name - the
       // same chip as the winner, which is exactly the ambiguity the tag avoids
-      await page.locator('.j0n4t-pg-item[data-style="main#Faces/Portrait"]').click();
+      await page.locator('.j0n4t-pg-item[data-style="sample#Faces/Portrait"]').click();
       expect(await widgetValue(page)).toBe('Faces/Portrait');
     });
 
@@ -491,13 +483,7 @@ test.describe('display height', () => {
       await page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]').click();
       expect(await widgetValue(page)).toBe('');
 
-      const modal = await openDisplayTab(page);
-      await modal.locator('.j0n4t-pg-library-row[data-id="sample"] input[data-role="enabled"]').check();
-      await expect.poll(() => page.locator('.j0n4t-pg-item').count()).toBe(ITEMS_MERGED);
-      await modal.locator('button[data-index="0"]').click(); // Cancel
-      await expect(page.locator('.j0n4t-pg-modal-overlay')).toHaveCount(0);
-
-      await page.locator('.j0n4t-pg-item[data-style="main#Faces/Portrait"]').click();
-      expect(await widgetValue(page)).toBe('main#Faces/Portrait');
+      await page.locator('.j0n4t-pg-item[data-style="sample#Faces/Portrait"]').click();
+      expect(await widgetValue(page)).toBe('sample#Faces/Portrait');
     });
   });
