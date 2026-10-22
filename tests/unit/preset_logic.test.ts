@@ -581,3 +581,71 @@ test("getPresetFolder returns the parent path", () => {
 test("toTitleCase converts underscores and hyphens to capitalised words", () => {
   assert.equal(PresetLogic.toTitleCase("portrait_solo-shot"), "Portrait Solo Shot");
 });
+
+// --- library qualifiers on cache keys ---
+//
+// A merged cache files every entry a library displaced under `libraryId#key`.
+// The qualifier is part of the key namespace, but every helper that reads a
+// folder, a name or a group must look at the plain path: `socks#wear/sock` is
+// `wear/sock` from the socks library, and `{wear}` has to roll over both.
+
+/** A merged cache: socks won `wear/sock/ankle`, main's copy is filed aside. */
+const MERGED: PresetCache = {
+  "wear/sock/ankle": { preset: "socks ankle" },
+  "socks#wear/sock/ankle": { preset: "main ankle" },
+  "wear/sock/knee": { preset: "main knee" },
+};
+
+test("splitQualifiedKey separates the library from the path", () => {
+  assert.deepEqual(PresetLogic.splitQualifiedKey("socks#wear/sock"), {
+    libraryId: "socks",
+    key: "wear/sock",
+  });
+  assert.deepEqual(PresetLogic.splitQualifiedKey("wear/sock"), {
+    libraryId: null,
+    key: "wear/sock",
+  });
+  // a leading `#` names no library, so the whole string is the path
+  assert.deepEqual(PresetLogic.splitQualifiedKey("#wear/sock"), {
+    libraryId: null,
+    key: "#wear/sock",
+  });
+  assert.deepEqual(PresetLogic.splitQualifiedKey(""), { libraryId: null, key: "" });
+});
+
+test("the path helpers read the plain path behind a qualifier", () => {
+  assert.equal(PresetLogic.getPresetFolder("socks#wear/sock"), "wear");
+  assert.equal(PresetLogic.getPresetName("socks#wear/sock"), "sock");
+  assert.equal(PresetLogic.getPresetInitials("socks#wear/sock"), "So");
+  assert.equal(PresetLogic.getUiFolder("socks#wear/sock"), "wear");
+  assert.equal(PresetLogic.getPresetBaseFolder("socks#wear/sock"), "wear");
+  assert.equal(PresetLogic.getPresetColor("socks#wear/sock", MERGED), PresetLogic.getHashColor("wear"));
+});
+
+test("a qualified chip expands to its own library's text, a plain one to the winner's", () => {
+  assert.equal(PresetLogic.expandRecursively("socks#wear/sock/ankle", MERGED), "main ankle");
+  assert.equal(PresetLogic.expandRecursively("wear/sock/ankle", MERGED), "socks ankle");
+  // the qualifier never reaches the expanded prompt
+  assert.ok(!PresetLogic.expandRecursively("socks#wear/sock/ankle", MERGED).includes("#"));
+});
+
+test("a group roll sees both libraries' entries under the plain folder", () => {
+  assert.deepEqual(PresetLogic.getGroupMatches("wear", MERGED).sort(), [
+    "socks#wear/sock/ankle",
+    "wear/sock/ankle",
+    "wear/sock/knee",
+  ]);
+});
+
+test("findPresetMatch resolves a qualified key", () => {
+  const hit = PresetLogic.findPresetMatch("socks#wear/sock/ankle", MERGED);
+  assert.equal(hit?.key, "socks#wear/sock/ankle");
+  assert.equal(hit?.item.preset, "main ankle");
+});
+
+test("parseTokens matches a qualified chip as one token", () => {
+  const tokens = PresetLogic.parseTokens("socks#wear/sock/ankle, plain", MERGED);
+  const first = tokens.find((t) => t.key);
+  assert.equal(first?.key, "socks#wear/sock/ankle");
+  assert.equal(first?.text, "socks#wear/sock/ankle");
+});

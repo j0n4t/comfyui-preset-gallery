@@ -1166,7 +1166,7 @@ const PresetLogic = {
    * @returns {string} CSS Color string.
    */
   getPresetColor: (presetKey = "", cache = null) => {
-    const parts = presetKey.split("/");
+    const parts = PresetLogic.splitQualifiedKey(presetKey).key.split("/");
     for (let i = parts.length; i > 0; i--) {
       const parentPath = parts.slice(0, i).join("/");
       if (cache && cache[parentPath] && cache[parentPath].__color__) {
@@ -1182,14 +1182,17 @@ const PresetLogic = {
    * @param {string} key - Cache key.
    * @returns {string} Root folder path.
    */
-  getPresetBaseFolder: (key) => (key.includes("/") ? key.split("/")[0] : key),
+  getPresetBaseFolder: (key) => {
+    const path = PresetLogic.splitQualifiedKey(key).key;
+    return path.includes("/") ? path.split("/")[0] : path;
+  },
 
   /**
    * Extracts name portion of path key.
    * @param {string} key - Cache key.
    * @returns {string} File or preset name.
    */
-  getPresetName: (key) => key.split("/").pop() || "",
+  getPresetName: (key) => PresetLogic.splitQualifiedKey(key).key.split("/").pop() || "",
 
   /**
    * Returns full formatted title and description body for tooltips.
@@ -1215,7 +1218,8 @@ const PresetLogic = {
    * @returns {string} Up to 6 character initials.
    */
   getPresetInitials: (key) => {
-    const raw = key.includes("/") ? PresetLogic.getPresetName(key) : key;
+    const path = PresetLogic.splitQualifiedKey(key).key;
+    const raw = path.includes("/") ? PresetLogic.getPresetName(path) : path;
     return PresetLogic.toTitleCase(raw)
       .split(/\s+/)
       .map((w) => w.slice(0, 2))
@@ -1228,7 +1232,7 @@ const PresetLogic = {
    * @param {string} key - Preset key path.
    * @returns {string} Folder path string.
    */
-  getPresetFolder: (key) => key.split("/").slice(0, -1).join("/"),
+  getPresetFolder: (key) => PresetLogic.splitQualifiedKey(key).key.split("/").slice(0, -1).join("/"),
 
   /**
    * Gets formatted human readable path (using breadcrumb chevron format).
