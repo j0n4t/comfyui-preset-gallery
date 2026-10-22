@@ -14,9 +14,13 @@ from .preset_store import (
 )
 
 
-def _requested_path(request):
-    """The file behind `?library=`, or None when that id is not served."""
-    return resolve_library_path(request.query.get("library") or DEFAULT_LIBRARY_ID)
+def _requested_path(request, create=False):
+    """The file behind `?library=`, or None when that id is not served.
+
+    A write passes `create=True`, so naming a library that does not exist yet
+    resolves to the file the save is about to create.
+    """
+    return resolve_library_path(request.query.get("library") or DEFAULT_LIBRARY_ID, create)
 
 
 # Register ComfyUI Server Routes
@@ -37,7 +41,9 @@ async def get_presets_endpoint(request):
 
 @PromptServer.instance.routes.post("/preset_gallery/presets")
 async def save_presets_endpoint(request):
-    path = _requested_path(request)
+    # `create=True`: the editor names a library in the folder field, and this
+    # save is what creates it
+    path = _requested_path(request, create=True)
     if path is None:
         return web.json_response(
             {"status": "error", "message": "Unknown library"}, status=404

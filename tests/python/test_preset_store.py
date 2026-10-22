@@ -114,3 +114,19 @@ def test_list_libraries_survives_a_missing_folder(tmp_path, monkeypatch):
         {"id": "main", "name": "Main", "default": True}
     ]
 
+
+
+def test_a_write_resolves_a_library_that_does_not_exist_yet(tmp_path, monkeypatch):
+    """The editor names a library in the folder field; the save creates it."""
+    monkeypatch.setattr("preset_store.PRESETS_DIR", str(tmp_path))
+
+    assert resolve_library_path("sdxl") is None, "a read must not invent a file"
+    assert resolve_library_path("sdxl", create=True) == str(tmp_path / "sdxl.json")
+    assert not (tmp_path / "sdxl.json").exists(), "resolving creates nothing"
+
+
+def test_a_write_still_cannot_escape_the_presets_folder(tmp_path, monkeypatch):
+    monkeypatch.setattr("preset_store.PRESETS_DIR", str(tmp_path))
+    assert resolve_library_path("../../etc/passwd", create=True) is None
+    assert resolve_library_path("", create=True) == DEFAULT_PRESETS_FILE
+

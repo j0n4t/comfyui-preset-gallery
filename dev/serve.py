@@ -49,15 +49,21 @@ EXTRA_LIBRARY = {
     "Sample/Pixel": {"preset": "16-bit retro pixel art"},
 }
 
-LIBRARIES = [
-    {"id": "main", "name": "Main", "default": True},
-    {"id": "sample", "name": "Sample", "default": False},
-]
-
+# The bundled library lives in dev/.data/presets.json; the others are in memory,
+# which is enough for the harness and keeps the repo's own presets.json untouched.
 LIBRARY_FILES = {
-    "main": SAMPLE_LIBRARY,
     "sample": EXTRA_LIBRARY,
 }
+
+
+def _libraries():
+    """The library list, so one created by a save appears without a restart."""
+    libs = [{"id": "main", "name": "Main", "default": True}]
+    for stem in sorted(LIBRARY_FILES):
+        libs.append(
+            {"id": stem, "name": stem.replace("_", " ").replace("-", " ").title(), "default": False}
+        )
+    return libs
 
 
 class HarnessHandler(SimpleHTTPRequestHandler):
@@ -105,7 +111,7 @@ class HarnessHandler(SimpleHTTPRequestHandler):
                 self._send_bytes(f.read(), "text/javascript")
             return
         if self.path.split("?")[0] == "/preset_gallery/libraries":
-            self._send_json(LIBRARIES)
+            self._send_json(_libraries())
             return
         if self.path.split("?")[0] == "/preset_gallery/presets":
             library_id = urllib.parse.urlparse(self.path).query
@@ -120,6 +126,27 @@ class HarnessHandler(SimpleHTTPRequestHandler):
             raw = self.rfile.read(length) if length else b"{}"
             params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             self._save_library(params.get("library", [""])[0], json.loads(raw))
+            self._send_json({"status": "success"})
+            return
+        self.send_error(404)
+
+    def do_DELETE(self):
+        if self.path.split("?")[0] == "/preset_gallery/presets":
+            params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            library_id = params.get("library", [""])[0]
+            if library_id in (None, "", "main"):
+                self._send_json(
+                    {"status": "error", "message": "The bundled library cannot be removed"},
+                    status=400,
+                )
+                return
+            data = LIBRARY_FILES.get(library_id)
+            if data:
+                self._send_json(
+                    {"status": "error", "message": "Library is not empty"}, status=409
+                )
+                return
+            LIBRARY_FILES.pop(library_id, None)
             self._send_json({"status": "success"})
             return
         self.send_error(404)

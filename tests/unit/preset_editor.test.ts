@@ -188,6 +188,73 @@ test("openPreset with focus focuses the preset field", () => {
   assert.equal(document.activeElement, dom.inpPreset);
 });
 
+test("openPreset with a qualified key strips the qualifier into the folder field", () => {
+  const dom = makeDom();
+  // The merged cache holds the qualified key for shadowed entries
+  const cache: PresetCache = {
+    "sample#Faces/Portrait": { preset: "rim light" },
+    "faces/portrait": { preset: "portrait, solo" },
+  };
+  const calls = { loadGallery: 0, updateWidgetValue: [] as string[][], syncEditorHighlight: 0, setPanelCollapseState: [] as boolean[] };
+  const context = {
+    dom,
+    cache,
+    session: undefined,
+    syncEditorHighlight: () => { calls.syncEditorHighlight++; },
+    setPanelCollapseState: (collapsed: boolean) => { calls.setPanelCollapseState.push(collapsed); },
+    loadGallery: () => { calls.loadGallery++; return Promise.resolve(); },
+    refreshLibraries: () => Promise.resolve(),
+    settleEmptiedLibrary: () => Promise.resolve(),
+    getSelectedArray: () => [],
+    updateWidgetValue: (arr: string[]) => { calls.updateWidgetValue.push(arr); },
+  };
+  const editor = new PresetEditor(context as unknown as GalleryContext);
+
+  editor.openPreset("sample#Faces/Portrait");
+
+  assert.equal(dom.inpName.value, "Portrait");
+  assert.equal(dom.inpFolder.value, "sample#Faces", "the qualifier is kept in the folder field");
+  assert.equal(dom.inpPreset.value, "rim light");
+});
+
+test("openPreset with a plain key owned by a non-default library shows the qualifier in the folder", () => {
+  const dom = makeDom();
+  const cache: PresetCache = {
+    "Sample/Cinematic": { preset: "cinematic" },
+  };
+  const calls = { loadGallery: 0, updateWidgetValue: [] as string[][], syncEditorHighlight: 0, setPanelCollapseState: [] as boolean[] };
+  const context = {
+    dom,
+    cache,
+    session: {
+      ownerOfKey: (key: string) => key === "Sample/Cinematic" ? "sample" : null,
+      libraries: [{ id: "sample", name: "Sample" }],
+    },
+    syncEditorHighlight: () => { calls.syncEditorHighlight++; },
+    setPanelCollapseState: (collapsed: boolean) => { calls.setPanelCollapseState.push(collapsed); },
+    loadGallery: () => { calls.loadGallery++; return Promise.resolve(); },
+    refreshLibraries: () => Promise.resolve(),
+    settleEmptiedLibrary: () => Promise.resolve(),
+    getSelectedArray: () => [],
+    updateWidgetValue: (arr: string[]) => { calls.updateWidgetValue.push(arr); },
+  };
+  const editor = new PresetEditor(context as unknown as GalleryContext);
+
+  editor.openPreset("Sample/Cinematic");
+
+  assert.equal(dom.inpName.value, "Cinematic");
+  assert.equal(dom.inpFolder.value, "sample#Sample", "non-default library is shown in the folder qualifier");
+});
+
+test("openPreset with a plain key owned by the main library leaves the folder unqualified", () => {
+  const dom = makeDom();
+  const { editor } = makeEditor(dom);
+
+  editor.openPreset("faces/portrait");
+
+  assert.equal(dom.inpFolder.value, "faces", "the default library does not add a qualifier");
+});
+
 test("openPreset ignores an unknown key", () => {
   const dom = makeDom();
   const { editor, calls } = makeEditor(dom);

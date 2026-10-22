@@ -27,12 +27,17 @@ LEGACY_DEFAULT_LIBRARY_ID = "default"
 LIBRARY_EXTENSIONS = (".json",)
 
 
-def resolve_library_path(library_id=None):
+def resolve_library_path(library_id=None, create=False):
     """Resolve a library id to its file, or None when it is not one we serve.
 
     The id is used as a bare filename stem inside the presets folder, so a value
     carrying separators can never reach outside it. An empty id and the legacy
     `default` alias both mean the bundled library.
+
+    `create` lets a *write* resolve an id that has no file yet - the editor names
+    a library in the folder field (`sdxl#wear/sock`) and the save is what brings
+    it into being. Reads keep requiring the file to exist, so a GET for an
+    unknown id still 404s rather than conjuring an empty library.
     """
     if not library_id or library_id in (DEFAULT_LIBRARY_ID, LEGACY_DEFAULT_LIBRARY_ID):
         return DEFAULT_PRESETS_FILE
@@ -41,7 +46,7 @@ def resolve_library_path(library_id=None):
         return None
     for ext in LIBRARY_EXTENSIONS:
         candidate = os.path.join(PRESETS_DIR, stem + ext)
-        if os.path.isfile(candidate):
+        if os.path.isfile(candidate) or (create and ext == LIBRARY_EXTENSIONS[0]):
             return candidate
     return None
 

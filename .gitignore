@@ -1,6 +1,6 @@
 __pycache__
 /presets.json
-
+/presets/*.json
 .vscode/
 
 # Playwright

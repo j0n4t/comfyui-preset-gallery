@@ -148,9 +148,22 @@ export default class PresetEditor {
     this.currentMode = "edit";
     this.isSaved = true;
 
-    const parts = styleKey.split("/");
+    // A qualified key (`sample#Faces/Portrait`) carries the library id before
+    // the `#`; a plain key may still belong to a non-default library because
+    // the merge put it there first.
+    const { libraryId: qualifiedLib, key: plainKey } =
+      PresetLogic.splitQualifiedKey(styleKey);
+    const ownerLib = qualifiedLib ?? this.context.session?.ownerOfKey?.(styleKey) ?? null;
+
+    const parts = plainKey.split("/");
     this.dom.inpName.value = parts.pop() || "";
-    this.dom.inpFolder.value = parts.join("/");
+    const folder = parts.join("/");
+    // Show `libraryId#folder` so the user knows which library this entry
+    // belongs to and can move it by rewriting the qualifier.
+    this.dom.inpFolder.value =
+      ownerLib && ownerLib !== PresetGalleryAPI.DEFAULT_LIBRARY_ID
+        ? `${ownerLib}#${folder}`
+        : folder;
     this.dom.inpPreset.value = this.context.cache[styleKey].preset || "";
     this.rawPresetManager.updateHighlights(styleKey);
 

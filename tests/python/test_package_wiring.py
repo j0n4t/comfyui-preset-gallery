@@ -141,3 +141,50 @@ def test_deleting_a_library_removes_only_an_empty_one(tmp_path, monkeypatch, hos
     result = asyncio.run(endpoint(_DeleteRequest("ghost")))
     assert result["json"][0]["status"] == "error"
     assert result["kwargs"]["status"] == 404
+
+
+class _PostRequest:
+    """An aiohttp request for the POST route: a library and a JSON body."""
+
+    def __init__(self, library, payload):
+        self.query = {"library": library}
+        self._payload = payload
+
+    async def json(self):
+        return self._payload
+
+
+class _GetRequest:
+    def __init__(self, library):
+        self.query = {"library": library}
+
+
+def test_saving_into_a_library_that_does_not_exist_yet_creates_it(
+    tmp_path, monkeypatch, host_routes
+):
+    """The editor names a library in the folder field (`sdxl#wear/sock`).
+
+    The save is what brings it into being, so the POST route must resolve an id
+    that has no file yet - while a GET still 404s rather than inventing one.
+    """
+    _load_package()
+    store = sys.modules[f"{PACKAGE_NAME}.preset_store"]
+    monkeypatch.setattr(store, "PRESETS_DIR", str(tmp_path))
+
+    post = host_routes.registered["POST"][0][1]
+    get = host_routes.registered["GET"][1][1]
+
+    result = asyncio.run(post(_PostRequest("sdxl", {"wear/sock/ankle": {"preset": "ankle"}})))
+    assert result["json"][0]["status"] == "success"
+    assert (tmp_path / "sdxl.json").exists()
+
+    # the read now succeeds, and the library is listed
+    assert asyncio.run(get(_GetRequest("sdxl")))["json"][0] == {
+        "wear/sock/ankle": {"preset": "ankle"}
+    }
+    listed = asyncio.run(host_routes.registered["GET"][0][1](_GetRequest(None)))
+    assert [lib["id"] for lib in listed["json"][0]] == ["main", "sdxl"]
+
+    # an unknown id still 404s on the way in
+    result = asyncio.run(get(_GetRequest("ghost")))
+    assert result["kwargs"]["status"] == 404
