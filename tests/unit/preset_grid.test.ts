@@ -321,7 +321,10 @@ test("a name shared by two libraries is listed once per library, each tagged", (
   // The merge files the entry the winner displaced under `libraryId#key`.
   context.session = {
     isDuplicateKey: (key: string) => PresetLogic.getPresetFolder(key) === "wear/sock",
-    ownerOfKey: (key: string) => (key.startsWith("main#") ? "main" : "socks"),
+    ownerOfKey: (key: string) => {
+      if (key.startsWith("main#") || key === "Faces/Portrait") return "main";
+      return "socks";
+    },
     libraryName: (id: string) => id,
   } as unknown as GalleryContext["session"];
 
@@ -340,6 +343,31 @@ test("a name shared by two libraries is listed once per library, each tagged", (
   assert.equal(winner.querySelector(".j0n4t-pg-lib-badge")!.textContent, "socks");
   assert.equal(shadowed.querySelector(".j0n4t-pg-lib-badge")!.textContent, "main");
   assert.equal(plain.querySelectorAll(".j0n4t-pg-lib-badge").length, 0, "a unique name is not tagged");
+});
+
+test("grid items can hide library badges", () => {
+  const { grid, context } = makeGrid();
+  context.settings = { showGridLibraryBadges: false } as GalleryContext["settings"];
+  context.session = {
+    isDuplicateKey: () => true,
+    ownerOfKey: () => "socks",
+    libraryName: () => "Socks",
+  } as unknown as GalleryContext["session"];
+
+  grid.compile({ "wear/sock/ankle": { preset: "socks ankle" } });
+  assert.equal(items(grid)[0].querySelector(".j0n4t-pg-lib-badge"), null);
+});
+
+test("grid items show badges for unique presets from non-main libraries", () => {
+  const { grid, context } = makeGrid();
+  context.session = {
+    isDuplicateKey: () => false,
+    ownerOfKey: (key: string) => key === "socks/wool" ? "socks" : "main",
+    libraryName: () => "Socks",
+  } as unknown as GalleryContext["session"];
+
+  grid.compile({ "socks/wool": { preset: "wool" } });
+  assert.equal(items(grid)[0].querySelector(".j0n4t-pg-lib-badge")?.textContent, "Socks");
 });
 
 test("clicking an item asks the context for the key it should store", () => {
@@ -383,4 +411,3 @@ test("hovered title shows library qualifier for non-default libraries and duplic
   // Explicitly qualified item tooltip retains qualifier
   assert.ok(qualifiedRow.getAttribute("title")?.includes("[b#wear/sock/ankle]"));
 });
-

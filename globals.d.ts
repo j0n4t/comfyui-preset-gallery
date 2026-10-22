@@ -158,6 +158,7 @@ type GalleryContext = {
   widget: any;
   editor: import("./web/PresetEditor.js").default;
   grid: import("./web/PresetGrid.js").default;
+  settings?: import("./web/PresetGallerySettings.js").default;
 
   // --- session-backed state (live views onto PresetSession) ---
   cache: PresetCache;

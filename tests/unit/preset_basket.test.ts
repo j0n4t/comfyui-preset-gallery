@@ -577,14 +577,14 @@ test("isBasketClipboardPayload accepts a valid payload and rejects malformed one
   );
 });
 
-test("rendered chip does not place title attribute on the label to avoid masking chip tooltip", () => {
+test("rendered chip uses the grid item tooltip without placing it on its label", () => {
   const { basket } = makeBasket();
   basket.render(["faces/portrait"]);
   const chipEl = chips(basket)[0];
   const labelEl = chipEl.querySelector(".j0n4t-pg-basket-chip-label");
   assert.ok(labelEl, "chip label exists");
   assert.equal(labelEl.getAttribute("title"), null);
-  assert.ok(chipEl.getAttribute("title"), "full tooltip remains on the chip container");
+  assert.equal(chipEl.getAttribute("title"), "Portrait [faces/portrait]\nportrait, solo");
 });
 
 test("rendered chip displays library badge for qualified or non-main presets", () => {
@@ -613,3 +613,15 @@ test("rendered chip displays library badge for qualified or non-main presets", (
   assert.equal(badge3.textContent, "Socks");
 });
 
+test("rendered chip can hide library badges while keeping them enabled by default", () => {
+  const { basket, context } = makeBasket();
+  context.session = {
+    ownerOfKey: (key: string) => key === "socks/wool" ? "socks" : "main",
+    isDuplicateKey: () => false,
+    libraryName: () => "Socks",
+  } as unknown as GalleryContext["session"];
+  context.settings = { showChipLibraryBadges: false } as GalleryContext["settings"];
+
+  basket.render(["socks/wool"]);
+  assert.equal(chips(basket)[0].querySelector(".j0n4t-pg-lib-badge"), null);
+});

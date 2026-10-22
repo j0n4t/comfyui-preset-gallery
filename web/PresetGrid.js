@@ -147,9 +147,10 @@ export default class PresetGrid {
     // share shows up once per library; the tag says which one this row is.
     const session = this.context.session;
     const libraryBadge = (/** @type {string} */ key) => {
-      if (!session?.isDuplicateKey?.(key)) return "";
-      const owner = session.ownerOfKey(key);
+      if (this.context.settings?.showGridLibraryBadges === false) return "";
+      const owner = session?.ownerOfKey?.(key);
       if (!owner) return "";
+      if (owner === "main" && !session?.isDuplicateKey?.(key)) return "";
       const name = session.libraryName(owner);
       return `<span class="j0n4t-pg-lib-badge" title="From the ${PresetDOM.escapeHTML(name)} library">${PresetDOM.escapeHTML(name)}</span>`;
     };

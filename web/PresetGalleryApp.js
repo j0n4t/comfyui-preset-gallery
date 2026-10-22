@@ -149,6 +149,7 @@ export default class PresetGalleryApp {
     PresetGalleryApp.instancesByWrap.set(this.dom.wrap, this);
 
     this.settings = new PresetGallerySettings(this.context);
+    this.context.settings = this.settings;
     this.basket = new PresetBasket(
       this.dom.basketContainer,
       this.dom.basketPool,

@@ -81,6 +81,8 @@ test("loads defaults when nothing is saved", () => {
   assert.deepEqual(settings.disabledLibraries, [], "nothing is switched off by default");
   assert.deepEqual(settings.libraryOrder, [], "the server's order is used until the user picks one");
   assert.equal(settings.qualifyChips, true, "chips keep their library tag by default");
+  assert.equal(settings.showChipLibraryBadges, true, "chip library badges are shown by default");
+  assert.equal(settings.showGridLibraryBadges, true, "grid library badges are shown by default");
 });
 
 test("loads previously saved values", () => {
@@ -159,6 +161,8 @@ test("save writes all preferences", () => {
       rememberPanelSizes: true,
       panelSizes: { basket: 120, editor: 60 },
       qualifyChips: true,
+      showChipLibraryBadges: true,
+      showGridLibraryBadges: true,
       disabledLibraries: [],
       libraryOrder: [],
     })
@@ -242,6 +246,8 @@ test("openModal save persists the inputs and syncs the widget", async () => {
   modal.querySelector<HTMLInputElement>("#j0n4t-pg-roll-max")!.value = "7";
   modal.querySelector<HTMLInputElement>("#j0n4t-pg-roll-on-gen")!.checked = true;
   modal.querySelector<HTMLSelectElement>("#j0n4t-pg-dice-behavior")!.value = "overwrite";
+  modal.querySelector<HTMLInputElement>("#j0n4t-pg-show-chip-library-badges")!.checked = false;
+  modal.querySelector<HTMLInputElement>("#j0n4t-pg-show-grid-library-badges")!.checked = false;
   modal.querySelector<HTMLButtonElement>('button[data-index="1"]')?.click(); // Save
 
   assert.equal(await promise, true, "Save resolves the modal promise");
@@ -258,10 +264,14 @@ test("openModal save persists the inputs and syncs the widget", async () => {
       rememberPanelSizes: false,
       panelSizes: {},
       qualifyChips: true,
+      showChipLibraryBadges: false,
+      showGridLibraryBadges: false,
       disabledLibraries: [],
       libraryOrder: [],
     })
   );
+  assert.equal(settings.showChipLibraryBadges, false);
+  assert.equal(settings.showGridLibraryBadges, false);
   assert.equal(synced, "Faces/Portrait", "syncUI receives the widget value");
 });
 

@@ -143,6 +143,8 @@ export default class PresetGallerySettings {
       this.rememberPanelSizes = saved.rememberPanelSizes === true;
       this.panelSizes = toPanelSizes(saved.panelSizes);
       this.qualifyChips = saved.qualifyChips !== false;
+      this.showChipLibraryBadges = saved.showChipLibraryBadges !== false;
+      this.showGridLibraryBadges = saved.showGridLibraryBadges !== false;
       this.disabledLibraries = toIdList(saved.disabledLibraries);
       this.libraryOrder = toIdList(saved.libraryOrder);
     } catch {
@@ -156,6 +158,8 @@ export default class PresetGallerySettings {
       this.rememberPanelSizes = false;
       this.panelSizes = /** @type {GalleryPanelSizes} */ ({});
       this.qualifyChips = true;
+      this.showChipLibraryBadges = true;
+      this.showGridLibraryBadges = true;
     }
   }
 
@@ -171,6 +175,8 @@ export default class PresetGallerySettings {
       rememberPanelSizes: this.rememberPanelSizes,
       panelSizes: this.panelSizes,
       qualifyChips: this.qualifyChips,
+      showChipLibraryBadges: this.showChipLibraryBadges,
+      showGridLibraryBadges: this.showGridLibraryBadges,
       disabledLibraries: this.disabledLibraries,
       libraryOrder: this.libraryOrder
     };
@@ -370,6 +376,10 @@ export default class PresetGallerySettings {
     let rememberPanelsCheck;
     /** @type {HTMLInputElement | null} */
     let qualifyChipsCheck;
+    /** @type {HTMLInputElement | null} */
+    let showChipLibraryBadgesCheck;
+    /** @type {HTMLInputElement | null} */
+    let showGridLibraryBadgesCheck;
 
     const content = `
       <div class="j0n4t-pg-tab-nav">
@@ -432,6 +442,17 @@ export default class PresetGallerySettings {
             chip from a library the merge shadowed still expands to that library's copy.
             Turn it off to store every chip as a plain preset name.
           </div>
+        </div>
+
+        <div class="j0n4t-pg-modal-field">
+          <label class="j0n4t-pg-checkbox-wrap" style="height: auto; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <input type="checkbox" id="j0n4t-pg-show-chip-library-badges" ${this.showChipLibraryBadges ? "checked" : ""} />
+            Show library badges on basket chips
+          </label>
+          <label class="j0n4t-pg-checkbox-wrap" style="height: auto; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <input type="checkbox" id="j0n4t-pg-show-grid-library-badges" ${this.showGridLibraryBadges ? "checked" : ""} />
+            Show library badges on grid items
+          </label>
         </div>
 
         <div class="j0n4t-pg-modal-field">
@@ -517,11 +538,14 @@ export default class PresetGallerySettings {
             this.heightFixed = toFixedHeight(heightFixedInput?.value);
             this.rememberPanelSizes = rememberPanelsCheck?.checked === true;
             this.qualifyChips = qualifyChipsCheck?.checked !== false;
+            this.showChipLibraryBadges = showChipLibraryBadgesCheck?.checked !== false;
+            this.showGridLibraryBadges = showGridLibraryBadgesCheck?.checked !== false;
 
             this.save();
             this.applyHeightMode();
             this.applyPanelSizes();
             this.updateDiceVisuals(); // Instantly update the color indicator
+            this.context.grid?.compile(this.context.cache);
             this.context.syncUI(this.context.widget.value);
             return true;
           }
@@ -538,6 +562,8 @@ export default class PresetGallerySettings {
         heightFixedField = modal.querySelector("#j0n4t-pg-height-fixed-field");
         rememberPanelsCheck = modal.querySelector("#j0n4t-pg-remember-panels");
         qualifyChipsCheck = modal.querySelector("#j0n4t-pg-qualify-chips");
+        showChipLibraryBadgesCheck = modal.querySelector("#j0n4t-pg-show-chip-library-badges");
+        showGridLibraryBadgesCheck = modal.querySelector("#j0n4t-pg-show-grid-library-badges");
 
         // The library list comes from the server, so it is fetched on every open
         // and filled from whatever is served right now.
