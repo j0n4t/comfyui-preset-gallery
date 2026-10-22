@@ -290,10 +290,13 @@ export default class PresetGalleryApp {
 
   /** @param {string[]} arr  */
   updateWidgetValue(arr) {
+    // Setting `widget.value` goes through the host's DOMWidget setter, which
+    // fires the widget callback - and that callback calls syncUI. Calling the
+    // callback or syncUI again here re-rendered the whole basket two extra
+    // times per interaction, on a path that runs for every chip drag, paste
+    // and grid click. Render once and let the setter's own callback do it.
     this.widget.value = arr.join(", ");
     this.session.prunePins(arr);
-    this.widget.callback?.(this.widget.value);
-    this.syncUI(this.widget.value);
     if (this.node.graph) this.node.graph._version++;
   }
 

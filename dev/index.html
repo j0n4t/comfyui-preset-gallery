@@ -28,6 +28,26 @@ const report = [];
 const add = (name, value, ok = true) => report.push({ name, value: String(value), ok });
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Mirrors the host's `BaseDOMWidgetImpl.set value(v)`: store, then fire
+// `callback`. The extension relies on that - `updateWidgetValue` assigns the
+// value and the callback it triggers is what renders. A plain object property
+// silently drops every render, which is how the stub was breaking the
+// "clicking a preset adds a chip" tests.
+function fakeWidget(name) {
+  const w = { name, hidden: false, _value: "" };
+  Object.defineProperty(w, "value", {
+    configurable: true,
+    get() {
+      return this._value;
+    },
+    set(v) {
+      this._value = v;
+      if (typeof this.callback === "function") this.callback(v);
+    },
+  });
+  return w;
+}
+
 function fakeNode(id) {
   return {
     id,
@@ -38,10 +58,7 @@ function fakeNode(id) {
     graph: { _nodes: [], _version: 0 },
     domWidgets: [],
     setSize(size) { this.size = size; },
-    widgets: [
-      { name: "preset_selection", value: "", hidden: false, callback: function () {} },
-      { name: "evaluated_preset", value: "", hidden: false },
-    ],
+    widgets: [fakeWidget("preset_selection"), fakeWidget("evaluated_preset")],
     addDOMWidget(name, type, el) {
       this.domWidgets.push({ name, type, el });
       document.getElementById("mount").appendChild(el);
@@ -97,10 +114,12 @@ try {
   add("context is not the app", gallery.context !== gallery);
   add("context.cache is the session cache", gallery.context.cache === gallery.session.cache);
 
-  // A load-time behaviour: an initial widget value renders as chips.
+  // A load-time behaviour: an initial widget value renders as chips. Assigning
+  // the value is enough - the host's setter fires the widget callback, which
+  // renders, so an explicit syncUI here would be the same duplicate render the
+  // production fix removed.
   const presetKey = Object.keys(gallery.session.cache)[0];
   node.widgets[0].value = presetKey;
-  gallery.syncUI(presetKey);
   await delay(50);
   add("initial selection rendered as chips", q(".j0n4t-pg-basket-chip"), q(".j0n4t-pg-basket-chip") > 0);
 

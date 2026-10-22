@@ -119,6 +119,42 @@ function makeBasket() {
   return { basket, ...rest };
 }
 
+/**
+ * A basket whose fake `updateWidgetValue` renders, the way the real one does.
+ *
+ * The host's `set value(v)` fires the widget callback, and that callback calls
+ * syncUI -> basket.render. The plain mock above only records the call, so a
+ * test using it cannot see a render at all - and cannot tell one render from
+ * three. Use this when counting renders per interaction.
+ */
+function makeRenderingBasket() {
+  const env = makeBasketEnv();
+  const { basket: basketEl, ...rest } = env;
+  const basket = new PresetBasket(rest.container, basketEl, rest.textarea, rest.context);
+  const record = rest.context.updateWidgetValue;
+  rest.context.updateWidgetValue = (arr: string[]) => {
+    record(arr);
+    basket.render(rest.context.getSelectedArray());
+  };
+  return { basket, ...rest };
+}
+
+/** Count how many times the real render body runs. */
+function countRenders(basket: PresetBasket, fn: () => void): number {
+  let renders = 0;
+  const original = basket.render;
+  basket.render = (...args: string[][]) => {
+    renders++;
+    return original.apply(basket, args as [string[]]);
+  };
+  try {
+    fn();
+  } finally {
+    basket.render = original;
+  }
+  return renders;
+}
+
 function chips(basket: PresetBasket): HTMLElement[] {
   return Array.from(basket.basket.querySelectorAll<HTMLElement>(".j0n4t-pg-basket-chip"));
 }
@@ -236,6 +272,51 @@ test("duplicateTab copies a tab with a Copy title", () => {
   assert.equal(copy.title, "Basket Copy");
   assert.deepEqual(copy.basket, ["faces/portrait"]);
   assert.equal(basket.activeTabId, copy.id);
+});
+
+// --- one render per interaction ---
+//
+// updateWidgetValue renders (the host's value setter fires the widget callback,
+// which calls syncUI -> basket.render). Any extra render() in the same handler
+// is a second full rebuild of the basket, and on a 120-chip basket that was
+// measured at ~250 ms of avoidable work per interaction.
+
+test("createNewTab renders the basket once", () => {
+  const { basket } = makeRenderingBasket();
+  assert.equal(countRenders(basket, () => basket.createNewTab()), 1);
+});
+
+test("duplicateTab renders the basket once", () => {
+  const { basket } = makeRenderingBasket();
+  basket.render(["faces/portrait"]);
+  assert.equal(countRenders(basket, () => basket.duplicateTab(basket.tabs[0].id)), 1);
+});
+
+test("createNewTab leaves the new tab empty and the previous tab intact", () => {
+  // Guards the ordering this fix depends on: render() snapshots the active
+  // tab's pins and rolls, so the shared pin state has to be cleared before the
+  // value write or the new tab inherits the previous tab's pins.
+  const { basket, context } = makeRenderingBasket();
+  context.pinnedChips = new Set(["faces/portrait"]);
+  context.updateWidgetValue(["faces/portrait"]);
+
+  basket.createNewTab();
+
+  assert.deepEqual(basket.tabs[0].basket, ["faces/portrait"], "the old tab keeps its basket");
+  assert.deepEqual(basket.tabs[0].pins, ["faces/portrait"], "the old tab keeps its pins");
+  assert.deepEqual(basket.tabs[1].basket, [], "the new tab starts empty");
+  assert.deepEqual(basket.tabs[1].pins, [], "the new tab does not inherit the old pins");
+});
+
+test("duplicateTab snapshots the duplicate's own pins, not the source's", () => {
+  const { basket, context } = makeRenderingBasket();
+  context.pinnedChips = new Set(["faces/portrait"]);
+  context.updateWidgetValue(["faces/portrait"]);
+
+  basket.duplicateTab(basket.tabs[0].id);
+
+  assert.deepEqual(basket.tabs[1].basket, ["faces/portrait"]);
+  assert.deepEqual(basket.tabs[1].pins, ["faces/portrait"], "the copy carries the duplicated pins");
 });
 
 test("deleteTab removes the tab and falls back to a neighbour", () => {

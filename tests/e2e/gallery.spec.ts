@@ -43,6 +43,27 @@ const widgetValue = (page: Page) =>
   page.evaluate(() => (window as unknown as { __gallery: { widget: { value: string } } })
     .__gallery.widget.value);
 
+type Gallery = {
+  basket: { render: (...args: unknown[]) => unknown };
+};
+
+/** Start counting basket rebuilds. Read the total with `renderCount`. */
+async function startCountingRenders(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const gallery = (window as unknown as { __gallery: Gallery }).__gallery;
+    const counter = { count: 0 };
+    const original = gallery.basket.render;
+    gallery.basket.render = function (...args: unknown[]) {
+      counter.count++;
+      return original.apply(this, args);
+    };
+    (window as unknown as { __renderCount: typeof counter }).__renderCount = counter;
+  });
+}
+
+const renderCount = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __renderCount: { count: number } }).__renderCount.count);
+
 /** The view / grouping / collapse controls live in the More Options popup. */
 async function openMoreOptions(page: Page) {
   const popup = page.locator('#j0n4t-pg-popup-menu');
@@ -206,6 +227,17 @@ test.describe('basket', () => {
     await raw.fill('Faces/Portrait, Scenery/Hills');
     await raw.press('Enter');
     await expect(chips(page)).toHaveCount(2);
+  });
+
+  // The bug this guards: `updateWidgetValue` used to set the widget value AND
+  // call the widget callback AND call syncUI, so one interaction rebuilt the
+  // basket three times. Measured on a 120-chip basket: a single chip move went
+  // from ~550 ms to ~120 ms once it rendered once.
+  test('one value change renders the basket once', { tag: '@smoke' }, async ({ page }) => {
+    await startCountingRenders(page);
+    await visibleItems(page).first().click();
+    await expect(chips(page)).toHaveCount(2);
+    expect(await renderCount(page)).toBe(1);
   });
 });
 

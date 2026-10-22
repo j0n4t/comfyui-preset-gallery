@@ -341,7 +341,10 @@ export default class PresetBasket {
     this.selectionAnchorIndex = null;
     this.activeTabId = newId;
 
-    this.context.updateWidgetValue([]);
+    // Clear the shared pin/roll state BEFORE the value write. updateWidgetValue
+    // renders, and render() snapshots the active tab's pins and rolls - so
+    // clearing them after would snapshot the old tab's pins into the new tab
+    // and need a second render to correct.
     this.context.pinnedChips = new Set();
     if (typeof this.context.savePins === "function") {
       this.context.savePins();
@@ -350,7 +353,7 @@ export default class PresetBasket {
       this.context.rollManager.rolls = {};
     }
 
-    this.render([]);
+    this.context.updateWidgetValue([]);
     this.renderTabsList();
     this.updateBasketTitle();
     this.persistTabs();
@@ -548,7 +551,9 @@ export default class PresetBasket {
     }
     this.context.updateWidgetValue(duplicate.basket);
     this.context.savePins();
-    this.render(this.context.getSelectedArray());
+    // No second render: updateWidgetValue renders, and the pins and rolls were
+    // already swapped to the duplicate's above, so that render's tab snapshot
+    // is already correct.
     this.renderTabsList();
     this.updateBasketTitle();
     this.persistTabs();
