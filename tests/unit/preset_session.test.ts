@@ -325,3 +325,146 @@ test("detectSeedChange: a removed seed widget is not reported as a change", () =
   assert.equal(session.detectSeedChange([{ id: 1, widgets: [{ name: "seed", value: 1 }] }]), false);
   assert.equal(session.detectSeedChange([{ id: 1, widgets: [] }]), false);
 });
+
+// --- setLibraries / rebuildCache ---
+
+const MAIN: PresetCache = {
+  "wear/sock/ankle": { preset: "main ankle socks" },
+  "wear/sock/knee": { preset: "main knee socks" },
+  "Faces/Portrait": { preset: "portrait" },
+};
+
+const SOCKS: PresetCache = {
+  "wear/sock/ankle": { preset: "socks ankle socks" },
+  "wear/sock/crew": { preset: "socks crew socks" },
+};
+
+const HAIR: PresetCache = {
+  "hair/long": { preset: "long hair" },
+};
+
+test("one library merges to its own entries under their plain keys", () => {
+  const session = makeSession();
+  session.setLibraries([{ id: "main", name: "Main" }], { main: MAIN });
+
+  assert.deepEqual(Object.keys(session.cache), ["wear/sock/ankle", "wear/sock/knee", "Faces/Portrait"]);
+  assert.equal(session.cache["wear/sock/ankle"].preset, "main ankle socks");
+  assert.deepEqual(session.duplicateKeys, new Set());
+});
+
+test("two libraries without a collision merge to the union", () => {
+  const session = makeSession();
+  session.setLibraries(
+    [{ id: "main", name: "Main" }, { id: "hair", name: "Hair" }],
+    { main: MAIN, hair: HAIR }
+  );
+
+  assert.deepEqual(Object.keys(session.cache).sort(), [
+    "Faces/Portrait",
+    "hair/long",
+    "wear/sock/ankle",
+    "wear/sock/knee",
+  ]);
+});
+
+test("a later library wins the plain key and files the displaced entry under its qualifier", () => {
+  const session = makeSession();
+  session.setLibraries(
+    [{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }],
+    { main: MAIN, socks: SOCKS }
+  );
+
+  assert.equal(session.cache["wear/sock/ankle"].preset, "socks ankle socks", "socks is later, so it wins");
+  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
+  // the key only socks has is untouched
+  assert.equal(session.cache["wear/sock/crew"].preset, "socks crew socks");
+  assert.equal(session.keyOwners.get("wear/sock/ankle"), "socks");
+  assert.deepEqual(session.duplicateKeys, new Set(["wear/sock/ankle"]));
+});
+
+test("three libraries claiming one key leave every entry reachable", () => {
+  const session = makeSession();
+  const third: PresetCache = { "wear/sock/ankle": { preset: "third ankle socks" } };
+  session.setLibraries(
+    [
+      { id: "main", name: "Main" },
+      { id: "socks", name: "Socks" },
+      { id: "third", name: "Third" },
+    ],
+    { main: MAIN, socks: SOCKS, third }
+  );
+
+  assert.equal(session.cache["wear/sock/ankle"].preset, "third ankle socks");
+  assert.equal(session.cache["socks#wear/sock/ankle"].preset, "socks ankle socks");
+  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
+});
+
+test("reordering the list changes which library wins a shared key", () => {
+  const session = makeSession();
+  const caches = { main: MAIN, socks: SOCKS };
+
+  session.setLibraries([{ id: "socks", name: "Socks" }, { id: "main", name: "Main" }], caches);
+  assert.equal(session.cache["wear/sock/ankle"].preset, "main ankle socks", "main is later now");
+  assert.equal(session.cache["socks#wear/sock/ankle"].preset, "socks ankle socks");
+
+  session.setLibraries([{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }], caches);
+  assert.equal(session.cache["wear/sock/ankle"].preset, "socks ankle socks", "socks is later again");
+  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
+});
+
+test("ownerOfKey reads the qualifier first, then the merge winner", () => {
+  const session = makeSession();
+  session.setLibraries(
+    [{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }],
+    { main: MAIN, socks: SOCKS }
+  );
+
+  assert.equal(session.ownerOfKey("socks#wear/sock/ankle"), "socks");
+  assert.equal(session.ownerOfKey("main#wear/sock/ankle"), "main");
+  assert.equal(session.ownerOfKey("wear/sock/ankle"), "socks", "the winner owns the plain key");
+  assert.equal(session.ownerOfKey("Faces/Portrait"), "main");
+  assert.equal(session.ownerOfKey("hair/long"), null, "a key no library has");
+  assert.equal(session.ownerOfKey(""), null);
+});
+
+test("isDuplicateKey reports the plain key however it is spelled", () => {
+  const session = makeSession();
+  session.setLibraries(
+    [{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }],
+    { main: MAIN, socks: SOCKS }
+  );
+
+  assert.equal(session.isDuplicateKey("wear/sock/ankle"), true);
+  assert.equal(session.isDuplicateKey("main#wear/sock/ankle"), true);
+  assert.equal(session.isDuplicateKey("socks#wear/sock/ankle"), true);
+  assert.equal(session.isDuplicateKey("Faces/Portrait"), false);
+});
+
+test("libraryName falls back to the id for an unknown library", () => {
+  const session = makeSession();
+  session.setLibraries([{ id: "main", name: "Main" }], { main: MAIN });
+  assert.equal(session.libraryName("main"), "Main");
+  assert.equal(session.libraryName("ghost"), "ghost");
+});
+
+test("a listed library with no entries contributes nothing, and a repeated id is not merged twice", () => {
+  const session = makeSession();
+  session.setLibraries(
+    [{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }, { id: "socks", name: "Socks" }],
+    { main: MAIN, socks: SOCKS }
+  );
+
+  assert.equal(session.cache["wear/sock/ankle"].preset, "socks ankle socks");
+  assert.equal(session.cache["main#wear/sock/ankle"].preset, "main ankle socks");
+  // the second `socks` pass must not displace the first
+  assert.equal(session.cache["socks#wear/sock/ankle"], undefined);
+});
+
+test("setLibraries with nothing leaves an empty cache rather than throwing", () => {
+  const session = makeSession();
+  session.setLibraries([], {});
+  assert.deepEqual(session.cache, {});
+  assert.deepEqual(session.libraries, []);
+  session.setLibraries(undefined, undefined);
+  assert.deepEqual(session.cache, {});
+});

@@ -2,6 +2,18 @@ import RollManager from "./RollManager.js";
 import PresetLogic from "./PresetLogic.js";
 
 /**
+ * One merged library: its id, its display name, and its own entries.
+ *
+ * `libraries` is the merge order, and later entries win a key collision, so
+ * the list order *is* the priority - the user reorders it to change which
+ * library's entry a shared key resolves to. `libraryCaches` keeps every
+ * library's own entries, because the merged cache files a shadowed entry
+ * under `libraryId#key` and a chip can still name it explicitly.
+ *
+ * @typedef {{id: string, name: string}} MergedLibrary
+ */
+
+/**
  * Returns the browser localStorage, or null when there is none (e.g. under
  * `node --test`). Callers must tolerate a null storage.
  * @returns {Storage | null}
@@ -33,6 +45,18 @@ export default class PresetSession {
     this.rng = rng;
     /** @type {PresetCache} */
     this.cache = {};
+    /**
+     * The libraries this node merges, in merge order. Later entries win a key
+     * collision, so the order is the priority.
+     * @type {MergedLibrary[]}
+     */
+    this.libraries = [];
+    /** @type {Map<string, PresetCache>} each library's own entries */
+    this.libraryCaches = new Map();
+    /** @type {Map<string, string>} plain key -> the library that owns it */
+    this.keyOwners = new Map();
+    /** @type {Set<string>} plain keys claimed by more than one library */
+    this.duplicateKeys = new Set();
     this.pinKey = `j0n4t-pg-pins-${nodeId || "global"}`;
     const savedPins = this.storage?.getItem(this.pinKey);
     /** @type {Set<string>} */
@@ -49,6 +73,90 @@ export default class PresetSession {
    */
   getSelectedArray(rawValue) {
     return rawValue ? PresetLogic.splitPresets(rawValue) : [];
+  }
+
+  /**
+   * Install the libraries this node merges and rebuild the cache from them.
+   *
+   * `libraries` is the merge order: a later library wins a key collision, so
+   * the list order is the priority and reordering it changes what a shared key
+   * resolves to. `cachesById` holds each library's own entries; a library that
+   * is listed without one contributes nothing.
+   *
+   * @param {MergedLibrary[]} [libraries]
+   * @param {Record<string, PresetCache>} [cachesById]
+   */
+  setLibraries(libraries, cachesById = {}) {
+    this.libraries = (libraries || []).filter((lib) => lib && lib.id);
+    this.libraryCaches = new Map(
+      this.libraries.map((lib) => [lib.id, cachesById?.[lib.id] || {}])
+    );
+    this.rebuildCache();
+  }
+
+  /**
+   * Rebuild the merged cache from `libraryCaches`.
+   *
+   * Every library's entries are kept. The library that wins a key holds it
+   * under the plain key; each entry it displaced is filed under
+   * `libraryId#key`, so a chip can still name it. That keeps the engine's key
+   * helpers working on the plain path - folder, name, group rolls - while the
+   * qualifier stays available for disambiguation.
+   */
+  rebuildCache() {
+    /** @type {PresetCache} */
+    const merged = {};
+    /** @type {Map<string, string>} */
+    const owners = new Map();
+    /** @type {Set<string>} */
+    const duplicates = new Set();
+
+    for (const lib of this.libraries) {
+      for (const [key, item] of Object.entries(this.libraryCaches.get(lib.id) || {})) {
+        const previous = owners.get(key);
+        if (previous === undefined) {
+          owners.set(key, lib.id);
+          merged[key] = item;
+          continue;
+        }
+        if (previous === lib.id) continue; // the same library listed twice
+        duplicates.add(key);
+        merged[`${previous}#${key}`] = merged[key];
+        merged[key] = item;
+        owners.set(key, lib.id);
+      }
+    }
+
+    this.cache = merged;
+    this.keyOwners = owners;
+    this.duplicateKeys = duplicates;
+  }
+
+  /**
+   * The library a cache key belongs to. A qualified key (`socks#wear/sock`)
+   * names its library directly; a plain key resolves to whoever won it.
+   * @param {string} key
+   * @returns {string | null}
+   */
+  ownerOfKey(key) {
+    if (!key) return null;
+    const split = PresetLogic.splitQualifiedKey(key);
+    if (split.libraryId) return split.libraryId;
+    return this.keyOwners.get(split.key) ?? null;
+  }
+
+  /** @param {string} id @returns {string} the library's name, or its id */
+  libraryName(id) {
+    return this.libraries.find((lib) => lib.id === id)?.name || id;
+  }
+
+  /**
+   * Whether a key is claimed by more than one enabled library, and so has more
+   * than one entry in the merged cache.
+   * @param {string} key
+   */
+  isDuplicateKey(key) {
+    return this.duplicateKeys.has(PresetLogic.splitQualifiedKey(key).key);
   }
 
   savePins() {

@@ -302,6 +302,27 @@ const PresetLogic = {
   // 2. Centralize Regex Escaping
   escapeRegExp: (/** @type {string} */ str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
 
+  /**
+   * Splits a cache key into its optional library qualifier and its own path.
+   *
+   * A merged cache files every entry a library displaced under
+   * `libraryId#key`, so the qualifier is part of the key namespace. The plain
+   * path is what the folder, name and group helpers want: `socks#wear/sock`
+   * is `wear/sock` from the `socks` library.
+   *
+   * A leading `#` is not a qualifier - there is no library to name - and a key
+   * with no `#` at all is returned whole.
+   *
+   * @param {string} value
+   * @returns {{libraryId: string | null, key: string}}
+   */
+  splitQualifiedKey: (/** @type {string} */ value) => {
+    const raw = typeof value === "string" ? value : "";
+    const idx = raw.indexOf("#");
+    if (idx <= 0) return { libraryId: null, key: raw };
+    return { libraryId: raw.slice(0, idx), key: raw.slice(idx + 1) };
+  },
+
   // 3. Centralize Weight Parsing
   parseWeight: (/** @type {string} */ str) => {
     const match = str?.match(PresetLogic.WEIGHT_REGEX);
