@@ -1,12 +1,14 @@
 import PresetDOM from "./PresetDOM.js";
+import PresetLogic from "./PresetLogic.js";
 
 export default class PresetGalleryAPI {
   static API_ENDPOINT = "/preset_gallery/presets";
 
   /**
-   * Which library every read and write targets. The library is a global choice
-   * - one for the whole instance - so the id is held here rather than threaded
-   * through every call. Null means the bundled default.
+   * Which library every read and write targets when the caller does not name
+   * one. The bundled library by default; the app moves it to the library a
+   * node is editing. Null means the bundled library too - the route serves it
+   * when no `?library=` is present.
    * @type {string | null}
    */
   static activeLibraryId = null;
@@ -69,8 +71,32 @@ export default class PresetGalleryAPI {
     }
   }
 
-  static async getPresets() {
-    return await PresetGalleryAPI.fetchGallery();
+  /**
+   * Fetch several libraries at once, keyed by id.
+   *
+   * A node merges every library it has enabled into one cache, so the app needs
+   * each library's own entries rather than one merged read. A library that
+   * fails to load contributes an empty cache instead of rejecting the batch -
+   * one unreachable file must not blank the grid.
+   *
+   * @param {string[]} ids
+   * @returns {Promise<Record<string, PresetCache>>}
+   */
+  static async fetchLibraryCaches(ids) {
+    const entries = await Promise.all(
+      (ids || []).map(async (id) => [id, await PresetGalleryAPI.fetchGallery(id)])
+    );
+    return Object.fromEntries(entries);
+  }
+
+  /**
+   * One library's own entries - the merged cache's shadowed entries live under
+   * a qualifier, so an edit has to read the library the key belongs to.
+   * @param {string | null} [libraryId]
+   * @returns {Promise<PresetCache>}
+   */
+  static async getPresets(libraryId = PresetGalleryAPI.activeLibraryId) {
+    return await PresetGalleryAPI.fetchGallery(libraryId);
   }
 
   /**
@@ -132,15 +158,16 @@ export default class PresetGalleryAPI {
   /**
    * @param {string} groupRaw
    * @param {string} color
+   * @param {string | null} [libraryId] the library the group lives in
    */
-  static async setGroupColor(groupRaw, color) {
-    const presets = await PresetGalleryAPI.getPresets();
+  static async setGroupColor(groupRaw, color, libraryId = PresetGalleryAPI.activeLibraryId) {
+    const presets = await PresetGalleryAPI.getPresets(libraryId);
     if (color) {
       presets[groupRaw] = { ...(presets[groupRaw] || {}), __color__: color };
     } else if (presets[groupRaw]) {
       delete presets[groupRaw].__color__;
     }
-    await PresetGalleryAPI.savePresets(presets);
+    await PresetGalleryAPI.savePresets(presets, libraryId);
     return { success: true };
   }
 
@@ -152,12 +179,14 @@ export default class PresetGalleryAPI {
    * @property {string} imageData
    * @property {boolean} clearImage
    * @property {string} editingKey
-   * @property {string} mode 
-  */
+   * @property {string} mode
+   * @property {string | null} [libraryId] the library to write to
+   */
 
   /** @param {SavePresetData} data */
-  static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode }) {
-    const presets = await PresetGalleryAPI.getPresets();
+  static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode, libraryId }) {
+    const target = libraryId ?? PresetGalleryAPI.activeLibraryId;
+    const presets = await PresetGalleryAPI.getPresets(target);
 
     let cleanFolder = folder ? folder.trim().toLowerCase().replace(/ /g, "_").replace(/^\/+|\/+$/g, "") : "";
     if (["root", "root_presets", "none", "root presets"].includes(cleanFolder)) {
@@ -172,7 +201,11 @@ export default class PresetGalleryAPI {
 
     const trimmedText = presetText ? presetText.trim() : "";
 
-    let finalImage = presets[editingKey]?.filename || undefined;
+    // A merged cache may name the entry being edited through its library
+    // qualifier; the library's own file only knows the plain key.
+    const existingKey = PresetLogic.splitQualifiedKey(editingKey).key;
+
+    let finalImage = presets[existingKey]?.filename || undefined;
     if (clearImage) {
       finalImage = undefined;
     } else if (imageData) {
@@ -186,8 +219,8 @@ export default class PresetGalleryAPI {
 
     const newKey = cleanFolder ? `${cleanFolder}/${cleanName}` : cleanName;
 
-    if (mode === "edit" && editingKey && editingKey !== newKey) {
-      delete presets[editingKey];
+    if (mode === "edit" && existingKey && existingKey !== newKey) {
+      delete presets[existingKey];
     }
 
     presets[newKey] = {
@@ -195,24 +228,28 @@ export default class PresetGalleryAPI {
       preset: trimmedText,
       filename: finalImage,
     };
-    await PresetGalleryAPI.savePresets(presets);
+    await PresetGalleryAPI.savePresets(presets, target);
     return { success: true, key: newKey };
   }
 
-  /** @param {string} uniqueKey */
-  static async deletePreset(uniqueKey) {
-    const presets = await PresetGalleryAPI.getPresets();
-    delete presets[uniqueKey];
-    await PresetGalleryAPI.savePresets(presets);
+  /**
+   * @param {string} uniqueKey a cache key, optionally library-qualified
+   * @param {string | null} [libraryId] the library to delete from
+   */
+  static async deletePreset(uniqueKey, libraryId = PresetGalleryAPI.activeLibraryId) {
+    const presets = await PresetGalleryAPI.getPresets(libraryId);
+    delete presets[PresetLogic.splitQualifiedKey(uniqueKey).key];
+    await PresetGalleryAPI.savePresets(presets, libraryId);
     return { success: true };
   }
 
   /**
    * @param {string} oldFolder
    * @param {string} newFolder
+   * @param {string | null} [libraryId] the library the folder lives in
    */
-  static async renameFolder(oldFolder, newFolder) {
-    const presets = await PresetGalleryAPI.getPresets();
+  static async renameFolder(oldFolder, newFolder, libraryId = PresetGalleryAPI.activeLibraryId) {
+    const presets = await PresetGalleryAPI.getPresets(libraryId);
     /** @type {PresetCache} */
     const newPresets = {};
     const prefix = `${oldFolder}/`;
@@ -227,7 +264,7 @@ export default class PresetGalleryAPI {
         newPresets[key] = presets[key];
       }
     }
-    await PresetGalleryAPI.savePresets(newPresets);
+    await PresetGalleryAPI.savePresets(newPresets, libraryId);
     return { success: true };
   }
 }
