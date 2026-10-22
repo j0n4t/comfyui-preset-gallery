@@ -204,6 +204,12 @@ export default class PresetGallerySettings {
    *
    * Enabled libraries come first, in merge order (the priority); served but
    * disabled ones follow, so they can be found and switched on.
+   *
+   * Existing rows are reused rather than rebuilt: the list re-renders from
+   * inside the very click that toggles or moves a row, and replacing that
+   * element mid-dispatch makes the browser deliver the click a second time -
+   * which toggles the library straight back off.
+   *
    * @param {HTMLDivElement | null} modal
    */
   syncLibraryList(modal) {
@@ -211,28 +217,50 @@ export default class PresetGallerySettings {
     if (!container) return;
     const enabled = this.enabledLibraries;
     const byId = new Map((this.libraries || []).map((lib) => [lib.id, lib]));
-    const ordered = /** @type {{id: string, name: string}[]} */ ([
+    const orderedIds = /** @type {string[]} */ ([
       // the merge order, which is the priority
-      ...enabled.map((id) => byId.get(id)).filter((lib) => !!lib),
+      ...enabled.filter((id) => byId.has(id)),
       // served but not enabled, so they can still be found and switched on
-      ...(this.libraries || []).filter((lib) => !enabled.includes(lib.id)),
+      ...(this.libraries || []).filter((lib) => !enabled.includes(lib.id)).map((lib) => lib.id),
     ]);
 
-    container.innerHTML = ordered
-      .map((lib) => {
-        const isMain = lib.id === PresetGalleryAPI.DEFAULT_LIBRARY_ID;
-        const checked = enabled.includes(lib.id);
-        return `
-        <div class="j0n4t-pg-library-row" data-id="${PresetDOM.escapeHTML(lib.id)}">
-          <input type="checkbox" data-role="enabled" ${checked ? "checked" : ""} ${isMain ? "disabled" : ""} aria-label="Enable ${PresetDOM.escapeHTML(lib.name)}" />
+    /** @type {Map<string, HTMLElement>} */
+    const rows = new Map();
+    container.querySelectorAll(".j0n4t-pg-library-row").forEach((row) => {
+      const id = /** @type {HTMLElement} */ (row).dataset.id || "";
+      if (id) rows.set(id, /** @type {HTMLElement} */ (row));
+    });
+
+    for (const id of orderedIds) {
+      const lib = byId.get(id);
+      if (!lib) continue;
+      const isMain = id === PresetGalleryAPI.DEFAULT_LIBRARY_ID;
+      let row = rows.get(id);
+      if (!row) {
+        row = document.createElement("div");
+        row.className = "j0n4t-pg-library-row";
+        row.dataset.id = id;
+        row.innerHTML = `
+          <input type="checkbox" data-role="enabled" aria-label="Enable ${PresetDOM.escapeHTML(lib.name)}" />
           <span class="j0n4t-pg-library-name">${PresetDOM.escapeHTML(lib.name)}</span>
           <span class="j0n4t-pg-lib-move">
             <button type="button" data-role="up" title="Move up - higher priority" aria-label="Move ${PresetDOM.escapeHTML(lib.name)} up">▲</button>
             <button type="button" data-role="down" title="Move down - lower priority" aria-label="Move ${PresetDOM.escapeHTML(lib.name)} down">▼</button>
-          </span>
-        </div>`;
-      })
-      .join("");
+          </span>`;
+      }
+      const box = /** @type {HTMLInputElement | null} */ (row.querySelector("input[data-role='enabled']"));
+      if (box) {
+        box.checked = enabled.includes(id);
+        box.disabled = isMain;
+      }
+      // appendChild moves an existing row and inserts a new one
+      container.appendChild(row);
+    }
+
+    // a library the server stopped serving must not leave a row behind
+    for (const [id, row] of rows) {
+      if (!orderedIds.includes(id)) row.remove();
+    }
   }
 
   /**
@@ -252,6 +280,9 @@ export default class PresetGallerySettings {
     const enabled = this.enabledLibraries.includes(id)
       ? this.enabledLibraries.filter((lib) => lib !== id)
       : [...this.enabledLibraries, id];
+    // the list reads `enabledLibraries`, so it has to be current before the
+    // re-render or the row would be drawn with the state the user just left
+    this.enabledLibraries = enabled;
     this.syncLibraryList(this.modal);
     this.applyLibraries(enabled);
   }
@@ -270,7 +301,8 @@ export default class PresetGallerySettings {
     if (to === at) return;
     order.splice(at, 1);
     order.splice(to, 0, id);
-    this.syncLibraryList(/** @type {HTMLDivElement} */ (this.modal));
+    this.enabledLibraries = order;
+    this.syncLibraryList(this.modal);
     this.applyLibraries(order);
   }
 
