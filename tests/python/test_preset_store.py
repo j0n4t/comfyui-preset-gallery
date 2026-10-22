@@ -64,6 +64,11 @@ def test_default_path_points_at_the_repo_library():
 def test_the_default_library_is_the_bundled_file():
     assert resolve_library_path(None) == DEFAULT_PRESETS_FILE
     assert resolve_library_path("") == DEFAULT_PRESETS_FILE
+    assert resolve_library_path("main") == DEFAULT_PRESETS_FILE
+
+
+def test_the_legacy_default_id_still_resolves_to_the_bundled_file():
+    # Saved workflows from before the rename carry "default"; they must not 404.
     assert resolve_library_path("default") == DEFAULT_PRESETS_FILE
 
 
@@ -95,7 +100,7 @@ def test_list_libraries_puts_the_default_first_then_the_folder_sorted(tmp_path, 
 
     libraries = list_libraries()
     assert [(lib["id"], lib["default"]) for lib in libraries] == [
-        ("default", True),
+        ("main", True),
         ("alpha", False),
         ("zeta", False),
     ]
@@ -106,5 +111,5 @@ def test_list_libraries_puts_the_default_first_then_the_folder_sorted(tmp_path, 
 def test_list_libraries_survives_a_missing_folder(tmp_path, monkeypatch):
     monkeypatch.setattr("preset_store.PRESETS_DIR", str(tmp_path / "absent"))
     assert list_libraries() == [
-        {"id": "default", "name": "Presets", "default": True}
+        {"id": "main", "name": "Main", "default": True}
     ]

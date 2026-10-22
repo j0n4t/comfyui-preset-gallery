@@ -16,8 +16,13 @@ DEFAULT_PRESETS_FILE = os.path.join(
 # bundled default, so nothing moves unless someone adds another library.
 PRESETS_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "presets")
 
-DEFAULT_LIBRARY_ID = "default"
-DEFAULT_LIBRARY_NAME = "Presets"
+DEFAULT_LIBRARY_ID = "main"
+DEFAULT_LIBRARY_NAME = "Main"
+
+# The bundled library was served as `default` before it was renamed. Saved
+# workflows and localStorage from an older install still carry that id, so it
+# keeps resolving to the same file rather than 404-ing.
+LEGACY_DEFAULT_LIBRARY_ID = "default"
 
 LIBRARY_EXTENSIONS = (".json",)
 
@@ -26,9 +31,10 @@ def resolve_library_path(library_id=None):
     """Resolve a library id to its file, or None when it is not one we serve.
 
     The id is used as a bare filename stem inside the presets folder, so a value
-    carrying separators can never reach outside it.
+    carrying separators can never reach outside it. An empty id and the legacy
+    `default` alias both mean the bundled library.
     """
-    if not library_id or library_id == DEFAULT_LIBRARY_ID:
+    if not library_id or library_id in (DEFAULT_LIBRARY_ID, LEGACY_DEFAULT_LIBRARY_ID):
         return DEFAULT_PRESETS_FILE
     stem = str(library_id)
     if os.path.basename(stem) != stem:
