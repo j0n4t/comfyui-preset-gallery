@@ -74,7 +74,9 @@ function buildLookupMap(cache) {
   /** @type {Map<string, ChipLookupEntry>} */
   const lookupMap = new Map();
 
-  for (const [key, item] of Object.entries(cache)) {
+  const keys = Object.getOwnPropertyNames(cache);
+  for (const key of keys) {
+    const item = cache[key];
     if (!item) continue;
     if (item.preset?.trim()) {
       const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
@@ -90,6 +92,10 @@ function buildLookupMap(cache) {
     if (key) {
       lookupMap.set(key, { foundKey: key, foundItem: item });
       lookupMap.set(key.trim(), { foundKey: key, foundItem: item });
+      const split = PresetLogic.splitQualifiedKey(key);
+      if (split.libraryId && !lookupMap.has(split.key)) {
+        lookupMap.set(split.key, { foundKey: key, foundItem: item });
+      }
     }
   }
   return lookupMap;
@@ -105,7 +111,9 @@ function buildCandidates(cache) {
   /** @type {ChipCandidate[]} */
   const candidates = [];
 
-  for (const [key, item] of Object.entries(cache)) {
+  const keys = Object.getOwnPropertyNames(cache);
+  for (const key of keys) {
+    const item = cache[key];
     if (item?.preset && item.preset.trim()) {
       const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
       if (wrappedPreset) {
@@ -244,7 +252,9 @@ function buildPresetMatchIndex(cache) {
   /** @type {Map<string, ChipLookupEntry>} */
   const index = new Map();
 
-  for (const [key, item] of Object.entries(cache)) {
+  const keys = Object.getOwnPropertyNames(cache);
+  for (const key of keys) {
+    const item = cache[key];
     if (!item || !item.preset) continue;
 
     const wrapped = PresetLogic.getWrappedPreset(key, item.preset, cache);
@@ -284,7 +294,8 @@ function buildVariantKeyIndex(cache) {
   /** @type {Map<string, string>} */
   const index = new Map();
 
-  for (const key of Object.keys(cache)) {
+  const keys = Object.getOwnPropertyNames(cache);
+  for (const key of keys) {
     const lowerKey = key.toLowerCase();
     if (lowerKey && !index.has(lowerKey)) index.set(lowerKey, key);
 
@@ -484,11 +495,17 @@ const PresetLogic = {
     if (!val) return null;
     if (cache[val]) return val;
 
+    const split = PresetLogic.splitQualifiedKey(val);
+    if (split.libraryId && cache[split.key]) return val;
+
     const derived = derivedFor(cache);
     if (!derived.variantKeyIndex) {
       derived.variantKeyIndex = buildVariantKeyIndex(cache);
     }
-    return derived.variantKeyIndex.get(val.toLowerCase()) ?? null;
+    const hit = derived.variantKeyIndex.get(val.toLowerCase()) ?? (
+      split.libraryId ? derived.variantKeyIndex.get(split.key.toLowerCase()) : null
+    );
+    return hit ?? null;
   },
 
   getAllVariants: (/** @type {string} */ text, /** @type {PresetCache | undefined} */ cache, rootGroup = "") => {
@@ -606,7 +623,8 @@ const PresetLogic = {
       const trimmed = tokenStr.trim();
       if (!trimmed) return "";
 
-      const item = cache?.[trimmed];
+      const split = PresetLogic.splitQualifiedKey(trimmed);
+      const item = cache?.[trimmed] || (split.libraryId ? cache?.[split.key] : null);
       if (item && item.preset) {
         if (seen.has(trimmed)) return trimmed;
         const newSeen = new Set(seen);
@@ -840,7 +858,11 @@ const PresetLogic = {
 
       bgImage = segmentImg || matchItem?.filename || null;
       color = PresetLogic.getPresetColor(evalId, cache);
-      tooltipTitle = `${chipExpandedCore}\n\n${PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId))} [${evalId}]\n${matchItem?.preset || evalId}`;
+      const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId))} [${evalId}]`;
+      const presetBody = matchItem?.preset || evalId;
+      tooltipTitle = chipExpandedCore !== presetBody
+        ? `${chipExpandedCore}\n\n${titleHeader}\n${presetBody}`
+        : `${titleHeader}\n${presetBody}`;
     } else {
       evalId = chipExpandedCore;
 
@@ -854,7 +876,11 @@ const PresetLogic = {
 
       bgImage = segmentImg || item?.filename || null;
       color = PresetLogic.getPresetColor(styleKey, cache);
-      tooltipTitle = item ? `${chipExpandedCore}\n\n${PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey))} [${styleKey}]\n${item.preset}` : chipExpandedCore;
+      const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey))} [${styleKey}]`;
+      const presetBody = item?.preset || styleKey;
+      tooltipTitle = item
+        ? (chipExpandedCore !== presetBody ? `${chipExpandedCore}\n\n${titleHeader}\n${presetBody}` : `${titleHeader}\n${presetBody}`)
+        : chipExpandedCore;
     }
 
     tooltipTitle = `${tooltipTitle}${rolledText}`;
@@ -907,14 +933,21 @@ const PresetLogic = {
         const subArray = activeList.slice(i, i + len);
         const joined = subArray.join(", ");
         const { core: coreJoined } = PresetLogic.parseWeight(joined);
+        const lookup = (/** @type {string} */ k) => lookupMap.get(k) || (
+          PresetLogic.splitQualifiedKey(k).libraryId
+            ? lookupMap.get(PresetLogic.splitQualifiedKey(k).key)
+            : null
+        );
         const cached = (len === 1)
-          ? (lookupMap.get(coreJoined) || lookupMap.get(coreJoined.replace(/\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '{$1}')))
+          ? (lookup(coreJoined) || lookup(coreJoined.replace(/\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '{$1}')))
           : null;
 
         if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}$/)) {
+          const qualifiedInput = len === 1 && PresetLogic.splitQualifiedKey(coreJoined).libraryId;
+          const resolvedStyleKey = qualifiedInput ? coreJoined : (cached?.foundKey || subArray[0]);
           matched = {
-            styleKey: cached?.foundKey || subArray[0],
-            item: cached?.foundItem || (cached?.foundKey ? cache[cached.foundKey] : cache[subArray[0]]),
+            styleKey: resolvedStyleKey,
+            item: cached?.foundItem || (cached?.foundKey ? cache[cached.foundKey] : cache[resolvedStyleKey]),
             startIndex: i,
             endIndex: i + len,
             subArray,
@@ -956,11 +989,18 @@ const PresetLogic = {
       return { key: trimmed, item: cache[trimmed] };
     }
 
+    const split = PresetLogic.splitQualifiedKey(trimmed);
+    if (split.libraryId && cache[split.key]) {
+      return { key: trimmed, item: cache[split.key] };
+    }
+
     const derived = derivedFor(cache);
     if (!derived.presetMatchIndex) {
       derived.presetMatchIndex = buildPresetMatchIndex(cache);
     }
-    const hit = derived.presetMatchIndex.get(trimmed);
+    const hit = derived.presetMatchIndex.get(trimmed) || (
+      split.libraryId ? derived.presetMatchIndex.get(split.key) : null
+    );
     return hit ? { key: hit.foundKey, item: hit.foundItem } : null;
   },
 
@@ -1247,8 +1287,11 @@ const PresetLogic = {
    * @param {PresetCacheItem} item - Cache item object.
    * @returns {string} Searchable text query blob.
    */
-  getSearchBlob: (key, item) =>
-    `${PresetLogic.getPresetName(key)} ${key} ${PresetLogic.getPresetInitials(key)} ${item?.preset || ""}`.toLowerCase(),
+  getSearchBlob: (key, item) => {
+    const split = PresetLogic.splitQualifiedKey(key);
+    const libPrefix = split.libraryId ? `${split.libraryId}# ` : "";
+    return `${libPrefix}${PresetLogic.getPresetName(key)} ${key} ${PresetLogic.getPresetInitials(key)} ${item?.preset || ""}`.toLowerCase();
+  },
 
   /**
    * Filters list items matching a search query string.

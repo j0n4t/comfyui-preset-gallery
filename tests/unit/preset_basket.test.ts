@@ -576,3 +576,40 @@ test("isBasketClipboardPayload accepts a valid payload and rejects malformed one
     "roll offsets must be numbers"
   );
 });
+
+test("rendered chip does not place title attribute on the label to avoid masking chip tooltip", () => {
+  const { basket } = makeBasket();
+  basket.render(["faces/portrait"]);
+  const chipEl = chips(basket)[0];
+  const labelEl = chipEl.querySelector(".j0n4t-pg-basket-chip-label");
+  assert.ok(labelEl, "chip label exists");
+  assert.equal(labelEl.getAttribute("title"), null);
+  assert.ok(chipEl.getAttribute("title"), "full tooltip remains on the chip container");
+});
+
+test("rendered chip displays library badge for qualified or non-main presets", () => {
+  const { basket, context } = makeBasket();
+  context.session = {
+    ownerOfKey: (k: string) => (k.startsWith("socks#") || k === "socks/wool" ? "socks" : "main"),
+    isDuplicateKey: () => false,
+    libraryName: (id: string) => (id === "socks" ? "Socks" : "Main"),
+  } as unknown as GalleryContext["session"];
+
+  basket.render(["faces/portrait", "socks#faces/macro", "socks/wool"]);
+  const rendered = chips(basket);
+  assert.equal(rendered.length, 3);
+
+  // 1: default main preset has no badge
+  assert.equal(rendered[0].querySelector(".j0n4t-pg-lib-badge"), null);
+
+  // 2: qualified preset has badge
+  const badge2 = rendered[1].querySelector(".j0n4t-pg-lib-badge");
+  assert.ok(badge2, "qualified preset has badge");
+  assert.equal(badge2.textContent, "Socks");
+
+  // 3: non-main library preset has badge
+  const badge3 = rendered[2].querySelector(".j0n4t-pg-lib-badge");
+  assert.ok(badge3, "non-main preset has badge");
+  assert.equal(badge3.textContent, "Socks");
+});
+

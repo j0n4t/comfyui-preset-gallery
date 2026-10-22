@@ -692,12 +692,12 @@ export default class PresetGalleryApp {
       getMatches: (query) => {
         query = query.trim().toLowerCase();
         if (!query) return [];
-        return PresetLogic.getTopMatches(Object.keys(this.session.cache), query, (k) =>
+        return PresetLogic.getTopMatches(Object.getOwnPropertyNames(this.session.cache), query, (k) =>
           PresetLogic.getSearchBlob(k, this.session.cache[k]), this.session.cache
         );
       },
       renderItem: (match) =>
-        `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
+        `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetName(match)))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         const key = this.selectionKey(match);
         const sel = this.context.getSelectedArray();

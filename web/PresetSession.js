@@ -116,6 +116,14 @@ export default class PresetSession {
         if (winner === undefined) {
           owners.set(key, lib.id);
           merged[key] = item;
+          // Every library's entries are also reachable under their qualified key
+          // without cluttering Object.keys(merged)
+          Object.defineProperty(merged, `${lib.id}#${key}`, {
+            value: item,
+            enumerable: false,
+            writable: true,
+            configurable: true,
+          });
           continue;
         }
         if (winner === lib.id) continue; // the same library listed twice

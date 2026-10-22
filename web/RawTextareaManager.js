@@ -308,7 +308,7 @@ export default class RawTextareaManager {
           if (!currentToken) return [];
 
           return PresetLogic.getTopMatches(
-            Object.keys(this.context.cache),
+            Object.getOwnPropertyNames(this.context.cache),
             currentToken,
             (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]),
             this.context.cache,
@@ -317,7 +317,7 @@ export default class RawTextareaManager {
         }
       },
       renderItem: (match) =>
-        `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
+        `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetName(match)))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         const query = this.textarea.value;
         const cursor = this.textarea.selectionStart || 0;

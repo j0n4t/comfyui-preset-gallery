@@ -154,13 +154,13 @@ export default class InlineEditorManager {
         } else {
           query = query.trim().toLowerCase();
           if (!query) return [];
-          return PresetLogic.getTopMatches(Object.keys(this.context.cache), query, (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]), this.context.cache);
+          return PresetLogic.getTopMatches(Object.getOwnPropertyNames(this.context.cache), query, (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]), this.context.cache);
         }
       },
       renderItem: (match) => {
         const isPreset = this.context.cache && this.context.cache[match];
         if (isPreset) {
-          return `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match.split("/").pop()))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`;
+          return `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetName(match)))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`;
         } else {
           return `<span>${PresetDOM.icons.folder} ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
         }

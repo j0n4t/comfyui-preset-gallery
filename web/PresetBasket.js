@@ -66,7 +66,8 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -1px; top: -2px; font-size: 9px; cursor: pointer; z-index: 2; }
     .j0n4t-pg-chip-popup-item.active-pin { color: #ff6002bd; }
 
-    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; }
+    .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; display: inline-flex; align-items: center; }
+    .j0n4t-pg-basket-chip .j0n4t-pg-lib-badge { color: #fff; background: rgba(0,0,0,0.45); padding: 1px 3px; border-radius: 2px; font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; margin-left: 3px; }
     .j0n4t-pg-basket-chip.inline-editing { border-color: #d1a119; cursor: text; padding: 2px 4px; background-image: none !important; }
     .j0n4t-pg-basket-chip.inline-editing::before { display: none; }
     .j0n4t-pg-inline-edit { background: transparent; border: none; color: #fff; font-family: monospace; font-size: 11px; outline: none; width: 100%; min-width: 50px; padding: 0; margin: 0; }
@@ -2093,7 +2094,16 @@ export default class PresetBasket {
       const rawVal = rawItems.join(', ');
       const isPinned = this.context.pinnedChips?.has(rawVal);
 
-      let labelContent = PresetDOM.escapeHTML(chip.processed.cleanLabel);
+      const libId = PresetLogic.splitQualifiedKey(chipData.styleKey).libraryId ||
+        this.context.session?.ownerOfKey?.(chipData.styleKey);
+      const isDuplicate = this.context.session?.isDuplicateKey?.(chipData.styleKey);
+      const showLib = libId && (isDuplicate || libId !== "main");
+      const libName = (libId ? this.context.session?.libraryName?.(libId) : null) || libId;
+      const libBadge = showLib
+        ? `<span class="j0n4t-pg-lib-badge" title="From the ${PresetDOM.escapeHTML(libName)} library">${PresetDOM.escapeHTML(libName)}</span>`
+        : "";
+
+      let labelContent = `${PresetDOM.escapeHTML(chip.processed.cleanLabel)}${libBadge}`;
       if ((!chip.processed.chipData.item || chipData.styleKey.startsWith("_/combo")) && chip.processed.segmentedLabels) {
         labelContent = `<div class="j0n4t-pg-basket-chip-segments">` +
           chip.processed.segmentedLabels.filter(Boolean).map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`).join('') +
@@ -2112,7 +2122,7 @@ export default class PresetBasket {
              data-end="${chip.processed.chipData.endIndex}"
              style='${chip.bgStyle}'>
             ${chip.weightIconHtml}
-            <div class="j0n4t-pg-basket-chip-label" title="${PresetDOM.escapeHTML(chip.processed.chipExpanded || chip.processed.joinedStr)}">
+            <div class="j0n4t-pg-basket-chip-label">
                 ${labelContent}
             </div>
             ${chip.inputHtml}

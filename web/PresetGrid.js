@@ -205,8 +205,13 @@ export default class PresetGrid {
         ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetFolder(key).split("/").pop() || ""))}</div>`
         : "";
 
+      const owner = session?.ownerOfKey(key);
+      const displayKey = (owner && owner !== "main" && !key.includes("#"))
+        ? `${owner}#${key}`
+        : key;
+
       htmlBuffer += `
-       <div class="j0n4t-pg-item" data-style="${PresetDOM.escapeHTML(key)}" data-search-blob="${PresetDOM.escapeHTML(searchBlob)}" draggable="true" tabindex="0" role="option" aria-selected="false" title="${PresetDOM.escapeHTML(cleanLabel)} [${PresetDOM.escapeHTML(key)}]\n${PresetDOM.escapeHTML(item.preset || "")}">
+       <div class="j0n4t-pg-item" data-style="${PresetDOM.escapeHTML(key)}" data-search-blob="${PresetDOM.escapeHTML(searchBlob)}" draggable="true" tabindex="0" role="option" aria-selected="false" title="${PresetDOM.escapeHTML(cleanLabel)} [${PresetDOM.escapeHTML(displayKey)}]\n${PresetDOM.escapeHTML(item.preset || "")}">
           ${badge}
           <div class="j0n4t-pg-thumb-box">
             ${thumb}

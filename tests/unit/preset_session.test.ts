@@ -468,3 +468,25 @@ test("setLibraries with nothing leaves an empty cache rather than throwing", () 
   session.setLibraries(undefined, undefined);
   assert.deepEqual(session.cache, {});
 });
+
+test("rebuildCache registers non-enumerable library-qualified keys for winning entries", () => {
+  const session = makeSession();
+  session.setLibraries(
+    [{ id: "main", name: "Main" }, { id: "socks", name: "Socks" }],
+    { main: MAIN, socks: SOCKS }
+  );
+
+  // 'Faces/Portrait' belongs to main and has no duplicates
+  assert.equal(session.cache["main#Faces/Portrait"].preset, "portrait");
+  // 'wear/sock/crew' belongs to socks and has no duplicates
+  assert.equal(session.cache["socks#wear/sock/crew"].preset, "socks crew socks");
+
+  // Non-enumerable properties are not present in Object.keys()
+  assert.equal(Object.keys(session.cache).includes("main#Faces/Portrait"), false);
+  assert.equal(Object.keys(session.cache).includes("socks#wear/sock/crew"), false);
+
+  // But they are present in Object.getOwnPropertyNames()
+  assert.equal(Object.getOwnPropertyNames(session.cache).includes("main#Faces/Portrait"), true);
+  assert.equal(Object.getOwnPropertyNames(session.cache).includes("socks#wear/sock/crew"), true);
+});
+

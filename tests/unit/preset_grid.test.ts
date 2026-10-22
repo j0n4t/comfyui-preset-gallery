@@ -353,3 +353,34 @@ test("clicking an item asks the context for the key it should store", () => {
 
   assert.equal(state.widgetValue, "socks#faces/portrait");
 });
+
+test("hovered title shows library qualifier for non-default libraries and duplicates", () => {
+  const { grid, context } = makeGrid();
+  context.session = {
+    isDuplicateKey: (key: string) => key === "wear/sock/ankle",
+    ownerOfKey: (key: string) => {
+      if (key.startsWith("b#") || key === "b/item") return "b";
+      return "main";
+    },
+    libraryName: (id: string) => id,
+  } as unknown as GalleryContext["session"];
+
+  grid.compile({
+    "Faces/Portrait": { preset: "portrait text" },
+    "b/item": { preset: "b text" },
+    "b#wear/sock/ankle": { preset: "sock text" },
+  });
+
+  const rows = items(grid);
+  const mainRow = rows.find((el) => el.dataset.style === "Faces/Portrait")!;
+  const bRow = rows.find((el) => el.dataset.style === "b/item")!;
+  const qualifiedRow = rows.find((el) => el.dataset.style === "b#wear/sock/ankle")!;
+
+  // Default main item tooltip uses plain key
+  assert.ok(mainRow.getAttribute("title")?.includes("[Faces/Portrait]"));
+  // Non-main library item tooltip includes library qualifier
+  assert.ok(bRow.getAttribute("title")?.includes("[b#b/item]"));
+  // Explicitly qualified item tooltip retains qualifier
+  assert.ok(qualifiedRow.getAttribute("title")?.includes("[b#wear/sock/ankle]"));
+});
+

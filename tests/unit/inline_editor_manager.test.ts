@@ -195,3 +195,41 @@ test("clearing the value without chip indices deletes the selection entry", () =
 
   assert.equal(env.widgetValue(), "Faces/Portrait");
 });
+
+test("autocomplete suggests qualified presets and renders qualified root preset title correctly", () => {
+  const env = makeEnv([]);
+  // Define non-enumerable qualified preset and root preset
+  env.context.cache = {
+    "Faces/Portrait": { preset: "pro" },
+    "sample#root_preset": { preset: "root text" },
+  };
+  Object.defineProperty(env.context.cache, "socks#Faces/Portrait", {
+    value: { preset: "pro" },
+    enumerable: false,
+  });
+
+  const editor = new InlineEditorManager(env.context, env.delegate);
+  editor.spawn(null, "");
+  const input = env.basketEl.querySelector<HTMLInputElement>(".j0n4t-pg-inline-edit")!;
+
+  // Querying for socks# finds the non-enumerable qualified key
+  input.value = "socks#";
+  input.dispatchEvent(new Event("input"));
+  const popupItems = Array.from(document.querySelectorAll(".j0n4t-pg-autocomplete-item"));
+  assert.ok(popupItems.length > 0, "finds non-enumerable qualified preset");
+  assert.ok(popupItems.some((el) => el.textContent?.includes("socks#Faces/Portrait")));
+
+  // Querying for root preset renders title without lib qualifier in primary label
+  input.value = "sample#root";
+  input.dispatchEvent(new Event("input"));
+  const rootRow = Array.from(document.querySelectorAll(".j0n4t-pg-autocomplete-item"))
+    .find((el) => el.textContent?.includes("sample#root_preset"));
+  assert.ok(rootRow, "finds sample#root_preset");
+  // First span has "Root Preset" (not "Sample#root Preset")
+  const firstSpan = rootRow!.querySelector("span")!;
+  assert.equal(firstSpan.textContent, "Root Preset");
+  // Meta span has full qualified key
+  const metaSpan = rootRow!.querySelector(".j0n4t-pg-autocomplete-meta")!;
+  assert.equal(metaSpan.textContent, "sample#root_preset");
+});
+

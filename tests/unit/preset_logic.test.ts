@@ -649,3 +649,58 @@ test("parseTokens matches a qualified chip as one token", () => {
   assert.equal(first?.key, "socks#wear/sock/ankle");
   assert.equal(first?.text, "socks#wear/sock/ankle");
 });
+
+test("getSearchBlob includes the library prefix for qualified keys", () => {
+  const blob = PresetLogic.getSearchBlob("socks#wear/sock/ankle", { preset: "ankle socks" });
+  assert.ok(blob.startsWith("socks# "));
+  assert.ok(blob.includes("ankle"));
+});
+
+test("findPresetMatch and expandRecursively fall back to the plain key for winning/un-duplicated qualified keys", () => {
+  // MERGED has 'wear/sock/knee' without a 'main#wear/sock/knee' duplicate key
+  const hit = PresetLogic.findPresetMatch("main#wear/sock/knee", MERGED);
+  assert.ok(hit);
+  assert.equal(hit.item.preset, "main knee");
+
+  const expanded = PresetLogic.expandRecursively("main#wear/sock/knee", MERGED);
+  assert.equal(expanded, "main knee");
+});
+
+test("getGroupedChips preserves qualified styleKey on user input and resolves cached item", () => {
+  const chips = PresetLogic.getGroupedChips(["main#wear/sock/knee", "(socks#wear/sock/knee:1.2)"], MERGED);
+  assert.equal(chips.length, 2);
+  assert.equal(chips[0].styleKey, "main#wear/sock/knee");
+  assert.equal(chips[0].item?.preset, "main knee");
+  assert.equal(chips[1].styleKey, "socks#wear/sock/knee");
+  assert.equal(chips[1].item?.preset, "main knee");
+});
+
+test("parseBasketChip tooltipTitle does not duplicate preset text when unexpanded", () => {
+  const chipData = {
+    styleKey: "wear/sock/knee",
+    item: MERGED["wear/sock/knee"],
+    subArray: ["wear/sock/knee"],
+    startIndex: 0,
+    endIndex: 1,
+  };
+  const parsed = PresetLogic.parseBasketChip(chipData, MERGED);
+  // Header + preset body only, not repeated twice
+  assert.equal(parsed.tooltipTitle, "Knee [wear/sock/knee]\nmain knee");
+});
+
+test("parseBasketChip tooltipTitle includes expanded text when preset expands to something different", () => {
+  const cacheWithMacro: PresetCache = {
+    "look/simple": { preset: "simple look" },
+    "look/combo": { preset: "look/simple, extra" },
+  };
+  const chipData = {
+    styleKey: "look/combo",
+    item: cacheWithMacro["look/combo"],
+    subArray: ["look/combo"],
+    startIndex: 0,
+    endIndex: 1,
+  };
+  const parsed = PresetLogic.parseBasketChip(chipData, cacheWithMacro);
+  assert.equal(parsed.tooltipTitle, "simple look, extra\n\nCombo [look/combo]\nlook/simple, extra");
+});
+
