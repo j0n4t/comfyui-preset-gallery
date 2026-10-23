@@ -632,12 +632,38 @@ const PresetLogic = {
         const wrappedPreset = PresetLogic.getWrappedPreset(trimmed, item.preset, cache);
         return expandText(PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager));
       }
-      return expandText(trimmed);
+      // A token is usually one preset or one variant, but a user can type a bare
+      // key alongside them - `({pose} prop/furn/sofa:1.15)`. Braces are handled
+      // by expandText; the bare key has to be resolved here or it passes through
+      // raw. Only whole whitespace-separated words are considered, so plain text
+      // is never mistaken for a key.
+      return expandText(PresetLogic.expandEmbeddedKeys(trimmed, cache));
     };
 
     const keys = PresetLogic.splitPresets(val);
     const expanded = keys.map(expandToken);
     return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, ' ');
+  },
+
+  /**
+   * Resolves whole words of `str` that are cache keys, leaving everything else
+   * untouched. Used for tokens that mix a variant with a bare key, such as
+   * `({pose} prop/furn/sofa:1.15)`, where the key is not the whole token and so
+   * is never reached by the per-token lookup.
+   *
+   * Only non-recursive: the resolved preset's own body is left for the caller's
+   * existing expansion pass, which tracks `seen` and applies folder wrapping.
+   * @param {string} str - Token text.
+   * @param {PresetCache} [cache] - Preset cache lookup dictionary.
+   * @returns {string} Token with resolvable words replaced.
+   */
+  expandEmbeddedKeys: (str, cache = {}) => {
+    if (!str || !cache) return str;
+    return str.replace(/\S+/g, (/** @type {string} */ word) => {
+      const item = cache[word];
+      if (!item || !item.preset) return word;
+      return item.preset;
+    });
   },
 
   /**
@@ -907,8 +933,9 @@ const PresetLogic = {
       const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey))} [${qualify(styleKey)}]`;
       const presetBody = item?.preset || styleKey;
       // A tag, or any chip that matched no cache item, has no preset body to
-      // name: the evaluated value is the only content the tooltip can carry.
-      tooltipTitle = item ? `${titleHeader}\n${presetBody}` : chipExpanded;
+      // name: the raw chip is the only thing the tooltip can carry. The
+      // evaluated value is still prepended below when it differs from it.
+      tooltipTitle = item ? `${titleHeader}\n${presetBody}` : joinedStr;
     }
 
     tooltipTitle = `${tooltipTitle}${rolledText}`;

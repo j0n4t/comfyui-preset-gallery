@@ -148,7 +148,17 @@ value is prepended and the header shows the original body.
 Several presets joined into one chip. The evaluated value is prepended; there is
 no single header because the chip names no one preset.
 
-### 3.12 Unresolvable text
+### 3.12 Key embedded in a weighted chip
+
+| Chip | Evaluates to | Tooltip |
+| :--- | :--- | :--- |
+| `({pose} {char} prop/furn/sofa:1.15)` | `(standing pose hero character sofa furniture:1.15)` | `(standing pose hero character sofa furniture:1.15)\n\n({pose} {char} prop/furn/sofa:1.15)\n\nRolled Variants:\n🎲 Pose: stand\n🎲 Char: hero` |
+
+`(text:weight)` is one attention token, so the whole thing is a single chip. A
+bare key written alongside the braces resolves too; the tooltip then shows the
+evaluated value and the raw chip text as written, each once.
+
+### 3.13 Unresolvable text
 
 | Chip | Evaluates to | Tooltip |
 | :--- | :--- | :--- |
@@ -193,4 +203,6 @@ The value is prepended when the header does not already show it:
   information.
 - `PresetLogic.parseBasketChip` - builds the header and chooses the evaluated
   value for each shape.
+- `PresetLogic.expandEmbeddedKeys` - resolves a bare key that is not the whole
+  token, so `({pose} prop/furn/sofa:1.15)` expands its key.
 - `PresetBasket.render` - puts `processed.tooltipTitle` on the chip element.

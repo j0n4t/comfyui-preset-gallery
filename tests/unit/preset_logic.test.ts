@@ -766,6 +766,45 @@ test("parseBasketChip tooltipTitle keeps a single header when the chip equals it
   assert.equal(parsed.tooltipTitle, "Knee [wear/sock/knee]\nmain knee");
 });
 
+test("parseBasketChip resolves a preset key embedded in a weighted chip", () => {
+  // `(text:weight)` is one attention token. Only the braces are substituted
+  // here; the bare key after them must still resolve.
+  const cache: PresetCache = {
+    "pose/stand": { preset: "standing pose" },
+    "prop/furn/sofa": { preset: "sofa furniture" },
+  };
+  const raw = "({pose} prop/furn/sofa:1.15)";
+  const parsed = PresetLogic.parseBasketChip(
+    { styleKey: raw, item: null, subArray: [raw], startIndex: 0, endIndex: 1 },
+    cache
+  );
+  assert.equal(parsed.chipExpanded, "(standing pose sofa furniture:1.15)");
+});
+
+test("parseBasketChip tooltip shows the evaluated value and the raw chip once", () => {
+  const cache: PresetCache = {
+    "pose/stand": { preset: "standing pose" },
+    "char/hero": { preset: "hero character" },
+    "prop/furn/sofa": { preset: "sofa furniture" },
+  };
+  const raw = "({pose} {char} prop/furn/sofa:1.15)";
+  const parsed = PresetLogic.parseBasketChip(
+    { styleKey: raw, item: null, subArray: [raw], startIndex: 0, endIndex: 1 },
+    cache
+  );
+  // evaluated value, raw chip text, roll record - no repeated expansion
+  assert.equal(
+    parsed.tooltipTitle,
+    "(standing pose hero character sofa furniture:1.15)\n" +
+      "\n" +
+      "({pose} {char} prop/furn/sofa:1.15)\n" +
+      "\n" +
+      "Rolled Variants:\n" +
+      "🎲 Pose: stand\n" +
+      "🎲 Char: hero"
+  );
+});
+
 test("parseBasketChip tooltipTitle shows the raw chip for a virtual null", () => {
   const cache: PresetCache = { "hair/blonde": { preset: "blonde hair" } };
   const parsed = PresetLogic.parseBasketChip(
