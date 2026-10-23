@@ -1063,7 +1063,7 @@ const PresetLogic = {
       if (startBucket) {
         for (const cand of startBucket) {
           if (val.startsWith(cand.matchStr, idx)) {
-            if (cand.key === ignorePreset || cand.matchStr === ignorePreset) continue;
+            if (ignorePreset && cand.key?.endsWith(ignorePreset) || cand.matchStr === ignorePreset) continue;
             if (isValidBoundary(idx, idx + cand.matchStr.length)) {
               matched = cand;
               break;
