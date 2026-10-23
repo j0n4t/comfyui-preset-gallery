@@ -471,9 +471,6 @@ export default class PresetBasket {
       const styleKey = e.dataTransfer.getData("text/plain");
       if (!styleKey) return;
 
-      // Ignore basket-internal drags (chip reordering) — those are handled by the basket drop zone
-      if (e.dataTransfer.getData("source/basket") === "true") return;
-
       const chips = this.spreadPresetToChips(styleKey);
       if (chips.length === 0) return;
 

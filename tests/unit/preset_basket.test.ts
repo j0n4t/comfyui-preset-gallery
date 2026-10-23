@@ -259,6 +259,36 @@ test("addChipsToNewTab via the documented custom event", () => {
   assert.equal(basket.context.widget.value, "faces/portrait, faces/macro");
 });
 
+test("dragging a basket chip to the tab bar creates a tab with its spread contents", () => {
+  const { basket } = makeBasket();
+  basket.render(["faces/portrait"]);
+  const values = new Map<string, string>();
+  const dataTransfer = {
+    types: [] as string[],
+    setData(type: string, value: string) {
+      values.set(type, value);
+      if (!this.types.includes(type)) this.types.push(type);
+    },
+    getData(type: string) {
+      return values.get(type) || "";
+    },
+  };
+  const dragStart = new Event("dragstart", { bubbles: true });
+  Object.defineProperty(dragStart, "dataTransfer", { value: dataTransfer });
+  chips(basket)[0].dispatchEvent(dragStart);
+
+  const sidebar = basket.container.querySelector<HTMLElement>(
+    ".j0n4t-pg-basket-tabs-sidebar"
+  )!;
+  const drop = new Event("drop", { bubbles: true, cancelable: true });
+  Object.defineProperty(drop, "dataTransfer", { value: dataTransfer });
+  sidebar.dispatchEvent(drop);
+
+  assert.equal(basket.tabs.length, 2);
+  assert.deepEqual(basket.tabs[1].basket, ["portrait", "solo"]);
+  assert.equal(basket.activeTabId, basket.tabs[1].id);
+});
+
 test("duplicateTab copies a tab with a Copy title", () => {
   const { basket, context } = makeBasket();
   basket.render(["faces/portrait"]);
