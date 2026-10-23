@@ -283,7 +283,10 @@ export default class PresetGrid {
             e.stopPropagation();
             if (rawFolder === "root_presets") return;
 
-            const inputName = await ModalUtils.prompt("Rename Group", rawFolder);
+            const inputName = await ModalUtils.prompt(
+              "Rename Group (use / for nested folders; library#folder moves it)",
+              rawFolder
+            );
 
             if (inputName === null || inputName === undefined) return;
 
@@ -291,7 +294,11 @@ export default class PresetGrid {
             // renaming it where it is
             const { libraryId: namedLibrary, key: typedFolder } =
               PresetLogic.splitQualifiedKey(inputName.trim());
-            const newName = typedFolder.toLowerCase().replace(/ /g, "_");
+            const newName = typedFolder
+              .split("/")
+              .map((part) => part.trim().toLowerCase().replace(/ /g, "_"))
+              .filter(Boolean)
+              .join("/");
             const source = this.context.session?.ownerOfFolder?.(rawFolder) ?? null;
 
             if (!newName) return;
@@ -309,11 +316,15 @@ export default class PresetGrid {
               this.context.updateWidgetValue(
                 this.context
                   .getSelectedArray()
-                  .map((i) =>
-                    i.startsWith(`${rawFolder}/`)
-                      ? i.replace(`${rawFolder}/`, `${newName}/`)
-                      : i
-                  )
+                  .map((value) => {
+                    const { libraryId, key } = PresetLogic.splitQualifiedKey(value);
+                    if (key !== rawFolder && !key.startsWith(`${rawFolder}/`)) return value;
+                    const renamedKey = `${newName}${key.slice(rawFolder.length)}`;
+                    if (namedLibrary) {
+                      return this.context.selectionKey(`${namedLibrary}#${renamedKey}`);
+                    }
+                    return libraryId ? `${libraryId}#${renamedKey}` : renamedKey;
+                  })
               );
               // a move may have emptied the library the folder came from
               if (namedLibrary) {

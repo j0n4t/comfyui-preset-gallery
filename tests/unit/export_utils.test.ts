@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import "./dom-harness.ts";
 import ExportUtils from "../../web/ExportUtils.js";
+import ModalUtils from "../../web/ModalUtils.js";
+import PresetGalleryAPI from "../../web/PresetGalleryAPI.js";
 
 // ExportUtils.getSelectionSummary is pure; buildPresetSelectorTree builds a
 // real checkbox tree, which needs a DOM. The harness is imported first so
@@ -189,4 +191,182 @@ test("applyDuplicateStrategy keep_both checks every non-user-modified item", () 
 test("getPresets returns the map the tree was built with", () => {
   const tree = ExportUtils.buildPresetSelectorTree(PRESETS);
   assert.equal(tree.getPresets(), PRESETS);
+});
+
+test("export modal switches libraries and reports the selected library", async () => {
+  const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
+  const originalGetPresets = PresetGalleryAPI.getPresets;
+  const originalConfirm = ModalUtils.confirm;
+  const originalActiveLibraryId = PresetGalleryAPI.activeLibraryId;
+  let exportedConfig: { libraryId?: string; selectedKeys?: string[] | null } | undefined;
+
+  try {
+    PresetGalleryAPI.activeLibraryId = "main";
+    PresetGalleryAPI.fetchLibraries = async () => [
+      { id: "main", name: "Main", default: true },
+      { id: "second", name: "Second", default: false },
+    ];
+    PresetGalleryAPI.getPresets = async (libraryId) => {
+      const presets: PresetCache = {};
+      presets[libraryId === "second" ? "Second" : "First"] = {
+        preset: libraryId === "second" ? "second" : "first",
+      };
+      return presets;
+    };
+    ModalUtils.confirm = async () => true;
+
+    await ExportUtils.showExportModal((config) => {
+      exportedConfig = config;
+    });
+
+    const librarySelect = document.querySelector<HTMLSelectElement>("#j0n4t-pg-exp-library");
+    assert.ok(librarySelect);
+    librarySelect.value = "second";
+    librarySelect.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const selectedPreset = document.querySelector<HTMLInputElement>(
+      '.j0n4t-pg-item-cb[value="Second"]'
+    );
+    assert.ok(selectedPreset);
+    document.querySelector<HTMLButtonElement>("#j0n4t-pg-exp-confirm")?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(exportedConfig?.libraryId, "second");
+    assert.deepEqual(exportedConfig?.selectedKeys, ["Second"]);
+  } finally {
+    PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
+    PresetGalleryAPI.getPresets = originalGetPresets;
+    PresetGalleryAPI.activeLibraryId = originalActiveLibraryId;
+    ModalUtils.confirm = originalConfirm;
+    document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());
+  }
+});
+
+test("import modal compares against and targets the selected library", async () => {
+  const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
+  const originalGetPresets = PresetGalleryAPI.getPresets;
+  const originalConfirm = ModalUtils.confirm;
+  const originalActiveLibraryId = PresetGalleryAPI.activeLibraryId;
+  let importTarget: string | undefined;
+
+  try {
+    PresetGalleryAPI.activeLibraryId = "main";
+    PresetGalleryAPI.fetchLibraries = async () => [
+      { id: "main", name: "Main", default: true },
+      { id: "second", name: "Second", default: false },
+    ];
+    PresetGalleryAPI.getPresets = async (libraryId) => {
+      const presets: PresetCache = {};
+      if (libraryId === "main") presets.Imported = { preset: "existing" };
+      return presets;
+    };
+    ModalUtils.confirm = async () => true;
+
+    await ExportUtils.showImportModal({ Imported: { preset: "new" } }, ({ libraryId }) => {
+      importTarget = libraryId;
+    });
+
+    assert.match(
+      document.querySelector("#j0n4t-pg-dup-label")?.textContent ?? "",
+      /1 detected/
+    );
+    const librarySelect = document.querySelector<HTMLSelectElement>("#j0n4t-pg-imp-library");
+    assert.ok(librarySelect);
+    librarySelect.value = "second";
+    librarySelect.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.match(
+      document.querySelector("#j0n4t-pg-dup-label")?.textContent ?? "",
+      /0 detected/
+    );
+    document.querySelector<HTMLButtonElement>("#j0n4t-pg-imp-confirm")?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(importTarget, "second");
+  } finally {
+    PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
+    PresetGalleryAPI.getPresets = originalGetPresets;
+    PresetGalleryAPI.activeLibraryId = originalActiveLibraryId;
+    ModalUtils.confirm = originalConfirm;
+    document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());
+  }
+});
+
+test("import modal can target a new library", async () => {
+  const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
+  const originalGetPresets = PresetGalleryAPI.getPresets;
+  const originalConfirm = ModalUtils.confirm;
+  const originalPrompt = ModalUtils.prompt;
+  const originalActiveLibraryId = PresetGalleryAPI.activeLibraryId;
+  let importTarget: string | undefined;
+
+  try {
+    PresetGalleryAPI.activeLibraryId = "main";
+    PresetGalleryAPI.fetchLibraries = async () => [
+      { id: "main", name: "Main", default: true },
+    ];
+    PresetGalleryAPI.getPresets = async () => ({});
+    ModalUtils.confirm = async () => true;
+    ModalUtils.prompt = async () => "new_styles";
+
+    await ExportUtils.showImportModal({ Imported: { preset: "new" } }, ({ libraryId }) => {
+      importTarget = libraryId;
+    });
+
+    const librarySelect = document.querySelector<HTMLSelectElement>("#j0n4t-pg-imp-library");
+    assert.ok(librarySelect);
+    librarySelect.value = "__create_new_library__";
+    librarySelect.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(librarySelect.value, "new_styles");
+    assert.ok(librarySelect.querySelector('option[value="new_styles"]'));
+    document.querySelector<HTMLButtonElement>("#j0n4t-pg-imp-confirm")?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(importTarget, "new_styles");
+  } finally {
+    PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
+    PresetGalleryAPI.getPresets = originalGetPresets;
+    PresetGalleryAPI.activeLibraryId = originalActiveLibraryId;
+    ModalUtils.confirm = originalConfirm;
+    ModalUtils.prompt = originalPrompt;
+    document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());
+  }
+});
+
+test("renaming a nested folder uses and preserves its slash-separated path", () => {
+  const originalPrompt = globalThis.prompt;
+  let promptDefault: string | undefined;
+  const presets: PresetCache = {
+    "Faces/Portraits/Studio": { preset: "studio" },
+    "Faces/Portraits": { __color__: "#ff0000" },
+  };
+
+  try {
+    globalThis.prompt = (_message, defaultValue) => {
+      promptDefault = defaultValue;
+      return "Faces/Editorial";
+    };
+    const tree = ExportUtils.buildPresetSelectorTree(presets);
+    const group = Array.from(tree.element.querySelectorAll(".j0n4t-pg-tree-group"))
+      .find((element) =>
+        element.querySelector<HTMLInputElement>(".j0n4t-pg-group-cb")?.dataset.group === "Faces/Portraits"
+      );
+    assert.ok(group);
+    group.querySelector<HTMLElement>(".j0n4t-pg-edit-group-btn")?.click();
+
+    assert.equal(promptDefault, "Faces/Portraits");
+    assert.equal(
+      group.querySelector<HTMLInputElement>(".j0n4t-pg-item-cb")?.value,
+      "faces/editorial/Studio"
+    );
+    assert.equal(presets["faces/editorial/Studio"]?.preset, "studio");
+    assert.equal(presets["faces/editorial"]?.__color__, "#ff0000");
+    assert.equal(presets["Faces/Portraits/Studio"], undefined);
+  } finally {
+    globalThis.prompt = originalPrompt;
+  }
 });

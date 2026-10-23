@@ -255,6 +255,22 @@ test("openPreset with a plain key owned by the main library leaves the folder un
   assert.equal(dom.inpFolder.value, "faces", "the default library does not add a qualifier");
 });
 
+test("folder autocomplete preserves a typed library qualifier", () => {
+  const dom = makeDom();
+  const { editor } = makeEditor(dom);
+  dom.inpFolder.value = "Sample#fac";
+  dom.inpFolder.dispatchEvent(new Event("input", { bubbles: true }));
+
+  const suggestion = document.querySelector<HTMLElement>(
+    ".j0n4t-pg-folder-autocomplete-item"
+  );
+  assert.equal(suggestion?.textContent, "Sample#faces");
+  suggestion?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  assert.equal(dom.inpFolder.value, "Sample#faces");
+
+  editor.clearFields();
+});
+
 test("openPreset ignores an unknown key", () => {
   const dom = makeDom();
   const { editor, calls } = makeEditor(dom);

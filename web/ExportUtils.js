@@ -12,6 +12,7 @@ import YAMLUtils from "./YAMLUtils.js";
  * @property {string[] | null} [selectedKeys]
  * @property {boolean} [includeColors]
  * @property {PresetCache} [editedPresets]
+ * @property {string} [libraryId]
  */
 
 /**
@@ -326,38 +327,59 @@ const ExportUtils = {
 
             const groupEditBtn = /** @type {HTMLSpanElement | null} */ (groupHeader.querySelector(".j0n4t-pg-edit-group-btn"));
             if (groupEditBtn) {
-                groupEditBtn.addEventListener("click", () => {
-                    const newGroupName = prompt("Rename Folder:", gName);
-                    if (newGroupName && newGroupName.trim() !== "" && newGroupName !== gName) {
-                        const cleanNewFolder = newGroupName.trim().toLowerCase().replace(/ /g, "_");
+                groupEditBtn.addEventListener("click", async () => {
+                    const newGroupName = prompt(
+                        "Rename Folder (use / to separate nested folders):",
+                        gKey === "root_presets" ? "" : gKey
+                    );
+                    if (newGroupName === null) return;
+                    const cleanNewFolder = newGroupName.trim().split("/")
+                        .map((part) => part.trim().toLowerCase().replace(/ /g, "_"))
+                        .filter(Boolean)
+                        .join("/");
+                    if (cleanNewFolder === gKey) return;
 
-                        const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (itemsBox.querySelectorAll(".j0n4t-pg-item-cb"));
-                        checkboxes.forEach(cb => {
-                            const oldKey = cb.value;
-                            const itemName = PresetLogic.getPresetName(oldKey);
-                            const newKey = cleanNewFolder ? `${cleanNewFolder}/${itemName}` : itemName;
+                    const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (itemsBox.querySelectorAll(".j0n4t-pg-item-cb"));
+                    const keyMoves = Array.from(checkboxes, (cb) => {
+                        const oldKey = cb.value;
+                        const itemName = PresetLogic.getPresetName(oldKey);
+                        return { cb, oldKey, newKey: cleanNewFolder ? `${cleanNewFolder}/${itemName}` : itemName };
+                    });
+                    const movingKeys = new Set(keyMoves.map(({ oldKey }) => oldKey));
+                    if (keyMoves.some(({ newKey }) => newKey in presets && !movingKeys.has(newKey))) {
+                        await ModalUtils.alert("A preset with that name already exists in the destination folder.");
+                        return;
+                    }
 
-                            if (presets[oldKey]) {
-                                presets[newKey] = presets[oldKey];
-                                delete presets[oldKey];
-                            }
-                            cb.value = newKey;
-                            cb.dataset.group = cleanNewFolder;
-                        });
-
-                        if (gKey && gKey !== "root_presets" && presets[gKey] && presets[gKey].__color__) {
-                            if (cleanNewFolder) {
-                                presets[cleanNewFolder] = { ...(presets[cleanNewFolder] || {}), __color__: presets[gKey].__color__ };
-                            }
-                            delete presets[gKey].__color__;
-                            if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
+                    for (const { oldKey, newKey, cb } of keyMoves) {
+                        if (presets[oldKey]) {
+                            presets[newKey] = presets[oldKey];
+                            delete presets[oldKey];
                         }
+                        cb.value = newKey;
+                        cb.dataset.group = cleanNewFolder || "root_presets";
+                    }
 
-                        const groupCb = /** @type {HTMLInputElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-cb"));
-                        if (groupCb) groupCb.dataset.group = cleanNewFolder;
+                    if (gKey !== "root_presets" && presets[gKey]?.__color__) {
+                        if (cleanNewFolder) {
+                            presets[cleanNewFolder] = {
+                                ...(presets[cleanNewFolder] || {}),
+                                __color__: presets[gKey].__color__,
+                            };
+                        }
+                        delete presets[gKey].__color__;
+                        if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
+                    }
 
-                        const groupNameEl = /** @type {HTMLElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-name"));
-                        if (groupNameEl) groupNameEl.innerHTML = `<strong>${PresetDOM.escapeHTML(newGroupName)}</strong> (${items.length})`;
+                    const groupCb = /** @type {HTMLInputElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-cb"));
+                    if (groupCb) groupCb.dataset.group = cleanNewFolder || "root_presets";
+
+                    const groupNameEl = /** @type {HTMLElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-name"));
+                    if (groupNameEl) {
+                        const displayName = cleanNewFolder
+                            ? cleanNewFolder.split("/").map(PresetLogic.toTitleCase).join(" › ")
+                            : "Root Presets";
+                        groupNameEl.innerHTML = `<strong>${PresetDOM.escapeHTML(displayName)}</strong> (${items.length})`;
                     }
                 });
             }
@@ -467,11 +489,13 @@ const ExportUtils = {
      * @param {(config: ExportConfig) => void} onExport
      */
     async showExportModal(onExport) {
-        const presets = await PresetGalleryAPI.getPresets();
-        if (Object.keys(presets).length === 0) {
-            await ModalUtils.alert("No presets available to export.");
-            return;
-        }
+        const libraries = await PresetGalleryAPI.fetchLibraries();
+        const availableLibraries = libraries.length
+            ? libraries
+            : [{ id: PresetGalleryAPI.DEFAULT_LIBRARY_ID, name: PresetGalleryAPI.DEFAULT_LIBRARY_ID, default: true }];
+        let libraryId = availableLibraries.find((library) => library.id === PresetGalleryAPI.activeLibraryId)?.id
+            ?? availableLibraries[0].id;
+        let presets = await PresetGalleryAPI.getPresets(libraryId);
 
         const overlay = document.createElement("div");
         overlay.className = "j0n4t-pg-modal-overlay";
@@ -480,6 +504,12 @@ const ExportUtils = {
         modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
         modal.innerHTML = `
       <h3>📦 Export Selected Presets</h3>
+      <div class="j0n4t-pg-modal-field">
+        <label for="j0n4t-pg-exp-library">Library</label>
+        <select id="j0n4t-pg-exp-library">
+          ${availableLibraries.map((library) => `<option value="${PresetDOM.escapeHTML(library.id)}" ${library.id === libraryId ? "selected" : ""}>${PresetDOM.escapeHTML(library.name)}</option>`).join("")}
+        </select>
+      </div>
       <div class="j0n4t-pg-modal-row">
         <div class="j0n4t-pg-modal-field" style="flex:1;">
           <label>File Format</label>
@@ -515,9 +545,34 @@ const ExportUtils = {
 
         overlay.appendChild(modal);
 
-        const tree = ExportUtils.buildPresetSelectorTree(presets);
         const mount = /** @type {HTMLElement | null} */ (modal.querySelector("#j0n4t-pg-tree-mount"));
-        if (mount) mount.appendChild(tree.element);
+        /** @type {SelectorTreeResult} */
+        let tree;
+        const renderLibrary = () => {
+            tree = ExportUtils.buildPresetSelectorTree(presets);
+            if (!mount) return;
+            const hasPresets = Object.values(presets).some((item) => item?.preset || item?.filename);
+            if (hasPresets) {
+                mount.replaceChildren(tree.element);
+            } else {
+                const emptyState = document.createElement("div");
+                emptyState.textContent = "This library has no presets to export.";
+                mount.replaceChildren(emptyState);
+            }
+        };
+        renderLibrary();
+
+        const libraryEl = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-exp-library"));
+        if (libraryEl && mount) {
+            libraryEl.addEventListener("change", async () => {
+                const requestedLibrary = libraryEl.value;
+                const libraryPresets = await PresetGalleryAPI.getPresets(requestedLibrary);
+                if (libraryEl.value !== requestedLibrary) return;
+                libraryId = requestedLibrary;
+                presets = libraryPresets;
+                renderLibrary();
+            });
+        }
 
         const close = () => overlay.remove();
         const cancelBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-exp-cancel"));
@@ -550,7 +605,7 @@ const ExportUtils = {
                     `• Mode: ${mode}`
                 )) {
                     close();
-                    onExport({ format, mode, selectedKeys, includeColors, editedPresets });
+                    onExport({ format, mode, selectedKeys, includeColors, editedPresets, libraryId });
                 }
             });
         }
@@ -719,22 +774,36 @@ const ExportUtils = {
 
     /**
      * @param {PresetCache} importedPresets
-     * @param {(result: { selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache }) => void} onConfirm
+     * @param {(result: { selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }) => void} onConfirm
      */
     async showImportModal(importedPresets, onConfirm) {
+        const libraries = await PresetGalleryAPI.fetchLibraries();
+        const availableLibraries = libraries.length
+            ? libraries
+            : [{ id: PresetGalleryAPI.DEFAULT_LIBRARY_ID, name: PresetGalleryAPI.DEFAULT_LIBRARY_ID, default: true }];
+        let libraryId = availableLibraries.find((library) => library.id === PresetGalleryAPI.activeLibraryId)?.id
+            ?? availableLibraries[0].id;
+        let currentPresets = await PresetGalleryAPI.getPresets(libraryId);
         const overlay = document.createElement("div");
         overlay.className = "j0n4t-pg-modal-overlay";
 
         const modal = document.createElement("div");
         modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
 
-        const currentPresets = await PresetGalleryAPI.getPresets();
         const duplicates = Object.keys(importedPresets).filter((k) => k in currentPresets && importedPresets[k].preset);
+        const createLibraryOption = "__create_new_library__";
 
         modal.innerHTML = `
       <h3>📥 Import Presets</h3>
       <div class="j0n4t-pg-modal-field">
-        <label>Handling Duplicate Presets (${duplicates.length} detected)</label>
+        <label for="j0n4t-pg-imp-library">Import into library</label>
+        <select id="j0n4t-pg-imp-library">
+          ${availableLibraries.map((library) => `<option value="${PresetDOM.escapeHTML(library.id)}" ${library.id === libraryId ? "selected" : ""}>${PresetDOM.escapeHTML(library.name)}</option>`).join("")}
+          <option value="${createLibraryOption}">＋ Create a new library…</option>
+        </select>
+      </div>
+      <div class="j0n4t-pg-modal-field">
+        <label id="j0n4t-pg-dup-label">Handling Duplicate Presets (${duplicates.length} detected)</label>
         <select id="j0n4t-pg-dup-strategy">
           <option value="overwrite">Overwrite existing presets</option>
           <option value="skip">Skip duplicates</option>
@@ -759,9 +828,61 @@ const ExportUtils = {
 
         overlay.appendChild(modal);
 
-        const tree = ExportUtils.buildPresetSelectorTree(importedPresets, currentPresets);
+        let tree = ExportUtils.buildPresetSelectorTree(importedPresets, currentPresets);
         const mount = /** @type {HTMLElement | null} */ (modal.querySelector("#j0n4t-pg-tree-mount"));
         if (mount) mount.appendChild(tree.element);
+
+        const libraryEl = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-imp-library"));
+        const duplicateLabel = modal.querySelector("#j0n4t-pg-dup-label");
+        if (libraryEl && mount) {
+            libraryEl.addEventListener("change", async () => {
+                const requestedLibrary = libraryEl.value;
+                if (requestedLibrary === createLibraryOption) {
+                    const newLibraryId = await ModalUtils.prompt(
+                        "Create New Library",
+                        ""
+                    );
+                    const validId = newLibraryId && /^[A-Za-z0-9_-]+$/.test(newLibraryId)
+                        && !["main", "default"].includes(newLibraryId.toLowerCase());
+                    const alreadyExists = newLibraryId && availableLibraries.some(
+                        (library) => library.id.toLowerCase() === newLibraryId.toLowerCase()
+                    );
+                    if (!validId || alreadyExists) {
+                        if (newLibraryId !== null) {
+                            await ModalUtils.alert(alreadyExists
+                                ? "A library with that ID already exists."
+                                : "Use only letters, numbers, underscores, and hyphens. The ID cannot be main or default.");
+                        }
+                        libraryEl.value = libraryId;
+                        return;
+                    }
+
+                    libraryId = newLibraryId;
+                    currentPresets = {};
+                    const option = document.createElement("option");
+                    option.value = newLibraryId;
+                    option.textContent = newLibraryId;
+                    libraryEl.insertBefore(option, libraryEl.querySelector(`option[value="${createLibraryOption}"]`));
+                    libraryEl.value = newLibraryId;
+                    if (duplicateLabel) duplicateLabel.textContent = "Handling Duplicate Presets (0 detected)";
+                    tree = ExportUtils.buildPresetSelectorTree(importedPresets, currentPresets);
+                    mount.replaceChildren(tree.element);
+                    return;
+                }
+                const libraryPresets = await PresetGalleryAPI.getPresets(requestedLibrary);
+                if (libraryEl.value !== requestedLibrary) return;
+                libraryId = requestedLibrary;
+                currentPresets = libraryPresets;
+                const duplicateCount = Object.keys(importedPresets).filter(
+                    (key) => key in currentPresets && importedPresets[key].preset
+                ).length;
+                if (duplicateLabel) {
+                    duplicateLabel.textContent = `Handling Duplicate Presets (${duplicateCount} detected)`;
+                }
+                tree = ExportUtils.buildPresetSelectorTree(importedPresets, currentPresets);
+                mount.replaceChildren(tree.element);
+            });
+        }
 
         const dupSelect = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-dup-strategy"));
         if (dupSelect) {
@@ -800,7 +921,7 @@ const ExportUtils = {
                     `• Unchanged Styles: ${summary.sameCount}`
                 )) {
                     close();
-                    onConfirm({ selectedKeys, duplicateStrategy, importColors, editedPresets });
+                    onConfirm({ selectedKeys, duplicateStrategy, importColors, editedPresets, libraryId });
                 }
             });
         }
@@ -905,8 +1026,8 @@ const ExportUtils = {
         }
 
         return new Promise((resolve) => {
-            ExportUtils.showImportModal(importedPresets, async ({ selectedKeys, duplicateStrategy, importColors, editedPresets }) => {
-                const currentPresets = await PresetGalleryAPI.getPresets();
+            ExportUtils.showImportModal(importedPresets, async ({ selectedKeys, duplicateStrategy, importColors, editedPresets, libraryId }) => {
+                const currentPresets = await PresetGalleryAPI.getPresets(libraryId);
                 const importedActiveFolders = new Set();
 
                 for (const key of selectedKeys) {
@@ -958,7 +1079,7 @@ const ExportUtils = {
                     }
                 }
 
-                await PresetGalleryAPI.savePresets(currentPresets);
+                await PresetGalleryAPI.savePresets(currentPresets, libraryId);
                 resolve({ success: true });
             });
         });

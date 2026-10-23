@@ -564,7 +564,7 @@ export default class PresetGalleryApp {
       if (!file) return;
       const res = await ExportUtils.importFile(file);
       if (res.success) {
-        await this.loadGallery();
+        await this.refreshLibraries();
         await ModalUtils.alert("Presets imported successfully!");
       }
       this.dom.inpJsonFile.value = "";

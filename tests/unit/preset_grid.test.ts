@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import "./dom-harness.ts";
 import PresetGrid from "../../web/PresetGrid.js";
 import PresetLogic from "../../web/PresetLogic.js";
+import ModalUtils from "../../web/ModalUtils.js";
+import PresetGalleryAPI from "../../web/PresetGalleryAPI.js";
 
 // PresetGrid owns the item grid: compile (grouped HTML), the filter
 // pipeline, view switching and selection sync. The context supplies the
@@ -300,6 +302,44 @@ test("the roll toggle excludes and re-includes a folder", () => {
   headerByGroup(grid, "scenery")!.querySelector(".j0n4t-pg-group-roll-toggle")!
     .dispatchEvent(new MouseEvent("click", { bubbles: true }));
   assert.deepEqual(context.getExcludedRollFolders(), []);
+});
+
+test("renaming a grid group supports nested paths and updates qualified selections", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  const originalRenameFolder = PresetGalleryAPI.renameFolder;
+  const { grid, context, state } = makeGrid();
+  const renameCalls: unknown[][] = [];
+  context.session = {
+    ownerOfFolder: () => "main",
+    ownerOfKey: () => "main",
+    isDuplicateKey: () => false,
+    libraryName: (id: string) => id,
+  } as unknown as GalleryContext["session"];
+  context.loadGallery = async () => {};
+  context.setCollapsedFolders = () => {};
+  state.widgetValue = "faces/portrait, sample#faces/macro, scenery/hills";
+  ModalUtils.prompt = async () => "People / Portraits";
+  PresetGalleryAPI.renameFolder = async (...args) => {
+    renameCalls.push(args);
+    return { success: true };
+  };
+
+  try {
+    grid.compile(CACHE);
+    headerByGroup(grid, "faces")!
+      .querySelector<HTMLElement>(".j0n4t-pg-group-edit")!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(renameCalls, [["faces", "people/portraits", "main"]]);
+    assert.equal(
+      state.widgetValue,
+      "people/portraits/portrait, sample#people/portraits/macro, scenery/hills"
+    );
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+    PresetGalleryAPI.renameFolder = originalRenameFolder;
+  }
 });
 
 test("clicking an item toggles it in the widget selection", () => {

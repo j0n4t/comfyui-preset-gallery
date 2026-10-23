@@ -427,12 +427,19 @@ export default class PresetEditor {
       popupClass: "j0n4t-pg-folder-autocomplete-popup",
       itemClass: "j0n4t-pg-folder-autocomplete-item",
       getMatches: (query) => {
-        query = query.trim().toLowerCase();
-        if (!query) return [];
+        const normalizedQuery = query.trim();
+        const { libraryId, key: folderQuery } =
+          PresetLogic.splitQualifiedKey(normalizedQuery);
+        if (!folderQuery) return [];
         const allFolders = PresetLogic.getAllPresetFolders(this.context.cache);
-        return PresetLogic.getTopMatches(allFolders, query, (f) =>
+        const matches = PresetLogic.getTopMatches(allFolders, folderQuery.toLowerCase(), (f) =>
           f.replace(/_/g, " ")
         );
+        if (!libraryId) return matches;
+        return matches.map(({ item, ...match }) => ({
+          ...match,
+          item: `${libraryId}#${item}`,
+        }));
       },
       renderItem: (match) => match,
       onSelect: (match) => {
