@@ -762,17 +762,47 @@ const PresetLogic = {
   },
 
   /**
+   * Prepends a chip's final evaluated value to its tooltip.
+   *
+   * The tooltip header names the preset and its body. When the chip as the user
+   * wrote it evaluates to something else, that value is the useful half and goes
+   * on top: a `(preset:weight)` is something the preset body cannot name, and a
+   * `{group}` roll resolves through the rolled preset so the value is the only
+   * place the roll shows up at all. A preset whose body already is the value,
+   * or a tag with no preset at all, would only repeat what the tooltip shows.
+   * @param {string} tooltipTitle - Tooltip built from the preset header.
+   * @param {string} joinedStr - The chip text as the user wrote it.
+   * @param {string} chipExpanded - The evaluated chip text, weight included.
+   * @param {boolean} [alwaysShow=false] - Show the value even when the header body is it; a `{group}` roll has no other place to appear.
+   * @returns {string} Tooltip with the evaluated value where it adds anything.
+   */
+  withEvaluatedValue: (tooltipTitle, joinedStr, chipExpanded, alwaysShow = false) => {
+    // A plain key or preset body that already is the value would only repeat
+    // the header. Anything else - a weight, a preset that expands past its own
+    // body, a roll - is the missing half and goes on top.
+    const repeatsHeader = !alwaysShow && (chipExpanded === joinedStr || tooltipTitle.endsWith(`\n${chipExpanded}`));
+    return repeatsHeader ? tooltipTitle : `${chipExpanded}\n\n${tooltipTitle}`;
+  },
+
+  /**
    * Processes input chip data and returns non-DOM pure calculated state.
    * @param {ChipGroupInput} chipData - Raw chip group input.
    * @param {PresetCache} [cache={}] - Preset cache map.
    * @param {RollManager} [rollManager] - Dynamic roll tracker state.
+   * @param {import("./PresetSession.js").default} [session] - Session, whose `ownerOfKey` qualifies the tooltip key.
    * @returns {ProcessedChip} Evaluated chip pure data structure.
    */
-  parseBasketChip: (chipData, cache = {}, rollManager = new RollManager()) => {
+  parseBasketChip: (chipData, cache = {}, rollManager = new RollManager(), session = undefined) => {
     const { styleKey, item, subArray } = chipData;
     let joinedStr = subArray.join(", ");
     const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
     let { core: coreStr, weight: weightVal } = PresetLogic.parseWeight(joinedStr);
+
+    // A chip owned by another library shows its qualifier, the way the grid does.
+    // It applies to the resolved cache key, never to a wrapped or weighted chip text.
+    // `ownerOfKey` is called as a method: it reads `this.keyOwners`.
+    const owner = session?.ownerOfKey(styleKey);
+    const qualify = (/** @type {string} */ key) => owner && owner !== "main" && !key.includes("#") ? `${owner}#${key}` : key;
 
     if (cache && item && coreStr === styleKey) {
       const baseContent = item.preset || styleKey;
@@ -850,7 +880,7 @@ const PresetLogic = {
       evalId = presetMatch.key;
       const matchItem = presetMatch.item;
 
-      if (segmentTitles.length === 1 && /^\{[^{}:]+/.test(coreStr)) {
+      if (segmentTitles.length === 1 && /^\\{[^{}:]+/.test(coreStr)) {
         cleanLabel = segmentTitles[0];
       } else {
         cleanLabel = PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId));
@@ -858,11 +888,9 @@ const PresetLogic = {
 
       bgImage = segmentImg || matchItem?.filename || null;
       color = PresetLogic.getPresetColor(evalId, cache);
-      const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId))} [${evalId}]`;
+      const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId))} [${qualify(evalId)}]`;
       const presetBody = matchItem?.preset || evalId;
-      tooltipTitle = chipExpandedCore !== presetBody
-        ? `${chipExpandedCore}\n\n${titleHeader}\n${presetBody}`
-        : `${titleHeader}\n${presetBody}`;
+      tooltipTitle = `${titleHeader}\n${presetBody}`;
     } else {
       evalId = chipExpandedCore;
 
@@ -876,14 +904,24 @@ const PresetLogic = {
 
       bgImage = segmentImg || item?.filename || null;
       color = PresetLogic.getPresetColor(styleKey, cache);
-      const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey))} [${styleKey}]`;
+      const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey))} [${qualify(styleKey)}]`;
       const presetBody = item?.preset || styleKey;
-      tooltipTitle = item
-        ? (chipExpandedCore !== presetBody ? `${chipExpandedCore}\n\n${titleHeader}\n${presetBody}` : `${titleHeader}\n${presetBody}`)
-        : chipExpandedCore;
+      // A tag, or any chip that matched no cache item, has no preset body to
+      // name: the evaluated value is the only content the tooltip can carry.
+      tooltipTitle = item ? `${titleHeader}\n${presetBody}` : chipExpanded;
     }
 
     tooltipTitle = `${tooltipTitle}${rolledText}`;
+    // A virtual null omits the chip entirely, so there is no evaluated value
+    // to show: the tooltip falls back to the raw chip text rather than a blank.
+    if (chipExpanded.trim() === "" && joinedStr.trim() !== "") {
+      tooltipTitle = joinedStr;
+    } else {
+      // A `{group}` roll resolves through the rolled preset, so its evaluated
+      // value equals that preset's body and the header cannot name the roll - it
+      // is the one case where the value has to be shown even so.
+      tooltipTitle = PresetLogic.withEvaluatedValue(tooltipTitle, joinedStr, chipExpanded, rolledInfo.length > 0);
+    }
 
     const tempManager = new RollManager();
     const basePreset = item?.preset || PresetLogic.expandRecursively(styleKey, cache, new Set(), tempManager);
@@ -897,6 +935,7 @@ const PresetLogic = {
       color,
       tooltipTitle,
       chipExpanded,
+      chipExpandedCore,
       chipData,
       weightVal,
       segmentedLabels,

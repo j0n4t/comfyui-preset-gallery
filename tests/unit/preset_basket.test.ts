@@ -617,6 +617,60 @@ test("rendered chip uses the grid item tooltip without placing it on its label",
   assert.equal(chipEl.getAttribute("title"), "Portrait [faces/portrait]\nportrait, solo");
 });
 
+test("rendered chip tooltip shows the evaluated value of a plain tag", () => {
+  const { basket } = makeBasket();
+  basket.render(["<lora:my lora:1.2>"]);
+  assert.equal(chips(basket)[0].getAttribute("title"), "<lora:my lora:1.2>");
+});
+
+test("rendered chip tooltip shows the evaluated value when it differs from the preset", () => {
+  const cacheWithMacro: PresetCache = {
+    "look/simple": { preset: "simple look" },
+    "look/combo": { preset: "look/simple, extra" },
+  };
+  const env = makeBasketEnv();
+  env.context.cache = cacheWithMacro;
+  const basket = new PresetBasket(env.container, env.basket, env.textarea, env.context);
+  basket.render(["look/combo"]);
+  const chipEl = Array.from(env.basket.querySelectorAll(".j0n4t-pg-basket-chip"))[0];
+  assert.equal(
+    chipEl.getAttribute("title"),
+    "simple look, extra\n\nCombo [look/combo]\nlook/simple, extra"
+  );
+});
+
+test("rendered chip keeps the library qualifier in its tooltip", () => {
+  const { basket, context } = makeBasket();
+  context.session = {
+    ownerOfKey(key: string) { return key === "scenery/hills" ? "socks" : "main"; },
+    isDuplicateKey: () => false,
+    libraryName: (id: string) => id,
+  } as unknown as GalleryContext["session"];
+
+  basket.render(["scenery/hills"]);
+  assert.equal(chips(basket)[0].getAttribute("title"), "Hills [socks#scenery/hills]\nhills");
+});
+
+test("rendered chip survives a session whose ownerOfKey reads its own state", () => {
+  // Regression: the session's ownerOfKey is a method that reads `this`. It must
+  // be called as a method, not detached - a detached call throws and kills the
+  // whole render, leaving no chips at all.
+  class FakeSession {
+    owners = new Map<string, string>([["scenery/hills", "socks"]]);
+    ownerOfKey(key: string) {
+      return this.owners.get(key) ?? "main";
+    }
+    isDuplicateKey() { return false; }
+    libraryName(id: string) { return id; }
+  }
+  const { basket, context } = makeBasket();
+  context.session = new FakeSession() as unknown as GalleryContext["session"];
+
+  basket.render(["scenery/hills"]);
+  assert.equal(chips(basket).length, 1, "the chip still renders");
+  assert.equal(chips(basket)[0].getAttribute("title"), "Hills [socks#scenery/hills]\nhills");
+});
+
 test("rendered chip displays library badge for qualified or non-main presets", () => {
   const { basket, context } = makeBasket();
   context.session = {

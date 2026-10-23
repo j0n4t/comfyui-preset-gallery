@@ -2084,7 +2084,8 @@ export default class PresetBasket {
       const chip = PresetDOM.renderBasketChip(
         chipData,
         this.context.cache,
-        this.context.rollManager
+        this.context.rollManager,
+        this.context.session
       );
 
       const rawItems = activeList.slice(chipData.startIndex, chipData.endIndex);
@@ -2106,14 +2107,7 @@ export default class PresetBasket {
           chip.processed.segmentedLabels.filter(Boolean).map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`).join('') +
           `</div>`;
       }
-      const tooltipItem = chip.processed.chipData.item;
-      const owner = this.context.session?.ownerOfKey?.(chipData.styleKey);
-      const displayKey = owner && owner !== "main" && !chipData.styleKey.includes("#")
-        ? `${owner}#${chipData.styleKey}`
-        : chipData.styleKey;
-      const tooltipTitle = tooltipItem
-        ? `${PresetLogic.toTitleCase(PresetLogic.getPresetName(chipData.styleKey))} [${displayKey}]\n${tooltipItem.preset || ""}`
-        : chip.processed.tooltipTitle;
+      const tooltipTitle = chip.processed.tooltipTitle;
 
       htmlBuffer += `
         <div class="j0n4t-pg-basket-chip ${isPinned ? 'pinned' : ''} ${this.selectedChipIndexes.has(index) ? 'selected' : ''}" tabindex="0" role="option" aria-selected="${this.selectedChipIndexes.has(index)}"

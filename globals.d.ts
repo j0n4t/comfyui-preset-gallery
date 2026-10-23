@@ -79,6 +79,7 @@ type ProcessedChip = {
   color: string;
   tooltipTitle: string;
   chipExpanded: string;
+  chipExpandedCore: string;
   weightVal: number | null;
   segmentedLabels: string[] | null;
   hasMoreVar: boolean;

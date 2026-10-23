@@ -704,3 +704,75 @@ test("parseBasketChip tooltipTitle includes expanded text when preset expands to
   assert.equal(parsed.tooltipTitle, "simple look, extra\n\nCombo [look/combo]\nlook/simple, extra");
 });
 
+// --- tooltipTitle: the final evaluated value ---
+
+test("parseBasketChip tooltipTitle shows the evaluated value of a rolled variant", () => {
+  // A bare `{group}` rolls: the header names the rolled preset while the
+  // evaluated value is the only place the roll itself shows up. One variant
+  // keeps the roll deterministic.
+  const cache: PresetCache = {
+    "faces/portrait": { preset: "portrait, solo" },
+  };
+  const chipData = {
+    styleKey: "{faces}",
+    item: null,
+    subArray: ["{faces}"],
+    startIndex: 0,
+    endIndex: 1,
+  };
+  const parsed = PresetLogic.parseBasketChip(chipData, cache);
+  assert.equal(
+    parsed.tooltipTitle,
+    "portrait, solo\n\nPortrait [faces/portrait]\nportrait, solo\n\nRolled Variants:\n🎲 Faces: portrait"
+  );
+});
+
+test("parseBasketChip tooltipTitle shows the evaluated value of a plain tag", () => {
+  const cache: PresetCache = { "faces/portrait": { preset: "portrait, solo" } };
+  const parsed = PresetLogic.parseBasketChip(
+    { styleKey: "<lora:my lora:1.2>", item: null, subArray: ["<lora:my lora:1.2>"], startIndex: 0, endIndex: 1 },
+    cache
+  );
+  // No cache item behind the chip, so the evaluated value is all there is -
+  // and the header, which names a preset, is absent.
+  assert.equal(parsed.tooltipTitle, "<lora:my lora:1.2>");
+  assert.ok(!parsed.tooltipTitle.includes("["), "a tag carries no preset header");
+});
+
+test("parseBasketChip tooltipTitle shows the evaluated value of a weighted tag", () => {
+  // A weight is applied to the evaluated text, so the tooltip has to show the
+  // weighted form rather than the bare tag.
+  const parsed = PresetLogic.parseBasketChip(
+    { styleKey: "(<lora:my lora:1.2>:1.5)", item: null, subArray: ["(<lora:my lora:1.2>:1.5)"], startIndex: 0, endIndex: 1 },
+    {}
+  );
+  assert.equal(parsed.tooltipTitle, "(<lora:my lora:1.2>:1.5)");
+});
+
+test("parseBasketChip tooltipTitle shows the evaluated value of a weighted preset", () => {
+  const cache: PresetCache = { "faces/portrait": { preset: "portrait, solo" } };
+  const parsed = PresetLogic.parseBasketChip(
+    { styleKey: "(faces/portrait:1.5)", item: cache["faces/portrait"], subArray: ["(faces/portrait:1.5)"], startIndex: 0, endIndex: 1 },
+    cache
+  );
+  assert.equal(parsed.tooltipTitle, "(portrait, solo:1.5)\n\nPortrait [faces/portrait]\nportrait, solo");
+});
+
+test("parseBasketChip tooltipTitle keeps a single header when the chip equals its preset", () => {
+  const parsed = PresetLogic.parseBasketChip(
+    { styleKey: "wear/sock/knee", item: { preset: "main knee" }, subArray: ["wear/sock/knee"], startIndex: 0, endIndex: 1 },
+    { "wear/sock/knee": { preset: "main knee" } }
+  );
+  assert.equal(parsed.tooltipTitle, "Knee [wear/sock/knee]\nmain knee");
+});
+
+test("parseBasketChip tooltipTitle shows the raw chip for a virtual null", () => {
+  const cache: PresetCache = { "hair/blonde": { preset: "blonde hair" } };
+  const parsed = PresetLogic.parseBasketChip(
+    { styleKey: "{hair:none}", item: null, subArray: ["{hair:none}"], startIndex: 0, endIndex: 1 },
+    cache
+  );
+  // The chip evaluates to nothing, so the tooltip must not be blank.
+  assert.equal(parsed.tooltipTitle, "{hair:none}");
+});
+

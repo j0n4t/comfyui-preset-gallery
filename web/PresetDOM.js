@@ -105,10 +105,11 @@ const PresetDOM = {
      * @param {ChipGroupInput} chipData - Input group object.
      * @param {PresetCache} [cache={}] - Preset cache map.
      * @param {import("./RollManager.js").default} [rollManager=new RollManager()] - Dynamic roll tracker state.
+     * @param {import("./PresetSession.js").default} [session] - Session, whose `ownerOfKey` qualifies the tooltip key.
      * @returns {RenderedChip} Rendered chip definition containing HTML markup snippets.
      */
-    renderBasketChip: (chipData, cache = {}, rollManager = new RollManager()) => {
-        const processed = PresetLogic.parseBasketChip(chipData, cache, rollManager);
+    renderBasketChip: (chipData, cache = {}, rollManager = new RollManager(), session = undefined) => {
+        const processed = PresetLogic.parseBasketChip(chipData, cache, rollManager, session);
 
         const bgStyle = processed.bgImage
             ? `background-image: url("${processed.bgImage}")`
