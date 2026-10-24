@@ -146,3 +146,33 @@ autocomplete, and raw-text behavior covered by focused tests.
 - Compare prompt strings and selection order exactly, not only visible labels.
 - Do not add a framework or a generic state-management layer unless a concrete
   phase demonstrates that existing modules cannot express the needed boundary.
+
+## Progress
+
+- [x] 1. Prompt composition — `PresetSession.composePrompt()` is the one entry
+      point for both the displayed evaluated widget and `serializeValue`;
+      automatic rolling is `PresetGalleryApp.scheduleAutomaticRoll()` and
+      schedules at most one roll per queue press (it used to roll once per
+      batch item). Commit `1dbc7c4`.
+- [x] 2. Selection transition — `writeSelection()` is the only write to the
+      widget; `updateWidgetValue()` (edit, prunes pins first) and
+      `restoreTabSelection()` (tab) are the two transitions. Tab switching
+      renders once; `docs/PresetBasket.md` has the state-ownership table.
+      Commit `88566eb`.
+- [x] 3. Basket split — `PresetBasketTabs` (tab state/persistence),
+      `BasketSelectionController` (selection + clipboard),
+      `BasketDragDrop` (drop geometry + image drops). `PresetBasket` went from
+      2143 to 1463 lines and keeps its method names as delegations. Commits
+      `b3b2ec5`, `5fa28fc`, `9ec289a`.
+- [ ] 4. Preset semantics vs chip presentation — next. `PresetLogic.js` is
+      ~1400 lines and its cache-derived indexes are performance-sensitive:
+      keep token grammar and expansion together, extract the grouped-chip
+      projection first, and keep `mutation_check`'s `PresetLogic` entries green
+      (they pin the lookup/group/variant index behaviour and the build budget).
+- [ ] 5. App services and persistence.
+- [ ] 6. Supporting UI modules.
+
+Notes for the next session: `tools/mutation_check.py` is the guard that the
+unit suites still catch their own mutations — run it after touching a module it
+lists. `dev/index.html` plus `npx playwright test` is the only browser coverage;
+the harness stubs the ComfyUI host object and nothing else.
