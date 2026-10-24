@@ -106,6 +106,12 @@ MUTATIONS = [
      "      payload.version === 1 &&\n",
      "    return payload.type === \"comfyui-preset-gallery-basket\" &&\n",
      "tests/unit/basket_selection.test.ts"),
+    # Only image files are metadata sources; treating any file as one makes the
+    # drop modal try to parse a text file.
+    ("web/BasketDragDrop.js",
+     "      if (file.type.startsWith(\"image/\")) return file;",
+     "      return file;",
+     "tests/unit/basket_drag_drop.test.ts"),
 
     # The perf/behaviour guards. Each of these must be caught by the test named
     # in the comment, or the guard is decorative.

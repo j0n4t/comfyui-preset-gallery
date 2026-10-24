@@ -1,8 +1,7 @@
+import BasketDragDrop from "./BasketDragDrop.js";
 import BasketSelectionController from "./BasketSelectionController.js";
 import ChipMenuManager from "./ChipMenuManager.js";
 import InlineEditorManager from "./InlineEditorManager.js";
-import ModalUtils from "./ModalUtils.js";
-import PngMetadata from "./PngMetadata.js";
 import PresetBasketTabs from "./PresetBasketTabs.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
@@ -112,7 +111,8 @@ export default class PresetBasket {
     this.basket = basket;
     this.textarea = textarea;
     this.context = context;
-    this.dropIndicator = null;
+    /** @type {BasketDragDrop} */
+    this.dragDrop = new BasketDragDrop(context, this);
     this.currentMatches = [];
     this.activeIndex = 0;
     this._updatingTextarea = false;
@@ -184,7 +184,7 @@ export default class PresetBasket {
       this.context.updateWidgetValue(selections);
     });
 
-    this.initDragAndDrop();
+    this.dragDrop.init();
     this.initSidebarDragAndDrop();
     this.initBasketActions();
   }
@@ -744,250 +744,6 @@ export default class PresetBasket {
     }
   }
 
-  initDragAndDrop() {
-    this.basket.addEventListener("dragenter", (e) => {
-      if (!this.container.classList.contains("raw-mode")) {
-        e.stopPropagation();
-        e.preventDefault();
-        this.basket.classList.add("drag-over");
-      }
-    });
-    this.basket.addEventListener("dragleave", (e) => {
-      if (e.relatedTarget && this.basket.contains( /** @type {HTMLElement} */(e.relatedTarget))) return;
-      this.basket.classList.remove("drag-over");
-      this.removeDropIndicator();
-    });
-    this.basket.addEventListener("dragover", (e) => {
-      if (this.container.classList.contains("raw-mode")) return;
-      e.stopPropagation();
-      e.preventDefault();
-
-      if (!this.dropIndicator) {
-        this.basket.insertAdjacentHTML('beforeend', '<div class="j0n4t-pg-basket-drop-indicator"></div>');
-        this.dropIndicator = /** @type {HTMLElement} */ (this.basket.lastElementChild);
-      }
-
-      const closest = this.getClosestChip(e.clientX, e.clientY);
-      if (closest.element && closest.box && this.dropIndicator) {
-        this.dropIndicator.style.height = `${closest.box.height}px`;
-        if (e.clientX > closest.box.left + closest.box.width / 2) {
-          closest.element.after(this.dropIndicator);
-        } else {
-          closest.element.before(this.dropIndicator);
-        }
-      } else {
-        this.basket.appendChild(this.dropIndicator);
-        this.dropIndicator.style.height = "12px";
-      }
-    });
-    this.basket.addEventListener("drop", (e) => {
-      if (this.container.classList.contains("raw-mode")) return;
-      e.stopPropagation();
-      e.preventDefault();
-      this.basket.classList.remove("drag-over");
-      this.removeDropIndicator();
-
-      // Check for image file drop
-      const imageFile = this._getImageFileFromDrop(e);
-      if (imageFile) {
-        void this.handleImageDrop(imageFile);
-        return;
-      }
-
-      const styleKey = e.dataTransfer?.getData("text/plain");
-      if (!styleKey) return;
-
-      const closest = this.getClosestChip(e.clientX, e.clientY);
-      const isBasketMove = e.dataTransfer?.getData("source/basket") === "true";
-      let draggedIndexes = [];
-      if (isBasketMove) {
-        try {
-          draggedIndexes = JSON.parse(e.dataTransfer?.getData("source/basket_indexes") || "[]");
-        } catch (error) {
-          console.warn("Could not read dragged basket chip selection", error);
-        }
-      }
-      if (isBasketMove && Array.isArray(draggedIndexes) && draggedIndexes.length) {
-        const chips = PresetLogic.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
-        const selectedIndexes = new Set(
-          draggedIndexes.filter(index => Number.isInteger(index) && index >= 0 && index < chips.length)
-        );
-        const moved = chips.filter((_, index) => selectedIndexes.has(index));
-        if (moved.length === 0) return;
-        const remaining = chips.filter((_, index) => !selectedIndexes.has(index));
-        const targetIndex = closest.element ? Number(closest.element.dataset.index) : -1;
-        const target = chips[targetIndex];
-        const insertionTarget = remaining.findIndex(chip => chip === target);
-        const insertionIndex = insertionTarget < 0
-          ? remaining.length
-          : insertionTarget + (closest.box && e.clientX > closest.box.left + closest.box.width / 2 ? 1 : 0);
-        remaining.splice(insertionIndex, 0, ...moved);
-        const newSelections = remaining.flatMap(chip => chip.subArray);
-        const newSelectedIndexes = new Set();
-        remaining.forEach((chip, index) => {
-          if (moved.includes(chip)) newSelectedIndexes.add(index);
-        });
-        this.selection.selected = newSelectedIndexes;
-        this.selection.anchor = Math.min(...newSelectedIndexes);
-        this.context.updateWidgetValue(newSelections);
-        this.selection.apply(Math.max(...newSelectedIndexes));
-        return;
-      }
-
-      let selections = this.context.getSelectedArray();
-      const sourceStartStr = e.dataTransfer?.getData("source/basket_start");
-      const sourceEndStr = e.dataTransfer?.getData("source/basket_end");
-      let movedItems = [styleKey];
-      if (isBasketMove && sourceStartStr !== "" && sourceEndStr !== "") {
-        const start = Number(sourceStartStr);
-        const end = Number(sourceEndStr);
-        if (!isNaN(start) && !isNaN(end) && start < end) {
-          movedItems = selections.splice(start, end - start);
-        }
-      }
-
-      if (closest.element && closest.box) {
-        const targetStartStr = closest.element.dataset.start;
-        let insertionIndex = targetStartStr !== undefined ? parseInt(targetStartStr, 10) : selections.length;
-        if (e.clientX > closest.box.left + closest.box.width / 2) {
-          const targetEndStr = closest.element.dataset.end;
-          insertionIndex = targetEndStr !== undefined ? parseInt(targetEndStr, 10) : insertionIndex;
-        }
-        selections.splice(insertionIndex, 0, ...movedItems);
-      } else {
-        selections.push(...movedItems);
-      }
-
-      this.context.updateWidgetValue(selections);
-    });
-  }
-
-  /**
-   * Extract an image file from a drop event, if present.
-   * @param {DragEvent} e
-   * @returns {File | null}
-   */
-  _getImageFileFromDrop(e) {
-    if (!e.dataTransfer) return null;
-    const files = e.dataTransfer.files;
-    if (!files || files.length === 0) return null;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.type.startsWith("image/")) return file;
-    }
-    return null;
-  }
-
-  /**
-   * Handle an image file dropped onto the basket.
-   * Parses PNG metadata and prompts the user to choose between evaluated and raw.
-   * @param {File} file
-   */
-  async handleImageDrop(file) {
-    try {
-      const metadata = await PngMetadata.extractFromFile(file);
-      const widgets = PngMetadata.getPresetGalleryWidgets(metadata);
-
-      if (!widgets) {
-        await ModalUtils.alert("No Preset Gallery widget data found in this image.");
-        return;
-      }
-
-      const rawText = typeof widgets.preset_selection === "string" ? widgets.preset_selection : "";
-      const evaluatedText = typeof widgets.evaluated_preset === "string" ? widgets.evaluated_preset : "";
-
-      if (!rawText && !evaluatedText) {
-        await ModalUtils.alert("No preset data found in this image.");
-        return;
-      }
-
-      await ModalUtils.show({
-        title: "Image Metadata",
-        expand: true,
-        content: `
-          <div style="font-size: 11px; color: #aaa; margin-bottom: 12px;">Choose which widget value to add:</div>
-          <div style="display: flex; flex-direction: column; gap: 12px; max-width: 60vw;">
-            ${evaluatedText ? `
-            <div style="background: #1a1a1a; border: 1px solid #444; border-radius: 6px; padding: 12px; cursor: pointer;" data-choice="evaluated">
-              <div style="font-size: 11px; font-weight: bold; color: #fff; margin-bottom: 8px;">Evaluated — expanded presets</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 4px;">${this._renderChipPreview(evaluatedText)}</div>
-            </div>` : ""}
-            ${rawText ? `
-            <div style="background: #1a1a1a; border: 1px solid #444; border-radius: 6px; padding: 12px; cursor: pointer;" data-choice="raw">
-              <div style="font-size: 11px; font-weight: bold; color: #fff; margin-bottom: 8px;">Raw — preset_selection</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 4px;">${this._renderChipPreview(rawText)}</div>
-            </div>` : ""}
-          </div>
-        `,
-        buttons: [
-          { text: "Cancel", closeOnFinish: true, callback: () => null },
-        ],
-        onOpen: (modal) => {
-          const cancelBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector(".j0n4t-pg-modal-actions button"));
-          modal.querySelectorAll("[data-choice]").forEach((btn) => {
-            btn.addEventListener("click", () => {
-              const choice = btn.getAttribute("data-choice");
-              if (cancelBtn) cancelBtn.click();
-              if (choice === "evaluated" && evaluatedText) {
-                this._addPromptAsChips(evaluatedText);
-              } else if (choice === "raw" && rawText) {
-                this._addPromptAsChips(rawText);
-              }
-            });
-          });
-        },
-      });
-    } catch (err) {
-      console.error("Failed to parse image metadata:", err);
-      await ModalUtils.alert("Failed to read image metadata: " + (err instanceof Error ? err.message : String(err)));
-    }
-  }
-
-  /**
-   * Render a mini chip preview HTML string for the modal.
-   * Mimics the real basket chip appearance.
-   * @param {string} text
-   * @returns {string}
-   */
-  _renderChipPreview(text) {
-    const tokens = PresetLogic.parseTokens(text, this.context.cache);
-    const selections = [];
-    for (const token of tokens) {
-      if (token.isDelimiter) continue;
-      const trimmed = token.text.trim();
-      if (!trimmed) continue;
-      selections.push(token.key || trimmed);
-    }
-    if (selections.length === 0) return '<span style="font-size: 10px; color: #666;">(empty)</span>';
-
-    const chipsData = PresetLogic.getGroupedChips(selections, this.context.cache);
-    return chipsData.map((chipData) => {
-      const chip = PresetDOM.renderBasketChip(chipData, this.context.cache, this.context.rollManager);
-      const label = chip.processed.cleanLabel || chip.processed.joinedStr;
-      return `<div class="j0n4t-pg-basket-chip" style='${chip.bgStyle}'><div class="j0n4t-pg-basket-chip-label">${PresetDOM.escapeHTML(label)}</div></div>`;
-    }).join("");
-  }
-
-  /**
-   * Add prompt text as individual chips to the basket.
-   * @param {string} text
-   */
-  _addPromptAsChips(text) {
-    const tokens = PresetLogic.parseTokens(text, this.context.cache);
-    const selections = this.context.getSelectedArray();
-    for (const token of tokens) {
-      if (token.isDelimiter) continue;
-      const trimmed = token.text.trim();
-      if (!trimmed) continue;
-      // Use the key if it's a known preset, otherwise use the raw text
-      const key = token.key || trimmed;
-      selections.push(key);
-    }
-    if (selections.length > 0) {
-      this.context.updateWidgetValue(selections);
-    }
-  }
-
   initBasketActions() {
     const { dom } = this.context;
 
@@ -1387,13 +1143,8 @@ export default class PresetBasket {
 
     this.basket.addEventListener("dragend", () => {
       this.basket.querySelectorAll(".j0n4t-pg-basket-chip").forEach(c => c.classList.remove("dragging"));
-      this.removeDropIndicator();
+      this.dragDrop.removeDropIndicator();
     });
-  }
-
-  removeDropIndicator() {
-    this.dropIndicator?.remove();
-    this.dropIndicator = null;
   }
 
   /**
@@ -1442,27 +1193,6 @@ export default class PresetBasket {
     }
 
     return null;
-  }
-
-  /**
-   * @param {number} clientX
-   * @param {number} clientY
-   */
-  getClosestChip(clientX, clientY) {
-    /** @type {{ distance: number, element: HTMLElement | null; box: DOMRect | null }} */
-    const initialResult = { distance: Infinity, element: null, box: null };
-    const chips = [...this.basket.querySelectorAll(".j0n4t-pg-basket-chip:not(.dragging)")];
-    const result = chips.reduce((closest, el) => {
-      const box = el.getBoundingClientRect();
-      const dist = Math.hypot(
-        clientX - (box.left + box.width / 2),
-        clientY - (box.top + box.height / 2)
-      );
-      return dist < closest.distance
-        ? { distance: dist, element: /** @type {HTMLElement} */ (el), box }
-        : closest;
-    }, initialResult);
-    return result;
   }
 
   /**

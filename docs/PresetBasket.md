@@ -89,6 +89,19 @@ and the evaluated prompt are all rebuilt from the written value in one pass. So
 nothing may repair the UI after a write - that would be a second full rebuild,
 which is what tab switching used to do.
 
+### What each part owns
+
+| Module | Owns |
+| --- | --- |
+| `PresetBasketTabs` | the tab list, the active tab, snapshots, the storage key |
+| `BasketSelectionController` | the selected chip indexes, the range anchor, Select mode, and the copy/paste payload format |
+| `BasketDragDrop` | the drop indicator and its geometry, chip drop insertion, image drops |
+| `PresetBasket` | chips and tab-sidebar rendering, keyboard wiring, the chip menu and inline-editor entry points, and one-line delegations to the three above |
+
+`PresetBasket` keeps its method names (`switchTab`, `copySelectedChips`,
+`deleteSelectedChips`, …) so the chip menu and the tests call it, not the
+modules it forwards to.
+
 Two exceptions, both deliberate:
 
 - `PresetGalleryApp.init()` syncs once after construction. The constructor
@@ -109,6 +122,9 @@ The class natively handles its own styling injection via `PresetDOM.injectStyles
 - `PresetDOM`: Used for DOM manipulation, HTML escaping, and CSS injection.
 - `PresetBasketTabs`: Owns the tab list, the active tab, their snapshots and the
   storage key; the Basket only presents them.
+- `BasketSelectionController`: Owns the chip selection, Select mode and the
+  copy/paste payload; the Basket forwards its selection commands here.
+- `BasketDragDrop`: Owns the drop indicator, chip drop insertion and image drops.
 - `PresetLogic`: Handles token parsing, recursion expansion, string matching, and roll tracking.
 - `ModalUtils`: Drives confirmation dialogs and the copy-to-clipboard modal.
 - `ChipMenuManager` & `InlineEditorManager`: Handle secondary interaction layers attached to the chips.
