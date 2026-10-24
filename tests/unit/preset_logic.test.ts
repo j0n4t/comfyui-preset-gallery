@@ -566,22 +566,6 @@ test("findPresetMatch prefers an exact key over a later entry's text", () => {
   assert.equal(PresetLogic.findPresetMatch("Smile", cache)?.key, "Smile");
 });
 
-// --- path helpers and title casing ---
-
-test("getPresetName returns the last path segment", () => {
-  assert.equal(PresetLogic.getPresetName("Faces/Portrait"), "Portrait");
-  assert.equal(PresetLogic.getPresetName("RootPreset"), "RootPreset");
-});
-
-test("getPresetFolder returns the parent path", () => {
-  assert.equal(PresetLogic.getPresetFolder("Faces/Portrait"), "Faces");
-  assert.equal(PresetLogic.getPresetFolder("RootPreset"), "");
-});
-
-test("toTitleCase converts underscores and hyphens to capitalised words", () => {
-  assert.equal(PresetLogic.toTitleCase("portrait_solo-shot"), "Portrait Solo Shot");
-});
-
 // --- library qualifiers on cache keys ---
 //
 // A merged cache files every entry a library displaced under `libraryId#key`.
@@ -613,15 +597,6 @@ test("splitQualifiedKey separates the library from the path", () => {
   assert.deepEqual(PresetLogic.splitQualifiedKey(""), { libraryId: null, key: "" });
 });
 
-test("the path helpers read the plain path behind a qualifier", () => {
-  assert.equal(PresetLogic.getPresetFolder("socks#wear/sock"), "wear");
-  assert.equal(PresetLogic.getPresetName("socks#wear/sock"), "sock");
-  assert.equal(PresetLogic.getPresetInitials("socks#wear/sock"), "So");
-  assert.equal(PresetLogic.getUiFolder("socks#wear/sock"), "wear");
-  assert.equal(PresetLogic.getPresetBaseFolder("socks#wear/sock"), "wear");
-  assert.equal(PresetLogic.getPresetColor("socks#wear/sock", MERGED), PresetLogic.getHashColor("wear"));
-});
-
 test("a qualified chip expands to its own library's text, a plain one to the winner's", () => {
   assert.equal(PresetLogic.expandRecursively("socks#wear/sock/ankle", MERGED), "main ankle");
   assert.equal(PresetLogic.expandRecursively("wear/sock/ankle", MERGED), "socks ankle");
@@ -648,12 +623,6 @@ test("parseTokens matches a qualified chip as one token", () => {
   const first = tokens.find((t) => t.key);
   assert.equal(first?.key, "socks#wear/sock/ankle");
   assert.equal(first?.text, "socks#wear/sock/ankle");
-});
-
-test("getSearchBlob includes the library prefix for qualified keys", () => {
-  const blob = PresetLogic.getSearchBlob("socks#wear/sock/ankle", { preset: "ankle socks" });
-  assert.ok(blob.startsWith("socks# "));
-  assert.ok(blob.includes("ankle"));
 });
 
 test("findPresetMatch and expandRecursively fall back to the plain key for winning/un-duplicated qualified keys", () => {

@@ -6,7 +6,7 @@
 ## Dependencies
 This module interacts tightly with the following dependencies:
 *   **`PresetDOM`**: Used for accessing UI icons and sanitizing/escaping HTML.
-*   **`PresetLogic`**: Provides core data manipulation utilities (string formatting, grouping, rolling/randomization, template unrolling).
+*   **`PresetLogic`**: Provides the grammar and expansion - template unrolling, group lookups, rolling/randomization. **`PresetDisplay`** provides the labels and colours the menu shows.
 *   **`AutocompleteManager`**: Powers the searchable dropdown fields for variant selection.
 
 ## Core Features

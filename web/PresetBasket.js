@@ -9,6 +9,7 @@ import ChipProjection from "./ChipProjection.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 import RollManager from "./RollManager.js";
 import YAMLUtils from "./YAMLUtils.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 
 export default class PresetBasket {
@@ -343,8 +344,8 @@ export default class PresetBasket {
       }
 
       // Dropped on sidebar background or add button — create a new tab with the spread chips
-      const presetName = PresetLogic.getPresetName(styleKey);
-      const tabTitle = presetName ? PresetLogic.toTitleCase(presetName) : undefined;
+      const presetName = PresetDisplay.getPresetName(styleKey);
+      const tabTitle = presetName ? PresetDisplay.toTitleCase(presetName) : undefined;
       this.addChipsToNewTab(chips, tabTitle);
     });
 

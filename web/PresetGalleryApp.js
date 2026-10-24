@@ -10,6 +10,7 @@ import PresetDOM from "./PresetDOM.js";
 import PresetGallerySettings from "./PresetGallerySettings.js";
 import PresetSession from "./PresetSession.js";
 import createGalleryContext from "./PresetGalleryContext.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 // The node's own floor. Below this the gallery cannot show its basket, control
 // bar, editor and a row of grid at once: those come to 303px of wrap content
@@ -751,12 +752,12 @@ export default class PresetGalleryApp {
       getMatches: (query) => {
         query = query.trim().toLowerCase();
         if (!query) return [];
-        return PresetLogic.getTopMatches(Object.getOwnPropertyNames(this.session.cache), query, (k) =>
-          PresetLogic.getSearchBlob(k, this.session.cache[k]), this.session.cache
+        return PresetDisplay.getTopMatches(Object.getOwnPropertyNames(this.session.cache), query, (k) =>
+          PresetDisplay.getSearchBlob(k, this.session.cache[k]), this.session.cache
         );
       },
       renderItem: (match) =>
-        `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetName(match)))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
+        `<span>${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(PresetDisplay.getPresetName(match)))}</span><span class="j0n4t-pg-filter-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         const key = this.selectionKey(match);
         const sel = this.context.getSelectedArray();

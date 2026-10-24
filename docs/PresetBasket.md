@@ -126,6 +126,7 @@ The class natively handles its own styling injection via `PresetDOM.injectStyles
   copy/paste payload; the Basket forwards its selection commands here.
 - `BasketDragDrop`: Owns the drop indicator, chip drop insertion and image drops.
 - `PresetLogic`: Handles token parsing, recursion expansion, string matching, and roll tracking.
+- `PresetDisplay`: How a preset is named, labelled and coloured - the path helpers, title casing and colours the chip render uses.
 - `ModalUtils`: Drives confirmation dialogs and the copy-to-clipboard modal.
 - `ChipMenuManager` & `InlineEditorManager`: Handle secondary interaction layers attached to the chips.
 - `RawTextareaManager`: Synchronizes visual selections with the raw text fallback.

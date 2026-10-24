@@ -2,6 +2,7 @@ import ModalUtils from "./ModalUtils.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetLogic from "./PresetLogic.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 export default class PresetGrid {
   static GROUP_HEADER_STYLES = /*css*/ `
@@ -92,8 +93,8 @@ export default class PresetGrid {
 
     const isHiddenPreset = (/** @type {Element} */ el, rawGroup = "") => {
       const styleKey =  /** @type {HTMLElement} */ (el).dataset.style || "";
-      const presetName = PresetLogic.getPresetName(styleKey);
-      const folder = rawGroup || PresetLogic.getPresetFolder(styleKey) || "";
+      const presetName = PresetDisplay.getPresetName(styleKey);
+      const folder = rawGroup || PresetDisplay.getPresetFolder(styleKey) || "";
       return styleKey.startsWith("_") || presetName.startsWith("_") || folder.startsWith("_");
     };
 
@@ -156,8 +157,8 @@ export default class PresetGrid {
     };
 
     const sortedKeys = Object.keys(cache).sort((a, b) => {
-      const groupA = PresetLogic.getUiFolder(a) || "root_presets";
-      const groupB = PresetLogic.getUiFolder(b) || "root_presets";
+      const groupA = PresetDisplay.getUiFolder(a) || "root_presets";
+      const groupB = PresetDisplay.getUiFolder(b) || "root_presets";
       const isAHidden = groupA.startsWith("_");
       const isBHidden = groupB.startsWith("_");
       if (isAHidden !== isBHidden) {
@@ -172,12 +173,12 @@ export default class PresetGrid {
 
     sortedKeys.forEach((key) => {
       const item = cache[key];
-      const cleanLabel = PresetLogic.toTitleCase(PresetLogic.getPresetName(key));
-      const initials = PresetLogic.getPresetInitials(key);
-      const searchBlob = PresetLogic.getSearchBlob(key, item);
-      const rawGroup = PresetLogic.getPresetFolder(key) || "root_presets";
-      const uiGroup = PresetLogic.getUiFolder(key);
-      const groupColor = PresetLogic.getPresetColor(rawGroup, cache);
+      const cleanLabel = PresetDisplay.toTitleCase(PresetDisplay.getPresetName(key));
+      const initials = PresetDisplay.getPresetInitials(key);
+      const searchBlob = PresetDisplay.getSearchBlob(key, item);
+      const rawGroup = PresetDisplay.getPresetFolder(key) || "root_presets";
+      const uiGroup = PresetDisplay.getUiFolder(key);
+      const groupColor = PresetDisplay.getPresetColor(rawGroup, cache);
 
       if (uiGroup !== lastGroup) {
         lastGroup = uiGroup;
@@ -202,8 +203,8 @@ export default class PresetGrid {
       const thumb = item.filename
         ? `<img class="j0n4t-pg-img" src="${item.filename}" loading="lazy" alt="${PresetDOM.escapeHTML(cleanLabel)} preview">`
         : `<div style="background-color: ${groupColor}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;" aria-hidden="true">${PresetDOM.icons.file}</div>`;
-      const badge = PresetLogic.getPresetFolder(key)
-        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetFolder(key).split("/").pop() || ""))}</div>`
+      const badge = PresetDisplay.getPresetFolder(key)
+        ? `<div class="j0n4t-pg-tag-badge" style="--item-color: ${groupColor};">${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(PresetDisplay.getPresetFolder(key).split("/").pop() || ""))}</div>`
         : "";
 
       const owner = session?.ownerOfKey(key);

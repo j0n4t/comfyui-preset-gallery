@@ -3,6 +3,7 @@ import PresetLogic from "./PresetLogic.js";
 import ChipProjection from "./ChipProjection.js";
 import AutocompleteManager from "./AutocompleteManager.js";
 import RollManager from "./RollManager.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 export default class ChipMenuManager {
   /** 
@@ -109,14 +110,14 @@ export default class ChipMenuManager {
             ? "🎲 Random"
             : isNullSelected
               ? "🚫 None (Omit)"
-              : PresetLogic.toTitleCase(PresetLogic.getPresetName(currentSelectedVal) || "");
+              : PresetDisplay.toTitleCase(PresetDisplay.getPresetName(currentSelectedVal) || "");
           const dataKey = !currentSelectedVal ? "" : isNullSelected ? "none" : currentSelectedVal;
 
           varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
-            <label>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}</label>
+            <label>${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(groupRaw))}</label>
             <input type="text" class="j0n4t-pg-var-input" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" data-root-group="${PresetDOM.escapeHTML(rootGroup)}" data-issub="${isSub}" data-key="${PresetDOM.escapeHTML(dataKey)}" value="${PresetDOM.escapeHTML(displayValue)}" placeholder="🔍 Filter by folder/name..." tabindex="0" onclick="this.select()">
-            <button class="j0n4t-pg-var-edit-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Edit selected ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.edit}</button>
-            <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
+            <button class="j0n4t-pg-var-edit-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Edit selected ${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.edit}</button>
+            <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
           </div>`;
 
           autocompleteConfigs.push({
@@ -183,7 +184,7 @@ export default class ChipMenuManager {
           { key: "none", display: "🚫 None (Omit)" },
           ...cfg.matches.map((/** @type {string} */ m) => ({
             key: m,
-            display: PresetLogic.toTitleCase(PresetLogic.getPresetName(m))
+            display: PresetDisplay.toTitleCase(PresetDisplay.getPresetName(m))
           }))
         ];
 
@@ -201,17 +202,17 @@ export default class ChipMenuManager {
               return options.map(opt => ({
                 item: opt,
                 title: opt.key && opt.key !== 'none'
-                  ? PresetLogic.getPresetTitle(opt.key, this.context.cache)
+                  ? PresetDisplay.getPresetTitle(opt.key, this.context.cache)
                   : opt.display
               }));
             }
             const specialMatches = options.slice(0, 2)
               .filter(opt => opt.display.toLowerCase().includes(q) || opt.key.toLowerCase().includes(q))
               .map(opt => ({ item: opt, title: opt.display }));
-            const topMatches = PresetLogic.getTopMatches(
+            const topMatches = PresetDisplay.getTopMatches(
               cfg.matches,
               q,
-              (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]),
+              (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]),
               this.context.cache
             );
             const presetMatches = topMatches.map(match => ({

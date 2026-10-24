@@ -1,6 +1,7 @@
 import AutocompleteManager from "./AutocompleteManager.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 
 export default class InlineEditorManager {
@@ -131,38 +132,38 @@ export default class InlineEditorManager {
             const groupQuery = bracketContent.trim().toLowerCase();
             const groupsSet = new Set();
             for (const k of Object.keys(this.context.cache)) {
-              const folder = PresetLogic.getPresetFolder ? PresetLogic.getPresetFolder(k) : k.split('/')[0];
+              const folder = PresetDisplay.getPresetFolder ? PresetDisplay.getPresetFolder(k) : k.split('/')[0];
               if (folder) groupsSet.add(folder);
             }
             const groups = Array.from(groupsSet);
             /** @type {PresetCache} */
             const dummyCache = {};
             groups.forEach(g => { dummyCache[g] = { preset: g }; });
-            return PresetLogic.getTopMatches(groups, groupQuery, (g) => g, dummyCache);
+            return PresetDisplay.getTopMatches(groups, groupQuery, (g) => g, dummyCache);
           } else {
             const groupName = bracketContent.substring(0, colonIndex).trim().toLowerCase();
             const presetQuery = bracketContent.substring(colonIndex + 1).trim().toLowerCase();
 
             const presetMatches = Object.keys(this.context.cache).filter((k) => {
               if (!this.context.cache[k]?.preset) return false;
-              const folder = PresetLogic.getPresetFolder ? PresetLogic.getPresetFolder(k) : k.split('/')[0];
+              const folder = PresetDisplay.getPresetFolder ? PresetDisplay.getPresetFolder(k) : k.split('/')[0];
               return folder.toLowerCase() === groupName || folder.toLowerCase().startsWith(groupName + "/") || folder.toLowerCase().endsWith("/" + groupName);
             });
 
-            return PresetLogic.getTopMatches(presetMatches, presetQuery, (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]), this.context.cache);
+            return PresetDisplay.getTopMatches(presetMatches, presetQuery, (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]), this.context.cache);
           }
         } else {
           query = query.trim().toLowerCase();
           if (!query) return [];
-          return PresetLogic.getTopMatches(Object.getOwnPropertyNames(this.context.cache), query, (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]), this.context.cache);
+          return PresetDisplay.getTopMatches(Object.getOwnPropertyNames(this.context.cache), query, (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]), this.context.cache);
         }
       },
       renderItem: (match) => {
         const isPreset = this.context.cache && this.context.cache[match];
         if (isPreset) {
-          return `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetName(match)))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`;
+          return `<span>${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(PresetDisplay.getPresetName(match)))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`;
         } else {
-          return `<span>${PresetDOM.icons.folder} ${PresetDOM.escapeHTML(PresetLogic.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
+          return `<span>${PresetDOM.icons.folder} ${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(match))}</span><span class="j0n4t-pg-autocomplete-meta">Variant Group</span>`;
         }
       },
       onSelect: (match) => {

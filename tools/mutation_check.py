@@ -225,6 +225,61 @@ MUTATIONS = [
      "    bucket.push(cand);",
      "    bucket.unshift(cand);",
      "tests/unit/preset_logic.perf.test.ts"),
+
+    # Display metadata (`web/PresetDisplay.js`). Moved out of PresetLogic in
+    # phase 4b, so the guard follows the code: each of these must be caught by
+    # the new test file, or the suite no longer covers what it moved.
+    #
+    # The folder helper must drop the last segment: keeping it makes the folder
+    # the whole key, so every grid group header collapses to the key itself.
+    ("web/PresetDisplay.js",
+     '  return PresetLogic.splitQualifiedKey(key).key.split("/").slice(0, -1).join("/");',
+     '  return PresetLogic.splitQualifiedKey(key).key.split("/").join("/");',
+     "tests/unit/preset_display.test.ts"),
+    # ...and the name helper must keep it, not the first segment.
+    ("web/PresetDisplay.js",
+     '  return PresetLogic.splitQualifiedKey(key).key.split("/").pop() || "";',
+     '  return PresetLogic.splitQualifiedKey(key).key.split("/").shift() || "";',
+     "tests/unit/preset_display.test.ts"),
+    # The colour walks up the path; a loop that never runs falls back to the
+    # hash for a folder that has an assigned colour.
+    ("web/PresetDisplay.js",
+     "  for (let i = parts.length; i > 0; i--) {",
+     "  for (let i = parts.length; i > parts.length; i--) {",
+     "tests/unit/preset_display.test.ts"),
+    # The colour must read the plain path, so a qualifier does not become part
+    # of the hashed name.
+    ("web/PresetDisplay.js",
+     '  const parts = PresetLogic.splitQualifiedKey(presetKey).key.split("/");',
+     '  const parts = presetKey.split("/");',
+     "tests/unit/preset_display.test.ts"),
+    # The hash is what the user sees; a changed constant is a visible change.
+    ("web/PresetDisplay.js",
+     "  for (let i = 0; i < 6; i++) hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);",
+     "  for (let i = 0; i < 6; i++) hash = Math.imul(hash ^ str.charCodeAt(i), 15485864);",
+     "tests/unit/preset_display.test.ts"),
+    # Initials are capped at six characters.
+    ("web/PresetDisplay.js",
+     '    .substring(0, 6);',
+     '    .substring(0, 99);',
+     "tests/unit/preset_display.test.ts"),
+    # The blob carries the library qualifier, which is how a merged library's
+    # entries are told apart in search.
+    ("web/PresetDisplay.js",
+     '  const libPrefix = split.libraryId ? `${split.libraryId}# ` : "";',
+     '  const libPrefix = "";',
+     "tests/unit/preset_display.test.ts"),
+    # Fuzzy matches are ordered by where the query appears, not alphabetically.
+    ("web/PresetDisplay.js",
+     "    arr.sort((a, b) => (a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item)));",
+     "    arr.sort((a, b) => (a.idx !== b.idx ? b.idx - a.idx : a.item.localeCompare(b.item)));",
+     "tests/unit/preset_display.test.ts"),
+    # The title prepends the evaluated value when it differs from the body -
+    # otherwise a chip that expands past its own text shows only the body.
+    ("web/PresetDisplay.js",
+     "  if (expanded !== preset) return `${expanded}\\n\\n${title}`;",
+     "  return title;",
+     "tests/unit/preset_display.test.ts"),
 ]
 
 

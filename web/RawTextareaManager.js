@@ -1,6 +1,7 @@
 import AutocompleteManager from "./AutocompleteManager.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 export default class RawTextareaManager {
   static STYLES = /*css*/ `
@@ -80,15 +81,15 @@ export default class RawTextareaManager {
         html += `<span class="j0n4t-pg-raw-token" style="color: #4fc1ff;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else if (token.isVar || /^\{[^{}]+\}$/.test(token.text)) {
         const groupName = RawTextareaManager.extractGroupName(token.text);
-        const varColor = PresetLogic.getPresetColor(groupName, this.context.cache);
+        const varColor = PresetDisplay.getPresetColor(groupName, this.context.cache);
         html += `<span class="j0n4t-pg-raw-token" style="color: ${varColor}; font-weight: bold;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else {
         const itemKey = token.key || "";
         const item = token.item;
-        const textColor = itemKey ? PresetLogic.getPresetColor(itemKey, this.context.cache) : "";
+        const textColor = itemKey ? PresetDisplay.getPresetColor(itemKey, this.context.cache) : "";
         const styleAttr = textColor ? ` style="color: ${textColor};"` : "";
         const titleAttr = item
-          ? ` title="${PresetDOM.escapeHTML(`${PresetLogic.toTitleCase(PresetLogic.getPresetName(itemKey))} [${itemKey}]\n${PresetDOM.escapeHTML(item.preset || "")}`)}"`
+          ? ` title="${PresetDOM.escapeHTML(`${PresetDisplay.toTitleCase(PresetDisplay.getPresetName(itemKey))} [${itemKey}]\n${PresetDOM.escapeHTML(item.preset || "")}`)}"`
           : "";
 
         html += `<span class="j0n4t-pg-raw-token"${styleAttr}${titleAttr}>${PresetDOM.escapeHTML(token.text)}</span>`;
@@ -134,7 +135,7 @@ export default class RawTextareaManager {
 
     const token = this.getTokenAtPosition(pos);
     if (token && token.item && !token.isPlainText) {
-      this.textarea.title = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(token.key))} [${token.key}]\n${token.item.preset || ""}`;
+      this.textarea.title = `${PresetDisplay.toTitleCase(PresetDisplay.getPresetName(token.key))} [${token.key}]\n${token.item.preset || ""}`;
     } else {
       this.textarea.title = "";
     }
@@ -264,14 +265,14 @@ export default class RawTextareaManager {
             const groupQuery = bracketContent.trim().toLowerCase();
             const groupsSet = new Set();
             for (const k of Object.keys(this.context.cache)) {
-              const folder = PresetLogic.getPresetFolder ? PresetLogic.getPresetFolder(k) : k.split('/')[0];
+              const folder = PresetDisplay.getPresetFolder ? PresetDisplay.getPresetFolder(k) : k.split('/')[0];
               if (folder) groupsSet.add(folder);
             }
             const groups = Array.from(groupsSet);
             /** @type {PresetCache} */
             const dummyCache = {};
             groups.forEach(g => { dummyCache[g] = { preset: g }; });
-            return PresetLogic.getTopMatches(
+            return PresetDisplay.getTopMatches(
               groups,
               groupQuery,
               (g) => g,
@@ -284,17 +285,17 @@ export default class RawTextareaManager {
 
             const presetMatches = Object.keys(this.context.cache).filter((k) => {
               if (!this.context.cache[k]?.preset) return false;
-              const folder = PresetLogic.getPresetFolder ? PresetLogic.getPresetFolder(k) : k.split('/')[0];
+              const folder = PresetDisplay.getPresetFolder ? PresetDisplay.getPresetFolder(k) : k.split('/')[0];
               return folder.toLowerCase() === groupName || folder.toLowerCase().startsWith(groupName + "/") || folder.toLowerCase().endsWith("/" + groupName);
             });
 
-            const virtualNulls = ["none", "null"].filter(opt => !presetMatches.some(k => PresetLogic.getPresetName(k).toLowerCase() === opt));
+            const virtualNulls = ["none", "null"].filter(opt => !presetMatches.some(k => PresetDisplay.getPresetName(k).toLowerCase() === opt));
             const candidateKeys = [...virtualNulls, ...presetMatches];
 
-            return PresetLogic.getTopMatches(
+            return PresetDisplay.getTopMatches(
               candidateKeys,
               presetQuery,
-              (k) => (PresetLogic.isVirtualNull(k) ? k : PresetLogic.getSearchBlob(k, this.context.cache[k])),
+              (k) => (PresetLogic.isVirtualNull(k) ? k : PresetDisplay.getSearchBlob(k, this.context.cache[k])),
               this.context.cache
             );
           }
@@ -307,17 +308,17 @@ export default class RawTextareaManager {
           ).trimStart();
           if (!currentToken) return [];
 
-          return PresetLogic.getTopMatches(
+          return PresetDisplay.getTopMatches(
             Object.getOwnPropertyNames(this.context.cache),
             currentToken,
-            (k) => PresetLogic.getSearchBlob(k, this.context.cache[k]),
+            (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]),
             this.context.cache,
             this.ignorePreset
           );
         }
       },
       renderItem: (match) =>
-        `<span>${PresetDOM.escapeHTML(PresetLogic.toTitleCase(PresetLogic.getPresetName(match)))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
+        `<span>${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(PresetDisplay.getPresetName(match)))}</span><span class="j0n4t-pg-autocomplete-meta">${PresetDOM.escapeHTML(match)}</span>`,
       onSelect: (match) => {
         const query = this.textarea.value;
         const cursor = this.textarea.selectionStart || 0;

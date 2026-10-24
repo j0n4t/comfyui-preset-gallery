@@ -4,6 +4,7 @@ import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 const fileToDataURL = (/** @type {Blob} */ file) =>
   new Promise((resolve, reject) => {
@@ -86,7 +87,7 @@ export default class PresetEditor {
       (this.dom.inpFolder.value.trim()
         ? `${this.dom.inpFolder.value.trim()}/`
         : "") + (this.dom.inpName.value.trim() || "New");
-    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetLogic.getPresetColor(uniqueKey, this.context.cache) || ""}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;" aria-hidden="true">${PresetDOM.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetDOM.escapeHTML(PresetLogic.getPresetInitials(uniqueKey))}</div></div>`;
+    this.dom.editorPreview.innerHTML = `<div style="background-color: ${PresetDisplay.getPresetColor(uniqueKey, this.context.cache) || ""}; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; position:absolute;" aria-hidden="true">${PresetDOM.icons.file}<div class="j0n4t-pg-initials" style="font-size:14px;">${PresetDOM.escapeHTML(PresetDisplay.getPresetInitials(uniqueKey))}</div></div>`;
   }
 
   updateBanner() {
@@ -431,8 +432,8 @@ export default class PresetEditor {
         const { libraryId, key: folderQuery } =
           PresetLogic.splitQualifiedKey(normalizedQuery);
         if (!folderQuery) return [];
-        const allFolders = PresetLogic.getAllPresetFolders(this.context.cache);
-        const matches = PresetLogic.getTopMatches(allFolders, folderQuery.toLowerCase(), (f) =>
+        const allFolders = PresetDisplay.getAllPresetFolders(this.context.cache);
+        const matches = PresetDisplay.getTopMatches(allFolders, folderQuery.toLowerCase(), (f) =>
           f.replace(/_/g, " ")
         );
         if (!libraryId) return matches;

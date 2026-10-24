@@ -26,6 +26,13 @@ Chip grouping (`getGroupedChips`) is no longer here: it is presentation rather
 than prompt semantics and now lives in `ChipProjection`. The cache-derived
 indexes both modules share are owned by `CacheDerived`.
 
+Display metadata - title casing, colours, folder and name helpers, initials,
+the search blob and `getTopMatches` - moved to `PresetDisplay` for the same
+reason. What is left here is the grammar, the expansion, and the evaluation of
+a chip. `PresetLogic` binds the two path helpers it needs as imports for its
+module-level index builders, and `PresetDisplay` imports the grammar back, so
+neither module is a facade for the other.
+
 ### `PresetLogic`
 The main namespace holding all parsing logic, string formatting, and utility functions.
 
@@ -47,21 +54,17 @@ The main namespace holding all parsing logic, string formatting, and utility fun
 *   **`findPresetMatch(text, cache)`**: Evaluates if a raw text input maps directly to an exact preset key or preset string value.
 
 #### Formatting & Extraction
-*   **`toTitleCase(str)`**: Formats strings containing hyphens or underscores into a clean Title Case format.
+*   **`toTitleCase(str)`**: Moved to `PresetDisplay`; the `WEIGHT_REGEX` this module keeps is the one `(core:weight)` parsing needs.
 *   **`parseDataURL(dataUrl)`**: Extracts the file extension and base64 payload from a standard Data URI image string.
 *   **`getMimeType(ext)`**: Returns the appropriate MIME type mapping for standard image extensions (e.g., `jpg`, `png`, `webp`).
 
 #### UI & Pathing Utilities
-*   **`getHashColor(str)`**: Generates a deterministic CSS HSL color string based on a string's calculated hash.
-*   **`getPresetColor(presetKey, cache)`**: Traverses up the preset key path to find an explicitly assigned color, falling back to a deterministic hash color.
-*   **`getAllPresetFolders(cache)`**: Returns a unique list of all folder paths found in the current preset cache.
-*   **`getPresetBaseFolder(key)`**: Gets the top-level root folder from a provided key path.
-*   **`getPresetName(key)`**: Extracts the final file or preset name from a key path.
-*   **`getPresetFolder(key)`**: Extracts the parent directory path string of a key.
-*   **`getUiFolder(key)`**: Formats a folder path into a readable UI breadcrumb format utilizing chevrons (`›`).
-*   **`getPresetInitials(key)`**: Generates a 2-character per-word initials string for a preset key (up to 6 characters max).
-*   **`getPresetTitle(key, cache)`**: Constructs a fully formatted tooltip title string, including names and underlying descriptions.
+See `docs/PresetDisplay.md`. `getHashColor`, `getPresetColor`,
+`getAllPresetFolders`, `getPresetBaseFolder`, `getPresetName`, `getPresetFolder`,
+`getUiFolder`, `getPresetInitials`, `getPresetTitle`, `getSearchBlob` and
+`getTopMatches` are display metadata and live there. `splitQualifiedKey` stays
+here - it is grammar, and it is what every one of those helpers reads a key
+through.
 
 #### Searching & Filtering
-*   **`getSearchBlob(key, item)`**: Constructs a normalized, lowercase search string payload for quick text matching and indexing.
-*   **`getTopMatches(list, query, getSearchBlob, cache, ignorePreset)`**: Filters an array of items based on a text query, sorting them logically into "starts with" and "fuzzy" match arrays, and returning the top results.
+`getSearchBlob` and `getTopMatches` are in `PresetDisplay`.

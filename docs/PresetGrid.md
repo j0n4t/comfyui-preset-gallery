@@ -10,7 +10,7 @@ The class relies on several helper modules:
 - **`ModalUtils.js`**: Provides modal dialogs (`prompt`, `alert`) for group renaming.
 - **`PresetDOM.js`**: Utility functions for CSS style injection (`injectStyles`), HTML escaping (`escapeHTML`), and UI icon definitions (`PresetDOM.icons`).
 - **`PresetGalleryAPI.js`**: Backend API communication layer for persistence (e.g., setting group colors, renaming folders).
-- **`PresetLogic.js`**: Pure utility logic for parsing preset names, folder paths, initials, title case formatting, and generating search blobs.
+- **`PresetDisplay.js`**: How a preset is presented - folder paths, names, initials, title case, colours and the search blob the filter matches against.
 
 ---
 

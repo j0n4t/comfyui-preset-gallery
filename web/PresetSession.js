@@ -1,5 +1,6 @@
 import RollManager from "./RollManager.js";
 import PresetLogic from "./PresetLogic.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 /**
  * One merged library: its id, its display name, and its own entries.
@@ -279,7 +280,7 @@ export default class PresetSession {
     const groupsMap = new Map();
     for (const [key, item] of Object.entries(cache)) {
       if (item?.preset) {
-        const folder = PresetLogic.getPresetFolder(key);
+        const folder = PresetDisplay.getPresetFolder(key);
         if (folder) {
           if (!groupsMap.has(folder)) groupsMap.set(folder, []);
           groupsMap.get(folder).push(key);

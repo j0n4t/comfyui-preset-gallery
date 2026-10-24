@@ -2,7 +2,7 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import "./dom-harness.ts";
 import PresetGrid from "../../web/PresetGrid.js";
-import PresetLogic from "../../web/PresetLogic.js";
+import PresetDisplay from "../../web/PresetDisplay.js";
 import ModalUtils from "../../web/ModalUtils.js";
 import PresetGalleryAPI from "../../web/PresetGalleryAPI.js";
 
@@ -360,7 +360,7 @@ test("a name shared by two libraries is listed once per library, each tagged", (
   const { grid, context } = makeGrid();
   // The merge files the entry the winner displaced under `libraryId#key`.
   context.session = {
-    isDuplicateKey: (key: string) => PresetLogic.getPresetFolder(key) === "wear/sock",
+    isDuplicateKey: (key: string) => PresetDisplay.getPresetFolder(key) === "wear/sock",
     ownerOfKey: (key: string) => {
       if (key.startsWith("main#") || key === "Faces/Portrait") return "main";
       return "socks";

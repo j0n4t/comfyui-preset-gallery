@@ -1,5 +1,8 @@
 import RollManager from "./RollManager.js";
 import { derivedFor } from "./CacheDerived.js";
+// Bound as names, not reached through `PresetLogic`: the module-level index
+// builders below call these while the object is still being built.
+import { getPresetFolder, getPresetName, getPresetColor, toTitleCase } from "./PresetDisplay.js";
 
 const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
 
@@ -109,7 +112,7 @@ function buildGroupIndex(cache) {
       continue;
     }
 
-    const segments = PresetLogic.getPresetFolder(key).toLowerCase().split("/");
+    const segments = getPresetFolder(key).toLowerCase().split("/");
     if (segments.length === 1 && segments[0] === "") continue; // folderless
 
     // A Set so a repeated segment (`a/a`) cannot add the key twice.
@@ -202,7 +205,7 @@ function buildVariantKeyIndex(cache) {
     const lowerKey = key.toLowerCase();
     if (lowerKey && !index.has(lowerKey)) index.set(lowerKey, key);
 
-    const name = PresetLogic.getPresetName(key).toLowerCase();
+    const name = getPresetName(key).toLowerCase();
     if (name && !index.has(name)) index.set(name, key);
   }
   return index;
@@ -309,7 +312,7 @@ const PresetLogic = {
    */
   getWrappedPreset: (key, baseStr, cache) => {
     if (!cache || !baseStr) return baseStr || "";
-    const folder = PresetLogic.getPresetFolder(key);
+    const folder = getPresetFolder(key);
     const prependMatch = cache[`_/config/prepend/${folder}`]?.preset;
     const appendMatch = cache[`_/config/append/${folder}`]?.preset;
 
@@ -618,7 +621,7 @@ const PresetLogic = {
 
     if (parsed.presetMatch && !/^\{/.test(token)) {
       return {
-        title: PresetLogic.toTitleCase(PresetLogic.getPresetName(parsed.presetMatch.key)),
+        title: toTitleCase(getPresetName(parsed.presetMatch.key)),
         filename: parsed.presetMatch.item?.filename || null
       };
     }
@@ -649,10 +652,10 @@ const PresetLogic = {
           }
         }
         const baseTitle = resolvedKey && cache
-          ? PresetLogic.toTitleCase(PresetLogic.getPresetName(resolvedKey))
+          ? toTitleCase(getPresetName(resolvedKey))
           : baseVal
-            ? PresetLogic.toTitleCase(baseVal)
-            : PresetLogic.toTitleCase(groupRaw);
+            ? toTitleCase(baseVal)
+            : toTitleCase(groupRaw);
 
         let childTitles = [];
         if (childVarsStr) {
@@ -669,11 +672,11 @@ const PresetLogic = {
 
             if (childBaseVal && !PresetLogic.isVirtualNull(childBaseVal)) {
               const childResKey = PresetLogic.resolveVariantKey(cName, childBaseVal, cache) || childBaseVal;
-              childTitles.push(PresetLogic.toTitleCase(PresetLogic.getPresetName(childResKey)));
+              childTitles.push(toTitleCase(getPresetName(childResKey)));
             } else if (!childBaseVal) {
               const childRoll = rollManager?.getRoll(cName.toLowerCase().replace(/\s+/g, "_"));
               if (childRoll) {
-                childTitles.push(PresetLogic.toTitleCase(PresetLogic.getPresetName(childRoll)));
+                childTitles.push(toTitleCase(getPresetName(childRoll)));
               }
             }
           }
@@ -753,7 +756,7 @@ const PresetLogic = {
       for (let k = start; k < endCount; k++) {
         const rolledKey = rollManager.peekRoll(group, k);
         if (rolledKey) {
-          rolledInfo.push(`🎲 ${PresetLogic.toTitleCase(group.split("_")[0])}: ${PresetLogic.getPresetName(rolledKey)}`);
+          rolledInfo.push(`🎲 ${toTitleCase(group.split("_")[0])}: ${getPresetName(rolledKey)}`);
         }
       }
     }
@@ -812,12 +815,12 @@ const PresetLogic = {
       if (segmentTitles.length === 1 && /^\\{[^{}:]+/.test(coreStr)) {
         cleanLabel = segmentTitles[0];
       } else {
-        cleanLabel = PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId));
+        cleanLabel = toTitleCase(getPresetName(evalId));
       }
 
       bgImage = segmentImg || matchItem?.filename || null;
-      color = PresetLogic.getPresetColor(evalId, cache);
-      const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(evalId))} [${qualify(evalId)}]`;
+      color = getPresetColor(evalId, cache);
+      const titleHeader = `${toTitleCase(getPresetName(evalId))} [${qualify(evalId)}]`;
       const presetBody = matchItem?.preset || evalId;
       tooltipTitle = `${titleHeader}\n${presetBody}`;
     } else {
@@ -826,14 +829,14 @@ const PresetLogic = {
       if (segmentTitles.length > 0) {
         cleanLabel = segmentTitles.join(" ");
       } else {
-        cleanLabel = item ? PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey)) : coreStr;
+        cleanLabel = item ? toTitleCase(getPresetName(styleKey)) : coreStr;
       }
 
       if (parsed.tag) cleanLabel = parsed.tag.label;
 
       bgImage = segmentImg || item?.filename || null;
-      color = PresetLogic.getPresetColor(styleKey, cache);
-      const titleHeader = `${PresetLogic.toTitleCase(PresetLogic.getPresetName(styleKey))} [${qualify(styleKey)}]`;
+      color = getPresetColor(styleKey, cache);
+      const titleHeader = `${toTitleCase(getPresetName(styleKey))} [${qualify(styleKey)}]`;
       const presetBody = item?.preset || styleKey;
       // A tag, or any chip that matched no cache item, has no preset body to
       // name: the raw chip is the only thing the tooltip can carry. The
@@ -1063,169 +1066,6 @@ const PresetLogic = {
     if (e === "webp") return "image/webp";
     if (e === "gif") return "image/gif";
     return "image/png";
-  },
-
-  /**
-   * Formats underscore/hyphen delimited strings into Title Case.
-   * @param {string} str - Raw input text.
-   * @returns {string} Formatted string.
-   */
-  toTitleCase: (str) =>
-    str
-      .replace(/_/g, " ")
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase()),
-
-  /**
-   * Generates a deterministic HSL color value from a string hash.
-   * @param {string} str - Identifier string.
-   * @returns {string} Valid HSL color string.
-   */
-  getHashColor: (str) => {
-    let hash = 0;
-    for (let i = 0; i < 6; i++) hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
-    hash = (hash ^ (hash >>> 16)) * 0x85ebca6b;
-    hash = (hash ^ (hash >>> 13)) * 0xc2b2ae35;
-    const hue = Math.abs((hash ^ (hash >>> 15)) % 360);
-    return `hsl(${hue}, 65%, 35%)`;
-  },
-
-  /**
-   * Returns unique folder paths extracted from the entire cache dictionary.
-   * @param {PresetCache} cache - Preset cache map.
-   * @returns {string[]} List of unique folder path strings.
-   */
-  getAllPresetFolders: (cache) => Array.from(new Set(
-    Object.keys(cache).map(key => PresetLogic.getPresetFolder(key))
-  )),
-
-  /**
-   * Computes the assigned or computed HSL color for a given preset key.
-   * @param {string} [presetKey=""] - Preset identifier path key.
-   * @param {PresetCache|null} [cache=null] - Optional lookup cache.
-   * @returns {string} CSS Color string.
-   */
-  getPresetColor: (presetKey = "", cache = null) => {
-    const parts = PresetLogic.splitQualifiedKey(presetKey).key.split("/");
-    for (let i = parts.length; i > 0; i--) {
-      const parentPath = parts.slice(0, i).join("/");
-      if (cache && cache[parentPath] && cache[parentPath].__color__) {
-        return cache[parentPath].__color__;
-      }
-    }
-    const topLevel = parts[0];
-    return PresetLogic.getHashColor(topLevel);
-  },
-
-  /**
-   * Gets root folder prefix of a key.
-   * @param {string} key - Cache key.
-   * @returns {string} Root folder path.
-   */
-  getPresetBaseFolder: (key) => {
-    const path = PresetLogic.splitQualifiedKey(key).key;
-    return path.includes("/") ? path.split("/")[0] : path;
-  },
-
-  /**
-   * Extracts name portion of path key.
-   * @param {string} key - Cache key.
-   * @returns {string} File or preset name.
-   */
-  getPresetName: (key) => PresetLogic.splitQualifiedKey(key).key.split("/").pop() || "",
-
-  /**
-   * Returns full formatted title and description body for tooltips.
-   * @param {string} key - Cache key.
-   * @param {PresetCache} cache - Cache object.
-   * @param {RollManager} [rollManager] - Dynamic roll tracker state.
-   * @returns {string} Formatted multiline title text.
-   */
-  getPresetTitle: (key, cache, rollManager = new RollManager()) => {
-    if (!key) return "";
-    if (PresetLogic.isVirtualNull(key)) return "None [omit variant]";
-    const name = PresetLogic.toTitleCase(PresetLogic.getPresetName(key));
-    const preset = cache[key]?.preset || key;
-    const title = `${name} [${key}]\n${preset}`;
-    const expanded = PresetLogic.expandRecursively(key, cache, new Set(), rollManager);
-    if (expanded !== preset) return `${expanded}\n\n${title}`;
-    return title;
-  },
-
-  /**
-   * Creates initialized standard 2-character initials string for items.
-   * @param {string} key - Target key.
-   * @returns {string} Up to 6 character initials.
-   */
-  getPresetInitials: (key) => {
-    const path = PresetLogic.splitQualifiedKey(key).key;
-    const raw = path.includes("/") ? PresetLogic.getPresetName(path) : path;
-    return PresetLogic.toTitleCase(raw)
-      .split(/\s+/)
-      .map((w) => w.slice(0, 2))
-      .join("")
-      .substring(0, 6);
-  },
-
-  /**
-   * Extracts parent folder path string of key.
-   * @param {string} key - Preset key path.
-   * @returns {string} Folder path string.
-   */
-  getPresetFolder: (key) => PresetLogic.splitQualifiedKey(key).key.split("/").slice(0, -1).join("/"),
-
-  /**
-   * Gets formatted human readable path (using breadcrumb chevron format).
-   * @param {string} key - Key path.
-   * @returns {string} Breadcrumb UI folder representation.
-   */
-  getUiFolder: (key) => PresetLogic.getPresetFolder(key).split("/").join(" › "),
-
-  /**
-   * Constructs searchable lowercase blob text for indexing.
-   * @param {string} key - Preset key path.
-   * @param {PresetCacheItem} item - Cache item object.
-   * @returns {string} Searchable text query blob.
-   */
-  getSearchBlob: (key, item) => {
-    const split = PresetLogic.splitQualifiedKey(key);
-    const libPrefix = split.libraryId ? `${split.libraryId}# ` : "";
-    return `${libPrefix}${PresetLogic.getPresetName(key)} ${key} ${PresetLogic.getPresetInitials(key)} ${item?.preset || ""}`.toLowerCase();
-  },
-
-  /**
-   * Filters list items matching a search query string.
-   * @param {string[]} list - Key list array.
-   * @param {string} query - Query filter string.
-   * @param {(item: string) => string} [getSearchBlob] - Custom search blob mapper callback.
-   * @param {PresetCache|null} [cache=null] - Cache reference.
-   * @param {string|null} [ignorePreset=null] - Preset key to exclude.
-   * @returns {SearchResult[]} Top matched items.
-   */
-  getTopMatches: (list, query, getSearchBlob, cache = null, ignorePreset = null) => {
-    const blobFn = getSearchBlob || ((i) => PresetLogic.getSearchBlob(i, cache?.[i] || {}));
-    const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
-    if (!queryWords.length) return [];
-    const buckets = list.reduce(
-      (/** @type {{startsWith: SearchResult[], fuzzy: SearchResult[]}} */ acc, item) => {
-        if ((cache && !cache[item]?.preset && !PresetLogic.isVirtualNull(item)) || item === ignorePreset) return acc;
-        const blob = blobFn(item).toLowerCase();
-        if (!queryWords.every((word) => blob.includes(word))) return acc;
-        const title = cache ? PresetLogic.getPresetTitle(item, cache) : "";
-        let idx = blob.indexOf(queryWords.join(" "));
-        if (idx === -1) idx = blob.indexOf(queryWords[0]);
-        if (idx === 0) {
-          if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx, title });
-        } else {
-          if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx, title });
-        }
-        return acc;
-      },
-      { startsWith: [], fuzzy: [] }
-    );
-    const sortBucket = (/** @type {SearchResult[]} */ arr) =>
-      arr.sort((a, b) => (a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item)));
-    return Array.from(new Set([...sortBucket(buckets.startsWith), ...sortBucket(buckets.fuzzy)]));
   },
 };
 

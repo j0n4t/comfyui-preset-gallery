@@ -4,6 +4,7 @@ import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetLogic from "./PresetLogic.js";
 import YAMLUtils from "./YAMLUtils.js";
+import PresetDisplay from "./PresetDisplay.js";
 
 /**
  * @typedef {Object} ExportConfig
@@ -112,7 +113,7 @@ const ExportUtils = {
             const hasContent = item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename);
             if (!hasContent) continue;
 
-            const gKey = PresetLogic.getPresetFolder(key) || "root_presets";
+            const gKey = PresetDisplay.getPresetFolder(key) || "root_presets";
             if (!groups[gKey]) groups[gKey] = [];
             groups[gKey].push({ key, item });
         }
@@ -123,7 +124,7 @@ const ExportUtils = {
             if (gKey === "root_presets") {
                 gName = "Root Presets";
             } else {
-                gName = gKey.split("/").map(PresetLogic.toTitleCase).join(" › ");
+                gName = gKey.split("/").map(PresetDisplay.toTitleCase).join(" › ");
                 if (presets[gKey] && presets[gKey].__color__) groupHex = presets[gKey].__color__;
             }
 
@@ -219,7 +220,7 @@ const ExportUtils = {
                 const editContainerHtml = `
                     <div class="j0n4t-pg-edit-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.25); border-left: 2px solid #4dabf7; font-size: 0.85em; border-radius: 4px;">
                         <label style="display:block; margin-bottom:2px;">Name</label>
-                        <input type="text" class="edit-name" value="${PresetDOM.escapeHTML(PresetLogic.getPresetName(key))}" style="width: 100%; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;" />
+                        <input type="text" class="edit-name" value="${PresetDOM.escapeHTML(PresetDisplay.getPresetName(key))}" style="width: 100%; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;" />
                         
                         <label style="display:block; margin-bottom:2px;">Preset Content</label>
                         <textarea class="edit-text" style="width: 100%; height: 80px; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;">${PresetDOM.escapeHTML(item.preset || "")}</textarea>
@@ -254,7 +255,7 @@ const ExportUtils = {
                         <span class="j0n4t-pg-edit-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Edit Item">✎</span>
                         <label class="j0n4t-pg-checkbox-wrap" style="flex: 1; margin: 0;">
                         <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetDOM.escapeHTML(gKey)}" data-status="${status}" data-user-modified="false" value="${PresetDOM.escapeHTML(key)}" ${checkedAttr} />
-                        <span class="j0n4t-pg-item-name">${PresetDOM.escapeHTML(PresetLogic.getPresetName(key))}</span>
+                        <span class="j0n4t-pg-item-name">${PresetDOM.escapeHTML(PresetDisplay.getPresetName(key))}</span>
                         ${itemStatusTag}
                         </label>
                     </div>
@@ -285,7 +286,7 @@ const ExportUtils = {
                     const cb = /** @type {HTMLInputElement} */ (itemRow.querySelector(".j0n4t-pg-item-cb"));
 
                     const oldKey = cb.value;
-                    const folder = PresetLogic.getPresetFolder(oldKey);
+                    const folder = PresetDisplay.getPresetFolder(oldKey);
                     const cleanName = newNameInput.value.trim().toLowerCase().replace(/ /g, "_");
                     const newKey = (folder && folder !== "root_presets") ? `${folder}/${cleanName}` : cleanName;
 
@@ -342,7 +343,7 @@ const ExportUtils = {
                     const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (itemsBox.querySelectorAll(".j0n4t-pg-item-cb"));
                     const keyMoves = Array.from(checkboxes, (cb) => {
                         const oldKey = cb.value;
-                        const itemName = PresetLogic.getPresetName(oldKey);
+                        const itemName = PresetDisplay.getPresetName(oldKey);
                         return { cb, oldKey, newKey: cleanNewFolder ? `${cleanNewFolder}/${itemName}` : itemName };
                     });
                     const movingKeys = new Set(keyMoves.map(({ oldKey }) => oldKey));
@@ -377,7 +378,7 @@ const ExportUtils = {
                     const groupNameEl = /** @type {HTMLElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-name"));
                     if (groupNameEl) {
                         const displayName = cleanNewFolder
-                            ? cleanNewFolder.split("/").map(PresetLogic.toTitleCase).join(" › ")
+                            ? cleanNewFolder.split("/").map(PresetDisplay.toTitleCase).join(" › ")
                             : "Root Presets";
                         groupNameEl.innerHTML = `<strong>${PresetDOM.escapeHTML(displayName)}</strong> (${items.length})`;
                     }

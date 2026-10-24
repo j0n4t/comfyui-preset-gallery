@@ -12,7 +12,7 @@ The module relies on several helper modules:
 - **`NestedPresetUtils.js`**: Manages conversions between flat preset structures and nested hierarchical trees.
 - **`PresetDOM.js`**: Manages DOM utilities, HTML escaping, and thumbnail creation.
 - **`PresetGalleryAPI.js`**: Interfaces with preset storage and retrieval APIs.
-- **`PresetLogic.js`**: Provides folder extraction, name formatting, MIME type detection, and title-casing.
+- **`PresetDisplay.js`**: Provides folder extraction, name formatting and title-casing; `PresetLogic` provides MIME type detection.
 - **`YAMLUtils.js`**: Handles YAML parsing and stringification.
 - **`JSZip`**: Dynamically loaded from CDN for handling `.zip` archive creation and extraction.
 
@@ -36,7 +36,7 @@ The module relies on several helper modules:
 - **Purpose**: Generates a rich, hierarchical DOM tree UI for inspecting, selecting, filtering, and editing presets prior to import or export.
 - **UI & Control Features**:
   - **Master Controls**: "Select / Deselect All" master checkbox and "Collapse All" / "Expand All" toggle button.
-  - **Folder Grouping**: Automatically groups presets by folder (`PresetLogic.getPresetFolder`), displaying custom folder accent colors (`__color__`) and item counts.
+  - **Folder Grouping**: Automatically groups presets by folder (`PresetDisplay.getPresetFolder`), displaying custom folder accent colors (`__color__`) and item counts.
   - **Folder Renaming**: Interactive rename button (`✎`) allowing users to rename folders on the fly.
   - **Folder Collapsing**: Expand/collapse (`▼`/`▶`) sections.
   - **Status Badges**: Visual indicator tags for `+New`, `~Replaced`, and `=Same` items.

@@ -25,11 +25,12 @@ multiple owners:
   clipboard, multi-selection and keyboard operations, rendering, and chip
   updates. The controller is consequently the shared dependency for many
   unrelated interactions.
-- **Preset semantics:** `PresetLogic.js` is about 1,398 lines. It contains
-  token parsing, recursive expansion, variant resolution, grouped-chip
-  projection, preset matching/search, and display metadata. Its cache-derived
-  indexes are performance-sensitive; replacing the parser or indexes wholesale
-  would make regressions hard to isolate.
+- **Preset semantics:** `PresetLogic.js` is about 1,073 lines after phases
+  4a and 4b. It contains token parsing, recursive expansion, variant
+  resolution, preset matching, and chip evaluation. Grouped-chip projection
+  is in `ChipProjection` and display metadata in `PresetDisplay`. Its
+  cache-derived indexes are performance-sensitive; replacing the parser or
+  indexes wholesale would make regressions hard to isolate.
 - **Cross-cutting persistence and API defaults:** `localStorage` reads/writes
   are spread through the app, Basket, Grid, Settings, and Session. The API
   client also has a static active-library fallback, so some operations depend
@@ -102,7 +103,10 @@ rendering together.
   inputs and outputs.
 - Extract search/folder/display helpers only where their dependencies are
   genuinely independent.
-- Preserve `PresetLogic` exports as a compatibility facade during migration.
+- Do NOT add a facade: `PresetDisplay` imports `PresetLogic`'s grammar, so
+  re-exporting the display helpers back from `PresetLogic` would put a cycle
+  between the two - the shape phase 4a went out of its way to avoid. Call sites
+  import the module that owns the helper, and the tests follow.
 - Retain the cache-derived indexes and their measured behavior; change their
   ownership or invalidation only with dedicated performance and correctness
   coverage.
@@ -175,10 +179,24 @@ autocomplete, and raw-text behavior covered by focused tests.
       `tests/unit/chip_projection.test.ts` pins it (17 tests) with 8
       `mutation_check` entries - the three moved lookup entries plus five for
       the grouping decisions.
-- [ ] 4b. Chip evaluation vs display metadata — not started. `parseBasketChip`,
-      `resolvePresetSegment` and `parseChipDetails` are still in `PresetLogic`,
-      as are the color/title/folder/initials/search helpers. Decide whether the
-      remaining split earns its keep before starting it.
+- [x] 4b. Display metadata — `PresetDisplay` owns how a preset is named,
+      labelled, coloured and searched for: the folder/name/base-folder/ui-folder
+      helpers, `toTitleCase`, `getHashColor`, `getPresetColor`,
+      `getAllPresetFolders`, `getPresetInitials`, `getPresetTitle`,
+      `getSearchBlob` and `getTopMatches`. `PresetLogic` keeps the grammar, the
+      expansion and chip evaluation, and binds the two path helpers its
+      module-level index builders call. The nine rendering modules import
+      `PresetDisplay` directly, so ownership is visible at the import and
+      `ChipProjection` now depends on the grammar only. No facade: that would
+      re-create the cycle phase 4a avoided. `PresetLogic` went from 1232 to
+      1073 lines, and `PresetDisplay` is 224. `docs/PresetDisplay.md` documents the contract,
+      `tests/unit/preset_display.test.ts` pins it (19 tests) with 9
+      `mutation_check` entries - one per moved decision.
+- [ ] 4c. Chip evaluation — not started, and deliberately next rather than
+      now. `parseBasketChip`, `resolvePresetSegment` and `parseChipDetails`
+      still mix evaluation with display: they call the display helpers above
+      while deciding what a chip runs. It is the larger and riskier half
+      (~285 lines, tooltip strings included), so it gets its own pass.
 - [ ] 5. App services and persistence.
 - [ ] 6. Supporting UI modules.
 
@@ -186,5 +204,16 @@ Notes for the next session: `tools/mutation_check.py` is the guard that the
 unit suites still catch their own mutations — run it after touching a module it
 lists, and repoint its entries when code moves between modules (a mutation
 whose pattern no longer matches aborts the run rather than passing silently).
+Moving code without adding entries leaves the moved decisions uncovered, which
+is how a guard dies: phase 4b added nine, one per decision that moved.
 `dev/index.html` plus `npx playwright test` is the only browser coverage;
 the harness stubs the ComfyUI host object and nothing else.
+
+Two traps hit while landing phase 4b, both worth remembering:
+- **Editing these files with Python text mode rewrites their line endings.**
+  Read bytes, normalise, write bytes back with the file's own ending. Nine files
+  were reverted and redone because `write_text` turned their LF into a mixed
+  file; the `patch` tool handles CRLF correctly and is the safer route.
+- **A `\n` inside a `mutation_check.py` entry is a Python escape, not the two
+  characters the JS source holds.** An entry written that way parses to a real
+  newline, matches nothing, and aborts the run. It needs `\\n` in the source.
