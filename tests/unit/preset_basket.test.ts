@@ -484,7 +484,7 @@ test("toggleSelectedPins pins every selected chip when not all are pinned", () =
   const { basket, pinned, calls, context } = makeBasket();
   basket.render(["faces/portrait", "scenery/hills"]);
   context.updateWidgetValue(["faces/portrait", "scenery/hills"]);
-  basket.selectedChipIndexes = new Set([0, 1]);
+  basket.selection.selected = new Set([0, 1]);
 
   basket.toggleSelectedPins();
 
@@ -500,12 +500,12 @@ test("deleteSelectedChips removes the selected chip range", () => {
   basket.render(["portrait", "solo"]);
   assert.equal(chips(basket).length, 2);
   context.updateWidgetValue(["portrait", "solo"]);
-  basket.selectedChipIndexes = new Set([0]);
+  basket.selection.selected = new Set([0]);
 
   basket.deleteSelectedChips();
 
   assert.deepEqual(calls.updateWidgetValue.at(-1), ["solo"], "only the selected chip is removed");
-  assert.equal(basket.selectedChipIndexes.size, 0);
+  assert.equal(basket.selection.selected.size, 0);
 });
 
 // --- selection semantics ---
@@ -516,7 +516,7 @@ test("a plain click selects exactly one chip", () => {
 
   click(chips(basket)[1]);
 
-  assert.deepEqual([...basket.selectedChipIndexes], [1]);
+  assert.deepEqual([...basket.selection.selected], [1]);
   assert.ok(chips(basket)[1].classList.contains("selected"));
   assert.ok(!chips(basket)[0].classList.contains("selected"));
 });
@@ -526,13 +526,13 @@ test("ctrl-click toggles a second chip", () => {
   basket.render(["faces/portrait", "scenery/hills"]);
 
   click(chips(basket)[1], { ctrlKey: true });
-  assert.deepEqual([...basket.selectedChipIndexes], [1]);
+  assert.deepEqual([...basket.selection.selected], [1]);
 
   click(chips(basket)[0], { ctrlKey: true });
-  assert.deepEqual([...basket.selectedChipIndexes].sort(), [0, 1]);
+  assert.deepEqual([...basket.selection.selected].sort(), [0, 1]);
 
   click(chips(basket)[1], { ctrlKey: true });
-  assert.deepEqual([...basket.selectedChipIndexes], [0]);
+  assert.deepEqual([...basket.selection.selected], [0]);
 });
 
 test("shift-click selects the range from the anchor", () => {
@@ -542,7 +542,7 @@ test("shift-click selects the range from the anchor", () => {
   click(chips(basket)[0]);
   click(chips(basket)[2], { shiftKey: true });
 
-  assert.deepEqual([...basket.selectedChipIndexes].sort(), [0, 1, 2]);
+  assert.deepEqual([...basket.selection.selected].sort(), [0, 1, 2]);
 });
 
 // --- keyboard edits ---

@@ -88,6 +88,24 @@ MUTATIONS = [
      "    if (this.activeTabId === tabId) this.context.updateWidgetValue(tab.basket);",
      "    if (false) this.context.updateWidgetValue(tab.basket);",
      "tests/unit/preset_basket_tabs.test.ts"),
+    # A range selection includes both ends.
+    ("web/BasketSelectionController.js",
+     "for (let index = Math.min(start, end); index <= Math.max(start, end); index++) {",
+     "for (let index = Math.min(start, end); index < Math.max(start, end); index++) {",
+     "tests/unit/basket_selection.test.ts"),
+    # Shift-click selects from the anchor, not from the clicked chip, or the
+    # range collapses to a single chip.
+    ("web/BasketSelectionController.js",
+     "      this.selectRange(this.anchor ?? index, index);",
+     "      this.selectRange(index, index);",
+     "tests/unit/basket_selection.test.ts"),
+    # The clipboard payload is versioned: accepting another version's shape
+    # would paste chips this build cannot resolve.
+    ("web/BasketSelectionController.js",
+     "    return payload.type === \"comfyui-preset-gallery-basket\" &&\n"
+     "      payload.version === 1 &&\n",
+     "    return payload.type === \"comfyui-preset-gallery-basket\" &&\n",
+     "tests/unit/basket_selection.test.ts"),
 
     # The perf/behaviour guards. Each of these must be caught by the test named
     # in the comment, or the guard is decorative.
