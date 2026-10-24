@@ -61,8 +61,11 @@ Three things describe "what is selected", and only one of them is authoritative:
 
 A tab is a snapshot of exactly those three: `{ id, title, basket, pins, rolls }`,
 persisted with the active tab id under `comfy_preset_gallery_basket_tabs`.
-`render()` is what takes the snapshot - it sees the selection it was handed and
-the pins and rolls in force - so a tab's saved state always matches the last
+`PresetBasketTabs` owns that list, the active tab, the snapshots and the storage
+key; `PresetBasket` draws the sidebar, the tab menu and the title, and forwards
+every tab action to it. `render()` hands the selection it just rendered to
+`PresetBasketTabs.snapshotList()` - the one place that sees the selection, the
+pins and the rolls together - so a tab's saved state always matches the last
 render. The grid selection, the chips and the evaluated prompt are *derived*
 views of the widget value and are never a source of truth.
 
@@ -104,6 +107,8 @@ The class natively handles its own styling injection via `PresetDOM.injectStyles
 ## Key Dependencies
 
 - `PresetDOM`: Used for DOM manipulation, HTML escaping, and CSS injection.
+- `PresetBasketTabs`: Owns the tab list, the active tab, their snapshots and the
+  storage key; the Basket only presents them.
 - `PresetLogic`: Handles token parsing, recursion expansion, string matching, and roll tracking.
 - `ModalUtils`: Drives confirmation dialogs and the copy-to-clipboard modal.
 - `ChipMenuManager` & `InlineEditorManager`: Handle secondary interaction layers attached to the chips.

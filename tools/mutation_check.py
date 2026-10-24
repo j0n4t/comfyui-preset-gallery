@@ -58,14 +58,36 @@ MUTATIONS = [
      "return inner;",
      "tests/unit/variant_color.test.ts"),
     # A tab is a snapshot of the selection AND the pins and rolls in force. If
-    # render stops carrying the pins, a tab saved from a pinned basket comes
-    # back unpinned on the next switch or reload.
-    ("web/PresetBasket.js",
-     "        tab.basket = [...activeList];\n"
-     "        tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];",
-     "        tab.basket = [...activeList];\n"
-     "        tab.pins = [];",
-     "tests/unit/preset_basket.test.ts"),
+    # the snapshot stops carrying the pins, a tab saved from a pinned basket
+    # comes back unpinned on the next switch or reload.
+    ("web/PresetBasketTabs.js",
+     "    tab.basket = [...basket];\n"
+     "    tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];",
+     "    tab.basket = [...basket];\n"
+     "    tab.pins = [];",
+     "tests/unit/preset_basket_tabs.test.ts"),
+    # The saved active tab id decides which tab comes back. Falling back to the
+    # first tab every time restores the wrong selection after a reload.
+    ("web/PresetBasketTabs.js",
+     "          parsed.activeTabId && parsed.tabs.some((/** @type {BasketTab} */ t) => t.id === parsed.activeTabId)\n"
+     "            ? parsed.activeTabId\n"
+     "            : parsed.tabs[0].id,",
+     "          parsed.tabs[0].id,",
+     "tests/unit/preset_basket_tabs.test.ts"),
+    # Removing the active tab has to install the neighbour it falls back to, or
+    # the widget keeps running the deleted tab's selection.
+    ("web/PresetBasketTabs.js",
+     "    this.activeTabId = null;\n"
+     "    this.switchTo(next.id);",
+     "    this.activeTabId = null;\n"
+     "    this.persist();",
+     "tests/unit/preset_basket_tabs.test.ts"),
+    # Chips dropped on the active tab must reach the widget, not only the
+    # snapshot - otherwise the prompt never changes.
+    ("web/PresetBasketTabs.js",
+     "    if (this.activeTabId === tabId) this.context.updateWidgetValue(tab.basket);",
+     "    if (false) this.context.updateWidgetValue(tab.basket);",
+     "tests/unit/preset_basket_tabs.test.ts"),
 
     # The perf/behaviour guards. Each of these must be caught by the test named
     # in the comment, or the guard is decorative.

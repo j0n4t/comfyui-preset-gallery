@@ -2,6 +2,7 @@ import ChipMenuManager from "./ChipMenuManager.js";
 import InlineEditorManager from "./InlineEditorManager.js";
 import ModalUtils from "./ModalUtils.js";
 import PngMetadata from "./PngMetadata.js";
+import PresetBasketTabs from "./PresetBasketTabs.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import RawTextareaManager from "./RawTextareaManager.js";
@@ -153,10 +154,8 @@ export default class PresetBasket {
     this.tabsSidebarList = /** @type {HTMLElement} */ (sidebar.querySelector(".j0n4t-pg-basket-tabs-list"));
     this.tabAddBtn = /** @type {HTMLElement} */ (sidebar.querySelector(".j0n4t-pg-basket-tab-add-btn"));
 
-    /** @type {BasketTab[]} */
-    this.tabs = [];
-    /** @type {string | null} */
-    this.activeTabId = null;
+    /** @type {PresetBasketTabs} */
+    this.tabState = new PresetBasketTabs(context);
     /** @type {HTMLElement | null} */
     this.tabMenu = null;
     this.initTabs();
@@ -197,84 +196,34 @@ export default class PresetBasket {
     this.initBasketActions();
   }
 
+  /**
+   * Load the saved tabs (or start one) and draw the sidebar. The tab state
+   * itself lives in `PresetBasketTabs`; this only presents it.
+   */
   initTabs() {
-    const saved = localStorage.getItem("comfy_preset_gallery_basket_tabs");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.tabs) && parsed.tabs.length > 0) {
-          this.tabs = parsed.tabs;
-          this.activeTabId = parsed.activeTabId && this.tabs.some(t => t.id === parsed.activeTabId)
-            ? parsed.activeTabId
-            : this.tabs[0].id;
-
-          const activeTab = this.tabs.find(t => t.id === this.activeTabId);
-          if (activeTab) {
-            // The app is still being constructed here, so the gallery's widget
-            // callback is not attached yet: this write installs the restored
-            // selection but cannot render anything. `PresetGalleryApp.init()`
-            // syncs the views once the cache is loaded.
-            this.context.restoreTabSelection(activeTab);
-          }
-          this.renderTabsList();
-          this.updateBasketTitle();
-          return;
-        }
-      } catch (e) {
-        console.error("Failed to parse basket tabs from localStorage", e);
-      }
-    }
-
-    // Default initial tab
-    const defaultId = "tab_" + Date.now();
-    this.tabs = [{
-      id: defaultId,
-      title: "Basket",
-      basket: [...this.context.getSelectedArray()],
-      pins: this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [],
-      rolls: this.context.rollManager?.rolls ? JSON.parse(JSON.stringify(this.context.rollManager.rolls)) : {}
-    }];
-    this.activeTabId = defaultId;
+    this.tabState.load();
     this.renderTabsList();
     this.updateBasketTitle();
-    this.persistTabs();
   }
 
   persistTabs() {
-    localStorage.setItem("comfy_preset_gallery_basket_tabs", JSON.stringify({
-      tabs: this.tabs,
-      activeTabId: this.activeTabId
-    }));
+    this.tabState.persist();
   }
 
   saveCurrentState(skipPersist = false) {
-    if (!this.activeTabId) return;
-    const tab = this.tabs.find(t => t.id === this.activeTabId);
-    if (tab) {
-      tab.basket = [...this.context.getSelectedArray()];
-      tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];
-      tab.rolls = this.context.rollManager?.rolls ? JSON.parse(JSON.stringify(this.context.rollManager.rolls)) : {};
-    }
-    if (!skipPersist) this.persistTabs();
+    this.tabState.snapshot(skipPersist);
   }
 
   /** @param {string} tabId */
   switchTab(tabId) {
-    if (this.activeTabId === tabId) return;
-    // Snapshot current tab state into this.tabs (skip persist — we do one write at the end)
-    this.saveCurrentState(true);
-
-    const tab = this.tabs.find(t => t.id === tabId);
-    if (!tab) return;
+    if (this.tabState.isActive(tabId)) return;
 
     this.selectedChipIndexes.clear();
     this.selectionAnchorIndex = null;
-    this.activeTabId = tabId;
 
-    // The one transition: install the tab's pins and rolled choices, then write
-    // its selection. The widget callback renders the grid and the basket from
-    // exactly that state, so nothing here repairs the UI afterwards.
-    this.context.restoreTabSelection(tab);
+    // The tab component installs the tab's pins, rolls and selection through the
+    // app's restore operation; the widget callback renders from that state.
+    if (!this.tabState.switchTo(tabId)) return;
 
     this.closeTabMenu();
     // Update sidebar tab active states in-place — no HTML rebuild or listener re-attachment
@@ -282,9 +231,6 @@ export default class PresetBasket {
     // structural changes (add/delete tab).
     this._updateTabSidebarActiveState();
     this.updateBasketTitle();
-
-    // Single localStorage write for the entire switch
-    this.persistTabs();
   }
 
   /**
@@ -295,42 +241,22 @@ export default class PresetBasket {
     if (!this.tabsSidebarList) return;
     this.tabsSidebarList.querySelectorAll(".j0n4t-pg-basket-tab-item").forEach((item, index) => {
       const id = item.getAttribute("data-tab-id");
-      const isActive = id === this.activeTabId;
+      const isActive = this.tabState.isActive(id);
       item.classList.toggle("active", isActive);
       item.setAttribute("aria-selected", String(isActive));
 
-      const targetTab = this.tabs.find(t => t.id === id);
+      const targetTab = this.tabState.find(id);
       const baseTitle = targetTab?.title || `Tab ${index + 1}`;
       /** @type {HTMLElement} */ (item).title = `${PresetDOM.escapeHTML(baseTitle)}${isActive ? " (Click for tab options)" : ""}`;
     });
   }
 
   createNewTab() {
-    this.saveCurrentState();
-
-    const newId = this.createTabId();
-    const newTitle = `Basket ${this.tabs.length + 1}`;
-
-    const newTab = {
-      id: newId,
-      title: newTitle,
-      basket: [],
-      pins: [],
-      rolls: {}
-    };
-
-    this.tabs.push(newTab);
     this.selectedChipIndexes.clear();
     this.selectionAnchorIndex = null;
-    this.activeTabId = newId;
-
-    // A new tab is an empty snapshot: restoring it clears the selection, the
-    // pins and the rolled choices in one transition, and the render the write
-    // triggers already sees them cleared.
-    this.context.restoreTabSelection(newTab);
+    this.tabState.create();
     this.renderTabsList();
     this.updateBasketTitle();
-    this.persistTabs();
   }
 
   /**
@@ -339,28 +265,11 @@ export default class PresetBasket {
    * @param {string} [title] - Optional title for the new tab (defaults to "Basket N")
    */
   addChipsToNewTab(chips, title) {
-    this.saveCurrentState();
-
-    const newId = this.createTabId();
-    const newTitle = title || `Basket ${this.tabs.length + 1}`;
-
-    const newTab = {
-      id: newId,
-      title: newTitle,
-      basket: [...chips],
-      pins: [],
-      rolls: {}
-    };
-
-    this.tabs.push(newTab);
     this.selectedChipIndexes.clear();
     this.selectionAnchorIndex = null;
-    this.activeTabId = newId;
-
-    this.context.restoreTabSelection(newTab);
+    this.tabState.create({ chips, title });
     this.renderTabsList();
     this.updateBasketTitle();
-    this.persistTabs();
   }
 
   /**
@@ -381,18 +290,7 @@ export default class PresetBasket {
    * @param {string[]} chips
    */
   appendChipsToTab(tabId, chips) {
-    if (!Array.isArray(chips) || chips.length === 0) return;
-    const tab = this.tabs.find(t => t.id === tabId);
-    if (!tab) return;
-
-    const currentSelections = [...(tab.basket || [])];
-    currentSelections.push(...chips);
-    tab.basket = currentSelections;
-
-    if (this.activeTabId === tabId) {
-      this.context.updateWidgetValue(currentSelections);
-    }
-    this.persistTabs();
+    this.tabState.appendChips(tabId, chips);
   }
 
   /**
@@ -481,39 +379,15 @@ export default class PresetBasket {
     });
   }
 
-  createTabId() {
-    /** @type {string} */
-    let id;
-    do {
-      id = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    } while (this.tabs.some(tab => tab.id === id));
-    return id;
-  }
-
   /** @param {string} tabId */
   duplicateTab(tabId) {
-    this.saveCurrentState();
-    const sourceTab = this.tabs.find(tab => tab.id === tabId);
-    if (!sourceTab) return;
-
-    const duplicate = {
-      ...sourceTab,
-      id: this.createTabId(),
-      title: `${sourceTab.title || `Tab ${this.tabs.indexOf(sourceTab) + 1}`} Copy`,
-      basket: [...(sourceTab.basket || [])],
-      pins: [...(sourceTab.pins || [])],
-      rolls: JSON.parse(JSON.stringify(sourceTab.rolls || {}))
-    };
-    this.tabs.push(duplicate);
     this.selectedChipIndexes.clear();
     this.selectionAnchorIndex = null;
-    this.activeTabId = duplicate.id;
-    // The duplicate carries the source tab's pins and rolled choices, so this
-    // is the same restore as a switch: one render, no second repair pass.
-    this.context.restoreTabSelection(duplicate);
+    // The duplicate carries the source tab's pins and rolled choices, so the
+    // component's restore is the same transition as a switch.
+    if (!this.tabState.duplicate(tabId)) return;
     this.renderTabsList();
     this.updateBasketTitle();
-    this.persistTabs();
   }
 
   closeTabMenu() {
@@ -535,7 +409,7 @@ export default class PresetBasket {
     menu.setAttribute("role", "menu");
     menu.innerHTML = `
       <button type="button" role="menuitem">Duplicate</button>
-      <button type="button" role="menuitem" ${this.tabs.length <= 1 ? "disabled" : ""}>Close</button>
+      <button type="button" role="menuitem" ${this.tabState.tabs.length <= 1 ? "disabled" : ""}>Close</button>
       <button type="button" role="menuitem">Export Tabs</button>
       <button type="button" role="menuitem">Import Tabs</button>
     `;
@@ -581,37 +455,30 @@ export default class PresetBasket {
    * @param {string | null} tabId
    */
   deleteTab(tabId) {
-    if (this.tabs.length <= 1) return;
-
-    const index = this.tabs.findIndex(t => t.id === tabId);
-    if (index === -1) return;
-
-    this.tabs.splice(index, 1);
-
-    if (this.activeTabId === tabId) {
-      const nextTab = this.tabs[Math.max(0, index - 1)];
-      this.activeTabId = null;
-      this.switchTab(nextTab.id);
-      // switchTab uses in-place DOM updates, so we need a full rebuild here to remove
-      // the deleted tab's element from the sidebar.
-      this.renderTabsList();
-    } else {
-      this.renderTabsList();
-      this.persistTabs();
+    // Clear the chip selection before the restore renders when the active tab
+    // goes away: its indexes belong to chips that are about to disappear.
+    if (this.tabState.isActive(tabId)) {
+      this.selectedChipIndexes.clear();
+      this.selectionAnchorIndex = null;
     }
+    if (!this.tabState.remove(tabId)) return;
+    // switchTab updates the sidebar in place, so a full rebuild is needed here to
+    // drop the removed tab's element.
+    this.renderTabsList();
+    this.updateBasketTitle();
   }
 
   renderTabsList() {
     if (!this.tabsSidebarList) return;
     this.closeTabMenu();
     let html = "";
-    this.tabs.forEach((tab, index) => {
-      const isActive = tab.id === this.activeTabId;
+    this.tabState.tabs.forEach((tab, index) => {
+      const isActive = this.tabState.isActive(tab.id);
       const displayName = `${index + 1}`;
       html += `
         <div class="j0n4t-pg-basket-tab-item ${isActive ? 'active' : ''}"
              data-tab-id="${tab.id}"
-             title="${PresetDOM.escapeHTML(tab.title || ('Tab ' + (index + 1)))}${(this.activeTabId === tab.id ? " (Click for tab options)" : "")}"
+             title="${PresetDOM.escapeHTML(tab.title || ('Tab ' + (index + 1)))}${(isActive ? " (Click for tab options)" : "")}"
              tabindex="0" role="tab" aria-selected="${isActive}">
           ${displayName}
         </div>
@@ -623,7 +490,7 @@ export default class PresetBasket {
       const openOptions = () => {
         const tabId = item.getAttribute("data-tab-id");
         if (tabId) {
-          if (this.activeTabId === tabId) {
+          if (this.tabState.isActive(tabId)) {
             const tabRect = item.getBoundingClientRect();
             this.openTabMenu(tabId, tabRect);
           }
@@ -650,7 +517,7 @@ export default class PresetBasket {
     const titleEl = this.context.dom.basketTitle;
     if (!titleEl) return;
 
-    const tab = this.tabs.find(t => t.id === this.activeTabId);
+    const tab = this.tabState.active();
     if (!tab) return;
 
     const currentTitle = tab.title || '';
@@ -674,10 +541,9 @@ export default class PresetBasket {
       titleEl.style.display = '';
 
       if (save && newVal && newVal !== currentTitle) {
-        tab.title = newVal;
+        this.tabState.rename(newVal);
         this.updateBasketTitle();
         this._updateTabSidebarActiveState();
-        this.persistTabs();
       }
     };
 
@@ -706,7 +572,7 @@ export default class PresetBasket {
     const titleEl = this.context.dom.basketTitle;
     if (!titleEl) return;
 
-    const tab = this.tabs.find(t => t.id === this.activeTabId);
+    const tab = this.tabState.active();
     if (!tab) return;
 
     const icon = '\u{1F9FA}';
@@ -719,7 +585,7 @@ export default class PresetBasket {
   async exportTabs() {
     const { default: ModalUtils } = await import("./ModalUtils.js");
 
-    const tabRows = this.tabs.map((tab, index) => `
+    const tabRows = this.tabState.tabs.map((tab, index) => `
       <label style="display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer;">
         <input type="checkbox" data-tab-index="${index}" checked />
         <span>${PresetDOM.escapeHTML(tab.title || `Tab ${index + 1}`)}</span>
@@ -746,7 +612,7 @@ export default class PresetBasket {
               modalRef.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
                 if (/** @type {HTMLInputElement} */ (checkbox).checked) {
                   const index = Number(/** @type { HTMLInputElement } */(checkbox).dataset.tabIndex);
-                  if (index >= 0 && index < this.tabs.length) {
+                  if (index >= 0 && index < this.tabState.tabs.length) {
                     selectedIndexes.push(index);
                   }
                 }
@@ -771,7 +637,7 @@ export default class PresetBasket {
     const exportData = {
       version: 1,
       tabs: selectedIndexes.map(index => {
-        const tab = this.tabs[index];
+        const tab = this.tabState.tabs[index];
         return {
           title: tab.title,
           basket: tab.basket.join(", "),
@@ -873,22 +739,10 @@ export default class PresetBasket {
         return;
       }
 
-      for (const tab of selectedTabs) {
-        const basketStr = Array.isArray(tab.basket) ? tab.basket.join(", ") : (tab.basket || "");
-        const pinsStr = Array.isArray(tab.pins) ? tab.pins.join(", ") : (tab.pins || "");
-        const newTab = {
-          id: this.createTabId(),
-          title: tab.title || "Imported Tab",
-          basket: basketStr ? basketStr.split(",").map(s => s.trim()).filter(Boolean) : [],
-          pins: pinsStr ? pinsStr.split(",").map(s => s.trim()).filter(Boolean) : [],
-          rolls: tab.rolls && typeof tab.rolls === "object" ? tab.rolls : {}
-        };
-        this.tabs.push(newTab);
-      }
+      this.tabState.insertMany(selectedTabs);
 
       this.renderTabsList();
       this.updateBasketTitle();
-      this.persistTabs();
 
       await ModalUtils.alert(`Successfully imported ${selectedTabs.length} tab(s).`);
     } catch (err) {
@@ -2010,15 +1864,9 @@ export default class PresetBasket {
 
   /** @param {string[]} activeList  */
   render(activeList) {
-    if (this.activeTabId) {
-      const tab = this.tabs.find(t => t.id === this.activeTabId);
-      if (tab) {
-        tab.basket = [...activeList];
-        tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];
-        tab.rolls = this.context.rollManager?.rolls ? JSON.parse(JSON.stringify(this.context.rollManager.rolls)) : {};
-        this.persistTabs();
-      }
-    }
+    // The tab is snapshotted as it renders: this is the one place that sees the
+    // selection, the pins and the rolls together.
+    this.tabState.snapshotList(activeList);
 
     if (!this._updatingTextarea) {
       this.context.rollManager.resetCounts();
