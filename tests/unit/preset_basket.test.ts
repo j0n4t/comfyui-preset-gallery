@@ -58,6 +58,7 @@ function makeBasketEnv() {
   const pinned = new Set<string>();
   const calls = {
     updateWidgetValue: [] as string[][],
+    restoreTabSelection: [] as { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }[],
     transferPin: [] as [string, string][],
     savePins: 0,
     syncUI: [] as string[],
@@ -92,6 +93,16 @@ function makeBasketEnv() {
       widgetValue = arr.join(", ");
       context.widget.value = widgetValue; // the real context keeps the widget in sync
     },
+    restoreTabSelection: (tab: { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }) => {
+      calls.restoreTabSelection.push(tab);
+      pinned.clear();
+      for (const pin of tab.pins ?? []) pinned.add(pin);
+      calls.savePins++;
+      context.rollManager.rolls = { ...(tab.rolls ?? {}) };
+      const arr = tab.basket ?? [];
+      widgetValue = arr.join(", ");
+      context.widget.value = widgetValue;
+    },
     transferPin: (oldVal: string, newVal: string) => { calls.transferPin.push([oldVal, newVal]); },
     savePins: () => { calls.savePins++; },
     syncUI: (val: string) => { calls.syncUI.push(val); },
@@ -99,6 +110,19 @@ function makeBasketEnv() {
     setPanelCollapseState: () => {},
     grid: { syncSelection: () => {} },
   };
+
+  // The real context exposes `pinnedChips` as an accessor onto the session, so
+  // assigning it replaces the set every reader sees. Model that over one set so
+  // `env.pinned` stays valid across an assignment.
+  Object.defineProperty(context, "pinnedChips", {
+    get: () => pinned,
+    set: (value: Set<string>) => {
+      pinned.clear();
+      for (const pin of value) pinned.add(pin);
+    },
+    enumerable: true,
+    configurable: true,
+  });
 
   return {
     container,
@@ -120,7 +144,7 @@ function makeBasket() {
 }
 
 /**
- * A basket whose fake `updateWidgetValue` renders, the way the real one does.
+ * A basket whose fake transitions render, the way the real ones do.
  *
  * The host's `set value(v)` fires the widget callback, and that callback calls
  * syncUI -> basket.render. The plain mock above only records the call, so a
@@ -131,10 +155,17 @@ function makeRenderingBasket() {
   const env = makeBasketEnv();
   const { basket: basketEl, ...rest } = env;
   const basket = new PresetBasket(rest.container, basketEl, rest.textarea, rest.context);
-  const record = rest.context.updateWidgetValue;
+  const render = () => basket.render(rest.context.getSelectedArray());
+
+  const recordUpdate = rest.context.updateWidgetValue;
   rest.context.updateWidgetValue = (arr: string[]) => {
-    record(arr);
-    basket.render(rest.context.getSelectedArray());
+    recordUpdate(arr);
+    render();
+  };
+  const recordRestore = rest.context.restoreTabSelection;
+  rest.context.restoreTabSelection = (tab) => {
+    recordRestore(tab);
+    render();
   };
   return { basket, ...rest };
 }
@@ -215,7 +246,7 @@ test("persistTabs writes the active tab id", () => {
   assert.equal(saved.tabs.length, 1);
 });
 
-test("switchTab moves to another tab and re-renders its basket", () => {
+test("switchTab moves to another tab and renders its basket", () => {
   fakeStorage({
     comfy_preset_gallery_basket_tabs: JSON.stringify({
       tabs: [
@@ -225,7 +256,7 @@ test("switchTab moves to another tab and re-renders its basket", () => {
       activeTabId: "t1",
     }),
   });
-  const { basket } = makeBasket();
+  const { basket } = makeRenderingBasket();
 
   click(tabItems(basket)[1]);
 
@@ -236,14 +267,32 @@ test("switchTab moves to another tab and re-renders its basket", () => {
   assert.ok(!tabItems(basket)[0].classList.contains("active"));
 });
 
+test("switchTab renders the restored tab once", () => {
+  fakeStorage({
+    comfy_preset_gallery_basket_tabs: JSON.stringify({
+      tabs: [
+        { id: "t1", title: "One", basket: ["faces/portrait"], pins: [], rolls: {} },
+        { id: "t2", title: "Two", basket: ["faces/macro"], pins: [], rolls: {} },
+      ],
+      activeTabId: "t1",
+    }),
+  });
+  const { basket } = makeRenderingBasket();
+  const targetId = basket.tabs[1].id;
+
+  assert.equal(countRenders(basket, () => basket.switchTab(targetId)), 1);
+  assert.equal(chips(basket).length, 1);
+});
+
 test("createNewTab empties the basket and the widget", () => {
-  const { basket, calls } = makeBasket();
+  const { basket, calls, widgetValue } = makeBasket();
   basket.render(["faces/portrait"]);
 
   click(basket.container.querySelector(".j0n4t-pg-basket-tab-add-btn")!);
 
   assert.equal(basket.tabs.length, 2);
-  assert.deepEqual(calls.updateWidgetValue.at(-1), [], "the new tab starts empty");
+  assert.deepEqual(calls.restoreTabSelection.at(-1)?.basket, [], "the new tab starts empty");
+  assert.equal(widgetValue(), "", "the widget follows the new tab");
   assert.equal(basket.tabs[1].title, "Basket 2");
 });
 

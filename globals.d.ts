@@ -182,6 +182,7 @@ type GalleryContext = {
   syncUI: (val: string) => void | Promise<void>;
   loadGallery: () => Promise<void>;
   updateWidgetValue: (arr: string[]) => void;
+  restoreTabSelection: (tab: { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }) => void;
   applyLibraries: (ids: string[]) => void;
   selectionKey: (key: string) => string;
   refreshLibraries: () => Promise<void>;

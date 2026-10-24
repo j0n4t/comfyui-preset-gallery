@@ -210,14 +210,11 @@ export default class PresetBasket {
 
           const activeTab = this.tabs.find(t => t.id === this.activeTabId);
           if (activeTab) {
-            this.context.widget.value = (activeTab.basket || []).join(", ");
-            this.context.pinnedChips = new Set(activeTab.pins || []);
-            if (typeof this.context.savePins === "function") {
-              this.context.savePins();
-            }
-            if (this.context.rollManager) {
-              this.context.rollManager.rolls = JSON.parse(JSON.stringify(activeTab.rolls || {}));
-            }
+            // The app is still being constructed here, so the gallery's widget
+            // callback is not attached yet: this write installs the restored
+            // selection but cannot render anything. `PresetGalleryApp.init()`
+            // syncs the views once the cache is loaded.
+            this.context.restoreTabSelection(activeTab);
           }
           this.renderTabsList();
           this.updateBasketTitle();
@@ -274,25 +271,10 @@ export default class PresetBasket {
     this.selectionAnchorIndex = null;
     this.activeTabId = tabId;
 
-    // Restore the new tab's context. Set widget.value directly to skip updateWidgetValue's
-    // pin-pruning loop and widget.callback (no need to prune — the restored tab's basket is
-    // already in sync with its saved pins, and we don't want to fire graph callbacks mid-switch).
-    this.context.pinnedChips = new Set(tab.pins || []);
-    if (this.context.rollManager) {
-      this.context.rollManager.rolls = JSON.parse(JSON.stringify(tab.rolls || {}));
-    }
-    this.context.widget.value = (tab.basket || []).join(", ");
-
-    // Sync the gallery grid selection without going through the full syncUI pipeline,
-    // which would trigger syncEditorHighlight (unnecessary — editor key unchanged) and
-    // a second basket.render() call.
-    this.context.grid.syncSelection(tab.basket || []);
-
-    // Render basket chips directly under the tab-switching guard so render() skips its
-    // own persistTabs() call and in-render snapshot logic.
-    this._isSwitchingTab = true;
-    this.render(tab.basket || []);
-    this._isSwitchingTab = false;
+    // The one transition: install the tab's pins and rolled choices, then write
+    // its selection. The widget callback renders the grid and the basket from
+    // exactly that state, so nothing here repairs the UI afterwards.
+    this.context.restoreTabSelection(tab);
 
     this.closeTabMenu();
     // Update sidebar tab active states in-place — no HTML rebuild or listener re-attachment
@@ -342,19 +324,10 @@ export default class PresetBasket {
     this.selectionAnchorIndex = null;
     this.activeTabId = newId;
 
-    // Clear the shared pin/roll state BEFORE the value write. updateWidgetValue
-    // renders, and render() snapshots the active tab's pins and rolls - so
-    // clearing them after would snapshot the old tab's pins into the new tab
-    // and need a second render to correct.
-    this.context.pinnedChips = new Set();
-    if (typeof this.context.savePins === "function") {
-      this.context.savePins();
-    }
-    if (this.context.rollManager) {
-      this.context.rollManager.rolls = {};
-    }
-
-    this.context.updateWidgetValue([]);
+    // A new tab is an empty snapshot: restoring it clears the selection, the
+    // pins and the rolled choices in one transition, and the render the write
+    // triggers already sees them cleared.
+    this.context.restoreTabSelection(newTab);
     this.renderTabsList();
     this.updateBasketTitle();
     this.persistTabs();
@@ -384,15 +357,7 @@ export default class PresetBasket {
     this.selectionAnchorIndex = null;
     this.activeTabId = newId;
 
-    this.context.pinnedChips = new Set();
-    if (typeof this.context.savePins === "function") {
-      this.context.savePins();
-    }
-    if (this.context.rollManager) {
-      this.context.rollManager.rolls = {};
-    }
-
-    this.context.updateWidgetValue([...chips]);
+    this.context.restoreTabSelection(newTab);
     this.renderTabsList();
     this.updateBasketTitle();
     this.persistTabs();
@@ -543,15 +508,9 @@ export default class PresetBasket {
     this.selectedChipIndexes.clear();
     this.selectionAnchorIndex = null;
     this.activeTabId = duplicate.id;
-    this.context.pinnedChips = new Set(duplicate.pins);
-    if (this.context.rollManager) {
-      this.context.rollManager.rolls = JSON.parse(JSON.stringify(duplicate.rolls));
-    }
-    this.context.updateWidgetValue(duplicate.basket);
-    this.context.savePins();
-    // No second render: updateWidgetValue renders, and the pins and rolls were
-    // already swapped to the duplicate's above, so that render's tab snapshot
-    // is already correct.
+    // The duplicate carries the source tab's pins and rolled choices, so this
+    // is the same restore as a switch: one render, no second repair pass.
+    this.context.restoreTabSelection(duplicate);
     this.renderTabsList();
     this.updateBasketTitle();
     this.persistTabs();
@@ -2051,7 +2010,7 @@ export default class PresetBasket {
 
   /** @param {string[]} activeList  */
   render(activeList) {
-    if (this.activeTabId && !this._isSwitchingTab) {
+    if (this.activeTabId) {
       const tab = this.tabs.find(t => t.id === this.activeTabId);
       if (tab) {
         tab.basket = [...activeList];

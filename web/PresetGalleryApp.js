@@ -293,16 +293,47 @@ export default class PresetGalleryApp {
     };
   }
 
-  /** @param {string[]} arr  */
-  updateWidgetValue(arr) {
-    // Setting `widget.value` goes through the host's DOMWidget setter, which
-    // fires the widget callback - and that callback calls syncUI. Calling the
-    // callback or syncUI again here re-rendered the whole basket two extra
-    // times per interaction, on a path that runs for every chip drag, paste
-    // and grid click. Render once and let the setter's own callback do it.
+  /**
+   * The one write to the host widget, and so the one selection transition.
+   *
+   * `widget.value` goes through ComfyUI's DOMWidget setter, which fires the
+   * widget callback; that callback is what renders the grid, the basket and the
+   * evaluated value. Every action - add, edit, reorder, delete, paste, roll,
+   * tab restore - ends in exactly one of these writes and therefore renders
+   * once. Anything that repairs the UI after a write is a second render.
+   * @param {string[]} arr
+   */
+  writeSelection(arr) {
     this.widget.value = arr.join(", ");
-    this.session.prunePins(arr);
     if (this.node.graph) this.node.graph._version++;
+  }
+
+  /**
+   * A user edit to the selection.
+   *
+   * An edit can drop a pin - deleting the pinned chip, replacing the selection
+   * - and the render the write triggers snapshots the pins into the active tab,
+   * so the prune has to come first or the dropped pin is saved and comes back
+   * on reload.
+   * @param {string[]} arr
+   */
+  updateWidgetValue(arr) {
+    this.session.prunePins(arr);
+    this.writeSelection(arr);
+  }
+
+  /**
+   * Put a tab's saved state live: its pins and rolled choices first, then its
+   * selection, so the render the write triggers already reads the restored
+   * state. Same transition as a user edit minus the prune - a tab's basket and
+   * pins were saved together.
+   * @param {{ basket?: string[], pins?: string[], rolls?: Record<string, string> }} tab
+   */
+  restoreTabSelection(tab) {
+    this.session.pinnedChips = new Set(tab.pins || []);
+    this.session.savePins();
+    this.session.rollManager.rolls = JSON.parse(JSON.stringify(tab.rolls || {}));
+    this.writeSelection(tab.basket || []);
   }
 
   /** @param {boolean} col  */

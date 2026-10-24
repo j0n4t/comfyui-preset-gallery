@@ -49,6 +49,51 @@
 - **Copy Functionality**: Copies selected chips to the clipboard as compatible plain text and, when supported, retains pin and roll state for pasting back into the basket.
 - **Gallery Highlighting**: The `locatePreset` method locates the corresponding preset in the main UI gallery, expands its parent folder if collapsed, scrolls it into view, and highlights it with a temporary visual glow.
 
+## State Ownership
+
+Three things describe "what is selected", and only one of them is authoritative:
+
+| State | Owner | Lives in |
+| --- | --- | --- |
+| Ordered selection (the raw preset tokens the node runs) | the host widget | `widget.value`, comma separated |
+| Pins of the active tab | the session | `PresetSession.pinnedChips` (persisted per node as `j0n4t-pg-pins-<nodeId>`) |
+| Rolled choices of the active tab | the session | `PresetSession.rollManager.rolls` |
+
+A tab is a snapshot of exactly those three: `{ id, title, basket, pins, rolls }`,
+persisted with the active tab id under `comfy_preset_gallery_basket_tabs`.
+`render()` is what takes the snapshot - it sees the selection it was handed and
+the pins and rolls in force - so a tab's saved state always matches the last
+render. The grid selection, the chips and the evaluated prompt are *derived*
+views of the widget value and are never a source of truth.
+
+### Selection transitions
+
+Every action ends in one of two operations on the app, and both end in a single
+write to the widget:
+
+- **A user edit** - add, edit, reorder, delete, paste, roll - calls
+  `context.updateWidgetValue(arr)`. It prunes pins the new selection no longer
+  contains, then writes the widget.
+- **A tab restore** - switch, create, duplicate, add-chips-to-new-tab, and the
+  constructor restoring the saved active tab - calls
+  `context.restoreTabSelection(tab)`. It installs the tab's pins and rolled
+  choices first, persists the pins, then writes the selection, so the render the
+  write triggers already reads the restored state.
+
+ComfyUI's `DOMWidget` value setter fires the widget callback, and that callback
+(`syncUI` + prompt composition) is the single render entry: the grid, the basket
+and the evaluated prompt are all rebuilt from the written value in one pass. So
+nothing may repair the UI after a write - that would be a second full rebuild,
+which is what tab switching used to do.
+
+Two exceptions, both deliberate:
+
+- `PresetGalleryApp.init()` syncs once after construction. The constructor
+  restores the saved tab before the gallery's widget callback is attached, so
+  that write installs state but cannot render.
+- Pin and re-roll actions do not change the selection, so they call `syncUI`
+  directly to refresh the views.
+
 ## CSS Architecture
 
 The class natively handles its own styling injection via `PresetDOM.injectStyles`.

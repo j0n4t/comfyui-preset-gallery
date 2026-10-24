@@ -32,6 +32,7 @@ type FakeView = {
   syncUI: (val: string) => void | Promise<void>;
   loadGallery: () => Promise<void>;
   updateWidgetValue: (arr: string[]) => void;
+  restoreTabSelection: (tab: { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }) => void;
   applyLibraries: (ids: string[]) => void;
   selectionKey: (key: string) => string;
   refreshLibraries: () => Promise<void>;
@@ -49,6 +50,7 @@ function fakeView(): FakeView & { calls: unknown[][] } {
     openEditorForPreset: record("openEditorForPreset"),
     syncUI: record("syncUI"),
     updateWidgetValue: record("updateWidgetValue"),
+    restoreTabSelection: record("restoreTabSelection"),
     applyLibraries: record("applyLibraries"),
     selectionKey: (key: string) => { calls.push(["selectionKey", key]); return key; },
     refreshLibraries: () => Promise.resolve(),

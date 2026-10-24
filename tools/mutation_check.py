@@ -57,6 +57,15 @@ MUTATIONS = [
      "return (colonIdx === -1 ? inner : inner.slice(0, colonIdx)).trim();",
      "return inner;",
      "tests/unit/variant_color.test.ts"),
+    # A tab is a snapshot of the selection AND the pins and rolls in force. If
+    # render stops carrying the pins, a tab saved from a pinned basket comes
+    # back unpinned on the next switch or reload.
+    ("web/PresetBasket.js",
+     "        tab.basket = [...activeList];\n"
+     "        tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];",
+     "        tab.basket = [...activeList];\n"
+     "        tab.pins = [];",
+     "tests/unit/preset_basket.test.ts"),
 
     # The perf/behaviour guards. Each of these must be caught by the test named
     # in the comment, or the guard is decorative.

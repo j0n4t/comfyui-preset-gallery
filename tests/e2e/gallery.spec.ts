@@ -412,6 +412,38 @@ test.describe('basket', () => {
     await expect(chips(page)).toHaveCount(2);
     expect(await renderCount(page)).toBe(1);
   });
+
+  // Tab restoration used to write the widget, then repair the grid and rebuild
+  // the basket by hand - two renders for one switch, on top of the one the
+  // widget write already caused.
+  test('switching tabs renders the basket once', async ({ page }) => {
+    await page.locator('.j0n4t-pg-basket-tab-add-btn').click();
+    await page.locator('.j0n4t-pg-item[data-style="Faces/Macro"]').click();
+    await expect.poll(() => widgetValue(page)).toBe('Faces/Macro');
+
+    await startCountingRenders(page);
+    await page.locator('.j0n4t-pg-basket-tab-item').first().click();
+    await expect(chips(page)).toHaveCount(1);
+    expect(await renderCount(page)).toBe(1);
+  });
+
+  // Pins are per tab and a tab is snapshotted as it renders, so a deleted chip
+  // has to be un-pinned before that snapshot is taken - otherwise the pin
+  // survives in the saved tab and comes back on reload.
+  test('deleting a pinned chip drops its pin from the saved tab', async ({ page }) => {
+    await page.locator('.j0n4t-pg-item[data-style="Scenery/Hills"]').click();
+    await page.locator('.j0n4t-pg-basket-multiselect-btn').click();
+    await chips(page).nth(0).click();
+    await page.locator('.j0n4t-pg-basket-pin-btn').click();
+    await page.locator('.j0n4t-pg-basket-delete-btn').click();
+    await expect(chips(page)).toHaveCount(1);
+
+    const pins = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('comfy_preset_gallery_basket_tabs') ?? '{}');
+      return saved.tabs?.[0]?.pins ?? null;
+    });
+    expect(pins).toEqual([]);
+  });
 });
 
 test.describe('panel', () => {
@@ -711,6 +743,11 @@ test.describe('persistence', () => {
     await expect(chips(page).nth(1)).toHaveClass(/pinned/);
     await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait, Scenery/Hills');
     await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, rolling hills');
+
+    // The restore also puts the gallery grid back on the restored selection.
+    await expect(page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]')).toHaveClass(/selected/);
+    await expect(page.locator('.j0n4t-pg-item[data-style="Scenery/Hills"]')).toHaveClass(/selected/);
+    await expect(page.locator('.j0n4t-pg-item[data-style="Faces/Macro"]')).not.toHaveClass(/selected/);
   });
 });
 
