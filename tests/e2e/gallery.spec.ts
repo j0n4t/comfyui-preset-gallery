@@ -13,6 +13,7 @@ type Library = Record<string, { preset?: string }>;
 const FIXTURE: Library = {
   'Faces/Portrait': { preset: 'portrait, studio lighting' },
   'Faces/Macro': { preset: 'macro, close-up' },
+  'Faces/Variants': { preset: '{Scenery}' },
   'Scenery/Hills': { preset: 'rolling hills' },
   'Scenery/Sky': { preset: 'dramatic sky' },
   '_/combo/_default': { preset: 'masterpiece' },
@@ -31,12 +32,12 @@ const LIBRARIES = [
   { id: 'sample', name: 'Sample', default: false },
 ];
 
-const ITEMS_MAIN = 5;
-const ITEMS_MAIN_VISIBLE = 4; // the underscore-prefixed combo default is hidden
-// both libraries enabled by default: main (5) + sample (3), with the one name
+const ITEMS_MAIN = 6;
+const ITEMS_MAIN_VISIBLE = 5; // the underscore-prefixed combo default is hidden
+// both libraries enabled by default: main (6) + sample (3), with the one name
 // they share listed twice
-const ITEMS_MERGED = 8;
-const ITEMS_MERGED_VISIBLE = 7;
+const ITEMS_MERGED = 9;
+const ITEMS_MERGED_VISIBLE = 8;
 
 let library: Library = {};
 let posts: Library[] = [];
@@ -47,6 +48,13 @@ const visibleItems = (page: Page) => page.locator('.j0n4t-pg-item:not(.j0n4t-pg-
 const widgetValue = (page: Page) =>
   page.evaluate(() => (window as unknown as { __gallery: { widget: { value: string } } })
     .__gallery.widget.value);
+const serializedPrompt = (page: Page) =>
+  page.evaluate(() => {
+    const node = (window as unknown as {
+      __pgNode: { widgets: Array<{ name: string; serializeValue?: () => string }> };
+    }).__pgNode;
+    return node.widgets.find((widget) => widget.name === 'evaluated_preset')?.serializeValue?.() ?? '';
+  });
 
 type Gallery = {
   basket: { render: (...args: unknown[]) => unknown };
@@ -177,13 +185,13 @@ test.describe('search', () => {
   });
 
   test('keeps matching presets and hides the rest', { tag: '@smoke' }, async ({ page }) => {
-    await page.locator('.j0n4t-pg-search').fill('scenery');
-    await expect(visibleItems(page)).toHaveCount(2);
+    await page.locator('.j0n4t-pg-search').fill('hills');
+    await expect(visibleItems(page)).toHaveCount(1);
   });
 
   test('clearing restores the whole grid', { tag: '@smoke' }, async ({ page }) => {
-    await page.locator('.j0n4t-pg-search').fill('scenery');
-    await expect(visibleItems(page)).toHaveCount(2);
+    await page.locator('.j0n4t-pg-search').fill('hills');
+    await expect(visibleItems(page)).toHaveCount(1);
     await page.locator('.j0n4t-pg-search-clear').click();
     await expect(visibleItems(page)).toHaveCount(ITEMS_MERGED_VISIBLE);
   });
@@ -224,6 +232,107 @@ test.describe('basket', () => {
     await page.locator('.j0n4t-pg-item').first().click();
     await expect(chips(page)).toHaveCount(2);
     expect((await widgetValue(page)).length).toBeGreaterThan(0);
+  });
+
+  test('changing a chip variant updates its selection and generated prompt', async ({ page }) => {
+    await page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]').click();
+    await page.locator('.j0n4t-pg-item[data-style="Faces/Variants"]').click();
+    await expect(chips(page)).toHaveCount(1);
+
+    await chips(page).first().click();
+    const variant = page.locator('.j0n4t-pg-var-input');
+    await variant.fill('Sky');
+    await page.locator('.j0n4t-pg-filter-autocomplete-item')
+      .filter({ hasText: 'Scenery/Sky' }).click();
+
+    await expect(chips(page).first().locator('.j0n4t-pg-basket-chip-label')).toHaveText('Sky');
+    await expect.poll(() => widgetValue(page)).toBe('{Scenery:Scenery/Sky}');
+    await expect.poll(() => serializedPrompt(page)).toBe('dramatic sky');
+  });
+
+  test('changing a chip weight updates its selection and generated prompt', async ({ page }) => {
+    await page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]').click();
+    await page.locator('.j0n4t-pg-item[data-style="Faces/Variants"]').click();
+    await chips(page).first().click();
+    const variant = page.locator('.j0n4t-pg-var-input');
+    await variant.fill('Sky');
+    await page.locator('.j0n4t-pg-filter-autocomplete-item')
+      .filter({ hasText: 'Scenery/Sky' }).click();
+    await page.locator('.j0n4t-pg-chip-popup [data-action="toggle-weight"]').click();
+    await page.locator('.j0n4t-pg-chip-popup [data-action="weight-plus"]').click();
+
+    await expect.poll(() => widgetValue(page)).toBe('({Scenery:Scenery/Sky}:1.05)');
+    await expect.poll(() => serializedPrompt(page)).toBe('(dramatic sky:1.05)');
+  });
+
+  test('choosing None for a variant omits it from the generated prompt', async ({ page }) => {
+    await page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]').click();
+    await page.locator('.j0n4t-pg-item[data-style="Faces/Variants"]').click();
+    await chips(page).first().click();
+    const variant = page.locator('.j0n4t-pg-var-input');
+    await variant.fill('None');
+    await page.locator('.j0n4t-pg-filter-autocomplete-item')
+      .filter({ hasText: 'None (Omit)' }).click();
+
+    await expect.poll(() => widgetValue(page)).toBe('{Scenery:none}');
+    await expect.poll(() => serializedPrompt(page)).toBe('');
+  });
+
+  test('dragging a chip changes Basket order and generated prompt order', async ({ page }) => {
+    await page.locator('.j0n4t-pg-item[data-style="Scenery/Hills"]').click();
+    await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait, Scenery/Hills');
+    const portrait = chips(page).filter({ hasText: 'Portrait' });
+    const hills = chips(page).filter({ hasText: 'Hills' });
+
+    await hills.dragTo(portrait, { targetPosition: { x: 1, y: 10 } });
+
+    await expect(chips(page).nth(0)).toContainText('Hills');
+    await expect(chips(page).nth(1)).toContainText('Portrait');
+    await expect.poll(() => widgetValue(page)).toBe('Scenery/Hills, Faces/Portrait');
+    await expect.poll(() => serializedPrompt(page)).toBe('rolling hills, portrait, studio lighting');
+  });
+
+  test('copying and pasting selected chips appends them in order with pin state', async ({ page }) => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.locator('.j0n4t-pg-item[data-style="Scenery/Hills"]').click();
+    await page.locator('.j0n4t-pg-basket-multiselect-btn').click();
+    await chips(page).nth(0).click();
+    await chips(page).nth(1).click();
+    await page.locator('.j0n4t-pg-basket-pin-btn').click();
+    await page.locator('.j0n4t-pg-basket-copy-btn').click();
+    await page.locator('.j0n4t-pg-basket-paste-btn').click();
+
+    await expect(chips(page)).toHaveCount(4);
+    await expect.poll(() => widgetValue(page)).toBe(
+      'Faces/Portrait, Scenery/Hills, Faces/Portrait, Scenery/Hills'
+    );
+    await expect(chips(page).nth(2)).toHaveClass(/pinned/);
+    await expect(chips(page).nth(3)).toHaveClass(/pinned/);
+    await expect.poll(() => serializedPrompt(page)).toBe(
+      'portrait, studio lighting, rolling hills, portrait, studio lighting, rolling hills'
+    );
+  });
+
+  test('deleting a selected chip removes only that chip from the prompt', async ({ page }) => {
+    await page.locator('.j0n4t-pg-item[data-style="Scenery/Hills"]').click();
+    await page.locator('.j0n4t-pg-basket-multiselect-btn').click();
+    await chips(page).nth(1).click();
+    await page.locator('.j0n4t-pg-basket-delete-btn').click();
+
+    await expect(chips(page)).toHaveCount(1);
+    await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait');
+    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting');
+  });
+
+  test('Alt+ArrowLeft moves the focused chip and its prompt before the prior chip', async ({ page }) => {
+    await page.locator('.j0n4t-pg-item[data-style="Scenery/Hills"]').click();
+    await chips(page).nth(1).focus();
+    await chips(page).nth(1).press('Alt+ArrowLeft');
+
+    await expect(chips(page).nth(0)).toContainText('Hills');
+    await expect(chips(page).nth(1)).toContainText('Portrait');
+    await expect.poll(() => widgetValue(page)).toBe('Scenery/Hills, Faces/Portrait');
+    await expect.poll(() => serializedPrompt(page)).toBe('rolling hills, portrait, studio lighting');
   });
 
   test('raw mode adds chips from typed text', { tag: '@smoke' }, async ({ page }) => {
