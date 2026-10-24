@@ -305,6 +305,7 @@ styles/anime, {character:warrior{gender:female}}, <lora:detail_enhancer:0.5>
 ## 6. Summary for Developers
 
 When modifying or building upon `PresetLogic.js`:
+* **Compose prompt text through `PresetSession.composePrompt(rawValue)`**, not by calling `expandRecursively` directly. It resets the roll counters first, which is what makes the displayed evaluated widget and the queued prompt the same expansion of the same selection.
 * **Always maintain depth tracking** when introducing new delimiter patterns or bracket types to prevent breaking `splitPresets()`.
 * **Ensure `RollManager` instances are passed** through recursive calls (`expandRecursively`) to guarantee consistent choices across expansion passes and UI state evaluations.
 * **Keep `VAR_REGEX` balanced** if adjusting regex capturing groups, as both `expandRecursively` and `parseChipDetails` rely on identical group index structures (`gName` = group 1, `sVal` = group 2).

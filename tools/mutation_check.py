@@ -21,6 +21,14 @@ MUTATIONS = [
      "this.counts[group] = idx + 1;",
      "this.counts[group] = idx;",
      "tests/unit/roll_manager.test.ts"),
+    # Prompt composition starts the roll counters from zero so the displayed
+    # value and the queued prompt reach the same picks. Without the reset a
+    # second composition advances the counters and draws a different variant.
+    ("web/PresetSession.js",
+     "    this.rollManager.resetCounts();\n"
+     "    return PresetLogic.expandRecursively",
+     "    return PresetLogic.expandRecursively",
+     "tests/unit/preset_session.test.ts"),
     ("web/NestedPresetUtils.js",
      "if (!includeColors) continue;",
      "if (false) continue;",
@@ -42,7 +50,7 @@ MUTATIONS = [
      "summary.sameCount++;\n                } else {",
      "tests/unit/export_utils.test.ts"),
     ("web/PresetEditor.js",
-     "return uniqueKey !== editingKey && !!cache[uniqueKey];",
+     "return uniqueKey !== editingPlainKey && !!cache[uniqueKey];",
      "return !!cache[uniqueKey];",
      "tests/unit/preset_editor.test.ts"),
     ("web/RawTextareaManager.js",

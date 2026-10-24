@@ -138,6 +138,10 @@ export default class PresetGalleryApp {
     this.node = node;
     this.widget = widget;
     this.session = new PresetSession({ nodeId: node?.id || "global" });
+    // True while an automatic roll is waiting on its delay. See
+    // scheduleAutomaticRoll: one queue press schedules one roll, however many
+    // times the host serializes the prompt.
+    this.autoRollPending = false;
     this.dom = this.buildDOMStructure();
     this.context = createGalleryContext({
       session: this.session,
@@ -480,6 +484,29 @@ export default class PresetGalleryApp {
     if (!this.settings || !this.settings.rollOnSeedChange) return false;
     if (!this.node.graph) return false;
     return this.session.detectSeedChange(this.node.graph._nodes);
+  }
+
+  /**
+   * The automatic roll the host asks for when it serializes the prompt.
+   *
+   * ComfyUI builds the prompt once per queued batch item, so one queue press
+   * can reach this several times; only the first request is kept, or a single
+   * press rolls the basket once per batch item. The roll itself still runs on
+   * the 150ms delay it always has, so it lands after the prompt it was decided
+   * for has been built, and manual rolls do not come through here at all.
+   */
+  scheduleAutomaticRoll() {
+    if (this.autoRollPending) return;
+
+    const seedChanged = this.checkSeedChange();
+    if (!this.settings?.rollOnGeneration && !(this.settings?.rollOnSeedChange && seedChanged)) return;
+
+    this.autoRollPending = true;
+    const overwrite = this.settings?.diceBehavior === "overwrite";
+    setTimeout(() => {
+      this.autoRollPending = false;
+      this.triggerRoll(overwrite);
+    }, 150);
   }
 
   bindEvents() {

@@ -543,6 +543,33 @@ test.describe('the engine', () => {
   test('serializeValue expands the selection to the final prompt', async ({ page }) => {
     expect(await serializedPrompt(page)).toBe('portrait, studio lighting');
   });
+
+  // The plan's done-when for prompt composition: the evaluated widget the user
+  // sees and the prompt that is queued are the same expansion. A variant group
+  // is where they can drift, because its choice is rolled once and both paths
+  // have to reuse that choice rather than draw again.
+  test('the displayed evaluated value matches the serialized prompt', async ({ page }) => {
+    await page.evaluate(() => {
+      const node = (window as unknown as {
+        __pgNode: { widgets: Array<{ name: string; value: string }> };
+      }).__pgNode;
+      node.widgets.find((widget) => widget.name === 'preset_selection')!.value = 'Faces/Variants';
+    });
+
+    const { displayed, serialized } = await page.evaluate(() => {
+      const node = (window as unknown as {
+        __pgNode: {
+          widgets: Array<{ name: string; value: string; serializeValue?: () => string }>;
+        };
+      }).__pgNode;
+      const evaluated = node.widgets.find((widget) => widget.name === 'evaluated_preset')!;
+      return { displayed: evaluated.value, serialized: evaluated.serializeValue!() };
+    });
+
+    expect(displayed).toBe(serialized);
+    expect(displayed).not.toBe('');
+  });
+
   test('a roll replaces the selection with several presets', async ({ page }) => {
     await page.locator('.j0n4t-pg-basket-reroll-btn').dispatchEvent('click', { shiftKey: true });
     const count = (await widgetValue(page)).split(',').filter((s) => s.trim()).length;
@@ -551,6 +578,48 @@ test.describe('the engine', () => {
 });
 
 test.describe('automatic rolling', () => {
+  // ComfyUI builds the prompt once per queued batch item, so one press with a
+  // batch count above one reaches `serializeValue` several times. The roll has
+  // to be scheduled once, or a single press rolls the basket once per item.
+  test('one queue press rolls once however many times the prompt is serialized', async ({ page }) => {
+    const modal = await openRollingSettings(page);
+    await modal.locator('#j0n4t-pg-dice-behavior').selectOption('overwrite');
+    await modal.locator('#j0n4t-pg-roll-min').fill('1');
+    await modal.locator('#j0n4t-pg-roll-max').fill('1');
+    await modal.locator('#j0n4t-pg-roll-on-gen').check();
+    await modal.locator('button[data-index="1"]').click();
+
+    await page.evaluate(() => {
+      const gallery = (window as unknown as {
+        __gallery: { triggerRoll: (...args: unknown[]) => unknown };
+      }).__gallery;
+      const counter = { count: 0 };
+      const original = gallery.triggerRoll;
+      gallery.triggerRoll = function (this: unknown, ...args: unknown[]) {
+        counter.count++;
+        return original.apply(this, args);
+      };
+      (window as unknown as { __rollCount: typeof counter }).__rollCount = counter;
+    });
+
+    const serialized = await page.evaluate(() => {
+      const node = (window as unknown as {
+        __pgNode: {
+          widgets: Array<{ name: string; value: string; serializeValue?: () => string }>;
+        };
+      }).__pgNode;
+      const evaluated = node.widgets.find((widget) => widget.name === 'evaluated_preset')!;
+      return [1, 2, 3].map(() => evaluated.serializeValue!());
+    });
+    expect(serialized.every((prompt) => typeof prompt === 'string')).toBe(true);
+
+    await page.waitForTimeout(400);
+    const rolls = await page.evaluate(
+      () => (window as unknown as { __rollCount: { count: number } }).__rollCount.count
+    );
+    expect(rolls).toBe(1);
+  });
+
   test('generation rolling overwrites the Basket while retaining pinned chips', async ({ page }) => {
     await pinFirstChip(page);
     const modal = await openRollingSettings(page);

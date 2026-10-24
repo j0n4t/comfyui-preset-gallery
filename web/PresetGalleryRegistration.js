@@ -10,7 +10,6 @@
 import { app } from "../../../scripts/app.js";
 
 import PresetGalleryApp, { MIN_NODE_WIDTH, MIN_NODE_HEIGHT } from "./PresetGalleryApp.js";
-import PresetLogic from "./PresetLogic.js";
 
 /**
  * Focuses the search box of the most relevant gallery instance: the one that
@@ -80,23 +79,18 @@ app.registerExtension({
       const galleryView = new PresetGalleryApp(this, widget);
       const baseCallback = widget.callback;
 
+      // Both host paths compose through `session.composePrompt`, so the value
+      // shown in the evaluated widget and the prompt that is queued are the
+      // same expansion of the same selection, cache and rolls.
       widget.callback = function (/** @type {string} */ value) {
         galleryView.syncUI(value);
-        galleryView.session.rollManager.resetCounts();
-        evaluatedWidget.value = PresetLogic.expandRecursively(value || "", galleryView.session.cache, new Set(), galleryView.session.rollManager);
+        evaluatedWidget.value = galleryView.session.composePrompt(value);
         baseCallback?.apply(this, arguments);
       };
 
       evaluatedWidget.serializeValue = function () {
-        const raw = widget.value || "";
-        galleryView.session.rollManager.resetCounts();
-        const expanded = PresetLogic.expandRecursively(raw, galleryView.session.cache, new Set(), galleryView.session.rollManager);
-        const seedChanged = galleryView.checkSeedChange();
-        if (galleryView.settings?.rollOnGeneration || (galleryView.settings?.rollOnSeedChange && seedChanged)) {
-          setTimeout(() => {
-            galleryView.triggerRoll(galleryView.settings?.diceBehavior === "overwrite");
-          }, 150);
-        }
+        const expanded = galleryView.session.composePrompt(widget.value || "");
+        galleryView.scheduleAutomaticRoll();
         return expanded;
       };
 

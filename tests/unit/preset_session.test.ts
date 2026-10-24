@@ -75,6 +75,59 @@ test("getSelectedArray: splits a comma separated widget value", () => {
   );
 });
 
+// --- composePrompt ---
+
+// The one entry point the host uses twice: once for the displayed evaluated
+// widget and once for the queued prompt. A variant group is the case that can
+// drift, because the group choice is rolled once and both paths must reuse it.
+const PROMPT_CACHE: PresetCache = {
+  "Faces/Portrait": { preset: "portrait, studio lighting" },
+  "Faces/Variants": { preset: "{Scenery}" },
+  "Scenery/Hills": { preset: "rolling hills" },
+  "Scenery/Sky": { preset: "dramatic sky" },
+};
+
+function promptSession(): PresetSession {
+  const session = makeSession();
+  session.setLibraries([{ id: "main", name: "Main" }], { main: PROMPT_CACHE });
+  return session;
+}
+
+test("composePrompt expands the raw selection through the cache in order", () => {
+  assert.equal(
+    promptSession().composePrompt("Faces/Portrait, Scenery/Hills"),
+    "portrait, studio lighting, rolling hills"
+  );
+});
+
+test("composePrompt starts the roll counters at zero, so composing twice agrees", () => {
+  const session = promptSession();
+  const displayed = session.composePrompt("Faces/Variants");
+  const serialized = session.composePrompt("Faces/Variants");
+
+  assert.equal(displayed, serialized);
+  assert.equal(session.rollManager.counts.scenery, 1, "one pick per group per composition");
+});
+
+test("composePrompt reuses the rolled choice rather than drawing a new one", () => {
+  const session = promptSession();
+  session.rollManager.rolls = { scenery_0: "Scenery/Hills" };
+
+  assert.equal(session.composePrompt("Faces/Variants"), "rolling hills");
+  assert.equal(session.composePrompt("Faces/Variants"), "rolling hills");
+});
+
+test("composePrompt keeps an explicit variant, its weight and None", () => {
+  const session = promptSession();
+  assert.equal(session.composePrompt("{Scenery:Scenery/Sky}"), "dramatic sky");
+  assert.equal(session.composePrompt("({Scenery:Scenery/Sky}:1.05)"), "(dramatic sky:1.05)");
+  assert.equal(session.composePrompt("{Scenery:none}"), "");
+});
+
+test("composePrompt of an empty selection is empty", () => {
+  assert.equal(promptSession().composePrompt(""), "");
+});
+
 // --- prunePins ---
 
 test("prunePins: keeps a pin whose tokens are still contiguous", () => {

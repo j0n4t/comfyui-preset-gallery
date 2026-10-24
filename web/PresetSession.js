@@ -76,6 +76,24 @@ export default class PresetSession {
   }
 
   /**
+   * The one place a raw selection becomes prompt text.
+   *
+   * Both host paths - the widget callback that fills the displayed evaluated
+   * widget and `serializeValue` that builds the queued prompt - go through
+   * here, so the text the user sees and the text that is sent are composed
+   * from the same cache and roll state. The roll counters are reset first:
+   * they index the rolls to pick per group, so a composition has to start from
+   * zero to reach the same choices the previous one did.
+   *
+   * @param {string} rawValue - The widget value: comma separated preset tokens.
+   * @returns {string} Fully expanded prompt text.
+   */
+  composePrompt(rawValue) {
+    this.rollManager.resetCounts();
+    return PresetLogic.expandRecursively(rawValue || "", this.cache, new Set(), this.rollManager);
+  }
+
+  /**
    * Install the libraries this node merges and rebuild the cache from them.
    *
    * `libraries` is the priority order: the first library to claim a key keeps it
