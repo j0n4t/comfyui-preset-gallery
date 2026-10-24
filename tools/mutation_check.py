@@ -280,6 +280,25 @@ MUTATIONS = [
      "  if (expanded !== preset) return `${expanded}\\n\\n${title}`;",
      "  return title;",
      "tests/unit/preset_display.test.ts"),
+
+    # Chip evaluation (`web/PresetLogic.js`). Phase 4c was probed rather than
+    # split - see docs/app-logic-refactor-plan.md - and the probe found these
+    # two decisions were covered by tests in another file, with no guard entry
+    # pointing at them. Both are user-visible: the icon the user clicks, and the
+    # segment spans the chip renders in place of its label.
+    #
+    # A chip that still hides a variant shows the ⋯ affordance; a chip that does
+    # not must not, or every chip carries a control that offers nothing.
+    ("web/PresetLogic.js",
+     'const hasMoreVar = /\\{[^{}:]+(?::[^{}]+)?\\}/.test(coreStr + basePreset);',
+     'const hasMoreVar = true;',
+     "tests/unit/preset_dom.test.ts"),
+    # Segmented labels are for chips whose text carries a variant or a tag. The
+    # gate is what stops a plain chip getting segment spans in place of its label.
+    ("web/PresetLogic.js",
+     'if (tokens.length > 0 && tokens.some(t => /[{<]/.test(t))) {',
+     'if (tokens.length > 0) {',
+     "tests/unit/preset_basket.test.ts"),
 ]
 
 

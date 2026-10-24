@@ -192,11 +192,27 @@ autocomplete, and raw-text behavior covered by focused tests.
       1073 lines, and `PresetDisplay` is 224. `docs/PresetDisplay.md` documents the contract,
       `tests/unit/preset_display.test.ts` pins it (19 tests) with 9
       `mutation_check` entries - one per moved decision.
-- [ ] 4c. Chip evaluation — not started, and deliberately next rather than
-      now. `parseBasketChip`, `resolvePresetSegment` and `parseChipDetails`
-      still mix evaluation with display: they call the display helpers above
-      while deciding what a chip runs. It is the larger and riskier half
-      (~285 lines, tooltip strings included), so it gets its own pass.
+- [x] 4c. Chip evaluation — probed, and deliberately NOT split. The dependency
+      is already one way (`parseBasketChip` calls the display helpers, nothing
+      calls back), so there is no cycle to break the way 4a and 4b had. And the
+      two halves are interleaved and share intermediate state: `tooltipTitle`
+      needs `chipExpanded`, `cleanLabel` needs `segmentedLabels`, which needs
+      the expansion's roll tracer restored to `beforeCounts`. Splitting means a
+      wide intermediate struct between two modules that both must understand it,
+      for one consumer (`PresetDOM.renderBasketChip`) that wants the whole
+      object at once.
+      The probe did find a real gap, of a different kind: six decisions in the
+      cluster were mutated and the existing suite was run per file. Two were
+      already caught - `hasMoreVar` by `preset_dom.test.ts` (it drives the ⋯
+      affordance) and the `[{<]` gate on `segmentedLabels` by
+      `preset_basket.test.ts` (it stops a plain chip getting segment spans) -
+      but no `mutation_check` entry pointed at either. Both entries are added.
+      The third, the `^\{[^{}:]+` guard on the single-segment rule, could not be
+      distinguished by any input constructed: when it fires, `segmentTitles[0]`
+      and `toTitleCase(getPresetName(evalId))` are the same string, because
+      `evalId` is the resolved preset and the segment title is that preset's
+      name. It is left in place rather than removed on a "no counterexample
+      found" argument.
 - [ ] 5. App services and persistence.
 - [ ] 6. Supporting UI modules.
 
