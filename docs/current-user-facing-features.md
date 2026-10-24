@@ -113,7 +113,7 @@ composed widget value. Keep parser and component edge cases in the existing
 unit suites; add an end-to-end test when behavior crosses UI, basket state, or
 prompt serialization.
 
-### 1. Verify chip edits change the prompt as shown
+### 1. [x] Verify chip edits change the prompt as shown
 
 - In `tests/e2e/gallery.spec.ts`, add a fixture preset whose text contains a
   variant group with at least two choices.
@@ -131,7 +131,7 @@ prompt serialization.
 **Done when:** Each edit is observable in the Basket and in the exact prompt
 ComfyUI will receive; no stale or duplicate text remains.
 
-### 2. Verify common Basket operations preserve content and order
+### 2. [x] Verify common Basket operations preserve content and order
 
 - Add two distinct presets, drag the second chip before the first, and verify
   the visible chip order, widget value, and serialized prompt all use the new
@@ -150,7 +150,7 @@ ComfyUI will receive; no stale or duplicate text remains.
 **Done when:** Reordering, copy/paste, and deletion have matching Basket,
 widget, and final-prompt state.
 
-### 3. Verify search suggestions behave like search controls promise
+### 3. [x] Verify search suggestions behave like search controls promise
 
 - Type a known preset name, choose its autocomplete suggestion, then verify the
   preset is added once and the search field clears.
@@ -164,7 +164,7 @@ widget, and final-prompt state.
 **Done when:** Suggestions, Enter, Escape, and the shortcut produce the
 documented result without accidental duplicate chips or lost text.
 
-### 4. Verify Basket state survives reload and tab switching
+### 4. [x] Verify Basket state survives reload and tab switching
 
 - Add multiple chips, pin one, create a second Basket tab, and give that tab a
   different selection.
@@ -179,7 +179,7 @@ documented result without accidental duplicate chips or lost text.
 **Done when:** Users return to the same active Basket state after switching
 tabs or reloading, without state leaking between tabs.
 
-### 5. Verify automatic rolling settings have visible effects
+### 5. [x] Verify automatic rolling settings have visible effects
 
 - In the harness, change the settings to roll on generation and trigger the
   generation path; verify the Basket and serialized prompt reflect the new
@@ -195,7 +195,7 @@ tabs or reloading, without state leaking between tabs.
 **Done when:** Each setting controls the corresponding event, and disabled
 automatic rolling does not silently alter the Basket.
 
-### 6. Verify preset management through the visible UI
+### 6. [x] Verify preset management through the visible UI
 
 - Save a new preset and verify it appears in the grid and can be added to the
   Basket.
@@ -215,10 +215,9 @@ automatic rolling does not silently alter the Basket.
 **Done when:** Save, cancel, overwrite, delete, import, and export outcomes are
 confirmed through the UI and reflected in the right library.
 
-## Execution order
+## Execution result
 
-Start with steps 1 and 2 before simplifying preset/chip logic: they protect the
-core promise that editing chips changes the prompt predictably. Then add steps
-3–6 as focused Playwright cases, keeping each fixture and assertion limited to
-the user outcome under test. Run the affected unit tests and `npm run test:e2e`
-for each batch; use `npm run verify` before merging the broader change.
+All six steps are complete. The user-facing Playwright coverage is in
+`tests/e2e/gallery.spec.ts`; the component/parser edge cases remain in the unit
+suites. The end-to-end suite passed with 54 tests, the unit suite with 464
+tests, and lint/typecheck passed after the final coverage batch.
