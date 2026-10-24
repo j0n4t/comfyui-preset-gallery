@@ -104,3 +104,121 @@ toggle the gallery, and `Ctrl+D` / `Ctrl+Shift+D` for the two rolling behaviors.
 Preset data is saved through the ComfyUI extension to its library files.
 Selections, tabs, pins, rolled choices, and UI preferences are remembered in
 browser storage.
+
+## User-facing test plan
+
+Use the `dev/` Playwright harness for end-to-end checks: it runs the real
+frontend against predictable in-memory preset libraries and exposes the
+composed widget value. Keep parser and component edge cases in the existing
+unit suites; add an end-to-end test when behavior crosses UI, basket state, or
+prompt serialization.
+
+### 1. Verify chip edits change the prompt as shown
+
+- In `tests/e2e/gallery.spec.ts`, add a fixture preset whose text contains a
+  variant group with at least two choices.
+- Add it from the gallery and verify the Basket shows one chip and the widget
+  contains the preset key.
+- Open the chip menu, choose the other variant, and verify the chip's displayed
+  selection and serialized `evaluated_preset` contain the new choice, not the
+  original one.
+- Repeat with a weight change; verify both the Basket selection and serialized
+  prompt preserve the weight.
+- Cover **None** for the variant and verify that choice contributes no text.
+- Keep focused parser/menu edge cases in `preset_logic.test.ts` and
+  `chip_menu_manager.test.ts`.
+
+**Done when:** Each edit is observable in the Basket and in the exact prompt
+ComfyUI will receive; no stale or duplicate text remains.
+
+### 2. Verify common Basket operations preserve content and order
+
+- Add two distinct presets, drag the second chip before the first, and verify
+  the visible chip order, widget value, and serialized prompt all use the new
+  order.
+- Select multiple chips, copy them, paste them, and verify the pasted order and
+  text. Where the browser supports the rich clipboard payload, also verify pin
+  state is retained; plain-text paste must still work.
+- Delete a selected chip and verify only that chip is removed from both the
+  Basket and final prompt.
+- Use keyboard navigation/reordering for one move and assert the same visible
+  and prompt result.
+- Put DOM-level interaction mechanics in `preset_basket.test.ts`; use
+  `gallery.spec.ts` for behavior whose correctness depends on rendered UI and
+  widget synchronization.
+
+**Done when:** Reordering, copy/paste, and deletion have matching Basket,
+widget, and final-prompt state.
+
+### 3. Verify search suggestions behave like search controls promise
+
+- Type a known preset name, choose its autocomplete suggestion, then verify the
+  preset is added once and the search field clears.
+- Type unmatched text and press Enter with no suggestion selected; verify that
+  text is added as a chip and the prompt contains it.
+- Verify Escape clears or defocuses search as intended, and the documented
+  shortcut focuses the search field when the gallery is mounted.
+- Keep generic arrow/Enter popup mechanics in `autocomplete_manager.test.ts`;
+  exercise the real search wiring in `gallery.spec.ts`.
+
+**Done when:** Suggestions, Enter, Escape, and the shortcut produce the
+documented result without accidental duplicate chips or lost text.
+
+### 4. Verify Basket state survives reload and tab switching
+
+- Add multiple chips, pin one, create a second Basket tab, and give that tab a
+  different selection.
+- Switch tabs and verify each tab restores its own chips, pins, and active
+  state.
+- Reload the page and verify the active tab and its Basket state return.
+- Where a deterministic variant fixture is available, verify its chosen value
+  remains stable after switching away and back.
+- Retain serialization/storage edge cases in `preset_basket.test.ts` and add
+  user-visible reload assertions to `gallery.spec.ts`.
+
+**Done when:** Users return to the same active Basket state after switching
+tabs or reloading, without state leaking between tabs.
+
+### 5. Verify automatic rolling settings have visible effects
+
+- In the harness, change the settings to roll on generation and trigger the
+  generation path; verify the Basket and serialized prompt reflect the new
+  roll.
+- Repeat for seed-change rolling by changing a seed widget and verifying a
+  roll occurs only when that option is enabled.
+- Verify the manual dice action still works and that Shift invokes the
+  alternate roll behavior.
+- Keep deterministic selection and seed detection cases in
+  `preset_session.test.ts`; use `gallery.spec.ts` to verify the user-visible
+  result.
+
+**Done when:** Each setting controls the corresponding event, and disabled
+automatic rolling does not silently alter the Basket.
+
+### 6. Verify preset management through the visible UI
+
+- Save a new preset and verify it appears in the grid and can be added to the
+  Basket.
+- Attempt to overwrite an existing preset; cancel and verify the stored value
+  is unchanged, then confirm and verify the new value appears in the grid and
+  serialized prompt.
+- Delete a preset and verify it disappears from the gallery and no longer
+  resolves in the prompt.
+- Import a small fixture with a duplicate and a new entry; verify the selected
+  duplicate strategy and target library determine what appears afterward.
+- Export a selected preset and verify the download is produced in the chosen
+  format.
+- Keep API/form edge cases in `preset_editor.test.ts`, `preset_gallery_api.test.ts`,
+  and `export_utils.test.ts`; add browser coverage for user-visible outcomes in
+  `gallery.spec.ts`.
+
+**Done when:** Save, cancel, overwrite, delete, import, and export outcomes are
+confirmed through the UI and reflected in the right library.
+
+## Execution order
+
+Start with steps 1 and 2 before simplifying preset/chip logic: they protect the
+core promise that editing chips changes the prompt predictably. Then add steps
+3–6 as focused Playwright cases, keeping each fixture and assertion limited to
+the user outcome under test. Run the affected unit tests and `npm run test:e2e`
+for each batch; use `npm run verify` before merging the broader change.
