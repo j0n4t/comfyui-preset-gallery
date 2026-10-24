@@ -115,18 +115,46 @@ MUTATIONS = [
 
     # The perf/behaviour guards. Each of these must be caught by the test named
     # in the comment, or the guard is decorative.
+    #
+    # Chip grouping (`web/ChipProjection.js`). These pin the decisions that
+    # decide which chip a user sees, so a silent change is a wrong basket.
+    # A qualified token must keep its qualifier as the styleKey: resolving it to
+    # the plain key points the chip at the other library's entry.
+    ("web/ChipProjection.js",
+     "        const resolvedStyleKey = qualifiedInput ? coreJoined : (cached?.foundKey || subArray[0]);",
+     "        const resolvedStyleKey = cached?.foundKey || subArray[0];",
+     "tests/unit/chip_projection.test.ts"),
+    # Only a single token may collapse onto a preset; without the guard a run of
+    # tokens that spells a preset body re-joins into the original preset chip,
+    # undoing a spread.
+    ("web/ChipProjection.js",
+     "      const cached = (len === 1)",
+     "      const cached = (true)",
+     "tests/unit/chip_projection.test.ts"),
+    # The lookup is keyed on the weight-stripped core, so a weighted chip
+    # resolves to the preset underneath it rather than to its "(key:1.5)" text.
+    ("web/ChipProjection.js",
+     "      const { core: coreJoined } = PresetLogic.parseWeight(joined);",
+     "      const coreJoined = joined;",
+     "tests/unit/chip_projection.test.ts"),
+    # The lookup must be memoised per cache: rebuilding it per call is the
+    # cold-start cost the build budget measures.
+    ("web/ChipProjection.js",
+     "    if (!derived.lookupMap) derived.lookupMap = buildLookupMap(cache);",
+     "    derived.lookupMap = buildLookupMap(cache);",
+     "tests/unit/chip_projection.test.ts"),
     # lookup entries the chips resolve through (drop each -> its own test fails)
-    ("web/PresetLogic.js",
+    ("web/ChipProjection.js",
      "lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });",
      "lookupMap.set(trimmedPreset + '\\u0000', { foundKey: key, foundItem: item });",
      "tests/unit/preset_logic.perf.test.ts"),   # raw-text resolution
-    ("web/PresetLogic.js",
+    ("web/ChipProjection.js",
      "lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });",
      "lookupMap.set(wrappedPreset + '\\u0000', { foundKey: key, foundItem: item });",
      "tests/unit/preset_logic.perf.test.ts"),   # wrapped resolution
     # Both key lines, or the .trim() one still supplies the entry and the
     # mutation changes nothing.
-    ("web/PresetLogic.js",
+    ("web/ChipProjection.js",
      "      lookupMap.set(key, { foundKey: key, foundItem: item });\n"
      "      lookupMap.set(key.trim(), { foundKey: key, foundItem: item });",
      "      lookupMap.set(key + '\\u0000', { foundKey: key, foundItem: item });\n"
@@ -143,7 +171,7 @@ MUTATIONS = [
     # cheaper, so it reads 27.5x against a 70x budget. What the budget still
     # catches is the class it was built for - a whole-cache operation inside the
     # per-entry loop - which is what this models.
-    ("web/PresetLogic.js",
+    ("web/ChipProjection.js",
      "    if (item.preset?.trim()) {\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
      "    if (item.preset?.trim()) {\n      Object.keys(cache).forEach((k) => PresetLogic.getWrappedPreset(k, cache[k]?.preset || \"\", cache));\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
      "tests/unit/preset_logic.perf.test.ts"),

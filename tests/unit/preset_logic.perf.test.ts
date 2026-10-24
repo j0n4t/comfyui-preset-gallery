@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import PresetLogic from "../../web/PresetLogic.js";
+import ChipProjection from "../../web/ChipProjection.js";
 
 // Perf and behaviour guards for the chips parsing/rendering hot paths.
 //
@@ -191,7 +192,7 @@ test("building the chip lookup stays within budget", () => {
   // interaction after a library load pays, and the number step 2 moved from
   // ~150 ms to ~1.5 ms by dropping the per-entry expansion.
   const keys = basket(120);
-  const ms = fastestBuildMs((cache) => PresetLogic.getGroupedChips(keys, cache));
+  const ms = fastestBuildMs((cache) => ChipProjection.getGroupedChips(keys, cache));
   const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
   const ratio = ms / calibration;
 
@@ -218,7 +219,7 @@ test("building the token candidates stays within budget", () => {
 test("a memoised lookup stays cheap per call", () => {
   const keys = basket(120);
   const text = keys.join(", ");
-  const grouped = fastestPerCallMs(() => PresetLogic.getGroupedChips(keys, CACHE));
+  const grouped = fastestPerCallMs(() => ChipProjection.getGroupedChips(keys, CACHE));
   const parsed = fastestPerCallMs(() => PresetLogic.parseTokens(text, CACHE));
   const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
 
@@ -275,7 +276,7 @@ test("resolving variant keys stays within budget", () => {
 
 test("every preset key in the basket resolves to its own cache entry", () => {
   const keys = basket(30);
-  const chips = PresetLogic.getGroupedChips(keys, CACHE);
+  const chips = ChipProjection.getGroupedChips(keys, CACHE);
 
   assert.equal(chips.length, keys.length, "each key should produce one chip");
   chips.forEach((chip, index) => {
@@ -303,7 +304,7 @@ test("a token equal to a preset's raw text resolves to that preset", () => {
   assert.ok(key, "fixture has no preset whose folder changes its wrapped form");
 
   const text = (CACHE[key].preset ?? "").trim();
-  const chips = PresetLogic.getGroupedChips([text], CACHE);
+  const chips = ChipProjection.getGroupedChips([text], CACHE);
 
   assert.equal(chips.length, 1);
   assert.equal(
@@ -317,7 +318,7 @@ test("a weighted token resolves to the underlying preset key", () => {
   // The key entry is what makes this work: a weighted token's `subArray[0]` is
   // "(key:1.5)", so without the lookup the chip would be keyed on that string.
   const key = basket(1)[0];
-  const chips = PresetLogic.getGroupedChips([`(${key}:1.5)`], CACHE);
+  const chips = ChipProjection.getGroupedChips([`(${key}:1.5)`], CACHE);
 
   assert.equal(chips.length, 1);
   assert.equal(
@@ -340,7 +341,7 @@ test("a token equal to a wrapped preset resolves to that preset", () => {
     "the folder prepend should make the wrapped form differ from the raw preset"
   );
 
-  const chips = PresetLogic.getGroupedChips([wrapped], CACHE);
+  const chips = ChipProjection.getGroupedChips([wrapped], CACHE);
   assert.equal(chips.length, 1);
   const resolved = chips[0].styleKey;
   assert.ok(CACHE[resolved]?.preset, `wrapped text resolved to nothing real: ${resolved}`);

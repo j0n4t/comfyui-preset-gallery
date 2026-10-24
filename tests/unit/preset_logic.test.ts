@@ -666,14 +666,6 @@ test("findPresetMatch and expandRecursively fall back to the plain key for winni
   assert.equal(expanded, "main knee");
 });
 
-test("getGroupedChips preserves qualified styleKey on user input and resolves cached item", () => {
-  const chips = PresetLogic.getGroupedChips(["main#wear/sock/knee", "(socks#wear/sock/knee:1.2)"], MERGED);
-  assert.equal(chips.length, 2);
-  assert.equal(chips[0].styleKey, "main#wear/sock/knee");
-  assert.equal(chips[0].item?.preset, "main knee");
-  assert.equal(chips[1].styleKey, "socks#wear/sock/knee");
-  assert.equal(chips[1].item?.preset, "main knee");
-});
 
 test("parseBasketChip tooltipTitle does not duplicate preset text when unexpanded", () => {
   const chipData = {

@@ -164,15 +164,27 @@ autocomplete, and raw-text behavior covered by focused tests.
       `BasketDragDrop` (drop geometry + image drops). `PresetBasket` went from
       2143 to 1463 lines and keeps its method names as delegations. Commits
       `b3b2ec5`, `5fa28fc`, `9ec289a`.
-- [ ] 4. Preset semantics vs chip presentation — next. `PresetLogic.js` is
-      ~1400 lines and its cache-derived indexes are performance-sensitive:
-      keep token grammar and expansion together, extract the grouped-chip
-      projection first, and keep `mutation_check`'s `PresetLogic` entries green
-      (they pin the lookup/group/variant index behaviour and the build budget).
+- [x] 4a. Grouped-chip projection — `ChipProjection.getGroupedChips` owns the
+      chip grouping (one chip per token, weight-stripped core, qualified keys),
+      and `PresetLogic` no longer carries it. The per-cache index record moved
+      out to `CacheDerived` so both modules index a cache once between them
+      instead of each keeping a copy: neither module imports the other for it.
+      The four basket modules import `ChipProjection` directly. `PresetLogic`
+      went from 1397 to 1232 lines; grammar and expansion are untouched.
+      `docs/ChipProjection.md` documents the contract, and
+      `tests/unit/chip_projection.test.ts` pins it (17 tests) with 8
+      `mutation_check` entries - the three moved lookup entries plus five for
+      the grouping decisions.
+- [ ] 4b. Chip evaluation vs display metadata — not started. `parseBasketChip`,
+      `resolvePresetSegment` and `parseChipDetails` are still in `PresetLogic`,
+      as are the color/title/folder/initials/search helpers. Decide whether the
+      remaining split earns its keep before starting it.
 - [ ] 5. App services and persistence.
 - [ ] 6. Supporting UI modules.
 
 Notes for the next session: `tools/mutation_check.py` is the guard that the
 unit suites still catch their own mutations — run it after touching a module it
-lists. `dev/index.html` plus `npx playwright test` is the only browser coverage;
+lists, and repoint its entries when code moves between modules (a mutation
+whose pattern no longer matches aborts the run rather than passing silently).
+`dev/index.html` plus `npx playwright test` is the only browser coverage;
 the harness stubs the ComfyUI host object and nothing else.

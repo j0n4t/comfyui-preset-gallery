@@ -13,6 +13,7 @@ import ModalUtils from "./ModalUtils.js";
 import PngMetadata from "./PngMetadata.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
+import ChipProjection from "./ChipProjection.js";
 
 export default class BasketDragDrop {
   /**
@@ -136,7 +137,7 @@ export default class BasketDragDrop {
    * @param {number[]} draggedIndexes
    */
   moveDraggedChips(e, closest, draggedIndexes) {
-    const chips = PresetLogic.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
+    const chips = ChipProjection.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
     const selectedIndexes = new Set(
       draggedIndexes.filter(index => Number.isInteger(index) && index >= 0 && index < chips.length)
     );
@@ -287,7 +288,7 @@ export default class BasketDragDrop {
     }
     if (selections.length === 0) return '<span style="font-size: 10px; color: #666;">(empty)</span>';
 
-    const chipsData = PresetLogic.getGroupedChips(selections, this.context.cache);
+    const chipsData = ChipProjection.getGroupedChips(selections, this.context.cache);
     return chipsData.map((chipData) => {
       const chip = PresetDOM.renderBasketChip(chipData, this.context.cache, this.context.rollManager);
       const label = chip.processed.cleanLabel || chip.processed.joinedStr;

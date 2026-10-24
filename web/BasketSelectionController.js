@@ -12,6 +12,7 @@
  * app (`updateWidgetValue`), like every other edit.
  */
 import PresetLogic from "./PresetLogic.js";
+import ChipProjection from "./ChipProjection.js";
 import PresetDOM from "./PresetDOM.js";
 import RollManager from "./RollManager.js";
 
@@ -67,7 +68,7 @@ export default class BasketSelectionController {
 
   updateActionButtons() {
     const selections = this.context.getSelectedArray();
-    const selectedChips = PresetLogic.getGroupedChips(
+    const selectedChips = ChipProjection.getGroupedChips(
       selections,
       this.context.cache
     ).filter((_, index) => this.selected.has(index));
@@ -128,7 +129,7 @@ export default class BasketSelectionController {
   }
 
   deleteSelected() {
-    const chips = PresetLogic.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
+    const chips = ChipProjection.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
     const selectedIndexes = [...this.selected].sort((a, b) => b - a);
     const selections = this.context.getSelectedArray();
     let focusStart = selections.length;
@@ -150,7 +151,7 @@ export default class BasketSelectionController {
     );
     const focusedIndex = focusedChip ? Number(focusedChip.dataset.index) : -1;
     const selections = this.context.getSelectedArray();
-    const chips = PresetLogic.getGroupedChips(selections, this.context.cache);
+    const chips = ChipProjection.getGroupedChips(selections, this.context.cache);
     const selectedChips = [...this.selected]
       .sort((a, b) => a - b)
       .map(index => chips[index])
@@ -178,7 +179,7 @@ export default class BasketSelectionController {
    * @param {Set<number>} [selection=this.selected]
    */
   moveSelected(targetIndex, placeAfter, selection = this.selected) {
-    const chips = PresetLogic.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
+    const chips = ChipProjection.getGroupedChips(this.context.getSelectedArray(), this.context.cache);
     const target = chips[targetIndex];
     const moved = chips.filter((_, index) => selection.has(index));
     if (!target || moved.length === 0 || selection.has(targetIndex)) return;
@@ -206,7 +207,7 @@ export default class BasketSelectionController {
   /** @param {HTMLElement} [focusedChip] */
   async copySelected(focusedChip) {
     const activeList = this.context.getSelectedArray();
-    const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
+    const chipsData = ChipProjection.getGroupedChips(activeList, this.context.cache);
     let selectedIndexes = [...this.selected].sort((a, b) => a - b);
     if (selectedIndexes.length === 0 && focusedChip) {
       selectedIndexes = [Number(focusedChip.dataset.index)];
@@ -334,7 +335,7 @@ export default class BasketSelectionController {
 
     const activeList = this.context.getSelectedArray();
     const originalLength = activeList.length;
-    const existingChips = PresetLogic.getGroupedChips(activeList, this.context.cache);
+    const existingChips = ChipProjection.getGroupedChips(activeList, this.context.cache);
     const selections = [...activeList];
     for (const chip of payload.chips) selections.push(...chip.items);
 
@@ -356,7 +357,7 @@ export default class BasketSelectionController {
     this.context.updateWidgetValue(selections);
     this.context.savePins();
 
-    const updatedChips = PresetLogic.getGroupedChips(selections, this.context.cache);
+    const updatedChips = ChipProjection.getGroupedChips(selections, this.context.cache);
     const pastedIndexes = updatedChips
       .map((chip, index) => chip.startIndex >= originalLength ? index : -1)
       .filter(index => index >= 0);

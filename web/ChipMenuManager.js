@@ -1,5 +1,6 @@
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
+import ChipProjection from "./ChipProjection.js";
 import AutocompleteManager from "./AutocompleteManager.js";
 import RollManager from "./RollManager.js";
 
@@ -261,7 +262,7 @@ export default class ChipMenuManager {
           const chipIndex = Number(chipElement.dataset.index);
           if (!isNaN(chipIndex)) {
             const activeList = this.context.getSelectedArray();
-            const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
+            const chipsData = ChipProjection.getGroupedChips(activeList, this.context.cache);
             const tracer = new RollManager(this.context.rollManager.rolls);
             const targetGroup = group?.trim().toLowerCase().replace(/\s+/g, "_") || "";
 

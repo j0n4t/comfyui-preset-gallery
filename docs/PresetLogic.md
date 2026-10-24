@@ -22,6 +22,10 @@ A stateful class responsible for managing randomized "rolls" (selections) for sp
 
 ## 3. Core Objects & Methods
 
+Chip grouping (`getGroupedChips`) is no longer here: it is presentation rather
+than prompt semantics and now lives in `ChipProjection`. The cache-derived
+indexes both modules share are owned by `CacheDerived`.
+
 ### `PresetLogic`
 The main namespace holding all parsing logic, string formatting, and utility functions.
 
@@ -34,7 +38,6 @@ The main namespace holding all parsing logic, string formatting, and utility fun
 *   **`parseChipDetails(text, cache)`**: Parses a string token to extract metadata such as tags, `{group}` variants, and direct preset matches.
 *   **`resolvePresetSegment(token, cache, rollManager)`**: Resolves metadata (titles and image filenames) for single string tokens within complex segment prompts.
 *   **`parseBasketChip(chipData, cache, rollManager)`**: Core processor for UI input chips. It calculates the purely expanded chip data structure, including weight extraction `(text:weight)`, tooltip generation, color mapping, and dynamic roll evaluations.
-*   **`getGroupedChips(activeList, cache)`**: Iterates through an array of sequential input strings, aggregating them into logical grouped chip components based on preset cache matches and formatting.
 
 #### Utility Functions
 *   **`splitPresets(str)`**: Splits comma-separated strings safely, ignoring commas nested inside parentheses `()`, angle brackets `<>`, or curly braces `{}`.

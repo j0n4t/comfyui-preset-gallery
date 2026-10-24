@@ -120,6 +120,38 @@ type DataURLParseResult = {
   base64: string;
 };
 
+/** Which cache key and item a matched token resolves to. */
+type ChipLookupEntry = {
+  foundKey: string;
+  foundItem: PresetCacheItem;
+};
+
+/**
+ * A string `parseTokens` can match, with the entry it belongs to. The scan also
+ * synthesises these for bare `{variant}` and `<tag>` runs it finds directly,
+ * which carry `isVar` / `isTag` instead of a cache entry.
+ */
+type ChipCandidate = {
+  matchStr: string;
+  key?: string;
+  item?: PresetCacheItem;
+  isVar?: boolean;
+  isTag?: boolean;
+};
+
+/**
+ * Structures derived from one cache object, each built on first use and shared
+ * by every module that needs them. See `web/CacheDerived.js`.
+ */
+type CacheDerived = {
+  lookupMap?: Map<string, ChipLookupEntry>;
+  candidatesByFirstChar?: Map<string, ChipCandidate[]>;
+  groupIndex?: Map<string, string[]>;
+  presetMatchIndex?: Map<string, ChipLookupEntry>;
+  variantKeyIndex?: Map<string, string>;
+};
+
+
 type BasketTab = {
   id: string;
   title: string;

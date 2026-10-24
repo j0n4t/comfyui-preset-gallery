@@ -5,6 +5,7 @@ import InlineEditorManager from "./InlineEditorManager.js";
 import PresetBasketTabs from "./PresetBasketTabs.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
+import ChipProjection from "./ChipProjection.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 import RollManager from "./RollManager.js";
 import YAMLUtils from "./YAMLUtils.js";
@@ -1202,7 +1203,7 @@ export default class PresetBasket {
    */
   reRollChipGroup(chipIndex, groupRaw, gIndex) {
     const activeList = this.context.getSelectedArray();
-    const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
+    const chipsData = ChipProjection.getGroupedChips(activeList, this.context.cache);
     const tracer = new RollManager(this.context.rollManager.rolls);
     const targetGroup = groupRaw?.trim().toLowerCase().replace(/\s+/g, "_") || "";
 
@@ -1356,7 +1357,7 @@ export default class PresetBasket {
     this.rawManager.updateHighlights();
 
     let htmlBuffer = "";
-    const chipsData = PresetLogic.getGroupedChips(activeList, this.context.cache);
+    const chipsData = ChipProjection.getGroupedChips(activeList, this.context.cache);
 
     this.context.rollManager.resetCounts();
 

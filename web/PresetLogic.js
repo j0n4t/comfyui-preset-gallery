@@ -1,105 +1,7 @@
 import RollManager from "./RollManager.js";
+import { derivedFor } from "./CacheDerived.js";
 
 const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
-
-/**
- * Which cache key and item a matched token resolves to.
- * @typedef {Object} ChipLookupEntry
- * @property {string} foundKey
- * @property {PresetCacheItem} foundItem
- */
-
-/**
- * A string parseTokens can match, with the entry it belongs to. The scan also
- * synthesises these for bare `{variant}` and `<tag>` runs it finds directly,
- * which carry `isVar` / `isTag` instead of a cache entry.
- * @typedef {Object} ChipCandidate
- * @property {string} matchStr
- * @property {string} [key]
- * @property {PresetCacheItem} [item]
- * @property {boolean} [isVar]
- * @property {boolean} [isTag]
- */
-
-/**
- * Structures derived from one cache object, each built on first use.
- * @typedef {Object} CacheDerived
- * @property {Map<string, ChipLookupEntry>} [lookupMap]
- * @property {Map<string, ChipCandidate[]>} [candidatesByFirstChar]
- * @property {Map<string, string[]>} [groupIndex]
- * @property {Map<string, ChipLookupEntry>} [presetMatchIndex]
- * @property {Map<string, string>} [variantKeyIndex]
- */
-
-/**
- * Structures derived from a whole cache that do not depend on the tokens being
- * matched, so they are built once per cache and reused.
- *
- * Keyed by the cache object itself. A library load or save replaces that object
- * (it is never mutated in place), so the entry is dropped along with the cache
- * and nothing has to invalidate it by hand.
- *
- * Every builder is a pure function of `cache` - no rolls, no clock. That is
- * load-bearing: building the lookup from `expandRecursively(key, cache)` made
- * the keys depend on Math.random(), so they differed from one build to the next
- * and could not be memoized at all.
- *
- * @type {WeakMap<PresetCache, CacheDerived>}
- */
-const derivedByCache = new WeakMap();
-
-/**
- * The derived structures for a cache, built lazily on first use. Each is built
- * only if something asks for it: parseTokens runs on every keystroke, while
- * getGroupedChips does not, and neither should pay for the other.
- * @param {PresetCache} cache
- * @returns {CacheDerived}
- */
-function derivedFor(cache) {
-  let derived = derivedByCache.get(cache);
-  if (!derived) {
-    derived = {};
-    derivedByCache.set(cache, derived);
-  }
-  return derived;
-}
-
-/**
- * Maps every string a chip can be matched by to the cache entry it names.
- * Pure function of `cache`.
- * @param {PresetCache} cache
- * @returns {Map<string, ChipLookupEntry>}
- */
-function buildLookupMap(cache) {
-  /** @type {Map<string, ChipLookupEntry>} */
-  const lookupMap = new Map();
-
-  const keys = Object.getOwnPropertyNames(cache);
-  for (const key of keys) {
-    const item = cache[key];
-    if (!item) continue;
-    if (item.preset?.trim()) {
-      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
-      if (wrappedPreset) {
-        lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });
-      }
-
-      const trimmedPreset = item.preset.trim();
-      if (trimmedPreset) {
-        lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });
-      }
-    }
-    if (key) {
-      lookupMap.set(key, { foundKey: key, foundItem: item });
-      lookupMap.set(key.trim(), { foundKey: key, foundItem: item });
-      const split = PresetLogic.splitQualifiedKey(key);
-      if (split.libraryId && !lookupMap.has(split.key)) {
-        lookupMap.set(split.key, { foundKey: key, foundItem: item });
-      }
-    }
-  }
-  return lookupMap;
-}
 
 /**
  * The strings parseTokens matches against, longest first so the greedy scan
@@ -234,14 +136,15 @@ function buildGroupIndex(cache) {
  * Maps every string that names a cache entry to that entry, for
  * findPresetMatch.
  *
- * Deliberately separate from `lookupMap`, which cannot be reused here:
+ * Deliberately separate from the chip lookup `ChipProjection` builds, which
+ * cannot be reused here:
  *
- * - `lookupMap` keeps the LAST entry that claims a string; the linear scan this
+ * - that lookup keeps the LAST entry that claims a string; the linear scan this
  *   replaces returns the FIRST. In a real library 1133 strings are claimed more
  *   than once - two entries routinely share a preset text - so the tie-break
- *   decides which preset a chip resolves to. Reusing `lookupMap` changed the
- *   answer for 106 of 2439 queries.
- * - `lookupMap` includes keys whose entry has no preset; the scan skips them.
+ *   decides which preset a chip resolves to. Reusing it changed the answer for
+ *   106 of 2439 queries.
+ * - it includes keys whose entry has no preset; the scan skips them.
  *
  * So this keeps first-wins and preset-only, which is what the scan did.
  *
@@ -969,75 +872,6 @@ const PresetLogic = {
       hasMoreVar,
       tag: presetMatch ? null : parsed.tag
     };
-  },
-
-  /**
-   * Groups raw token elements from list sequence into aggregated chip entries.
-   * @param {string[]} activeList - Sequential token inputs.
-   * @param {PresetCache} cache - Preset cache map.
-   * @returns {ChipGroupInput[]} Grouped chip item definitions.
-   */
-  getGroupedChips(activeList, cache) {
-    /** @type {ChipGroupInput[]} */
-    const chips = [];
-    if (!activeList || activeList.length === 0) return chips;
-
-    /** @type {Map<string, ChipLookupEntry>} */
-    let lookupMap = new Map();
-    if (cache) {
-      const derived = derivedFor(cache);
-      if (!derived.lookupMap) derived.lookupMap = buildLookupMap(cache);
-      lookupMap = derived.lookupMap;
-    }
-
-    let i = 0;
-    while (i < activeList.length) {
-      let matched = null;
-      let matchedLen = 0;
-
-      for (let len = Math.min(activeList.length - i, 10); len >= 1; len--) {
-        const subArray = activeList.slice(i, i + len);
-        const joined = subArray.join(", ");
-        const { core: coreJoined } = PresetLogic.parseWeight(joined);
-        const lookup = (/** @type {string} */ k) => lookupMap.get(k) || (
-          PresetLogic.splitQualifiedKey(k).libraryId
-            ? lookupMap.get(PresetLogic.splitQualifiedKey(k).key)
-            : null
-        );
-        const cached = (len === 1)
-          ? (lookup(coreJoined) || lookup(coreJoined.replace(/\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '{$1}')))
-          : null;
-
-        if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}$/)) {
-          const qualifiedInput = len === 1 && PresetLogic.splitQualifiedKey(coreJoined).libraryId;
-          const resolvedStyleKey = qualifiedInput ? coreJoined : (cached?.foundKey || subArray[0]);
-          matched = {
-            styleKey: resolvedStyleKey,
-            item: cached?.foundItem || (cached?.foundKey ? cache[cached.foundKey] : cache[resolvedStyleKey]),
-            startIndex: i,
-            endIndex: i + len,
-            subArray,
-          };
-          matchedLen = len;
-          break;
-        }
-      }
-
-      if (matched) {
-        chips.push(matched);
-        i += matchedLen;
-      } else {
-        chips.push({
-          styleKey: activeList[i],
-          item: cache[activeList[i]] || null,
-          startIndex: i,
-          endIndex: i + 1,
-          subArray: [activeList[i]],
-        });
-        i += 1;
-      }
-    }
-    return chips;
   },
 
   /**

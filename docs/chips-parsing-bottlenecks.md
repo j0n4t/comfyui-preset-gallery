@@ -421,9 +421,10 @@ render; steps 3–4 are what remains — with the cache-wide cost gone, the per-
 
 Landed with step 2, as one change.
 
-- **Where:** `PresetLogic.getGroupedChips` and `PresetLogic.parseTokens`, plus the
-  module-level `derivedByCache` WeakMap and the `buildLookupMap` / `buildCandidates`
-  helpers.
+- **Where:** chip grouping and `PresetLogic.parseTokens`, plus the module-level
+  `derivedByCache` WeakMap and the `buildLookupMap` / `buildCandidates` helpers. (Chip
+  grouping has since moved to `ChipProjection.getGroupedChips`, and the WeakMap to
+  `CacheDerived`; the numbers below are unchanged by that move.)
 - **What shipped:** both structures are built lazily on first use and keyed on the cache
   object. No render generation is involved (see the section above for why it is unnecessary).
 - **Result:** `getGroupedChips` 152 → 0.36 ms, `parseTokens` 147 → 2.8 ms.
@@ -468,7 +469,7 @@ above for the numbers.
 - **Where:** `RATIO_BUDGET` in `tests/unit/preset_logic.perf.test.ts`.
 - **What shipped:** budgets are now expressed as a multiple of a calibration workload, not in
   milliseconds — see below. Readings after steps 6-7 are 5.3-6.3x (lookup build), 6.6-9.2x
-  (candidate build), 1.5-2.0x (getGroupedChips/call), 1.7-2.0x (parseTokens/call, was 13-17x)
+  (candidate build), 1.5-2.0x (grouping/call), 1.7-2.0x (parseTokens/call, was 13-17x)
   and 0.01x (resolveVariantKey x10, was 15x), against budgets of 70x, 8x and 3x.
 - **Correction 1 — a per-call budget cannot be a tight guard.** The memo saves ~0.7 ms, below
   what a timing assertion can separate from noise, and it *absorbs* a build regression into a
