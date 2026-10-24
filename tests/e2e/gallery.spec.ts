@@ -104,6 +104,19 @@ async function openDisplayTab(page: Page) {
   return modal;
 }
 
+async function openRollingSettings(page: Page) {
+  await page.locator('#j0n4t-pg-config-btn').click();
+  const modal = page.locator('.j0n4t-pg-modal-overlay');
+  await expect(modal).toBeVisible();
+  return modal;
+}
+
+async function pinFirstChip(page: Page) {
+  await chips(page).first().click();
+  await page.locator('.j0n4t-pg-chip-popup [data-action="pin"]').click();
+  await page.keyboard.press('Escape');
+}
+
 test.beforeEach(async ({ page }) => {
   library = structuredClone(FIXTURE);
   posts = [];
@@ -194,6 +207,52 @@ test.describe('search', () => {
     await expect(visibleItems(page)).toHaveCount(1);
     await page.locator('.j0n4t-pg-search-clear').click();
     await expect(visibleItems(page)).toHaveCount(ITEMS_MERGED_VISIBLE);
+  });
+
+  test('choosing a search suggestion adds the preset once and clears search', async ({ page }) => {
+    const search = page.locator('.j0n4t-pg-search');
+    await search.fill('Scenery/Sky');
+    await page.locator('.j0n4t-pg-filter-autocomplete-item')
+      .filter({
+        has: page.locator('.j0n4t-pg-filter-autocomplete-meta')
+          .getByText('Scenery/Sky', { exact: true }),
+      }).click();
+
+    await expect(search).toHaveValue('');
+    await expect(chips(page)).toHaveCount(2);
+    await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait, Scenery/Sky');
+    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, dramatic sky');
+  });
+
+  test('Enter adds unmatched search text as a chip', async ({ page }) => {
+    const search = page.locator('.j0n4t-pg-search');
+    await search.fill('misty mountain dawn');
+    await search.press('Enter');
+
+    await expect(search).toHaveValue('');
+    await expect(chips(page)).toHaveCount(2);
+    await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait, misty mountain dawn');
+    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, misty mountain dawn');
+  });
+
+  test('Escape clears search, and slash focuses search from the gallery', async ({ page }) => {
+    const search = page.locator('.j0n4t-pg-search');
+    await search.fill('hills');
+    await search.press('Escape');
+    await search.press('Escape');
+    await expect(search).toHaveValue('');
+    await expect(search).toBeFocused();
+
+    await page.locator('.j0n4t-pg-item').first().focus();
+    await page.keyboard.press('/');
+    await expect(search).toBeFocused();
+  });
+
+  test('Ctrl+F focuses search from a gallery item', async ({ page }) => {
+    const search = page.locator('.j0n4t-pg-search');
+    await page.locator('.j0n4t-pg-item').first().focus();
+    await page.keyboard.press('Control+f');
+    await expect(search).toBeFocused();
   });
 });
 
@@ -391,23 +450,156 @@ test.describe('editor', () => {
 
     await expect(page.locator('.j0n4t-pg-item').filter({ hasText: 'ShowsUp' })).toBeVisible();
   });
+
+  test('cancelling an overwrite preserves the preset, confirming updates its prompt', async ({ page }) => {
+    await openPanel(page);
+    await page.locator('#j0n4t-pg-name').fill('overwrite_me');
+    await page.locator('#j0n4t-pg-preset').fill('original saved text');
+    await page.locator('#j0n4t-pg-save-btn').click();
+    const preset = page.locator('.j0n4t-pg-item[data-style="overwrite_me"]');
+    await expect(preset).toBeVisible();
+
+    await page.locator('#j0n4t-pg-clear-fields-btn').click();
+    await page.locator('#j0n4t-pg-name').fill('overwrite_me');
+    await page.locator('#j0n4t-pg-preset').fill('replacement prompt text');
+    await page.locator('#j0n4t-pg-save-btn').click();
+    const cancel = page.locator('.j0n4t-pg-modal-overlay button[data-index="0"]');
+    await expect(cancel).toBeVisible();
+    await cancel.click();
+    await expect(preset).toHaveAttribute('title', /original saved text/);
+
+    await page.locator('#j0n4t-pg-save-btn').click();
+    await page.locator('.j0n4t-pg-modal-overlay button[data-index="1"]').click();
+    await expect(preset).toHaveAttribute('title', /replacement prompt text/);
+    await preset.click();
+    await expect.poll(() => serializedPrompt(page)).toBe(
+      'portrait, studio lighting, replacement prompt text'
+    );
+  });
+
+  test('deleting a preset removes it from the gallery', async ({ page }) => {
+    await openPanel(page);
+    await page.locator('#j0n4t-pg-name').fill('DeleteMe');
+    await page.locator('#j0n4t-pg-preset').fill('temporary prompt');
+    await page.locator('#j0n4t-pg-save-btn').click();
+    const preset = page.locator('.j0n4t-pg-item[data-style="deleteme"]');
+    await expect(preset).toBeVisible();
+
+    await preset.hover();
+    await preset.locator('.j0n4t-pg-corner-edit').click();
+    await page.locator('#j0n4t-pg-del-btn').click();
+    await page.locator('.j0n4t-pg-modal-overlay button[data-index="1"]').click();
+
+    await expect(preset).toHaveCount(0);
+  });
+
+  test('import keeps the original duplicate and adds a copy and a new preset', async ({ page }) => {
+    await openPanel(page);
+    await page.locator('#j0n4t-pg-json-file').setInputFiles({
+      name: 'incoming.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({
+        Faces: { Portrait: 'imported portrait' },
+        Imported: { One: 'new imported text' },
+      })),
+    });
+    const modal = page.locator('.j0n4t-pg-modal-overlay');
+    await expect(modal.locator('#j0n4t-pg-dup-strategy')).toBeVisible();
+    await modal.locator('#j0n4t-pg-dup-strategy').selectOption('keep_both');
+    await modal.locator('#j0n4t-pg-imp-confirm').click();
+    await page.locator('.j0n4t-pg-modal-overlay button[data-index="1"]').click();
+
+    await expect(page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]')).toHaveAttribute(
+      'title', /portrait, studio lighting/
+    );
+    await expect(page.locator('.j0n4t-pg-item[data-style="Faces/Portrait_copy_1"]')).toHaveAttribute(
+      'title', /imported portrait/
+    );
+    await expect(page.locator('.j0n4t-pg-item[data-style="Imported/One"]')).toBeVisible();
+  });
+
+  test('exporting one selected preset downloads the chosen JSON format', async ({ page }) => {
+    await openPanel(page);
+    await page.locator('#j0n4t-pg-export-btn').click();
+    const modal = page.locator('.j0n4t-pg-modal-overlay');
+    await expect(modal.locator('#j0n4t-pg-exp-confirm')).toBeVisible();
+    await modal.locator('#j0n4t-pg-exp-format').selectOption('json');
+    for (const checkbox of await modal.locator('.j0n4t-pg-item-cb').all()) {
+      await checkbox.uncheck();
+    }
+    await modal.locator('.j0n4t-pg-item-cb[value="Faces/Portrait"]').check();
+
+    const downloadPromise = page.waitForEvent('download');
+    await modal.locator('#j0n4t-pg-exp-confirm').click();
+    await page.locator('.j0n4t-pg-modal-overlay button[data-index="1"]').click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('presets_full.json');
+    const file = await download.createReadStream();
+    expect(file).not.toBeNull();
+  });
 });
 
 test.describe('the engine', () => {
   test('serializeValue expands the selection to the final prompt', async ({ page }) => {
-    const expanded = await page.evaluate(() => {
-      const w = window as unknown as {
-        __pgNode: { widgets: Array<{ name: string; serializeValue?: () => string }> };
-      };
-      return w.__pgNode.widgets.find((x) => x.name === 'evaluated_preset')?.serializeValue?.() ?? '';
-    });
-    expect(expanded).toBe('portrait, studio lighting');
+    expect(await serializedPrompt(page)).toBe('portrait, studio lighting');
   });
-
   test('a roll replaces the selection with several presets', async ({ page }) => {
     await page.locator('.j0n4t-pg-basket-reroll-btn').dispatchEvent('click', { shiftKey: true });
     const count = (await widgetValue(page)).split(',').filter((s) => s.trim()).length;
     expect(count).toBeGreaterThan(1);
+  });
+});
+
+test.describe('automatic rolling', () => {
+  test('generation rolling overwrites the Basket while retaining pinned chips', async ({ page }) => {
+    await pinFirstChip(page);
+    const modal = await openRollingSettings(page);
+    await modal.locator('#j0n4t-pg-dice-behavior').selectOption('overwrite');
+    await modal.locator('#j0n4t-pg-roll-min').fill('1');
+    await modal.locator('#j0n4t-pg-roll-max').fill('1');
+    await modal.locator('#j0n4t-pg-roll-on-gen').check();
+    await modal.locator('button[data-index="1"]').click();
+
+    await serializedPrompt(page);
+    await expect.poll(() => widgetValue(page)).not.toBe('Faces/Portrait');
+    const selection = (await widgetValue(page)).split(', ');
+    expect(selection).toContain('Faces/Portrait');
+    expect(selection.length).toBeGreaterThan(1);
+    await expect.poll(() => page.evaluate(() =>
+      (window as unknown as { __pgNode: { widgets: Array<{ name: string; value: string }> } })
+        .__pgNode.widgets.find((widget) => widget.name === 'evaluated_preset')?.value ?? ''
+    )).toContain('portrait, studio lighting');
+  });
+
+  test('seed-change rolling waits for a seed change and preserves pinned chips', async ({ page }) => {
+    await pinFirstChip(page);
+    await page.evaluate(() => {
+      (window as unknown as {
+        __pgNode: { graph: { _nodes: Array<{ id: number; widgets: Array<{ name: string; value: number }> }> } };
+      }).__pgNode.graph._nodes = [{ id: 7, widgets: [{ name: 'seed', value: 10 }] }];
+    });
+    const modal = await openRollingSettings(page);
+    await modal.locator('#j0n4t-pg-dice-behavior').selectOption('overwrite');
+    await modal.locator('#j0n4t-pg-roll-min').fill('1');
+    await modal.locator('#j0n4t-pg-roll-max').fill('1');
+    await modal.locator('#j0n4t-pg-roll-on-seed').check();
+    await modal.locator('button[data-index="1"]').click();
+
+    await serializedPrompt(page);
+    await page.waitForTimeout(200);
+    await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait');
+    await page.evaluate(() => {
+      const node = (window as unknown as {
+        __pgNode: { graph: { _nodes: Array<{ widgets: Array<{ name: string; value: number }> }> } };
+      }).__pgNode;
+      node.graph._nodes[0].widgets[0].value = 11;
+    });
+    await serializedPrompt(page);
+
+    await expect.poll(() => widgetValue(page)).not.toBe('Faces/Portrait');
+    const selection = (await widgetValue(page)).split(', ');
+    expect(selection).toContain('Faces/Portrait');
+    expect(selection.length).toBeGreaterThan(1);
   });
 });
 
@@ -423,6 +615,33 @@ test.describe('persistence', () => {
       return w.__report !== undefined;
     });
     await expect(page.locator('.j0n4t-pg-grid')).toHaveClass(/view-list/);
+  });
+
+  test('Basket tabs restore their own chips and pins after switching and reload', async ({ page }) => {
+    await page.locator('.j0n4t-pg-item[data-style="Scenery/Hills"]').click();
+    await page.locator('.j0n4t-pg-basket-multiselect-btn').click();
+    await chips(page).nth(0).click();
+    await chips(page).nth(1).click();
+    await page.locator('.j0n4t-pg-basket-pin-btn').click();
+
+    await page.locator('.j0n4t-pg-basket-tab-add-btn').click();
+    await page.locator('.j0n4t-pg-item[data-style="Faces/Macro"]').click();
+    await expect.poll(() => widgetValue(page)).toBe('Faces/Macro');
+
+    await page.reload();
+    await page.waitForFunction(() => (window as unknown as { __report?: unknown }).__report !== undefined);
+    await expect(page.locator('.j0n4t-pg-basket-tab-item.active')).toHaveAttribute(
+      'title', /^Basket 2/
+    );
+    await expect(chips(page)).toHaveCount(1);
+    await expect(chips(page).first().locator('.j0n4t-pg-basket-chip-label')).toHaveText('Macro');
+
+    await page.locator('.j0n4t-pg-basket-tab-item').first().click();
+    await expect(chips(page)).toHaveCount(2);
+    await expect(chips(page).nth(0)).toHaveClass(/pinned/);
+    await expect(chips(page).nth(1)).toHaveClass(/pinned/);
+    await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait, Scenery/Hills');
+    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, rolling hills');
   });
 });
 

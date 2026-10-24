@@ -114,13 +114,14 @@ try {
   add("context is not the app", gallery.context !== gallery);
   add("context.cache is the session cache", gallery.context.cache === gallery.session.cache);
 
-  // A load-time behaviour: an initial widget value renders as chips. Assigning
-  // the value is enough - the host's setter fires the widget callback, which
-  // renders, so an explicit syncUI here would be the same duplicate render the
-  // production fix removed.
-  const presetKey = Object.keys(gallery.session.cache)[0];
-  node.widgets[0].value = presetKey;
-  await delay(50);
+  // Seed a first-run selection once per browser tab. On reload, leave the
+  // restored Basket tabs alone so e2e tests can verify user state persistence.
+  if (sessionStorage.getItem("preset-gallery-harness-seeded") !== "true") {
+    const presetKey = Object.keys(gallery.session.cache)[0];
+    node.widgets[0].value = presetKey;
+    sessionStorage.setItem("preset-gallery-harness-seeded", "true");
+    await delay(50);
+  }
   add("initial selection rendered as chips", q(".j0n4t-pg-basket-chip"), q(".j0n4t-pg-basket-chip") > 0);
 
   // The engine's core promise, entirely frontend-side.
