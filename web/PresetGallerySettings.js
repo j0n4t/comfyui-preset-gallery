@@ -1,6 +1,7 @@
 import ModalUtils from "./ModalUtils.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
+import { STORAGE_KEYS, defaultStorage, readJson, writeJson } from "./GalleryStorage.js";
 
 /**
  * Height modes offered in the Display tab, mirrored onto `data-height-mode` on
@@ -130,37 +131,51 @@ export default class PresetGallerySettings {
     setTimeout(() => this.updateDiceVisuals(), 0);
   }
 
+  /**
+   * The values a missing, unparseable or wrong-typed settings blob falls back
+   * to. Each field is listed once: the defaults used to be repeated in the
+   * catch block, so a new field meant editing two lists and the two drifting.
+   */
+  applyDefaults() {
+    this.rollMin = 10;
+    this.rollMax = 20;
+    this.rollOnGeneration = false;
+    this.rollOnSeedChange = false;
+    this.diceBehavior = "variants";
+    this.heightMode = DEFAULT_HEIGHT_MODE;
+    this.heightFixed = DEFAULT_HEIGHT_FIXED;
+    this.rememberPanelSizes = false;
+    this.panelSizes = /** @type {GalleryPanelSizes} */ ({});
+    this.qualifyChips = true;
+    this.showChipLibraryBadges = true;
+    this.showGridLibraryBadges = true;
+    this.disabledLibraries = [];
+    this.libraryOrder = [];
+  }
+
   load() {
-    try {
-      const saved = JSON.parse(localStorage.getItem("pg_settings") || "{}");
-      this.rollMin = saved.rollMin !== undefined ? saved.rollMin : 10;
-      this.rollMax = saved.rollMax !== undefined ? saved.rollMax : 20;
-      this.rollOnGeneration = saved.rollOnGeneration !== undefined ? saved.rollOnGeneration : false;
-      this.rollOnSeedChange = saved.rollOnSeedChange !== undefined ? saved.rollOnSeedChange : false;
-      this.diceBehavior = saved.diceBehavior || "variants";
-      this.heightMode = toHeightMode(saved.heightMode);
-      this.heightFixed = toFixedHeight(saved.heightFixed);
-      this.rememberPanelSizes = saved.rememberPanelSizes === true;
-      this.panelSizes = toPanelSizes(saved.panelSizes);
-      this.qualifyChips = saved.qualifyChips !== false;
-      this.showChipLibraryBadges = saved.showChipLibraryBadges !== false;
-      this.showGridLibraryBadges = saved.showGridLibraryBadges !== false;
-      this.disabledLibraries = toIdList(saved.disabledLibraries);
-      this.libraryOrder = toIdList(saved.libraryOrder);
-    } catch {
-      this.rollMin = 10;
-      this.rollMax = 20;
-      this.rollOnGeneration = false;
-      this.rollOnSeedChange = false;
-      this.diceBehavior = "variants";
-      this.heightMode = DEFAULT_HEIGHT_MODE;
-      this.heightFixed = DEFAULT_HEIGHT_FIXED;
-      this.rememberPanelSizes = false;
-      this.panelSizes = /** @type {GalleryPanelSizes} */ ({});
-      this.qualifyChips = true;
-      this.showChipLibraryBadges = true;
-      this.showGridLibraryBadges = true;
+    // The boundary parses the value and swallows a corrupt one. A valid JSON
+    // that is not an object - `null`, a bare string - still has to fall back,
+    // because every field below reads a property off it.
+    const saved = readJson(STORAGE_KEYS.settings, {}, defaultStorage());
+    if (!saved || typeof saved !== "object" || Array.isArray(saved)) {
+      this.applyDefaults();
+      return;
     }
+    this.rollMin = saved.rollMin !== undefined ? saved.rollMin : 10;
+    this.rollMax = saved.rollMax !== undefined ? saved.rollMax : 20;
+    this.rollOnGeneration = saved.rollOnGeneration !== undefined ? saved.rollOnGeneration : false;
+    this.rollOnSeedChange = saved.rollOnSeedChange !== undefined ? saved.rollOnSeedChange : false;
+    this.diceBehavior = saved.diceBehavior || "variants";
+    this.heightMode = toHeightMode(saved.heightMode);
+    this.heightFixed = toFixedHeight(saved.heightFixed);
+    this.rememberPanelSizes = saved.rememberPanelSizes === true;
+    this.panelSizes = toPanelSizes(saved.panelSizes);
+    this.qualifyChips = saved.qualifyChips !== false;
+    this.showChipLibraryBadges = saved.showChipLibraryBadges !== false;
+    this.showGridLibraryBadges = saved.showGridLibraryBadges !== false;
+    this.disabledLibraries = toIdList(saved.disabledLibraries);
+    this.libraryOrder = toIdList(saved.libraryOrder);
   }
 
   save() {
@@ -180,7 +195,7 @@ export default class PresetGallerySettings {
       disabledLibraries: this.disabledLibraries,
       libraryOrder: this.libraryOrder
     };
-    localStorage.setItem("pg_settings", JSON.stringify(data));
+    writeJson(STORAGE_KEYS.settings, data, defaultStorage());
   }
 
   /**

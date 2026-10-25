@@ -3,6 +3,7 @@ import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
 import PresetLogic from "./PresetLogic.js";
 import PresetDisplay from "./PresetDisplay.js";
+import { STORAGE_KEYS, defaultStorage, readBool, readString, writeBool, writeString } from "./GalleryStorage.js";
 
 export default class PresetGrid {
   static GROUP_HEADER_STYLES = /*css*/ `
@@ -78,7 +79,7 @@ export default class PresetGrid {
         btn.setAttribute("aria-pressed", String(isActive));
       });
     this.dom.grid.classList.add(`view-${viewName}`);
-    localStorage.setItem("comfy_preset_gallery_view", viewName);
+    writeString(STORAGE_KEYS.view, viewName, defaultStorage());
   }
 
   executeFilterPipeline(query = "") {
@@ -234,7 +235,7 @@ export default class PresetGrid {
     this.dom.btnGlobalCollapse.setAttribute("aria-label", isMajorityCollapsed ? "Expand All" : "Collapse All");
     this.dom.btnGlobalCollapse.classList.toggle("collapsed-state", isMajorityCollapsed);
     this.attachGridItemEvents();
-    this.switchView(localStorage.getItem("comfy_preset_gallery_view") || "big");
+    this.switchView(readString(STORAGE_KEYS.view, "big", defaultStorage()));
     this.executeFilterPipeline(this.dom.search.value);
     this.context.syncEditorHighlight();
   }
@@ -394,7 +395,7 @@ export default class PresetGrid {
       if (btn) this.switchView( /** @type {HTMLElement} */(btn).dataset.view || "");
     });
 
-    const isGrouped = localStorage.getItem("comfy_preset_gallery_grouped") !== "false";
+    const isGrouped = readBool(STORAGE_KEYS.grouped, true, defaultStorage());
     this.dom.chkGroup.classList.toggle("active", isGrouped);
     this.dom.chkGroup.setAttribute("aria-pressed", String(isGrouped));
     this.dom.grid.classList.toggle("hide-folders", !isGrouped);
@@ -402,7 +403,7 @@ export default class PresetGrid {
 
     this.dom.chkGroup.addEventListener("click", () => {
       const willGroup = !this.dom.chkGroup.classList.contains("active");
-      localStorage.setItem("comfy_preset_gallery_grouped", String(willGroup));
+      writeBool(STORAGE_KEYS.grouped, willGroup, defaultStorage());
       this.dom.chkGroup.classList.toggle("active", willGroup);
       this.dom.chkGroup.setAttribute("aria-pressed", String(willGroup));
       this.dom.grid.classList.toggle("hide-folders", !willGroup);
@@ -412,13 +413,13 @@ export default class PresetGrid {
 
     const hideBtn = this.dom.btnHideHidden;
     if (hideBtn) {
-      const isShowActive = localStorage.getItem("comfy_preset_gallery_show_hidden") === "true";
+      const isShowActive = readBool(STORAGE_KEYS.showHidden, false, defaultStorage());
       hideBtn.classList.toggle("active", isShowActive);
       hideBtn.setAttribute("aria-pressed", String(isShowActive));
 
       hideBtn.addEventListener("click", () => {
         const willShow = !hideBtn.classList.contains("active");
-        localStorage.setItem("comfy_preset_gallery_show_hidden", String(willShow));
+        writeBool(STORAGE_KEYS.showHidden, willShow, defaultStorage());
         hideBtn.classList.toggle("active", willShow);
         hideBtn.setAttribute("aria-pressed", String(willShow));
         this.executeFilterPipeline(this.dom.search.value);

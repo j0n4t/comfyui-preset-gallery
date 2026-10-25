@@ -213,7 +213,17 @@ autocomplete, and raw-text behavior covered by focused tests.
       `evalId` is the resolved preset and the segment title is that preset's
       name. It is left in place rather than removed on a "no counterexample
       found" argument.
-- [ ] 5. App services and persistence.
+- [x] 5a. Storage boundary — `GalleryStorage` owns every key name and the
+      meaning of a bad value. It replaces three unguarded `JSON.parse` calls in
+      `PresetSession`: the pins read is in its constructor, so one corrupt value
+      threw and the gallery never mounted, and a valid-but-wrong-typed value
+      (`"a string"`, `42`) used to be handed to callers that call `includes` on
+      it. The settings panel's defaults were listed twice and are now one
+      method. The four components that read the global now go through
+      `defaultStorage()`, so a browser that blocks storage yields the defaults
+      instead of throwing. Key names are unchanged and pinned by test — they are
+      the user's saved state. 16 new tests, 6 new `mutation_check` entries.
+      `docs/GalleryStorage.md` documents the contract.
 - [ ] 6. Supporting UI modules.
 
 Notes for the next session: `tools/mutation_check.py` is the guard that the

@@ -10,6 +10,7 @@ import PresetDOM from "./PresetDOM.js";
 import PresetGallerySettings from "./PresetGallerySettings.js";
 import PresetSession from "./PresetSession.js";
 import createGalleryContext from "./PresetGalleryContext.js";
+import { STORAGE_KEYS, defaultStorage, readBool, writeBool } from "./GalleryStorage.js";
 import PresetDisplay from "./PresetDisplay.js";
 
 // The node's own floor. Below this the gallery cannot show its basket, control
@@ -346,7 +347,7 @@ export default class PresetGalleryApp {
     this.dom.toggle.classList.toggle("active", !col);
     this.dom.toggle.title = col ? "Management Panel" : "Hide Panel";
     this.dom.toggle.setAttribute("aria-expanded", String(!col));
-    localStorage.setItem("comfy_preset_gallery_collapsed", String(col));
+    writeBool(STORAGE_KEYS.panelCollapsed, col, defaultStorage());
   }
 
   syncEditorHighlight() {
@@ -673,10 +674,10 @@ export default class PresetGalleryApp {
       const isHidden = this.dom.wrap.classList.toggle("hide-gallery-mode");
       this.dom.btnHideGallery.classList.toggle("active", !isHidden);
       this.dom.btnHideGallery.setAttribute("aria-pressed", String(!isHidden));
-      localStorage.setItem("comfy_preset_gallery_hidden", String(isHidden));
+      writeBool(STORAGE_KEYS.galleryHidden, isHidden, defaultStorage());
     });
 
-    if (localStorage.getItem("comfy_preset_gallery_hidden") === "true") {
+    if (readBool(STORAGE_KEYS.galleryHidden, false, defaultStorage())) {
       this.dom.wrap.classList.add("hide-gallery-mode");
       this.dom.btnHideGallery.classList.remove("active");
       this.dom.btnHideGallery.setAttribute("aria-pressed", "false");
@@ -791,7 +792,7 @@ export default class PresetGalleryApp {
 
     this.initFilterAutocomplete();
     this.setPanelCollapseState(
-      localStorage.getItem("comfy_preset_gallery_collapsed") === "true"
+      readBool(STORAGE_KEYS.panelCollapsed, false, defaultStorage())
     );
     this.node.setSize([
       this.node.size[0] || MIN_NODE_WIDTH,

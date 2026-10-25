@@ -9,6 +9,7 @@ import ChipProjection from "./ChipProjection.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 import RollManager from "./RollManager.js";
 import YAMLUtils from "./YAMLUtils.js";
+import { STORAGE_KEYS, defaultStorage, readBool, writeBool } from "./GalleryStorage.js";
 import PresetDisplay from "./PresetDisplay.js";
 
 
@@ -772,10 +773,10 @@ export default class PresetBasket {
     dom.btnBasketDelete.addEventListener("click", () => this.selection.deleteSelected());
     this.selection.updateActionButtons();
 
-    dom.chkBasketRaw.checked = localStorage.getItem("comfy_preset_gallery_raw_basket") === "true";
+    dom.chkBasketRaw.checked = readBool(STORAGE_KEYS.rawBasket, false, defaultStorage());
     dom.basketContainer.classList.toggle("raw-mode", dom.chkBasketRaw.checked);
     dom.chkBasketRaw.addEventListener("change", () => {
-      localStorage.setItem("comfy_preset_gallery_raw_basket", String(dom.chkBasketRaw.checked));
+      writeBool(STORAGE_KEYS.rawBasket, dom.chkBasketRaw.checked, defaultStorage());
       dom.basketContainer.classList.toggle("raw-mode", dom.chkBasketRaw.checked);
     });
 

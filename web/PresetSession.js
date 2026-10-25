@@ -1,5 +1,6 @@
 import RollManager from "./RollManager.js";
 import PresetLogic from "./PresetLogic.js";
+import { STORAGE_KEYS, defaultStorage, readIdList } from "./GalleryStorage.js";
 import PresetDisplay from "./PresetDisplay.js";
 
 /**
@@ -13,19 +14,6 @@ import PresetDisplay from "./PresetDisplay.js";
  *
  * @typedef {{id: string, name: string}} MergedLibrary
  */
-
-/**
- * Returns the browser localStorage, or null when there is none (e.g. under
- * `node --test`). Callers must tolerate a null storage.
- * @returns {Storage | null}
- */
-function defaultStorage() {
-  try {
-    return typeof localStorage !== "undefined" ? localStorage : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Owns the pure, stateful part of a preset gallery session: the preset cache,
@@ -58,10 +46,12 @@ export default class PresetSession {
     this.keyOwners = new Map();
     /** @type {Set<string>} plain keys claimed by more than one library */
     this.duplicateKeys = new Set();
-    this.pinKey = `j0n4t-pg-pins-${nodeId || "global"}`;
-    const savedPins = this.storage?.getItem(this.pinKey);
+    // The key carries the node id, and the value is a JSON array of the
+    // joined chip strings. A corrupt or wrong-typed value reads as no pins
+    // rather than throwing out of the constructor.
+    this.pinKey = STORAGE_KEYS.pins(nodeId);
     /** @type {Set<string>} */
-    this.pinnedChips = new Set(savedPins ? JSON.parse(savedPins) : []);
+    this.pinnedChips = new Set(readIdList(this.pinKey, this.storage));
     this.rollManager = new RollManager();
     /** @type {Record<string, any> | null} */
     this.lastSeeds = null;
@@ -244,22 +234,22 @@ export default class PresetSession {
 
   /** @returns {string[]} */
   getCollapsedFolders() {
-    return JSON.parse(this.storage?.getItem("pg_collapsed_folders_list") || "[]");
+    return readIdList(STORAGE_KEYS.collapsedFolders, this.storage);
   }
 
   /** @param {string[]} list */
   setCollapsedFolders(list) {
-    this.storage?.setItem("pg_collapsed_folders_list", JSON.stringify(list));
+    this.storage?.setItem(STORAGE_KEYS.collapsedFolders, JSON.stringify(list));
   }
 
   /** @returns {string[]} */
   getExcludedRollFolders() {
-    return JSON.parse(this.storage?.getItem("pg_excluded_roll_folders") || "[]");
+    return readIdList(STORAGE_KEYS.excludedRollFolders, this.storage);
   }
 
   /** @param {string[]} list */
   setExcludedRollFolders(list) {
-    this.storage?.setItem("pg_excluded_roll_folders", JSON.stringify(list));
+    this.storage?.setItem(STORAGE_KEYS.excludedRollFolders, JSON.stringify(list));
   }
 
   /**

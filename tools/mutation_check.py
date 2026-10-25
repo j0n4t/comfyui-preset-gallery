@@ -69,9 +69,9 @@ MUTATIONS = [
     # The saved active tab id decides which tab comes back. Falling back to the
     # first tab every time restores the wrong selection after a reload.
     ("web/PresetBasketTabs.js",
-     "          parsed.activeTabId && parsed.tabs.some((/** @type {BasketTab} */ t) => t.id === parsed.activeTabId)\n"
-     "            ? parsed.activeTabId\n"
-     "            : parsed.tabs[0].id,",
+     "        parsed.activeTabId && parsed.tabs.some((/** @type {BasketTab} */ t) => t.id === parsed.activeTabId)\n"
+     "          ? parsed.activeTabId\n"
+     "          : parsed.tabs[0].id,",
      "          parsed.tabs[0].id,",
      "tests/unit/preset_basket_tabs.test.ts"),
     # Removing the active tab has to install the neighbour it falls back to, or
@@ -299,6 +299,44 @@ MUTATIONS = [
      'if (tokens.length > 0 && tokens.some(t => /[{<]/.test(t))) {',
      'if (tokens.length > 0) {',
      "tests/unit/preset_basket.test.ts"),
+
+    # The storage boundary (`web/GalleryStorage.js`). Phase 5a. It is the only
+    # module that knows the key names and the meaning of a bad value, so every
+    # decision here is one the rest of the app depends on silently.
+    #
+    # A corrupt value must degrade, not throw: the pins read is in the session
+    # constructor, so a throw there means the gallery never mounts.
+    ("web/GalleryStorage.js",
+     "  try {\n    return JSON.parse(raw);\n  } catch {\n    return fallback;\n  }",
+     "  return JSON.parse(raw);",
+     "tests/unit/preset_session.test.ts"),
+    # A valid JSON that is not an array must not reach a caller doing includes.
+    ("web/GalleryStorage.js",
+     "  if (!Array.isArray(parsed)) return [];",
+     "  if (false) return [];",
+     "tests/unit/gallery_storage.test.ts"),
+    # ...and a mixed array keeps only its strings.
+    ("web/GalleryStorage.js",
+     '  return parsed.filter((/** @type {*} */ item) => typeof item === "string");',
+     "  return parsed;",
+     "tests/unit/gallery_storage.test.ts"),
+    # Only the exact string "true" is on. "TRUE" and "1" are what a future
+    # tidy-up would write, and reading them as on flips a default-off
+    # preference for every existing user.
+    ("web/GalleryStorage.js",
+     '  return storage?.getItem(key) === "true" ? true : fallback;',
+     '  return storage?.getItem(key) !== null ? true : fallback;',
+     "tests/unit/gallery_storage.test.ts"),
+    # A browser that throws on storage access must yield the defaults.
+    ("web/GalleryStorage.js",
+     "  try {\n    return typeof localStorage !== \"undefined\" ? localStorage : null;\n  } catch {\n    return null;\n  }",
+     "  return localStorage;",
+     "tests/unit/gallery_storage.test.ts"),
+    # The key names are the user's saved state, not a detail.
+    ("web/GalleryStorage.js",
+     '  settings: "pg_settings",',
+     '  settings: "pg_settings_v2",',
+     "tests/unit/gallery_storage.test.ts"),
 ]
 
 

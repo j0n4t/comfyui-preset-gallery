@@ -543,3 +543,109 @@ test("rebuildCache registers non-enumerable library-qualified keys for winning e
   assert.equal(Object.getOwnPropertyNames(session.cache).includes("socks#wear/sock/crew"), true);
 });
 
+// --- a bad value in storage must not take the gallery down -----------------
+//
+// Three of the values this session reads are written as JSON arrays. Each used
+// to be parsed with no guard, so one corrupt or wrong-typed value threw: the
+// pins read is in the constructor, so the gallery never mounted, and the two
+// folder lists are read on every render. The settings panel and the tab list
+// guarded theirs; these did not.
+
+/** Every shape of bad value the boundary has to survive. */
+const BAD_VALUES = ["{bad json", "[1,2", "\"a string\"", "42", "null", ""];
+
+for (const bad of BAD_VALUES) {
+  test(`a corrupt stored pin list (${JSON.stringify(bad)}) starts empty instead of throwing`, () => {
+    // The constructor is the one that matters: a throw here means no gallery.
+    let session;
+    try {
+      session = makeSession({ storage: fakeStorage({ "j0n4t-pg-pins-global": bad }) });
+    } catch (error) {
+      assert.fail(`constructing a session over ${JSON.stringify(bad)} threw: ${error}`);
+    }
+    assert.ok(session);
+    assert.equal(session.pinnedChips.size, 0, "a bad pin list must not pin anything");
+  });
+}
+
+for (const bad of BAD_VALUES) {
+  test(`a corrupt stored collapsed-folder list (${JSON.stringify(bad)}) reads as empty`, () => {
+    const session = makeSession({
+      storage: fakeStorage({ pg_collapsed_folders_list: bad }),
+    });
+    assert.deepEqual(session.getCollapsedFolders(), []);
+  });
+}
+
+for (const bad of BAD_VALUES) {
+  test(`a corrupt stored excluded-roll list (${JSON.stringify(bad)}) reads as empty`, () => {
+    const session = makeSession({
+      storage: fakeStorage({ pg_excluded_roll_folders: bad }),
+    });
+    assert.deepEqual(session.getExcludedRollFolders(), []);
+  });
+}
+
+test("a wrong-typed folder list does not leak a non-array to its callers", () => {
+  // `"a string"` and 42 are valid JSON. Both used to come back as-is, and the
+  // grid calls `.includes` on the result.
+  const session = makeSession({
+    storage: fakeStorage({ pg_collapsed_folders_list: '"a string"' }),
+  });
+  const folders = session.getCollapsedFolders();
+  assert.ok(Array.isArray(folders), `expected an array, got ${typeof folders}`);
+  assert.deepEqual(folders, []);
+});
+
+test("a good folder list round-trips through the session", () => {
+  // The guard must not cost the working path anything.
+  const storage = fakeStorage();
+  const session = makeSession({ storage });
+  session.setCollapsedFolders(["Faces", "Scenery"]);
+  session.setExcludedRollFolders(["Faces"]);
+  assert.deepEqual(session.getCollapsedFolders(), ["Faces", "Scenery"]);
+  assert.deepEqual(session.getExcludedRollFolders(), ["Faces"]);
+  assert.equal(storage.getItem("pg_collapsed_folders_list"), '["Faces","Scenery"]');
+  assert.equal(storage.getItem("pg_excluded_roll_folders"), '["Faces"]');
+});
+
+// --- the default storage is the ambient localStorage ------------------------
+//
+// PresetGalleryApp constructs the session with no `storage` at all
+// (`new PresetSession({ nodeId })`), so the default is the whole persistence
+// path. Every other test here injects a fake, which is why a regression that
+// made `storage` default to undefined - silently stopping every write - passed
+// the whole suite. This pins the default instead.
+
+test("a session constructed with no storage uses the ambient localStorage", () => {
+  const map = new Map<string, string>();
+  globalThis.localStorage = {
+    getItem: (k: string) => map.get(k) ?? null,
+    setItem: (k: string, v: string) => { map.set(k, v); },
+    removeItem: (k: string) => { map.delete(k); },
+    clear: () => map.clear(),
+  } as unknown as Storage;
+
+  const session = new PresetSession({ nodeId: "defaulted" });
+  assert.ok(session.storage, "the session must resolve a storage, not undefined");
+
+  session.savePins();
+  session.setCollapsedFolders(["Faces"]);
+  assert.equal(map.get("j0n4t-pg-pins-defaulted"), "[]");
+  assert.equal(map.get("pg_collapsed_folders_list"), '["Faces"]');
+});
+
+test("a session with no storage and no localStorage still constructs", () => {
+  // A browser that blocks storage must not stop the gallery mounting.
+  const saved = globalThis.localStorage;
+  // @ts-expect-error deliberately absent
+  delete globalThis.localStorage;
+  try {
+    const session = new PresetSession({ nodeId: "nostorage" });
+    assert.equal(session.storage, null);
+    assert.doesNotThrow(() => session.savePins());
+    assert.deepEqual(session.getCollapsedFolders(), []);
+  } finally {
+    globalThis.localStorage = saved;
+  }
+});

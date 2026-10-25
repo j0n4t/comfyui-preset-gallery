@@ -7,23 +7,9 @@
  * the pins and rolled choices that went with it - and installing one is the
  * app's `restoreTabSelection`, the same transition a user edit goes through.
  */
-
-/**
- * Returns the browser localStorage, or null when there is none (e.g. under
- * `node --test`). Callers must tolerate a null storage.
- * @returns {Storage | null}
- */
-function defaultStorage() {
-  try {
-    return typeof localStorage !== "undefined" ? localStorage : null;
-  } catch {
-    return null;
-  }
-}
+import { STORAGE_KEYS, defaultStorage, readJson, writeJson } from "./GalleryStorage.js";
 
 export default class PresetBasketTabs {
-  static STORAGE_KEY = "comfy_preset_gallery_basket_tabs";
-
   /**
    * @param {GalleryContext} context
    * @param {{ storage?: Storage | null }} [options]
@@ -70,29 +56,20 @@ export default class PresetBasketTabs {
 
   /** @returns {{ tabs: BasketTab[], activeTabId: string } | null} */
   read() {
-    const raw = this.storage?.getItem(PresetBasketTabs.STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed.tabs) || parsed.tabs.length === 0) return null;
-      return {
-        tabs: parsed.tabs,
-        activeTabId:
-          parsed.activeTabId && parsed.tabs.some((/** @type {BasketTab} */ t) => t.id === parsed.activeTabId)
-            ? parsed.activeTabId
-            : parsed.tabs[0].id,
-      };
-    } catch (e) {
-      console.error("Failed to parse basket tabs from localStorage", e);
-      return null;
-    }
+    const parsed = readJson(STORAGE_KEYS.basketTabs, null, this.storage);
+    if (!parsed) return null;
+    if (!Array.isArray(parsed.tabs) || parsed.tabs.length === 0) return null;
+    return {
+      tabs: parsed.tabs,
+      activeTabId:
+        parsed.activeTabId && parsed.tabs.some((/** @type {BasketTab} */ t) => t.id === parsed.activeTabId)
+          ? parsed.activeTabId
+          : parsed.tabs[0].id,
+    };
   }
 
   persist() {
-    this.storage?.setItem(
-      PresetBasketTabs.STORAGE_KEY,
-      JSON.stringify({ tabs: this.tabs, activeTabId: this.activeTabId })
-    );
+    writeJson(STORAGE_KEYS.basketTabs, { tabs: this.tabs, activeTabId: this.activeTabId }, this.storage);
   }
 
   /** @returns {BasketTab | null} */
