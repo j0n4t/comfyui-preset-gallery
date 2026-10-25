@@ -224,6 +224,15 @@ autocomplete, and raw-text behavior covered by focused tests.
       instead of throwing. Key names are unchanged and pinned by test — they are
       the user's saved state. 16 new tests, 6 new `mutation_check` entries.
       `docs/GalleryStorage.md` documents the contract.
+- [x] 5b. Explicit library targeting — the module-level
+      `PresetGalleryAPI.activeLibraryId` is gone. Every read and write names
+      its library, defaulting to the bundled one, and `libraryUrl` always
+      carries the id (the route treats `?library=main` and no query the same,
+      so there was no reason to depend on which form a call got). Import and
+      export take the preselect as a parameter from the app instead of reading
+      a global, and the app declares its own default rather than leaving it
+      undefined until the library list arrives. 4 new `mutation_check` entries.
+- [ ] 5c. Typed context dependencies.
 - [ ] 6. Supporting UI modules.
 
 Notes for the next session: `tools/mutation_check.py` is the guard that the
@@ -232,6 +241,9 @@ lists, and repoint its entries when code moves between modules (a mutation
 whose pattern no longer matches aborts the run rather than passing silently).
 Moving code without adding entries leaves the moved decisions uncovered, which
 is how a guard dies: phase 4b added nine, one per decision that moved.
+An entry whose pattern no longer matches aborts the run rather than passing
+silently - which is what happened when phase 5a dedented a block - so repoint
+them whenever the surrounding code moves.
 `dev/index.html` plus `npx playwright test` is the only browser coverage;
 the harness stubs the ComfyUI host object and nothing else.
 

@@ -289,7 +289,9 @@ export default class PresetEditor {
       editingKey: this.editingKey,
       mode: this.currentMode,
       libraryId: targetLibrary,
-      sourceLibraryId: this.currentMode === "edit" ? this.editingLibraryId() : null,
+      // `undefined` rather than null: the API treats a missing id as the
+      // bundled library, and null would be a second way to say that.
+      sourceLibraryId: this.currentMode === "edit" ? this.editingLibraryId() ?? undefined : undefined,
     });
 
     if (!res.success) {
@@ -328,7 +330,10 @@ export default class PresetEditor {
     }
     if (!(await ModalUtils.confirm(`Delete "${this.editingKey}"?`))) return;
 
-    await PresetGalleryAPI.deletePreset(this.editingKey, this.editingLibraryId());
+    await PresetGalleryAPI.deletePreset(
+      this.editingKey,
+      this.editingLibraryId() ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID
+    );
     // deleting the last preset may have emptied the library it came from
     await this.context.settleEmptiedLibrary(this.editingLibraryId());
     await this.context.loadGallery();

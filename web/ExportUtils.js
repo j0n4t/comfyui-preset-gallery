@@ -487,15 +487,17 @@ const ExportUtils = {
     },
 
     /**
+     * @param {string} defaultLibraryId the library to preselect
      * @param {(config: ExportConfig) => void} onExport
      */
-    async showExportModal(onExport) {
+    async showExportModal(defaultLibraryId, onExport) {
         const libraries = await PresetGalleryAPI.fetchLibraries();
         const availableLibraries = libraries.length
             ? libraries
             : [{ id: PresetGalleryAPI.DEFAULT_LIBRARY_ID, name: PresetGalleryAPI.DEFAULT_LIBRARY_ID, default: true }];
-        let libraryId = availableLibraries.find((library) => library.id === PresetGalleryAPI.activeLibraryId)?.id
-            ?? availableLibraries[0].id;
+        let libraryId = availableLibraries.some((library) => library.id === defaultLibraryId)
+            ? defaultLibraryId
+            : availableLibraries[0].id;
         let presets = await PresetGalleryAPI.getPresets(libraryId);
 
         const overlay = document.createElement("div");
@@ -775,15 +777,17 @@ const ExportUtils = {
 
     /**
      * @param {PresetCache} importedPresets
+     * @param {string} defaultLibraryId the library to preselect
      * @param {(result: { selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }) => void} onConfirm
      */
-    async showImportModal(importedPresets, onConfirm) {
+    async showImportModal(importedPresets, defaultLibraryId, onConfirm) {
         const libraries = await PresetGalleryAPI.fetchLibraries();
         const availableLibraries = libraries.length
             ? libraries
             : [{ id: PresetGalleryAPI.DEFAULT_LIBRARY_ID, name: PresetGalleryAPI.DEFAULT_LIBRARY_ID, default: true }];
-        let libraryId = availableLibraries.find((library) => library.id === PresetGalleryAPI.activeLibraryId)?.id
-            ?? availableLibraries[0].id;
+        let libraryId = availableLibraries.some((library) => library.id === defaultLibraryId)
+            ? defaultLibraryId
+            : availableLibraries[0].id;
         let currentPresets = await PresetGalleryAPI.getPresets(libraryId);
         const overlay = document.createElement("div");
         overlay.className = "j0n4t-pg-modal-overlay";
@@ -934,7 +938,11 @@ const ExportUtils = {
      * @param {File} file
      * @returns {Promise<{ success: boolean }>}
      */
-    async importFile(file) {
+    /**
+     * @param {File} file
+     * @param {string} defaultLibraryId the library to preselect
+     */
+    async importFile(file, defaultLibraryId) {
         /** @type {PresetCache} */
         let importedPresets = {};
 
@@ -1027,7 +1035,10 @@ const ExportUtils = {
         }
 
         return new Promise((resolve) => {
-            ExportUtils.showImportModal(importedPresets, async ({ selectedKeys, duplicateStrategy, importColors, editedPresets, libraryId }) => {
+            ExportUtils.showImportModal(
+                importedPresets,
+                defaultLibraryId,
+                async (/** @type {{ selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }} */ { selectedKeys, duplicateStrategy, importColors, editedPresets, libraryId }) => {
                 const currentPresets = await PresetGalleryAPI.getPresets(libraryId);
                 const importedActiveFolders = new Set();
 

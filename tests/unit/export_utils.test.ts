@@ -197,11 +197,9 @@ test("export modal switches libraries and reports the selected library", async (
   const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
   const originalGetPresets = PresetGalleryAPI.getPresets;
   const originalConfirm = ModalUtils.confirm;
-  const originalActiveLibraryId = PresetGalleryAPI.activeLibraryId;
   let exportedConfig: { libraryId?: string; selectedKeys?: string[] | null } | undefined;
 
   try {
-    PresetGalleryAPI.activeLibraryId = "main";
     PresetGalleryAPI.fetchLibraries = async () => [
       { id: "main", name: "Main", default: true },
       { id: "second", name: "Second", default: false },
@@ -215,7 +213,7 @@ test("export modal switches libraries and reports the selected library", async (
     };
     ModalUtils.confirm = async () => true;
 
-    await ExportUtils.showExportModal((config) => {
+    await ExportUtils.showExportModal("main", (config) => {
       exportedConfig = config;
     });
 
@@ -237,7 +235,6 @@ test("export modal switches libraries and reports the selected library", async (
   } finally {
     PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
     PresetGalleryAPI.getPresets = originalGetPresets;
-    PresetGalleryAPI.activeLibraryId = originalActiveLibraryId;
     ModalUtils.confirm = originalConfirm;
     document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());
   }
@@ -247,11 +244,9 @@ test("import modal compares against and targets the selected library", async () 
   const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
   const originalGetPresets = PresetGalleryAPI.getPresets;
   const originalConfirm = ModalUtils.confirm;
-  const originalActiveLibraryId = PresetGalleryAPI.activeLibraryId;
   let importTarget: string | undefined;
 
   try {
-    PresetGalleryAPI.activeLibraryId = "main";
     PresetGalleryAPI.fetchLibraries = async () => [
       { id: "main", name: "Main", default: true },
       { id: "second", name: "Second", default: false },
@@ -263,7 +258,7 @@ test("import modal compares against and targets the selected library", async () 
     };
     ModalUtils.confirm = async () => true;
 
-    await ExportUtils.showImportModal({ Imported: { preset: "new" } }, ({ libraryId }) => {
+    await ExportUtils.showImportModal({ Imported: { preset: "new" } }, "main", ({ libraryId }) => {
       importTarget = libraryId;
     });
 
@@ -288,7 +283,6 @@ test("import modal compares against and targets the selected library", async () 
   } finally {
     PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
     PresetGalleryAPI.getPresets = originalGetPresets;
-    PresetGalleryAPI.activeLibraryId = originalActiveLibraryId;
     ModalUtils.confirm = originalConfirm;
     document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());
   }
@@ -299,11 +293,9 @@ test("import modal can target a new library", async () => {
   const originalGetPresets = PresetGalleryAPI.getPresets;
   const originalConfirm = ModalUtils.confirm;
   const originalPrompt = ModalUtils.prompt;
-  const originalActiveLibraryId = PresetGalleryAPI.activeLibraryId;
   let importTarget: string | undefined;
 
   try {
-    PresetGalleryAPI.activeLibraryId = "main";
     PresetGalleryAPI.fetchLibraries = async () => [
       { id: "main", name: "Main", default: true },
     ];
@@ -311,7 +303,7 @@ test("import modal can target a new library", async () => {
     ModalUtils.confirm = async () => true;
     ModalUtils.prompt = async () => "new_styles";
 
-    await ExportUtils.showImportModal({ Imported: { preset: "new" } }, ({ libraryId }) => {
+    await ExportUtils.showImportModal({ Imported: { preset: "new" } }, "main", ({ libraryId }) => {
       importTarget = libraryId;
     });
 
@@ -330,7 +322,6 @@ test("import modal can target a new library", async () => {
   } finally {
     PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
     PresetGalleryAPI.getPresets = originalGetPresets;
-    PresetGalleryAPI.activeLibraryId = originalActiveLibraryId;
     ModalUtils.confirm = originalConfirm;
     ModalUtils.prompt = originalPrompt;
     document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());

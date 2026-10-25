@@ -337,6 +337,35 @@ MUTATIONS = [
      '  settings: "pg_settings",',
      '  settings: "pg_settings_v2",',
      "tests/unit/gallery_storage.test.ts"),
+
+    # Library targeting (`web/PresetGalleryAPI.js`). Phase 5b removed the
+    # module-level `activeLibraryId`, so every call names its library. These pin
+    # the three decisions that a silent regression would get wrong.
+    #
+    # The URL must carry the library: an unqualified URL reads the bundled one,
+    # which is the wrong library for any call that named another.
+    ("web/PresetGalleryAPI.js",
+     '    return `${PresetGalleryAPI.API_ENDPOINT}?library=${encodeURIComponent(libraryId)}`;',
+     "    return PresetGalleryAPI.API_ENDPOINT;",
+     "tests/unit/preset_gallery_api.test.ts"),
+    # ...and the default is the bundled library, not an empty id.
+    ("web/PresetGalleryAPI.js",
+     "  static libraryUrl(libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {",
+     '  static libraryUrl(libraryId = "") {',
+     "tests/unit/preset_gallery_api.test.ts"),
+    # A save must read the library it writes to, or it reads one and overwrites
+    # another with a half-built cache.
+    ("web/PresetGalleryAPI.js",
+     "    const presets = await PresetGalleryAPI.getPresets(libraryId);\n\n    let cleanFolder",
+     "    const presets = await PresetGalleryAPI.getPresets();\n\n    let cleanFolder",
+     "tests/unit/preset_gallery_api.test.ts"),
+    # Deleting from the wrong library is the destructive one. The test names a
+    # non-default library AND gives the two libraries different keys, because
+    # with the same key in both the mutation is indistinguishable.
+    ("web/PresetGalleryAPI.js",
+     "  static async deletePreset(uniqueKey, libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {\n    const presets = await PresetGalleryAPI.getPresets(libraryId);",
+     "  static async deletePreset(uniqueKey, libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {\n    const presets = await PresetGalleryAPI.getPresets();",
+     "tests/unit/preset_gallery_api.test.ts"),
 ]
 
 

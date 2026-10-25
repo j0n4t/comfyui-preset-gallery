@@ -274,7 +274,7 @@ export default class PresetGrid {
             await PresetGalleryAPI.setGroupColor(
               rawFolder,
               newColor,
-              this.context.session?.ownerOfFolder?.(rawFolder)
+              this.context.session?.ownerOfFolder?.(rawFolder) ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID
             );
             await this.context.loadGallery();
           });
@@ -301,14 +301,16 @@ export default class PresetGrid {
               .map((part) => part.trim().toLowerCase().replace(/ /g, "_"))
               .filter(Boolean)
               .join("/");
-            const source = this.context.session?.ownerOfFolder?.(rawFolder) ?? null;
+            const source = this.context.session?.ownerOfFolder?.(rawFolder)
+              ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID;
 
             if (!newName) return;
             if (!namedLibrary && newName === rawFolder) return;
 
+            const target = namedLibrary ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID;
             const res = namedLibrary
-              ? await PresetGalleryAPI.moveFolder(rawFolder, newName, namedLibrary, source)
-              : await PresetGalleryAPI.renameFolder(rawFolder, newName, source);
+              ? await PresetGalleryAPI.moveFolder(rawFolder, newName, target, source)
+              : await PresetGalleryAPI.renameFolder(rawFolder, newName, target);
 
             if (res.success) {
               this.context.setCollapsedFolders(

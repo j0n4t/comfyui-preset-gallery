@@ -144,6 +144,8 @@ export default class PresetGalleryApp {
     // scheduleAutomaticRoll: one queue press schedules one roll, however many
     // times the host serializes the prompt.
     this.autoRollPending = false;
+    /** The library import and export preselect; `loadLibraries` narrows it. */
+    this.defaultLibraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID;
     this.dom = this.buildDOMStructure();
     this.context = createGalleryContext({
       session: this.session,
@@ -381,9 +383,10 @@ export default class PresetGalleryApp {
     this.libraries = available;
     this.settings.libraries = available;
     this.enabledIds = this.settings.enabledIds();
-    // The first enabled library is the default write target for import/export,
-    // which have no per-key owner to aim at.
-    PresetGalleryAPI.setActiveLibrary(this.enabledIds[0] ?? null);
+    // The first enabled library is the default write target for import and
+    // export, which have no per-key owner to aim at. It is passed to them
+    // rather than left in a module-level default.
+    this.defaultLibraryId = this.enabledIds[0] ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID;
   }
 
   /**
@@ -613,7 +616,7 @@ export default class PresetGalleryApp {
     });
 
     this.dom.btnExport.addEventListener("click", () => {
-      ExportUtils.showExportModal((config) => {
+      ExportUtils.showExportModal(this.defaultLibraryId, (config) => {
         ExportUtils.exportPresets(config);
       });
     });
@@ -622,7 +625,7 @@ export default class PresetGalleryApp {
     this.dom.inpJsonFile.addEventListener("change", async (e) => {
       const file = /** @type {HTMLInputElement} */ (e.target).files?.[0];
       if (!file) return;
-      const res = await ExportUtils.importFile(file);
+      const res = await ExportUtils.importFile(file, this.defaultLibraryId);
       if (res.success) {
         await this.refreshLibraries();
         await ModalUtils.alert("Presets imported successfully!");

@@ -39,7 +39,7 @@ test("fetchGallery GETs the endpoint and returns the parsed library", async () =
   const presets = await PresetGalleryAPI.fetchGallery();
   assert.deepEqual(presets, { "Faces/Portrait": { preset: "portrait" } });
   assert.equal(server.calls.length, 1);
-  assert.equal(server.calls[0].url, "/preset_gallery/presets");
+  assert.equal(server.calls[0].url, "/preset_gallery/presets?library=main");
   assert.equal(server.calls[0].method, "GET");
 });
 
@@ -297,32 +297,32 @@ test("fetchLibraries returns an empty list on a network error", async () => {
   assert.deepEqual(await PresetGalleryAPI.fetchLibraries(), []);
 });
 
-test("libraryUrl leaves the default library unqualified", () => {
-  assert.equal(PresetGalleryAPI.libraryUrl(null), "/preset_gallery/presets");
+test("libraryUrl names the library, defaulting to the bundled one", () => {
+  // The route treats `?library=main` and no query as the same file, so there is
+  // no reason for a caller to depend on which form it gets.
+  assert.equal(PresetGalleryAPI.libraryUrl(), "/preset_gallery/presets?library=main");
+  assert.equal(PresetGalleryAPI.libraryUrl("main"), "/preset_gallery/presets?library=main");
   assert.equal(PresetGalleryAPI.libraryUrl("sample"), "/preset_gallery/presets?library=sample");
 });
 
-test("an active library scopes both the read and the write", async () => {
+test("a read and a write both default to the bundled library", async () => {
+  // No module-level pointer: the default is a parameter, so a test that does
+  // not pass an id targets `main` without touching any shared state.
   const server = fakeServer({ "Faces/Portrait": { preset: "portrait" } });
-  PresetGalleryAPI.setActiveLibrary("sample");
-  try {
-    await PresetGalleryAPI.fetchGallery();
-    await PresetGalleryAPI.savePresets({ "Faces/Portrait": { preset: "portrait" } });
-  } finally {
-    // the id is module-level, so a test that sets it must put it back
-    PresetGalleryAPI.setActiveLibrary(null);
-  }
-  assert.equal(server.calls[0].url, "/preset_gallery/presets?library=sample");
+  await PresetGalleryAPI.fetchGallery();
+  await PresetGalleryAPI.savePresets({ "Faces/Portrait": { preset: "portrait" } });
+  assert.equal(server.calls[0].url, "/preset_gallery/presets?library=main");
   assert.equal(server.calls[0].method, "GET");
-  assert.equal(server.calls[1].url, "/preset_gallery/presets?library=sample");
+  assert.equal(server.calls[1].url, "/preset_gallery/presets?library=main");
   assert.equal(server.calls[1].method, "POST");
 });
 
-test("setActiveLibrary records the choice and clears it with null", () => {
-  PresetGalleryAPI.setActiveLibrary("sample");
-  assert.equal(PresetGalleryAPI.activeLibraryId, "sample");
-  PresetGalleryAPI.setActiveLibrary(null);
-  assert.equal(PresetGalleryAPI.activeLibraryId, null);
+test("an explicit library is used over the default", async () => {
+  const server = fakeServer({ "Faces/Portrait": { preset: "portrait" } });
+  await PresetGalleryAPI.fetchGallery("sample");
+  await PresetGalleryAPI.savePresets({ "Faces/Portrait": { preset: "portrait" } }, "sample");
+  assert.equal(server.calls[0].url, "/preset_gallery/presets?library=sample");
+  assert.equal(server.calls[1].url, "/preset_gallery/presets?library=sample");
 });
 
 // --- one library at a time ---
@@ -381,21 +381,16 @@ test("savePreset writes to the named library, not the active one", async () => {
     main: { "Faces/Portrait": { preset: "portrait" } },
     socks: { "wear/sock/ankle": { preset: "ankle" } },
   });
-  PresetGalleryAPI.setActiveLibrary("main");
-  try {
-    await save({
-      name: "Crew",
-      folder: "wear/sock",
-      presetText: "crew socks",
-      imageData: null,
-      clearImage: false,
-      editingKey: "",
-      mode: "new",
-      libraryId: "socks",
-    });
-  } finally {
-    PresetGalleryAPI.setActiveLibrary(null);
-  }
+  await save({
+    name: "Crew",
+    folder: "wear/sock",
+    presetText: "crew socks",
+    imageData: null,
+    clearImage: false,
+    editingKey: "",
+    mode: "new",
+    libraryId: "socks",
+  });
 
   assert.deepEqual(server.getLibrary("socks"), {
     "wear/sock/ankle": { preset: "ankle" },
@@ -428,14 +423,29 @@ test("savePreset edits the plain key of the library a qualified key points at", 
 });
 
 test("deletePreset removes the plain key from the named library", async () => {
+  // The library is named as a NON-default one, and the two libraries hold
+  // DIFFERENT keys. Both halves matter:
+  //
+  // - naming `main` would pass even if the argument were dropped, because the
+  //   default is `main` too;
+  // - sharing a key would also pass, because then reading the wrong library
+  //   and writing the emptied copy to the right one is indistinguishable.
+  //
+  // With different keys, dropping the argument reads `main` (where the key is
+  // absent, so the delete is a no-op) and then writes main's whole cache over
+  // `socks` - the fixture below makes that visible.
   const server = fakeMultiServer({
-    main: { "wear/sock/ankle": { preset: "main ankle" } },
+    main: { "Faces/Portrait": { preset: "portrait" } },
     socks: { "wear/sock/ankle": { preset: "socks ankle" } },
   });
 
-  await PresetGalleryAPI.deletePreset("main#wear/sock/ankle", "main");
-  assert.deepEqual(server.getLibrary("main"), {});
-  assert.deepEqual(server.getLibrary("socks"), { "wear/sock/ankle": { preset: "socks ankle" } });
+  await PresetGalleryAPI.deletePreset("socks#wear/sock/ankle", "socks");
+  assert.deepEqual(server.getLibrary("socks"), {}, "only the named library loses the key");
+  assert.deepEqual(
+    server.getLibrary("main"),
+    { "Faces/Portrait": { preset: "portrait" } },
+    "the other library is untouched"
+  );
 });
 
 test("renameFolder moves the folder inside the named library only", async () => {
@@ -492,7 +502,7 @@ test("moveFolder renames in place when no library is named", async () => {
   const server = fakeMultiServer({
     main: { "Faces/Portrait": { preset: "p" }, Scenery: { preset: "s" } },
   });
-  await PresetGalleryAPI.moveFolder("Faces", "People", null, null);
+  await PresetGalleryAPI.moveFolder("Faces", "People");
   assert.deepEqual(server.getLibrary("main"), {
     "People/Portrait": { preset: "p" },
     Scenery: { preset: "s" },
@@ -555,7 +565,8 @@ test("removeLibrary sends a DELETE to that library", async () => {
 test("removeLibrary refuses the bundled library and reports a failed request", async () => {
   const server = fakeMultiServer({ main: { "Faces/Portrait": { preset: "p" } } });
   assert.equal(await PresetGalleryAPI.removeLibrary("main"), false);
-  assert.equal(await PresetGalleryAPI.removeLibrary(null), false);
+  // an omitted id is the bundled library, which is refused for the same reason
+  assert.equal(await PresetGalleryAPI.removeLibrary(), false);
   assert.equal(server.calls.length, 0, "nothing was sent");
 });
 
