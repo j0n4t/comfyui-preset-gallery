@@ -241,6 +241,16 @@ autocomplete, and raw-text behavior covered by focused tests.
       the siblings genuinely reference each other, and the app attaches them
       once all three exist.
 - [ ] 6. Supporting UI modules.
+  - [ ] 6.1. Review `ChipMenuManager` and isolate the variant-editing/selection
+        commands from the popup container and basket mutation logic.
+  - [ ] 6.2. Review `RawTextareaManager` and separate token-highlighting,
+        hover metadata, and raw-text autocomplete synchronization from the
+        textarea-specific event glue.
+  - [ ] 6.3. Review `ExportUtils` and keep import/export format handling,
+        duplicate selection summaries, and folder selection logic in one
+        coherent boundary.
+  - [ ] 6.4. Run the focused unit tests for the touched modules and the
+        mutation guard (`tools/mutation_check.py`) before calling the phase done.
 
 Notes for the next session: `tools/mutation_check.py` is the guard that the
 unit suites still catch their own mutations — run it after touching a module it
