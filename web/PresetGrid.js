@@ -8,7 +8,7 @@ import { STORAGE_KEYS, defaultStorage, readBool, readString, writeBool, writeStr
 export default class PresetGrid {
   static GROUP_HEADER_STYLES = /*css*/ `
     .j0n4t-pg-group-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; color: #bdbdbd; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; cursor: pointer; padding: 4px 0; position: relative; }
-    .j0n4t-pg-group-header:focus { outline: 2px solid #007acc; outline-offset: 2px; border-radius: 2px; }
+    .j0n4t-pg-group-header:focus .j0n4t-pg-group-line { background: #007acc; }
     .j0n4t-pg-group-header::before { content: "▼"; font-size: 8px; color: #888; transition: transform 0.15s ease; }
     .j0n4t-pg-group-header.collapsed::before { transform: rotate(-90deg); }
     .j0n4t-pg-group-color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); transition: transform 0.15s ease, box-shadow 0.15s ease; position: relative; }
@@ -455,7 +455,7 @@ export default class PresetGrid {
       const item = target.closest(".j0n4t-pg-item");
       if (!item || !this.context.widget.callback) return;
       const key = this.context.selectionKey(
-        /** @type {HTMLElement} */ (item).dataset.style || ""
+        /** @type {HTMLElement} */(item).dataset.style || ""
       );
       let sel = this.context.getSelectedArray();
       this.context.updateWidgetValue(
