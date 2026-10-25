@@ -64,9 +64,16 @@ function makeContext({ widgetValue = "", storage = fakeStorage() }: {
   storage?: Storage | null;
 } = {}) {
   const session = new PresetSession({ storage, rng: () => 0.5 });
-  const widget = { value: widgetValue };
+  // `hidden` and `callback` are part of the widget contract the context
+  // declares; the stub carries them so a caller that reads either is checked.
+  const widget = { value: widgetValue, hidden: false };
   const view = fakeView();
-  const context = createGalleryContext({ session, dom: {}, widget, view });
+  // `dom` is the full built structure; a component reads the keys it owns.
+  // A test never builds the whole structure; the cast is deliberate and
+  // confined to this stub. The factory keeps the full type, so a caller
+  // that reads a key the context declares is still checked.
+  const dom = {} as unknown as ReturnType<import("../../web/PresetGalleryApp.js").default["buildDOMStructure"]>;
+  const context = createGalleryContext({ session, dom, widget, view });
   return { session, widget, view, context };
 }
 

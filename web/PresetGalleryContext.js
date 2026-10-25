@@ -19,8 +19,8 @@
 /**
  * @param {{
  *   session: import("./PresetSession.js").default,
- *   dom: any,
- *   widget: any,
+ *   dom: ReturnType<import("./PresetGalleryApp.js").default["buildDOMStructure"]>,
+ *   widget: { value: string, hidden: boolean, callback?: (value: string) => void },
  *   view: {
  *     setPanelCollapseState: (collapsed: boolean) => void,
  *     syncEditorHighlight: () => void,
@@ -43,9 +43,12 @@ export default function createGalleryContext({ session, dom, widget, view }) {
     dom,
     widget,
     // Attached by PresetGalleryApp right after construction: the siblings
-    // reference each other, so neither can be passed in here.
-    editor: /** @type {any} */ (null),
-    grid: /** @type {any} */ (null),
+    // reference each other, so neither can be passed in here. They are null
+    // only for the instant between building the context and attaching them -
+    // typed as such here so the lie is visible at the cast below rather than
+    // hidden behind `any`.
+    editor: /** @type {import("./PresetEditor.js").default | null} */ (null),
+    grid: /** @type {import("./PresetGrid.js").default | null} */ (null),
 
     getSelectedArray: () => session.getSelectedArray(widget.value),
     savePins: () => session.savePins(),

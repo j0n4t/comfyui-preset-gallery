@@ -232,7 +232,14 @@ autocomplete, and raw-text behavior covered by focused tests.
       export take the preselect as a parameter from the app instead of reading
       a global, and the app declares its own default rather than leaving it
       undefined until the library list arrives. 4 new `mutation_check` entries.
-- [ ] 5c. Typed context dependencies.
+- [x] 5c. Typed context dependencies — `createGalleryContext`'s params are
+      typed (`dom` is the built structure, `widget` is `{ value, hidden,
+      callback? }`) instead of `any`, and the two `editor`/`grid` placeholders
+      are typed as `| null` rather than `any`. The `any` was hiding a real
+      contract: the typing now reaches the test stub, which had to declare the
+      widget members it was relying on. The peer references themselves stay -
+      the siblings genuinely reference each other, and the app attaches them
+      once all three exist.
 - [ ] 6. Supporting UI modules.
 
 Notes for the next session: `tools/mutation_check.py` is the guard that the
