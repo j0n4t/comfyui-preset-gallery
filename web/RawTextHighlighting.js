@@ -64,7 +64,6 @@ export default class RawTextHighlighting {
     this.highlightsEl.scrollLeft = this.textarea.scrollLeft;
   }
 
-  /** Extracts the group name from a variant token like "{group:preset}". */
   /**
    * @param {string} tokenText
    */

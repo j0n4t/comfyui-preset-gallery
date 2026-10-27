@@ -7,10 +7,7 @@ import PresetDisplay from "./PresetDisplay.js";
 /** @typedef {HTMLInputElement & {_options?: {key: string, display: string}[]}} CustomInputElement */
 
 export default class ChipMenuManager {
-  /** 
-   * @param {GalleryContext} context
-   * @param {import("./PresetBasket.js").default} delegateBasket
-   */
+  /** @param {GalleryContext} context @param {import("./PresetBasket.js").default} delegateBasket */
   constructor(context, delegateBasket) {
     this.context = context;
     this.basket = delegateBasket;
@@ -23,10 +20,10 @@ export default class ChipMenuManager {
   }
 
   /**
-   * @param {number} startIndex 
-   * @param {number} endIndex 
-   * @param {string} newStyleKey 
-   * @param {boolean} coreReplaced 
+   * @param {number} startIndex
+   * @param {number} endIndex
+   * @param {string} newStyleKey
+   * @param {boolean} coreReplaced
    */
   _updateChipSelection(startIndex, endIndex, newStyleKey, coreReplaced) {
     if (!this.basket.updateChipSelection(startIndex, endIndex, newStyleKey)) return;

@@ -487,7 +487,7 @@ const ExportUtils = {
     },
 
     /**
-     * @param {string} defaultLibraryId the library to preselect
+     * @param {string} defaultLibraryId
      * @param {(config: ExportConfig) => void} onExport
      */
     async showExportModal(defaultLibraryId, onExport) {

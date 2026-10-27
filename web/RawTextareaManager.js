@@ -15,7 +15,6 @@ export default class RawTextareaManager {
   `;
 
   /**
-   * Extracts the group name from a variant token like "{group:preset}".
    * @param {string} tokenText
    * @returns {string}
    */
