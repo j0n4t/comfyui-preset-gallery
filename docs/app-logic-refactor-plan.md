@@ -241,8 +241,14 @@ autocomplete, and raw-text behavior covered by focused tests.
       the siblings genuinely reference each other, and the app attaches them
       once all three exist.
 - [ ] 6. Supporting UI modules.
-  - [ ] 6.1. Review `ChipMenuManager` and isolate the variant-editing/selection
+  - [x] 6.1. Review `ChipMenuManager` and isolate the variant-editing/selection
         commands from the popup container and basket mutation logic.
+        Split landed in commit `55e8bd5`: `ChipMenuManager.js` (400 lines) keeps
+        show/close/autocomplete/positioning; `ChipMenuCommands.js` (362 lines)
+        owns pin/unpin, weight toggle/change, edit, swap, locate, create,
+        delete, variant-group selection, re-roll, and keyboard shortcuts. Container
+        dispatches to commands; selection and close(true) still handled by manager.
+        `chip_menu_manager.test.ts` covers the manager-testable behaviour.
   - [x] 6.2. Review `RawTextareaManager` and separate token-highlighting,
         hover metadata, and raw-text autocomplete synchronization from the
         textarea-specific event glue.
