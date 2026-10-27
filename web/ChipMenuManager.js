@@ -1,9 +1,10 @@
 import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
-import ChipProjection from "./ChipProjection.js";
+import ChipMenuCommands from "./ChipMenuCommands.js";
 import AutocompleteManager from "./AutocompleteManager.js";
-import RollManager from "./RollManager.js";
 import PresetDisplay from "./PresetDisplay.js";
+
+/** @typedef {HTMLInputElement & {_options?: {key: string, display: string}[]}} CustomInputElement */
 
 export default class ChipMenuManager {
   /** 
@@ -17,17 +18,8 @@ export default class ChipMenuManager {
     this.activeChipMenuEl = null;
     this.popupEl = null;
     this.closeHandler = null;
-  }
-  /**
-    * @param {HTMLInputElement} inputEl
-    * @param {string} rawVal
-    */
-  _resolveInputValue(inputEl, rawVal) {
-    if (!rawVal || rawVal === "🎲 Random") return "";
-    if (rawVal === "🚫 None (Omit)") return "none";
-    const inputWithOptions = /** @type {HTMLInputElement & {_options?: {key: string, display: string}[]}} */ (inputEl);
-    const matchingOpt = inputWithOptions._options?.find(opt => opt.display === rawVal || opt.key === rawVal);
-    return matchingOpt ? matchingOpt.key : rawVal;
+    /** @param {GalleryContext} context */
+    this.commands = new ChipMenuCommands(this, this.context, this.basket);
   }
 
   /**
@@ -73,7 +65,7 @@ export default class ChipMenuManager {
     const styleKey = chipElement.dataset.id || "";
     const startIndex = Number(chipElement.dataset.start);
     const endIndex = Number(chipElement.dataset.end);
-    const { core: coreKey, weight: currentWeight, isWeighted } = PresetLogic.parseWeight(styleKey);
+    const { core: coreKey, weight: currentWeight } = PresetLogic.parseWeight(styleKey);
     const item = this.context.cache[coreKey];
 
     if (this.activeChipMenuEl) {
@@ -239,52 +231,16 @@ export default class ChipMenuManager {
       /** @type {HTMLElement |null} */ const rerollBtn = /** @type {HTMLElement} */(e.target).closest(".j0n4t-pg-var-reroll-btn");
       if (rerollBtn) {
         e.stopPropagation();
-        this.basket.reRollChipGroup(
-          Number(chipElement.dataset.index),
-          rerollBtn.dataset.group,
-          rerollBtn.dataset.gindex
-        );
-        this.close(true);
+        if (this.commands.onReroll(chipElement, rerollBtn, Number(chipElement.dataset.index), /** @type {string} */ (rerollBtn.dataset.group), /** @type {string} */ (rerollBtn.dataset.gindex))) {
+          this.close(true);
+        }
         return;
       }
 
       /** @type {HTMLElement |null} */ const editVarBtn = /** @type {HTMLElement} */(e.target).closest(".j0n4t-pg-var-edit-btn");
       if (editVarBtn) {
         e.stopPropagation();
-        const group = editVarBtn.dataset.group;
-        const gIndex = Number(editVarBtn.dataset.gindex);
-        const inputEl = /** @type {HTMLInputElement} */(popup.querySelector(`input.j0n4t-pg-var-input[data-group="${group}"][data-gindex="${gIndex}"]`));
-
-        let rawVal = inputEl?.value;
-        if (rawVal === "🚫 None (Omit)" || inputEl?.dataset.key === "none") return;
-        let variantKey = this._resolveInputValue(inputEl, rawVal);
-
-        if (!variantKey) {
-          const chipIndex = Number(chipElement.dataset.index);
-          if (!isNaN(chipIndex)) {
-            const activeList = this.context.getSelectedArray();
-            const chipsData = ChipProjection.getGroupedChips(activeList, this.context.cache);
-            const tracer = new RollManager(this.context.rollManager.rolls);
-            const targetGroup = group?.trim().toLowerCase().replace(/\s+/g, "_") || "";
-
-            for (let i = 0; i < chipsData.length; i++) {
-              const startCounts = tracer.cloneCounts();
-              PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), tracer);
-
-              if (i === chipIndex) {
-                const targetRollIndex = (startCounts[targetGroup] || 0) + gIndex;
-                variantKey = tracer.peekRoll(targetGroup, targetRollIndex);
-                break;
-              }
-            }
-          }
-        }
-
-        if (variantKey) {
-          const presetMatch = PresetLogic.findPresetMatch(variantKey, this.context.cache);
-          if (presetMatch) variantKey = presetMatch.key;
-          this.context.openEditorForPreset(variantKey, true);
-        }
+        this.commands.onEditVar(chipElement, editVarBtn, popup);
         return;
       }
 
@@ -292,190 +248,40 @@ export default class ChipMenuManager {
       if (!actionEl) return;
       e.stopPropagation();
 
-      const action = actionEl.dataset.action;
 
-      if (action === "pin") {
-        const currentList = this.context.getSelectedArray();
-        const rawToken = currentList.slice(startIndex, endIndex).join(', ');
-        if (this.context.pinnedChips?.has(rawToken)) {
-          this.context.pinnedChips.delete(rawToken);
-          chipElement.classList.remove("pinned");
-          actionEl.classList.remove("active-pin");
-          actionEl.querySelector('svg')?.setAttribute('fill', 'none');
-          actionEl.title = "Pin";
-        } else {
-          this.context.pinnedChips?.add(rawToken);
-          chipElement.classList.add("pinned");
-          actionEl.classList.add("active-pin");
-          actionEl.querySelector('svg')?.setAttribute('fill', 'currentColor');
-          actionEl.title = "Unpin";
-        }
-        this.context.savePins();
-        this.basket.saveCurrentState();
-        return;
-      }
-
-      if (action === "toggle-weight") {
-        const wMod = /** @type {HTMLElement} */(popup.querySelector('.j0n4t-pg-weight-modifier'));
-        wMod.style.display = wMod.style.display === 'none' ? 'flex' : 'none';
-        if (wMod.style.display === 'flex') {
-          wMod.querySelector('input')?.focus();
-        }
-        return;
-      }
-
-      if (action === "weight-minus" || action === "weight-plus") {
-        const input = /** @type {HTMLInputElement} */(popup.querySelector('.j0n4t-pg-weight-input'));
-        let val = parseFloat(input.value) || 1.0;
-        val += (action === "weight-plus" ? 0.05 : -0.05);
-        input.value = String(Number(val.toFixed(2)));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        return;
-      }
-
-      this.close(false);
-
-      if (action === "edit") {
-        if (item) this.context.openEditorForPreset(coreKey, true);
-        else {
-          let editVal = styleKey;
-          const rawPreset = chipElement.dataset.preset;
-          if (isWeighted && rawPreset) {
-            editVal = `(${rawPreset}:${currentWeight})`;
-          } else if (rawPreset) {
-            editVal = rawPreset;
-          }
-          this.basket.inlineEditorManager.spawn(chipElement, editVal, startIndex, endIndex);
-        }
-      } else if (action === "swap") {
-        let editVal = this.context.cache[coreKey]?.preset || coreKey;
-        if (isWeighted && editVal) {
-          editVal = `(${editVal}:${currentWeight})`;
-        }
-        this.basket.inlineEditorManager.spawn(chipElement, editVal, startIndex, endIndex);
-      } else if (action === "locate") {
-        let locateKey = coreKey;
-        const presetVal = chipElement.dataset.preset;
-        if (presetVal) {
-          const presetMatch = PresetLogic.findPresetMatch(presetVal, this.context.cache);
-          if (presetMatch) locateKey = presetMatch.key;
-        }
-        this.basket.locatePreset(locateKey);
-      } else if (action === "create") {
-        this.context.setPanelCollapseState(false);
-        this.context.editor.clearFields();
-        this.context.editor.dom.inpPreset.value = item && item.preset ? item.preset : coreKey;
-        this.context.editor.rawPresetManager?.updateHighlights();
-        const cleanName = coreKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop()?.replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
-        if (cleanName) this.context.editor.dom.inpName.value = cleanName;
-        this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
-        this.context.editor.dom.inpPreset.focus();
-      } else if (action === "del") {
-        const selections = this.context.getSelectedArray();
-        if (startIndex !== undefined && endIndex !== undefined) {
-          selections.splice(startIndex, endIndex - startIndex);
-          this.context.updateWidgetValue(selections);
-        }
+      if (this.commands.onAction(e, actionEl, chipElement, startIndex, endIndex, popup)) {
+        this.close(false);
       }
     });
 
     popup.addEventListener("change", (e) => {
       /** @type {HTMLInputElement | null} */ const weightInput = /** @type {HTMLElement} */(e.target).closest(".j0n4t-pg-weight-input");
       if (weightInput) {
-        let val = parseFloat(weightInput.value);
-        if (isNaN(val)) return;
-
-        const { core: activeCoreKey } = PresetLogic.parseWeight(chipElement.dataset.id || "");
-        let finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
-        chipElement.dataset.id = finalNewKey;
-
-        this._updateChipSelection(startIndex, endIndex, finalNewKey, false);
+        const finalNewKey = this.commands.onWeightChange(chipElement, weightInput);
+        if (finalNewKey !== undefined) {
+          this._updateChipSelection(startIndex, endIndex, finalNewKey, false);
+        }
         return;
       }
 
       /** @type {HTMLInputElement | null} */ const inputEl = /** @type {HTMLElement} */(e.target).closest("input.j0n4t-pg-var-input");
       if (!inputEl) return;
 
-      const group = inputEl.dataset.group || "";
-      const gIndex = Number(inputEl.dataset.gindex);
-      const rootGroup = inputEl.dataset.rootGroup;
-      const isSub = inputEl.dataset.issub === 'true';
-      const rawVal = inputEl.value;
-
-      const selectedVal = this._resolveInputValue(inputEl, rawVal);
-      inputEl.dataset.key = selectedVal;
-
-      const groupRegex = PresetLogic.createGroupRegex(group);
-      const replacement = selectedVal ? `{${group}:${selectedVal}}` : `{${group}}`;
-
-      const currentKey = chipElement.dataset.id || "";
-      const currentPreset = chipElement.dataset.preset || "";
-      const { core: activeCoreKey, isWeighted: isActiveWeighted, weightStr: activeWeight } = PresetLogic.parseWeight(currentKey);
-
-      const unrolled = PresetLogic.getUnrolledTemplate(activeCoreKey, this.context.cache);
-
-      const replaceNth = (/** @type {string} */ str, /** @type {RegExp} */ regex, /** @type {string} */ replStr) => {
-        let matchCount = 0;
-        return str.replace(regex, (/** @type {string} */ match) => {
-          if (matchCount === gIndex) {
-            matchCount++;
-            return replStr;
-          }
-          matchCount++;
-          return match;
-        });
-      };
-
-      let newStyleKey = currentKey;
-      let coreReplaced = false;
-
-      if (currentKey.match(groupRegex)) {
-        const attempt = replaceNth(currentKey, groupRegex, replacement);
-        if (attempt !== currentKey) newStyleKey = attempt;
+      const result = this.commands.onVariantChange(inputEl, chipElement);
+      if (result) {
+        const [newStyleKey, coreReplaced] = result;
+        this._updateChipSelection(startIndex, endIndex, newStyleKey, coreReplaced);
       }
-
-      if (newStyleKey === currentKey && isSub && rootGroup) {
-        newStyleKey = PresetLogic.replaceNestedRoot(currentKey, rootGroup, group, replacement);
-      }
-
-      if (newStyleKey === currentKey && currentPreset.match(groupRegex)) {
-        const attempt = replaceNth(currentPreset, groupRegex, replacement);
-        if (attempt !== currentPreset) newStyleKey = attempt;
-      }
-
-      if (newStyleKey === currentKey && isSub && rootGroup) {
-        const attempt = PresetLogic.replaceNestedRoot(currentPreset, rootGroup, group, replacement);
-        if (attempt !== currentPreset) newStyleKey = attempt;
-      }
-
-      if (newStyleKey === currentKey && unrolled.match(groupRegex)) {
-        const attempt = replaceNth(unrolled, groupRegex, replacement);
-        if (attempt !== unrolled) {
-          newStyleKey = isActiveWeighted ? `(${attempt}:${activeWeight})` : attempt;
-          coreReplaced = true;
-        }
-      }
-
-      if (newStyleKey === currentKey) return;
-
-      chipElement.dataset.id = newStyleKey;
-      chipElement.dataset.preset = coreReplaced ? "" : newStyleKey;
-
-      this._updateChipSelection(startIndex, endIndex, newStyleKey, coreReplaced);
     });
 
     popup.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
       const items = /** @type {HTMLElement[]} */ (Array.from(popup.querySelectorAll("[data-action], button, input"))
         .filter(el => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })));
       const currentIndex = document.activeElement ? items.indexOf(/** @type {HTMLInputElement} */(document.activeElement)) : 0;
-      const target = /** @type {HTMLInputElement} */ (e.target);
+      const target = /** @type {HTMLElement} */ (e.target);
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        e.stopPropagation();
-        this.basket.copySelectedChips(this.activeChipMenuEl ?? undefined);
-        return;
-      }
+      this.commands.onKeyCommand(e, this.activeChipMenuEl, popup);
+
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         if (target.tagName !== 'INPUT') {
           e.stopPropagation();
@@ -499,23 +305,8 @@ export default class ChipMenuManager {
         e.stopPropagation();
         e.preventDefault();
         this.close(true);
-      } else if (e.key === "Delete") {
-        e.stopPropagation();
-        e.preventDefault();
-        const delEl = /** @type {HTMLElement} */ (popup.querySelector('[data-action="del"]'));
-        if (delEl) delEl.click();
-      } else if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
-        const keyMap = { p: "pin", s: "swap", e: "edit", l: "locate", c: "create", w: "toggle-weight" };
-        // @ts-expect-error bleh
-        const action = keyMap[e.key.toLowerCase()];
-        if (action) {
-          e.stopPropagation();
-          e.preventDefault();
-          const actionEl = /** @type {HTMLElement} */ (popup.querySelector(`[data-action="${action}"]`));
-          if (actionEl) actionEl.click();
-        }
       }
-    });
+    })
 
     popup.addEventListener("mousedown", (e) => e.stopPropagation());
 
@@ -593,5 +384,17 @@ export default class ChipMenuManager {
     }
     this.popupEl?.remove();
     this.popupEl = null;
+  }
+
+  /** @param {CustomInputElement|null} inputEl
+   * @param {string} rawVal
+   */
+  _resolveInputValue(inputEl, rawVal) {
+    if (!rawVal || rawVal === "🎲 Random") return "";
+    if (rawVal === "🚫 None (Omit)") return "none";
+    const matchingOpt = inputEl?._options?.find(
+      (opt) => opt.display === rawVal || opt.key === rawVal
+    );
+    return matchingOpt ? matchingOpt.key : rawVal;
   }
 }
