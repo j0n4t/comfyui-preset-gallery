@@ -251,9 +251,18 @@ autocomplete, and raw-text behavior covered by focused tests.
         owns hover metadata, and `RawTextAutocomplete` wraps `AutocompleteManager`.
         Three focused test files cover the splits (7 + 3 + 2 tests) and each has a
         `mutation_check` entry — all mutations caught.
-  - [ ] 6.3. Review `ExportUtils` and keep import/export format handling,
+  - [x] 6.3. Review `ExportUtils` and keep import/export format handling,
         duplicate selection summaries, and folder selection logic in one
         coherent boundary.
+        ExportUtils.js is a single decoupled module: `getSelectionSummary`
+        (pure selection counters) is shared by export and import; `buildPresetSelectorTree`
+        (folder selection state) is the shared UI controller; `exportPresets`
+        (ZIP/YAML/JSON, full/preset-only, colour toggle) and `showImportModal` +
+        `importFile` (ZIP/YAML/JSON import, duplicate strategies) are the
+        format handlers. `export_utils.test.ts` pins 13 tests; the mutation
+        guard entry for `getSelectionSummary` is caught. `docs/ExportUtils.md`
+        documents the module. Boundary verified coherent: no cross-module
+        duplication of format or summary logic.
   - [x] 6.4. Ran the focused unit tests for the touched modules and the
         mutation guard (`tools/mutation_check.py`) before calling the phase
         done: 594 tests pass (0 fail), and all four raw-text `mutation_check`
