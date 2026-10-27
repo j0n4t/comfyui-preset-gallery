@@ -352,7 +352,6 @@ test.describe('basket', () => {
   });
 
   test('copying and pasting selected chips appends them in order with pin state', async ({ page }) => {
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.locator('.j0n4t-pg-item[data-style="Scenery/Hills"]').click();
     await page.locator('.j0n4t-pg-basket-multiselect-btn').click();
     await chips(page).nth(0).click();
