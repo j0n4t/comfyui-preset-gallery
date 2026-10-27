@@ -57,6 +57,26 @@ MUTATIONS = [
      "return (colonIdx === -1 ? inner : inner.slice(0, colonIdx)).trim();",
      "return inner;",
      "tests/unit/variant_color.test.ts"),
+    # Tokens leave no trace unless the overlay is cleared; an empty input
+    # must leave an empty layer, or a stale highlight could be confused with
+    # real content by a later re-render.
+    ("web/RawTextHighlighting.js",
+     "this.highlightsEl.innerHTML = \"\";",
+     "this.highlightsEl.innerHTML = \" \";",
+     "tests/unit/raw_text_highlighting.test.ts"),
+    # The negative-position clamp must snap back to 0; a negative offset would
+    # send the tooltip pointer to the left of the line.
+    ("web/RawTextHover.js",
+     "if (pos < 0) return 0;",
+     "if (pos < 0) return -1;",
+     "tests/unit/raw_text_hover.test.ts"),
+    # Constructor default wiring: ignorePreset must be preserved, not thrown
+    # away to the empty string, so a raw-text autocomplete keeps the caller's
+    # filter on subsequent edits.
+    ("web/RawTextAutocomplete.js",
+     "this.ignorePreset = ignorePreset || \"\";",
+     "this.ignorePreset = \"\";",
+     "tests/unit/raw_text_autocomplete.test.ts"),
     # A tab is a snapshot of the selection AND the pins and rolls in force. If
     # the snapshot stops carrying the pins, a tab saved from a pinned basket
     # comes back unpinned on the next switch or reload.

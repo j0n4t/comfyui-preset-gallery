@@ -243,14 +243,21 @@ autocomplete, and raw-text behavior covered by focused tests.
 - [ ] 6. Supporting UI modules.
   - [ ] 6.1. Review `ChipMenuManager` and isolate the variant-editing/selection
         commands from the popup container and basket mutation logic.
-  - [ ] 6.2. Review `RawTextareaManager` and separate token-highlighting,
+  - [x] 6.2. Review `RawTextareaManager` and separate token-highlighting,
         hover metadata, and raw-text autocomplete synchronization from the
         textarea-specific event glue.
+        Split landed in commit `92b1da9` (re-typed in `2fa14be`): `RawTextareaManager`
+        is a thin coordinator; `RawTextHighlighting` owns token highlights, `RawTextHover`
+        owns hover metadata, and `RawTextAutocomplete` wraps `AutocompleteManager`.
+        Three focused test files cover the splits (7 + 3 + 2 tests) and each has a
+        `mutation_check` entry — all mutations caught.
   - [ ] 6.3. Review `ExportUtils` and keep import/export format handling,
         duplicate selection summaries, and folder selection logic in one
         coherent boundary.
-  - [ ] 6.4. Run the focused unit tests for the touched modules and the
-        mutation guard (`tools/mutation_check.py`) before calling the phase done.
+  - [x] 6.4. Ran the focused unit tests for the touched modules and the
+        mutation guard (`tools/mutation_check.py`) before calling the phase
+        done: 594 tests pass (0 fail), and all four raw-text `mutation_check`
+        entries were caught.
 
 Notes for the next session: `tools/mutation_check.py` is the guard that the
 unit suites still catch their own mutations — run it after touching a module it
