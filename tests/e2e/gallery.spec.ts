@@ -221,7 +221,7 @@ test.describe('search', () => {
     await expect(search).toHaveValue('');
     await expect(chips(page)).toHaveCount(2);
     await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait, Scenery/Sky');
-    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, dramatic sky');
+    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, dramatic shadows, dramatic sky, blue sky, clear sky');
   });
 
   test('Enter adds unmatched search text as a chip', async ({ page }) => {
@@ -232,7 +232,7 @@ test.describe('search', () => {
     await expect(search).toHaveValue('');
     await expect(chips(page)).toHaveCount(2);
     await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait, misty mountain dawn');
-    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, misty mountain dawn');
+    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, dramatic shadows, misty mountain dawn');
   });
 
   test('Escape clears search, and slash focuses search from the gallery', async ({ page }) => {
@@ -347,7 +347,7 @@ test.describe('basket', () => {
 
     await expect(chips(page).first().locator('.j0n4t-pg-basket-chip-label')).toHaveText('Sky');
     await expect.poll(() => widgetValue(page)).toBe('{Scenery:Scenery/Sky}');
-    await expect.poll(() => serializedPrompt(page)).toBe('dramatic sky');
+    await expect.poll(() => serializedPrompt(page)).toBe('dramatic sky, blue sky, clear sky');
   });
 
   test('changing a chip weight updates its selection and generated prompt', async ({ page }) => {
@@ -362,7 +362,7 @@ test.describe('basket', () => {
     await page.locator('.j0n4t-pg-chip-popup [data-action="weight-plus"]').click();
 
     await expect.poll(() => widgetValue(page)).toBe('({Scenery:Scenery/Sky}:1.05)');
-    await expect.poll(() => serializedPrompt(page)).toBe('(dramatic sky:1.05)');
+    await expect.poll(() => serializedPrompt(page)).toBe('(dramatic sky, blue sky, clear sky:1.05)');
   });
 
   test('choosing None for a variant omits it from the generated prompt', async ({ page }) => {
@@ -389,7 +389,7 @@ test.describe('basket', () => {
     await expect(chips(page).nth(0)).toContainText('Hills');
     await expect(chips(page).nth(1)).toContainText('Portrait');
     await expect.poll(() => widgetValue(page)).toBe('Scenery/Hills, Faces/Portrait');
-    await expect.poll(() => serializedPrompt(page)).toBe('rolling hills, portrait, studio lighting');
+    await expect.poll(() => serializedPrompt(page)).toBe('rolling hills, grass, a few trees, portrait, studio lighting, dramatic shadows');
   });
 
   test('copying and pasting selected chips appends them in order with pin state', async ({ page }) => {
@@ -408,7 +408,7 @@ test.describe('basket', () => {
     await expect(chips(page).nth(2)).toHaveClass(/pinned/);
     await expect(chips(page).nth(3)).toHaveClass(/pinned/);
     await expect.poll(() => serializedPrompt(page)).toBe(
-      'portrait, studio lighting, rolling hills, portrait, studio lighting, rolling hills'
+      'portrait, studio lighting, dramatic shadows, rolling hills, grass, a few trees, portrait, studio lighting, dramatic shadows, rolling hills, grass, a few trees'
     );
   });
 
@@ -420,7 +420,7 @@ test.describe('basket', () => {
 
     await expect(chips(page)).toHaveCount(1);
     await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait');
-    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting');
+    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, dramatic shadows');
   });
 
   test('Alt+ArrowLeft moves the focused chip and its prompt before the prior chip', async ({ page }) => {
@@ -431,7 +431,7 @@ test.describe('basket', () => {
     await expect(chips(page).nth(0)).toContainText('Hills');
     await expect(chips(page).nth(1)).toContainText('Portrait');
     await expect.poll(() => widgetValue(page)).toBe('Scenery/Hills, Faces/Portrait');
-    await expect.poll(() => serializedPrompt(page)).toBe('rolling hills, portrait, studio lighting');
+    await expect.poll(() => serializedPrompt(page)).toBe('rolling hills, grass, a few trees, portrait, studio lighting, dramatic shadows');
   });
 
   test('raw mode adds chips from typed text', { tag: '@smoke' }, async ({ page }) => {
@@ -545,7 +545,7 @@ test.describe('editor', () => {
     await expect(preset).toHaveAttribute('title', /replacement prompt text/);
     await preset.click();
     await expect.poll(() => serializedPrompt(page)).toBe(
-      'portrait, studio lighting, replacement prompt text'
+      'portrait, studio lighting, dramatic shadows, replacement prompt text'
     );
   });
 
@@ -582,7 +582,7 @@ test.describe('editor', () => {
     await page.locator('.j0n4t-pg-modal-overlay button[data-index="1"]').click();
 
     await expect(page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]')).toHaveAttribute(
-      'title', /portrait, studio lighting/
+      'title', /portrait, studio lighting, dramatic shadows/
     );
     await expect(page.locator('.j0n4t-pg-item[data-style="Faces/Portrait_copy_1"]')).toHaveAttribute(
       'title', /imported portrait/
@@ -613,7 +613,7 @@ test.describe('editor', () => {
 
 test.describe('the engine', () => {
   test('serializeValue expands the selection to the final prompt', async ({ page }) => {
-    expect(await serializedPrompt(page)).toBe('portrait, studio lighting');
+    expect(await serializedPrompt(page)).toBe('portrait, studio lighting, dramatic shadows');
   });
 
   // The plan's done-when for prompt composition: the evaluated widget the user
@@ -709,7 +709,7 @@ test.describe('automatic rolling', () => {
     await expect.poll(() => page.evaluate(() =>
       (window as unknown as { __pgNode: { widgets: Array<{ name: string; value: string }> } })
         .__pgNode.widgets.find((widget) => widget.name === 'evaluated_preset')?.value ?? ''
-    )).toContain('portrait, studio lighting');
+    )).toContain('portrait, studio lighting, dramatic shadows');
   });
 
   test('seed-change rolling waits for a seed change and preserves pinned chips', async ({ page }) => {
@@ -782,7 +782,7 @@ test.describe('persistence', () => {
     await expect(chips(page).nth(0)).toHaveClass(/pinned/);
     await expect(chips(page).nth(1)).toHaveClass(/pinned/);
     await expect.poll(() => widgetValue(page)).toBe('Faces/Portrait, Scenery/Hills');
-    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, rolling hills');
+    await expect.poll(() => serializedPrompt(page)).toBe('portrait, studio lighting, dramatic shadows, rolling hills, grass, a few trees');
 
     // The restore also puts the gallery grid back on the restored selection.
     await expect(page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]')).toHaveClass(/selected/);

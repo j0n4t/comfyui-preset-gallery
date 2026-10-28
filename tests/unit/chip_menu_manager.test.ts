@@ -78,6 +78,12 @@ function makeContext(selection: string[]) {
       rawPresetManager: { updateHighlights: () => { calls.updateHighlights++; } },
     },
     rollManager: { rolls: {} },
+    transferPin: (oldVal: string, newVal: string) => {
+      if (pinned.has(oldVal)) {
+        pinned.delete(oldVal);
+        pinned.add(newVal);
+      }
+    },
   };
   return {
     context: context as unknown as GalleryContext,
@@ -194,6 +200,36 @@ test("pinning again unpins and restores the action", () => {
   assert.ok(!chip.classList.contains("pinned"));
   assert.equal(action(manager, "pin")?.title, "Pin");
   assert.equal(action(manager, "pin")?.querySelector("svg")?.getAttribute("fill"), "none");
+});
+
+test("disable moves a chip's pin to its tilde-wrapped key", () => {
+  const { manager, basketEl, env } = makeManager(["faces/portrait", "scenery/hills"]);
+  const chip = makeChip(basketEl, { id: "faces/portrait", index: "0", start: "0", end: "1" });
+  manager.show(chip);
+
+  action(manager, "pin")!.click();
+  assert.ok(env.pinned.has("faces/portrait"), "the chip is pinned before disable");
+
+  action(manager, "disable")!.click();
+
+  assert.ok(env.pinned.has("~faces/portrait~"), "the pin follows the disabled key");
+  assert.ok(!env.pinned.has("faces/portrait"), "the old key is unpinned");
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["~faces/portrait~", "scenery/hills"]);
+});
+
+test("enable moves a chip's pin back to its plain key", () => {
+  const { manager, basketEl, env } = makeManager(["~faces/portrait~", "scenery/hills"]);
+  const chip = makeChip(basketEl, { id: "~faces/portrait~", index: "0", start: "0", end: "1" });
+  manager.show(chip);
+
+  action(manager, "pin")!.click();
+  assert.ok(env.pinned.has("~faces/portrait~"), "the disabled chip is pinned");
+
+  action(manager, "disable")!.click();
+
+  assert.ok(env.pinned.has("faces/portrait"), "the pin returns to the plain key");
+  assert.ok(!env.pinned.has("~faces/portrait~"), "the wrapped key is unpinned");
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["faces/portrait", "scenery/hills"]);
 });
 
 // --- del / edit / swap / locate / create ---

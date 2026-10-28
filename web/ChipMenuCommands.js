@@ -138,9 +138,11 @@ export default class ChipMenuCommands {
       const next = [...current];
       for (let i = startIndex; i < endIndex; i++) {
         const token = next[i];
-        next[i] = PresetLogic.isTildeDisabled(token)
-          ? PresetLogic.unwrapTilde(token)
-          : `~${token}~`;
+        const disabled = PresetLogic.isTildeDisabled(token);
+        const nextToken = disabled ? PresetLogic.unwrapTilde(token) : `~${token}~`;
+        next[i] = nextToken;
+        // A tilde toggle renames the chip's key, so move any pin with it.
+        this.context.transferPin(token, nextToken);
       }
       this.context.updateWidgetValue(next);
       return false;
