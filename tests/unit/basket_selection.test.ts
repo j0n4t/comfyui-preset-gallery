@@ -50,16 +50,29 @@ function makeEnv({ selection = ["faces/portrait", "faces/macro", "scenery/hills"
       // The buttons ship disabled in the basket template; a selection enables them.
       btnCopyBasket: disabledButton(),
       btnBasketPin: disabledButton(),
+      btnBasketDisable: disabledButton(),
       btnBasketDelete: disabledButton(),
     },
-    getSelectedArray: () => widgetValue.split(",").map((s) => s.trim()).filter(Boolean),
+    getSelectedArray: () =>
+      widgetValue
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     updateWidgetValue: (arr: string[]) => {
       calls.updateWidgetValue.push(arr);
       widgetValue = arr.join(", ");
     },
-    syncUI: (val: string) => { calls.syncUI.push(val); },
-    savePins: () => { calls.savePins++; },
-    widget: { get value() { return widgetValue; } },
+    syncUI: (val: string) => {
+      calls.syncUI.push(val);
+    },
+    savePins: () => {
+      calls.savePins++;
+    },
+    widget: {
+      get value() {
+        return widgetValue;
+      },
+    },
   };
 
   const basket = {

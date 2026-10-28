@@ -40,9 +40,9 @@ test("escapeHTML coerces non-strings and leaves plain text alone", () => {
 
 test("icons registry holds the full SVG set", () => {
   assert.deepEqual(Object.keys(PresetDOM.icons), [
-    "add", "close", "edit", "file", "list", "small", "big", "eye",
-    "export", "import", "group", "collapse", "preset", "more", "hidden",
-    "copy", "dice", "config", "folder", "pin", "trash", "swap", "select", "paste",
+    "add", "close", "edit", "file", "list", "small", "big", "eye", "export",
+    "import", "group", "collapse", "preset", "more", "hidden", "copy", "dice",
+    "config", "folder", "pin", "trash", "swap", "select", "paste", "disable"
   ]);
   for (const svg of Object.values(PresetDOM.icons)) {
     assert.ok(svg.includes("<svg"), `icon is not SVG: ${svg.slice(0, 40)}`);

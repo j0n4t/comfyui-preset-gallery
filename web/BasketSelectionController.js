@@ -75,6 +75,7 @@ export default class BasketSelectionController {
     const hasSelection = selectedChips.length > 0;
     this.context.dom.btnCopyBasket.disabled = !hasSelection;
     this.context.dom.btnBasketPin.disabled = !hasSelection;
+    this.context.dom.btnBasketDisable.disabled = !hasSelection;
     this.context.dom.btnBasketDelete.disabled = !hasSelection;
     const allPinned = selectedChips.length > 0 && selectedChips.every(chip =>
       this.context.pinnedChips?.has(
