@@ -10,7 +10,12 @@ import PresetDOM from "./PresetDOM.js";
 import PresetGallerySettings from "./PresetGallerySettings.js";
 import PresetSession from "./PresetSession.js";
 import createGalleryContext from "./PresetGalleryContext.js";
-import { STORAGE_KEYS, defaultStorage, readBool, writeBool } from "./GalleryStorage.js";
+import {
+  STORAGE_KEYS,
+  defaultStorage,
+  readBool,
+  writeBool,
+} from "./GalleryStorage.js";
 import PresetDisplay from "./PresetDisplay.js";
 
 // The node's own floor. Below this the gallery cannot show its basket, control
@@ -162,7 +167,7 @@ export default class PresetGalleryApp {
       this.dom.basketContainer,
       this.dom.basketPool,
       this.dom.rawTextarea,
-      this.context
+      this.context,
     );
     this.editor = new PresetEditor(this.context);
     this.grid = new PresetGrid(this.context);
@@ -171,12 +176,30 @@ export default class PresetGalleryApp {
     this.context.editor = this.editor;
     this.context.grid = this.grid;
 
-    PresetDOM.injectStyles('j0n4t-pg-wrap-styles', PresetGalleryApp.WRAP_STYLES);
-    PresetDOM.injectStyles('j0n4t-pg-height-styles', PresetGalleryApp.HEIGHT_STYLES);
-    PresetDOM.injectStyles('j0n4t-pg-action-topbar-search-styles', PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES);
-    PresetDOM.injectStyles('j0n4t-pg-gallery-styles', PresetGalleryApp.GALLERY_STYLES);
-    PresetDOM.injectStyles('j0n4t-pg-modal-styles', PresetGalleryApp.MODAL_STYLES);
-    PresetDOM.injectStyles('j0n4t-pg-preset-tree-selector-styles', PresetGalleryApp.PRESET_TREE_SELECTOR_STYLES);
+    PresetDOM.injectStyles(
+      "j0n4t-pg-wrap-styles",
+      PresetGalleryApp.WRAP_STYLES,
+    );
+    PresetDOM.injectStyles(
+      "j0n4t-pg-height-styles",
+      PresetGalleryApp.HEIGHT_STYLES,
+    );
+    PresetDOM.injectStyles(
+      "j0n4t-pg-action-topbar-search-styles",
+      PresetGalleryApp.ACTION_TOPBAR_SEARCH_STYLES,
+    );
+    PresetDOM.injectStyles(
+      "j0n4t-pg-gallery-styles",
+      PresetGalleryApp.GALLERY_STYLES,
+    );
+    PresetDOM.injectStyles(
+      "j0n4t-pg-modal-styles",
+      PresetGalleryApp.MODAL_STYLES,
+    );
+    PresetDOM.injectStyles(
+      "j0n4t-pg-preset-tree-selector-styles",
+      PresetGalleryApp.PRESET_TREE_SELECTOR_STYLES,
+    );
 
     this.bindEvents();
     this.editor.renderPreview();
@@ -258,44 +281,120 @@ export default class PresetGalleryApp {
   `;
     return {
       wrap,
-      grid: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-grid")),
-      search: /** @type {HTMLInputElement} */ (wrap.querySelector(".j0n4t-pg-search")),
-      searchClear: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-search-clear")),
-      editor: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-editor")),
-      banner: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-banner")),
-      toggle: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-toggle")),
-      btnConfig: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-config-btn")),
-      btnMoreOptions: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-more-options-btn")),
-      popupMenu: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-popup-menu")),
-      viewsContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-views")),
-      chkGroup: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-group-toggle")),
-      btnGlobalCollapse: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-global-collapse")),
-      btnHideHidden: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-hide-hidden")),
-      editorPreview: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-editor-preview")),
-      inpName: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-name")),
-      inpFolder: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-folder")),
-      inpPreset: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-preset")),
-      inpFile: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-file")),
-      btnClearFields: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-clear-fields-btn")),
-      btnSave: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-save-btn")),
-      btnDel: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-del-btn")),
-      inpJsonFile: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-json-file")),
-      btnImport: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-import-btn")),
-      btnExport: /** @type {HTMLButtonElement} */ (wrap.querySelector("#j0n4t-pg-export-btn")),
-      btnCopyBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-copy-btn")),
-      btnBasketMultiSelect: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-multiselect-btn")),
-      btnBasketPaste: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-paste-btn")),
-      btnBasketPin: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-pin-btn")),
-      btnBasketDelete: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-delete-btn")),
-      btnBasketDisable: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-disable-btn")),
-      btnRerollBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-reroll-btn")),
-      chkBasketRaw: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-basket-raw-toggle")),
-      basketContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-container")),
-      basketHeader: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-header")),
-      basketTitle: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-title")),
-      basketPool: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-pool")),
-      rawTextarea: /** @type {HTMLTextAreaElement} */ (wrap.querySelector("#j0n4t-pg-raw-input")),
-      btnHideGallery: /** @type {HTMLDivElement} */ (wrap.querySelector("#j0n4t-pg-hide-gallery-btn")),
+      grid: /** @type {HTMLDivElement} */ (
+        wrap.querySelector(".j0n4t-pg-grid")
+      ),
+      search: /** @type {HTMLInputElement} */ (
+        wrap.querySelector(".j0n4t-pg-search")
+      ),
+      searchClear: /** @type {HTMLDivElement} */ (
+        wrap.querySelector(".j0n4t-pg-search-clear")
+      ),
+      editor: /** @type {HTMLDivElement} */ (
+        wrap.querySelector(".j0n4t-pg-editor")
+      ),
+      banner: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-banner")
+      ),
+      toggle: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-toggle")
+      ),
+      btnConfig: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-config-btn")
+      ),
+      btnMoreOptions: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-more-options-btn")
+      ),
+      popupMenu: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-popup-menu")
+      ),
+      viewsContainer: /** @type {HTMLDivElement} */ (
+        wrap.querySelector(".j0n4t-pg-views")
+      ),
+      chkGroup: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-group-toggle")
+      ),
+      btnGlobalCollapse: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-global-collapse")
+      ),
+      btnHideHidden: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-hide-hidden")
+      ),
+      editorPreview: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-editor-preview")
+      ),
+      inpName: /** @type {HTMLInputElement} */ (
+        wrap.querySelector("#j0n4t-pg-name")
+      ),
+      inpFolder: /** @type {HTMLInputElement} */ (
+        wrap.querySelector("#j0n4t-pg-folder")
+      ),
+      inpPreset: /** @type {HTMLInputElement} */ (
+        wrap.querySelector("#j0n4t-pg-preset")
+      ),
+      inpFile: /** @type {HTMLInputElement} */ (
+        wrap.querySelector("#j0n4t-pg-file")
+      ),
+      btnClearFields: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector("#j0n4t-pg-clear-fields-btn")
+      ),
+      btnSave: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector("#j0n4t-pg-save-btn")
+      ),
+      btnDel: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector("#j0n4t-pg-del-btn")
+      ),
+      inpJsonFile: /** @type {HTMLInputElement} */ (
+        wrap.querySelector("#j0n4t-pg-json-file")
+      ),
+      btnImport: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector("#j0n4t-pg-import-btn")
+      ),
+      btnExport: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector("#j0n4t-pg-export-btn")
+      ),
+      btnCopyBasket: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-copy-btn")
+      ),
+      btnBasketMultiSelect: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-multiselect-btn")
+      ),
+      btnBasketPaste: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-paste-btn")
+      ),
+      btnBasketPin: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-pin-btn")
+      ),
+      btnBasketDelete: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-delete-btn")
+      ),
+      btnBasketDisable: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-disable-btn")
+      ),
+      btnRerollBasket: /** @type {HTMLButtonElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-reroll-btn")
+      ),
+      chkBasketRaw: /** @type {HTMLInputElement} */ (
+        wrap.querySelector("#j0n4t-pg-basket-raw-toggle")
+      ),
+      basketContainer: /** @type {HTMLDivElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-container")
+      ),
+      basketHeader: /** @type {HTMLDivElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-header")
+      ),
+      basketTitle: /** @type {HTMLDivElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-title")
+      ),
+      basketPool: /** @type {HTMLDivElement} */ (
+        wrap.querySelector(".j0n4t-pg-basket-pool")
+      ),
+      rawTextarea: /** @type {HTMLTextAreaElement} */ (
+        wrap.querySelector("#j0n4t-pg-raw-input")
+      ),
+      btnHideGallery: /** @type {HTMLDivElement} */ (
+        wrap.querySelector("#j0n4t-pg-hide-gallery-btn")
+      ),
     };
   }
 
@@ -338,13 +437,16 @@ export default class PresetGalleryApp {
   restoreTabSelection(tab) {
     this.session.pinnedChips = new Set(tab.pins || []);
     this.session.savePins();
-    this.session.rollManager.rolls = JSON.parse(JSON.stringify(tab.rolls || {}));
+    this.session.rollManager.rolls = JSON.parse(
+      JSON.stringify(tab.rolls || {}),
+    );
     this.writeSelection(tab.basket || []);
   }
 
   /** @param {boolean} col  */
   setPanelCollapseState(col) {
-    const isCurrentlyCollapsed = this.dom.editor.classList.contains("collapsed");
+    const isCurrentlyCollapsed =
+      this.dom.editor.classList.contains("collapsed");
     if (isCurrentlyCollapsed === col) return;
 
     this.dom.editor.classList.toggle("collapsed", col);
@@ -361,8 +463,9 @@ export default class PresetGalleryApp {
         el.classList.toggle(
           "editing",
           this.editor.currentMode === "edit" &&
-          /** @type {HTMLElement} */ (el).dataset.style === this.editor.editingKey
-        )
+            /** @type {HTMLElement} */ (el).dataset.style ===
+              this.editor.editingKey,
+        ),
       );
   }
 
@@ -388,7 +491,8 @@ export default class PresetGalleryApp {
     // The first enabled library is the default write target for import and
     // export, which have no per-key owner to aim at. It is passed to them
     // rather than left in a module-level default.
-    this.defaultLibraryId = this.enabledIds[0] ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID;
+    this.defaultLibraryId =
+      this.enabledIds[0] ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID;
   }
 
   /**
@@ -422,7 +526,7 @@ export default class PresetGalleryApp {
       await PresetGalleryAPI.removeLibrary(libraryId);
     } else if (!keys.some((key) => presets[key]?.preset)) {
       const remove = await ModalUtils.confirm(
-        `"${libraryId}" has no presets left, only folder colours. Delete the library?`
+        `"${libraryId}" has no presets left, only folder colours. Delete the library?`,
       );
       if (remove) await PresetGalleryAPI.removeLibrary(libraryId);
     }
@@ -487,15 +591,17 @@ export default class PresetGalleryApp {
    * @param {string} val
    */
   async syncUI(val) {
-    const arr = val
-      ? PresetLogic.splitPresets(val)
-      : [];
+    const arr = val ? PresetLogic.splitPresets(val) : [];
     this.grid.syncSelection(arr);
     this.basket.render(arr);
     this.syncEditorHighlight();
 
-    const diceTitle = this.settings?.diceBehavior === "overwrite" ? "Overwrite with new presets" : "Re-roll variants";
-    this.dom.btnRerollBasket.title = arr.length === 0 ? "Feeling lucky?" : diceTitle;
+    const diceTitle =
+      this.settings?.diceBehavior === "overwrite"
+        ? "Overwrite with new presets"
+        : "Re-roll variants";
+    this.dom.btnRerollBasket.title =
+      arr.length === 0 ? "Feeling lucky?" : diceTitle;
   }
 
   /** @param {boolean} overwriteMode */
@@ -537,7 +643,11 @@ export default class PresetGalleryApp {
     if (this.autoRollPending) return;
 
     const seedChanged = this.checkSeedChange();
-    if (!this.settings?.rollOnGeneration && !(this.settings?.rollOnSeedChange && seedChanged)) return;
+    if (
+      !this.settings?.rollOnGeneration &&
+      !(this.settings?.rollOnSeedChange && seedChanged)
+    )
+      return;
 
     this.autoRollPending = true;
     const overwrite = this.settings?.diceBehavior === "overwrite";
@@ -552,8 +662,10 @@ export default class PresetGalleryApp {
       const target = /** @type {HTMLElement} */ (e.target);
       const isInput = ["INPUT", "TEXTAREA"].includes(target.tagName);
 
-      if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
-        const triggerable = target.closest(".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-action-btn, .j0n4t-pg-basket-reroll-btn");
+      if ((e.key === "Enter" && !e.ctrlKey) || e.key === " ") {
+        const triggerable = target.closest(
+          ".j0n4t-pg-view-btn, .j0n4t-pg-search-clear, .j0n4t-pg-toggle, .j0n4t-pg-basket-action-btn, .j0n4t-pg-basket-reroll-btn",
+        );
         if (triggerable) {
           e.preventDefault();
           /** @type {HTMLElement} */ (triggerable).click();
@@ -568,16 +680,13 @@ export default class PresetGalleryApp {
       if ((e.ctrlKey && e.key === "f") || (!isInput && e.key === "/")) {
         e.preventDefault();
         this.dom.search.focus();
-      }
-      else if (e.ctrlKey && e.key.toLowerCase() === "e") {
+      } else if (e.ctrlKey && e.key.toLowerCase() === "e") {
         e.preventDefault();
         this.dom.toggle.click();
-      }
-      else if (e.ctrlKey && e.key.toLowerCase() === "h") {
+      } else if (e.ctrlKey && e.key.toLowerCase() === "h") {
         e.preventDefault();
         this.dom.btnHideGallery.click();
-      }
-      else if (e.ctrlKey && e.key.toLowerCase() === "d") {
+      } else if (e.ctrlKey && e.key.toLowerCase() === "d") {
         e.preventDefault();
         const mainBehavior = this.settings?.diceBehavior === "overwrite";
         this.triggerRoll(e.shiftKey ? !mainBehavior : mainBehavior);
@@ -586,8 +695,8 @@ export default class PresetGalleryApp {
 
     this.dom.toggle.addEventListener("click", () =>
       this.setPanelCollapseState(
-        !this.dom.editor.classList.contains("collapsed")
-      )
+        !this.dom.editor.classList.contains("collapsed"),
+      ),
     );
 
     this.dom.btnConfig.addEventListener("click", () => {
@@ -602,14 +711,19 @@ export default class PresetGalleryApp {
 
     document.addEventListener("click", (e) => {
       if (this.dom.popupMenu.classList.contains("show")) {
-        if (!this.dom.btnMoreOptions.contains(/** @type {HTMLElement} */(e.target)) && !this.dom.popupMenu.contains(/** @type {HTMLElement} */(e.target))) {
+        if (
+          !this.dom.btnMoreOptions.contains(
+            /** @type {HTMLElement} */ (e.target),
+          ) &&
+          !this.dom.popupMenu.contains(/** @type {HTMLElement} */ (e.target))
+        ) {
           this.dom.popupMenu.classList.remove("show");
         }
       }
     });
 
     this.dom.search.addEventListener("input", () =>
-      this.grid.executeFilterPipeline(this.dom.search.value)
+      this.grid.executeFilterPipeline(this.dom.search.value),
     );
     this.dom.searchClear.addEventListener("click", () => {
       this.dom.search.value = "";
@@ -623,7 +737,9 @@ export default class PresetGalleryApp {
       });
     });
 
-    this.dom.btnImport.addEventListener("click", () => this.dom.inpJsonFile.click());
+    this.dom.btnImport.addEventListener("click", () =>
+      this.dom.inpJsonFile.click(),
+    );
     this.dom.inpJsonFile.addEventListener("change", async (e) => {
       const file = /** @type {HTMLInputElement} */ (e.target).files?.[0];
       if (!file) return;
@@ -637,13 +753,22 @@ export default class PresetGalleryApp {
 
     this.dom.btnRerollBasket.addEventListener("click", (e) => {
       if (e.ctrlKey || e.metaKey) {
-        if (!this.settings.rollOnGeneration && !this.settings.rollOnSeedChange) {
+        if (
+          !this.settings.rollOnGeneration &&
+          !this.settings.rollOnSeedChange
+        ) {
           this.settings.rollOnGeneration = true;
           this.settings.rollOnSeedChange = false;
-        } else if (this.settings.rollOnGeneration && !this.settings.rollOnSeedChange) {
+        } else if (
+          this.settings.rollOnGeneration &&
+          !this.settings.rollOnSeedChange
+        ) {
           this.settings.rollOnGeneration = false;
           this.settings.rollOnSeedChange = true;
-        } else if (!this.settings.rollOnGeneration && this.settings.rollOnSeedChange) {
+        } else if (
+          !this.settings.rollOnGeneration &&
+          this.settings.rollOnSeedChange
+        ) {
           this.settings.rollOnGeneration = true;
           this.settings.rollOnSeedChange = true;
         } else {
@@ -668,7 +793,8 @@ export default class PresetGalleryApp {
       if (e.key === "Shift") this.dom.basketHeader.classList.add("shift-held");
     });
     this.dom.basketHeader.addEventListener("keyup", (e) => {
-      if (e.key === "Shift") this.dom.basketHeader.classList.remove("shift-held");
+      if (e.key === "Shift")
+        this.dom.basketHeader.classList.remove("shift-held");
     });
 
     this.dom.basketTitle.addEventListener("click", () => {
@@ -703,7 +829,11 @@ export default class PresetGalleryApp {
    * basket or the editor box - claims the gesture and the wrap does not.
    */
   bindResizeTracking() {
-    const targets = [this.dom.wrap, this.dom.basketContainer, this.dom.inpPreset];
+    const targets = [
+      this.dom.wrap,
+      this.dom.basketContainer,
+      this.dom.inpPreset,
+    ];
     /** @type {HTMLElement | null} */
     let dragged = null;
     let startHeight = 0;
@@ -758,8 +888,11 @@ export default class PresetGalleryApp {
       getMatches: (query) => {
         query = query.trim().toLowerCase();
         if (!query) return [];
-        return PresetDisplay.getTopMatches(Object.getOwnPropertyNames(this.session.cache), query, (k) =>
-          PresetDisplay.getSearchBlob(k, this.session.cache[k]), this.session.cache
+        return PresetDisplay.getTopMatches(
+          Object.getOwnPropertyNames(this.session.cache),
+          query,
+          (k) => PresetDisplay.getSearchBlob(k, this.session.cache[k]),
+          this.session.cache,
         );
       },
       renderItem: (match) =>
@@ -797,7 +930,7 @@ export default class PresetGalleryApp {
 
     this.initFilterAutocomplete();
     this.setPanelCollapseState(
-      readBool(STORAGE_KEYS.panelCollapsed, false, defaultStorage())
+      readBool(STORAGE_KEYS.panelCollapsed, false, defaultStorage()),
     );
     this.node.setSize([
       this.node.size[0] || MIN_NODE_WIDTH,

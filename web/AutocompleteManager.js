@@ -87,8 +87,14 @@ export default class AutocompleteManager {
     /** @type {number} */
     this.activeIndex = 0;
 
-    PresetDOM.injectStyles("j0n4t-pg-autocomplete-popup-styles", AutocompleteManager.AUTOCOMPLETE_POPUP_STYLES);
-    PresetDOM.injectStyles("j0n4t-pg-folder-autocomplete-styles", AutocompleteManager.FOLDER_AUTOCOMPLETE_STYLES);
+    PresetDOM.injectStyles(
+      "j0n4t-pg-autocomplete-popup-styles",
+      AutocompleteManager.AUTOCOMPLETE_POPUP_STYLES,
+    );
+    PresetDOM.injectStyles(
+      "j0n4t-pg-folder-autocomplete-styles",
+      AutocompleteManager.FOLDER_AUTOCOMPLETE_STYLES,
+    );
 
     this.initEvents();
   }
@@ -112,7 +118,9 @@ export default class AutocompleteManager {
       if (this.onBlur) this.onBlur();
       setTimeout(() => this.close(), 200);
     });
-    /** @type {HTMLElement} */ (this.input).addEventListener("keydown", (e) => this.handleKeydown(e));
+    /** @type {HTMLElement} */ (this.input).addEventListener("keydown", (e) =>
+      this.handleKeydown(e),
+    );
   }
 
   /**

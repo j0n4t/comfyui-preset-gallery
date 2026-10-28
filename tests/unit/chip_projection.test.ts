@@ -38,7 +38,7 @@ const CACHE: PresetCache = {
 
 /** The fixture behind the perf budgets, so these run against a real shape. */
 const FIXTURE = fileURLToPath(
-  new URL("../fixtures/presets.synthetic.json", import.meta.url)
+  new URL("../fixtures/presets.synthetic.json", import.meta.url),
 );
 const BIG: PresetCache = JSON.parse(readFileSync(FIXTURE, "utf8"));
 
@@ -62,17 +62,36 @@ test("a run of tokens never merges into one chip", () => {
   const chips = ChipProjection.getGroupedChips(["red", "blue"], CACHE);
 
   assert.equal(chips.length, 2);
-  assert.deepEqual(chips.map((c) => c.styleKey), ["A/Short", "blue"]);
-  assert.deepEqual(chips.map((c) => c.startIndex), [0, 1]);
-  assert.deepEqual(chips.map((c) => c.endIndex), [1, 2]);
+  assert.deepEqual(
+    chips.map((c) => c.styleKey),
+    ["A/Short", "blue"],
+  );
+  assert.deepEqual(
+    chips.map((c) => c.startIndex),
+    [0, 1],
+  );
+  assert.deepEqual(
+    chips.map((c) => c.endIndex),
+    [1, 2],
+  );
 });
 
 test("a token matching nothing keeps its own text and has no cache item", () => {
-  const chips = ChipProjection.getGroupedChips(["unknown one", "unknown two"], CACHE);
+  const chips = ChipProjection.getGroupedChips(
+    ["unknown one", "unknown two"],
+    CACHE,
+  );
 
   assert.equal(chips.length, 2);
-  assert.deepEqual(chips.map((c) => c.styleKey), ["unknown one", "unknown two"]);
-  assert.equal(chips[0].item, undefined, "an unmatched token has no cache entry");
+  assert.deepEqual(
+    chips.map((c) => c.styleKey),
+    ["unknown one", "unknown two"],
+  );
+  assert.equal(
+    chips[0].item,
+    undefined,
+    "an unmatched token has no cache entry",
+  );
 });
 
 test("a token matching a preset body resolves to that preset's key", () => {
@@ -86,7 +105,11 @@ test("a token matching a preset body resolves to that preset's key", () => {
 test("a token matching a wrapped preset resolves through the wrapping", () => {
   // Faces has a prepend and an append, so the wrapped form is what the lookup
   // indexes; the raw preset text is a separate entry.
-  const wrapped = PresetLogic.getWrappedPreset("Faces/Portrait", "portrait, solo", CACHE);
+  const wrapped = PresetLogic.getWrappedPreset(
+    "Faces/Portrait",
+    "portrait, solo",
+    CACHE,
+  );
   assert.notEqual(wrapped, "portrait, solo");
 
   const chips = ChipProjection.getGroupedChips([wrapped], CACHE);
@@ -135,13 +158,19 @@ test("a preset reference inside a chip body is not re-grouped", () => {
 
 test("an empty or missing selection groups to no chips", () => {
   assert.deepEqual(ChipProjection.getGroupedChips([], CACHE), []);
-  assert.deepEqual(ChipProjection.getGroupedChips(null as unknown as string[], CACHE), []);
+  assert.deepEqual(
+    ChipProjection.getGroupedChips(null as unknown as string[], CACHE),
+    [],
+  );
 });
 
 // --- qualified keys: one entry per library ---------------------------------
 
 test("a qualified token keeps its qualifier as the styleKey", () => {
-  const chips = ChipProjection.getGroupedChips(["socks#wear/sock/knee"], MERGED);
+  const chips = ChipProjection.getGroupedChips(
+    ["socks#wear/sock/knee"],
+    MERGED,
+  );
 
   assert.equal(chips.length, 1);
   assert.equal(chips[0].styleKey, "socks#wear/sock/knee");
@@ -151,10 +180,19 @@ test("a qualified token keeps its qualifier as the styleKey", () => {
 test("a qualified token resolves its own library's entry, not the main one", () => {
   // The plain key and the qualified one share a folder and a preset body; the
   // qualifier is what decides which entry the chip points at.
-  const chips = ChipProjection.getGroupedChips(["socks#wear/sock/ankle", "wear/sock/ankle"], MERGED);
+  const chips = ChipProjection.getGroupedChips(
+    ["socks#wear/sock/ankle", "wear/sock/ankle"],
+    MERGED,
+  );
 
-  assert.deepEqual(chips.map((c) => c.styleKey), ["socks#wear/sock/ankle", "wear/sock/ankle"]);
-  assert.deepEqual(chips.map((c) => c.item?.preset), ["main ankle", "socks ankle"]);
+  assert.deepEqual(
+    chips.map((c) => c.styleKey),
+    ["socks#wear/sock/ankle", "wear/sock/ankle"],
+  );
+  assert.deepEqual(
+    chips.map((c) => c.item?.preset),
+    ["main ankle", "socks ankle"],
+  );
 });
 
 test("a qualified token without a library keeps the plain key", () => {
@@ -165,7 +203,10 @@ test("a qualified token without a library keeps the plain key", () => {
 });
 
 test("a weighted qualified token resolves to the qualified key", () => {
-  const chips = ChipProjection.getGroupedChips(["(socks#wear/sock/knee:1.2)"], MERGED);
+  const chips = ChipProjection.getGroupedChips(
+    ["(socks#wear/sock/knee:1.2)"],
+    MERGED,
+  );
 
   assert.equal(chips.length, 1);
   assert.equal(chips[0].styleKey, "socks#wear/sock/knee");
@@ -178,14 +219,25 @@ test("the chip lookup is built once per cache and then reused", () => {
   // indexes every key, its preset text and its wrapped form. A second render
   // must find the map already in the shared record, not build it again.
   const cache: PresetCache = { "Faces/Portrait": { preset: "portrait, solo" } };
-  assert.equal(derivedFor(cache).lookupMap, undefined, "a fresh cache starts unindexed");
+  assert.equal(
+    derivedFor(cache).lookupMap,
+    undefined,
+    "a fresh cache starts unindexed",
+  );
 
   ChipProjection.getGroupedChips(["Faces/Portrait"], cache);
   const built = derivedFor(cache).lookupMap;
-  assert.ok(built, "grouping must record the lookup in the shared cache record");
+  assert.ok(
+    built,
+    "grouping must record the lookup in the shared cache record",
+  );
 
   ChipProjection.getGroupedChips(["portrait, solo"], cache);
-  assert.equal(derivedFor(cache).lookupMap, built, "the second call must reuse the lookup");
+  assert.equal(
+    derivedFor(cache).lookupMap,
+    built,
+    "the second call must reuse the lookup",
+  );
 });
 
 test("the shared record is keyed by the cache object, not by its contents", () => {
@@ -196,15 +248,20 @@ test("the shared record is keyed by the cache object, not by its contents", () =
 
   ChipProjection.getGroupedChips(["A/One"], first);
   assert.ok(derivedFor(first).lookupMap);
-  assert.equal(derivedFor(second).lookupMap, undefined, "an equal but distinct cache must start clean");
+  assert.equal(
+    derivedFor(second).lookupMap,
+    undefined,
+    "an equal but distinct cache must start clean",
+  );
 });
-
 
 test("the grouping is unchanged on the real library shape", () => {
   // The fixture the perf budgets measure: every key must resolve to its own
   // entry, in order, or the basket renders a different set of chips than the
   // selection holds.
-  const keys = Object.keys(BIG).filter((k) => BIG[k]?.preset?.trim()).slice(0, 30);
+  const keys = Object.keys(BIG)
+    .filter((k) => BIG[k]?.preset?.trim())
+    .slice(0, 30);
   const chips = ChipProjection.getGroupedChips(keys, BIG);
 
   assert.equal(chips.length, keys.length);

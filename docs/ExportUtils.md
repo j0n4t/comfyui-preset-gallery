@@ -1,6 +1,7 @@
 # ExportUtils.js - Feature Documentation & Architecture Reference
 
 ## Overview
+
 `ExportUtils.js` is a core utility module designed for a web-based Preset Gallery application. It provides comprehensive capabilities for **exporting**, **importing**, **managing duplicates**, **interactive tree selection**, and **live in-line editing** of text presets, associated images, and hierarchical folder structures across multiple formats (ZIP, YAML, and JSON).
 
 ---
@@ -8,6 +9,7 @@
 ## Architecture & Dependencies
 
 The module relies on several helper modules:
+
 - **`ModalUtils.js`**: Handles modal dialogs, alerts, and confirmations.
 - **`NestedPresetUtils.js`**: Manages conversions between flat preset structures and nested hierarchical trees.
 - **`PresetDOM.js`**: Manages DOM utilities, HTML escaping, and thumbnail creation.
@@ -21,10 +23,12 @@ The module relies on several helper modules:
 ## Detailed Feature Breakdown
 
 ### 1. Dynamic JSZip Loader (`loadJSZip`)
+
 - **Purpose**: Ensures the `JSZip` library is available in the runtime environment.
 - **Behavior**: Checks `window.JSZip` and `globalThis.JSZip`. If not present, dynamically injects the JSZip script tag from `cdnjs.cloudflare.com` (`3.10.1`), resolving when successfully loaded or rejecting on failure.
 
 ### 2. Selection Summary Calculator (`getSelectionSummary`)
+
 - **Purpose**: Analyzes selected preset keys against an existing dataset.
 - **Metrics Calculated**:
   - `newCount`: Presets present in selection but missing in existing data.
@@ -33,6 +37,7 @@ The module relies on several helper modules:
   - `total`: Total number of selected keys.
 
 ### 3. Interactive Preset Selector Tree (`buildPresetSelectorTree`)
+
 - **Purpose**: Generates a rich, hierarchical DOM tree UI for inspecting, selecting, filtering, and editing presets prior to import or export.
 - **UI & Control Features**:
   - **Master Controls**: "Select / Deselect All" master checkbox and "Collapse All" / "Expand All" toggle button.
@@ -46,6 +51,7 @@ The module relies on several helper modules:
   - **Duplicate Strategy Application**: Programmatically updates item selection states based on chosen duplicate handling strategies (`skip`, `overwrite`, `keep_both`).
 
 ### 4. Export Modal Dialog (`showExportModal`)
+
 - **Purpose**: Provides a user interface for configuring export parameters.
 - **Configuration Options**:
   - **File Format**: ZIP Archive (`.zip`), YAML (`.yaml`), or JSON (`.json`).
@@ -55,6 +61,7 @@ The module relies on several helper modules:
 - **Summary & Confirmation**: Displays export summary statistics before triggering actual file generation.
 
 ### 5. Multi-Format Export Engine (`exportPresets`)
+
 - **Purpose**: Generates and triggers browser file downloads for exported presets.
 - **ZIP Export**:
   - Generates a `.zip` archive.
@@ -66,16 +73,18 @@ The module relies on several helper modules:
   - Triggers client-side downloads with appropriate MIME types (`text/yaml` or `application/json`).
 
 ### 6. Import Modal Dialog (`showImportModal`)
+
 - **Purpose**: Pre-import interface for inspecting imported data against current presets.
 - **Duplicate Detection**: Automatically detects duplicate keys and displays duplicate counts.
 - **Duplicate Handling Strategy Dropdown**:
-  - *Overwrite existing presets*
-  - *Skip duplicates*
-  - *Keep both (Rename imported with `_copy`)*
+  - _Overwrite existing presets_
+  - _Skip duplicates_
+  - _Keep both (Rename imported with `_copy`)_
 - **Import Custom Colors**: Toggle for importing group colors (`__color__`).
 - **Import Summary**: Displays pre-import counts (Total Selected, New Styles, Replaced Styles, Unchanged Styles) in a confirmation modal.
 
 ### 7. File Import Processor (`importFile`)
+
 - **Purpose**: Parses and processes uploaded files (`.zip`, `.yaml`, `.yml`, `.json`).
 - **ZIP File Processing**:
   - Reads zip entries, normalizes paths.

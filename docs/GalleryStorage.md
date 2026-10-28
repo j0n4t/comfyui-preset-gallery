@@ -25,11 +25,11 @@ prefix.
 
 Three generations of naming coexist and are deliberately left alone:
 
-| Prefix | Keys |
-| --- | --- |
+| Prefix                   | Keys                                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ |
 | `comfy_preset_gallery_*` | the original set: raw basket, basket tabs, panel collapsed, gallery hidden, view, grouped, show hidden |
-| `pg_*` | added with the settings panel: `pg_settings`, `pg_collapsed_folders_list`, `pg_excluded_roll_folders` |
-| `j0n4t-pg-pins-<nodeId>` | the per-node pin list; `STORAGE_KEYS.pins(nodeId)` builds it, and no id falls back to `global` |
+| `pg_*`                   | added with the settings panel: `pg_settings`, `pg_collapsed_folders_list`, `pg_excluded_roll_folders`  |
+| `j0n4t-pg-pins-<nodeId>` | the per-node pin list; `STORAGE_KEYS.pins(nodeId)` builds it, and no id falls back to `global`         |
 
 ## API
 
@@ -37,20 +37,20 @@ Every primitive takes the storage as its **last** argument and defaults to the
 ambient one, so the common call reads what it wants and a test injects a fake:
 
 ```js
-readBool(STORAGE_KEYS.grouped, true);              // the browser's storage
+readBool(STORAGE_KEYS.grouped, true); // the browser's storage
 readBool(STORAGE_KEYS.grouped, true, fakeStorage); // an injected one
 ```
 
-| Function | Returns |
-| --- | --- |
-| `defaultStorage()` | the ambient `localStorage`, or `null` when there is none or reading it throws |
-| `readString(key, fallback, storage?)` | the stored string; an empty value counts as missing |
-| `writeString(key, value, storage?)` | stores the value verbatim |
-| `readBool(key, fallback, storage?)` | `true` only for the exact string `"true"`, else `fallback` |
-| `writeBool(key, value, storage?)` | stores `"true"` / `"false"` |
-| `readJson(key, fallback, storage?)` | the parsed value; a missing or unparseable one yields `fallback` |
-| `writeJson(key, value, storage?)` | stores `JSON.stringify(value)` |
-| `readIdList(key, storage?)` | a stored array of strings; anything else yields `[]` |
+| Function                              | Returns                                                                       |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| `defaultStorage()`                    | the ambient `localStorage`, or `null` when there is none or reading it throws |
+| `readString(key, fallback, storage?)` | the stored string; an empty value counts as missing                           |
+| `writeString(key, value, storage?)`   | stores the value verbatim                                                     |
+| `readBool(key, fallback, storage?)`   | `true` only for the exact string `"true"`, else `fallback`                    |
+| `writeBool(key, value, storage?)`     | stores `"true"` / `"false"`                                                   |
+| `readJson(key, fallback, storage?)`   | the parsed value; a missing or unparseable one yields `fallback`              |
+| `writeJson(key, value, storage?)`     | stores `JSON.stringify(value)`                                                |
+| `readIdList(key, storage?)`           | a stored array of strings; anything else yields `[]`                          |
 
 ### The two decisions worth knowing
 

@@ -77,7 +77,10 @@ export default class PresetGalleryAPI {
    */
   static async fetchLibraryCaches(ids) {
     const entries = await Promise.all(
-      (ids || []).map(async (id) => [id, await PresetGalleryAPI.fetchGallery(id)])
+      (ids || []).map(async (id) => [
+        id,
+        await PresetGalleryAPI.fetchGallery(id),
+      ]),
     );
     return Object.fromEntries(entries);
   }
@@ -96,11 +99,16 @@ export default class PresetGalleryAPI {
    * @param {PresetCache} presets
    * @param {string} [libraryId]
    */
-  static async savePresets(presets, libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {
+  static async savePresets(
+    presets,
+    libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+  ) {
     const activeFolders = new Set();
     for (const [key, item] of Object.entries(presets)) {
       if (!item) continue;
-      const hasContent = (typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename;
+      const hasContent =
+        (typeof item.preset === "string" && item.preset.trim().length > 0) ||
+        item.filename;
       if (hasContent) {
         const parts = key.split("/");
         while (parts.length > 1) {
@@ -114,8 +122,11 @@ export default class PresetGalleryAPI {
     const cleanedPresets = {};
     for (const [key, item] of Object.entries(presets)) {
       if (!item) continue;
-      const hasContent = (typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename;
-      const hasColor = typeof item.__color__ === "string" && item.__color__.length > 0;
+      const hasContent =
+        (typeof item.preset === "string" && item.preset.trim().length > 0) ||
+        item.filename;
+      const hasColor =
+        typeof item.__color__ === "string" && item.__color__.length > 0;
 
       if (hasContent) {
         cleanedPresets[key] = { ...item };
@@ -153,7 +164,11 @@ export default class PresetGalleryAPI {
    * @param {string} color
    * @param {string} [libraryId] the library the group lives in
    */
-  static async setGroupColor(groupRaw, color, libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {
+  static async setGroupColor(
+    groupRaw,
+    color,
+    libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+  ) {
     const presets = await PresetGalleryAPI.getPresets(libraryId);
     if (color) {
       presets[groupRaw] = { ...(presets[groupRaw] || {}), __color__: color };
@@ -170,9 +185,12 @@ export default class PresetGalleryAPI {
    * @param {string} [libraryId] the bundled library when omitted
    */
   static async removeLibrary(libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {
-    if (!libraryId || libraryId === PresetGalleryAPI.DEFAULT_LIBRARY_ID) return false;
+    if (!libraryId || libraryId === PresetGalleryAPI.DEFAULT_LIBRARY_ID)
+      return false;
     try {
-      const res = await fetch(PresetGalleryAPI.libraryUrl(libraryId), { method: "DELETE" });
+      const res = await fetch(PresetGalleryAPI.libraryUrl(libraryId), {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return true;
     } catch (error) {
@@ -196,17 +214,43 @@ export default class PresetGalleryAPI {
    */
 
   /** @param {SavePresetData} data */
-  static async savePreset({ name, folder, presetText, imageData, clearImage, editingKey, mode, libraryId, sourceLibraryId }) {
+  static async savePreset({
+    name,
+    folder,
+    presetText,
+    imageData,
+    clearImage,
+    editingKey,
+    mode,
+    libraryId,
+    sourceLibraryId,
+  }) {
     const presets = await PresetGalleryAPI.getPresets(libraryId);
 
-    let cleanFolder = folder ? folder.trim().toLowerCase().replace(/ /g, "_").replace(/^\/+|\/+$/g, "") : "";
-    if (["root", "root_presets", "none", "root presets"].includes(cleanFolder)) {
+    let cleanFolder = folder
+      ? folder
+          .trim()
+          .toLowerCase()
+          .replace(/ /g, "_")
+          .replace(/^\/+|\/+$/g, "")
+      : "";
+    if (
+      ["root", "root_presets", "none", "root presets"].includes(cleanFolder)
+    ) {
       cleanFolder = "";
     }
 
-    const cleanName = name ? name.trim().toLowerCase().replace(/ /g, "_").replace(/^\/+|\/+$/g, "") : "";
+    const cleanName = name
+      ? name
+          .trim()
+          .toLowerCase()
+          .replace(/ /g, "_")
+          .replace(/^\/+|\/+$/g, "")
+      : "";
     if (!cleanName) {
-      console.error("[PresetGalleryAPI] Cannot save preset with an empty name.");
+      console.error(
+        "[PresetGalleryAPI] Cannot save preset with an empty name.",
+      );
       return { success: false, error: "Preset name cannot be empty." };
     }
 
@@ -224,8 +268,13 @@ export default class PresetGalleryAPI {
     }
 
     if (!trimmedText && !finalImage) {
-      console.error("[PresetGalleryAPI] Cannot save preset with empty content.");
-      return { success: false, error: "Preset content or image cannot be empty." };
+      console.error(
+        "[PresetGalleryAPI] Cannot save preset with empty content.",
+      );
+      return {
+        success: false,
+        error: "Preset content or image cannot be empty.",
+      };
     }
 
     const newKey = cleanFolder ? `${cleanFolder}/${cleanName}` : cleanName;
@@ -255,7 +304,10 @@ export default class PresetGalleryAPI {
    * @param {string} uniqueKey a cache key, optionally library-qualified
    * @param {string} [libraryId] the library to delete from
    */
-  static async deletePreset(uniqueKey, libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {
+  static async deletePreset(
+    uniqueKey,
+    libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+  ) {
     const presets = await PresetGalleryAPI.getPresets(libraryId);
     delete presets[PresetLogic.splitQualifiedKey(uniqueKey).key];
     await PresetGalleryAPI.savePresets(presets, libraryId);
@@ -275,7 +327,12 @@ export default class PresetGalleryAPI {
    * @param {string} [targetLibraryId]
    * @param {string} [sourceLibraryId]
    */
-  static async moveFolder(oldFolder, newFolder, targetLibraryId, sourceLibraryId) {
+  static async moveFolder(
+    oldFolder,
+    newFolder,
+    targetLibraryId,
+    sourceLibraryId,
+  ) {
     const target = targetLibraryId ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID;
     const sourceId = sourceLibraryId ?? target;
     const source = await PresetGalleryAPI.getPresets(sourceId);
@@ -302,8 +359,10 @@ export default class PresetGalleryAPI {
     const targetPresets = await PresetGalleryAPI.getPresets(target);
     // renaming in place has to drop the old keys; moving only adds to the target
     await PresetGalleryAPI.savePresets(
-      sourceId === target ? { ...kept, ...moved } : { ...targetPresets, ...moved },
-      target
+      sourceId === target
+        ? { ...kept, ...moved }
+        : { ...targetPresets, ...moved },
+      target,
     );
     if (sourceId !== target) {
       await PresetGalleryAPI.savePresets(kept, sourceId);
@@ -316,7 +375,11 @@ export default class PresetGalleryAPI {
    * @param {string} newFolder
    * @param {string} [libraryId] the library the folder lives in
    */
-  static async renameFolder(oldFolder, newFolder, libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {
+  static async renameFolder(
+    oldFolder,
+    newFolder,
+    libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+  ) {
     const presets = await PresetGalleryAPI.getPresets(libraryId);
     /** @type {PresetCache} */
     const newPresets = {};

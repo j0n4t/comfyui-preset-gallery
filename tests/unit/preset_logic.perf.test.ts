@@ -18,7 +18,7 @@ import ChipProjection from "../../web/ChipProjection.js";
 // See docs/chips-parsing-bottlenecks.md for the measurements and the refactor.
 
 const FIXTURE = fileURLToPath(
-  new URL("../fixtures/presets.synthetic.json", import.meta.url)
+  new URL("../fixtures/presets.synthetic.json", import.meta.url),
 );
 
 const CACHE: PresetCache = JSON.parse(readFileSync(FIXTURE, "utf8"));
@@ -103,10 +103,13 @@ function fastestPerCallMs(fn: () => void, runs = 5, perSample = 8): number {
  * build on a cache object nothing has derived from yet so it pays the build
  * rather than a memo hit. The clones are made before timing starts.
  */
-function fastestBuildMs(fn: (cache: PresetCache) => void, runs = 5, perSample = 8): number {
-  const caches = Array.from(
-    { length: runs * perSample },
-    () => structuredClone(CACHE)
+function fastestBuildMs(
+  fn: (cache: PresetCache) => void,
+  runs = 5,
+  perSample = 8,
+): number {
+  const caches = Array.from({ length: runs * perSample }, () =>
+    structuredClone(CACHE),
   );
   let next = 0;
   let best = Infinity;
@@ -118,10 +121,15 @@ function fastestBuildMs(fn: (cache: PresetCache) => void, runs = 5, perSample = 
   return best;
 }
 
-function logMeasurement(name: string, ms: number, ratio: number, budget: number): void {
+function logMeasurement(
+  name: string,
+  ms: number,
+  ratio: number,
+  budget: number,
+): void {
   console.log(
     `    ${name.padEnd(22)} ${ms.toFixed(2).padStart(8)} ms` +
-      `   ${ratio.toFixed(1).padStart(6)}x calib   budget ${budget}x`
+      `   ${ratio.toFixed(1).padStart(6)}x calib   budget ${budget}x`,
   );
 }
 
@@ -144,7 +152,9 @@ function basket(n: number): string[] {
 function variantCalls(n: number): [string, string][] {
   const pairs: [string, string][] = [];
   for (const key of presetKeys()) {
-    for (const match of (CACHE[key].preset ?? "").matchAll(/\{([^{}:]+):([^{}]+)\}/g)) {
+    for (const match of (CACHE[key].preset ?? "").matchAll(
+      /\{([^{}:]+):([^{}]+)\}/g,
+    )) {
       pairs.push([match[1].trim(), match[2].trim()]);
       if (pairs.length >= n) return pairs;
     }
@@ -160,11 +170,11 @@ test("perf fixture keeps the shape that makes its numbers meaningful", () => {
 
   assert.ok(
     keys.length >= 600,
-    `fixture has ${keys.length} entries; the cost it tracks scales with this`
+    `fixture has ${keys.length} entries; the cost it tracks scales with this`,
   );
   assert.ok(
     withPreset.length >= 550,
-    `fixture has ${withPreset.length} presets; expected at least 550`
+    `fixture has ${withPreset.length} presets; expected at least 550`,
   );
 
   // Bare `{group}` refs are what trigger the whole-cache scans. If a
@@ -175,13 +185,13 @@ test("perf fixture keeps the shape that makes its numbers meaningful", () => {
   }, 0);
   assert.ok(
     bareVars >= 150,
-    `fixture has ${bareVars} bare {group} refs; expected at least 150`
+    `fixture has ${bareVars} bare {group} refs; expected at least 150`,
   );
 
   // A folder-level config entry: the engine looks these up by folder path.
   assert.ok(
     CACHE["_/config/prepend/wear/cloth"]?.preset,
-    "fixture lost the folder prepend that the wrapped-resolution test needs"
+    "fixture lost the folder prepend that the wrapped-resolution test needs",
   );
 });
 
@@ -192,14 +202,16 @@ test("building the chip lookup stays within budget", () => {
   // interaction after a library load pays, and the number step 2 moved from
   // ~150 ms to ~1.5 ms by dropping the per-entry expansion.
   const keys = basket(120);
-  const ms = fastestBuildMs((cache) => ChipProjection.getGroupedChips(keys, cache));
+  const ms = fastestBuildMs((cache) =>
+    ChipProjection.getGroupedChips(keys, cache),
+  );
   const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
   const ratio = ms / calibration;
 
   logMeasurement("lookup build (cold)", ms, ratio, RATIO_BUDGET.build);
   assert.ok(
     ratio < RATIO_BUDGET.build,
-    `building the lookup cost ${ratio.toFixed(1)}x calibration (${ms.toFixed(1)} ms), budget ${RATIO_BUDGET.build}x`
+    `building the lookup cost ${ratio.toFixed(1)}x calibration (${ms.toFixed(1)} ms), budget ${RATIO_BUDGET.build}x`,
   );
 });
 
@@ -212,27 +224,39 @@ test("building the token candidates stays within budget", () => {
   logMeasurement("candidate build (cold)", ms, ratio, RATIO_BUDGET.build);
   assert.ok(
     ratio < RATIO_BUDGET.build,
-    `building the candidates cost ${ratio.toFixed(1)}x calibration (${ms.toFixed(1)} ms), budget ${RATIO_BUDGET.build}x`
+    `building the candidates cost ${ratio.toFixed(1)}x calibration (${ms.toFixed(1)} ms), budget ${RATIO_BUDGET.build}x`,
   );
 });
 
 test("a memoised lookup stays cheap per call", () => {
   const keys = basket(120);
   const text = keys.join(", ");
-  const grouped = fastestPerCallMs(() => ChipProjection.getGroupedChips(keys, CACHE));
+  const grouped = fastestPerCallMs(() =>
+    ChipProjection.getGroupedChips(keys, CACHE),
+  );
   const parsed = fastestPerCallMs(() => PresetLogic.parseTokens(text, CACHE));
   const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
 
-  logMeasurement("getGroupedChips / call", grouped, grouped / calibration, RATIO_BUDGET.perCall);
-  logMeasurement("parseTokens / call", parsed, parsed / calibration, RATIO_BUDGET.perCall);
+  logMeasurement(
+    "getGroupedChips / call",
+    grouped,
+    grouped / calibration,
+    RATIO_BUDGET.perCall,
+  );
+  logMeasurement(
+    "parseTokens / call",
+    parsed,
+    parsed / calibration,
+    RATIO_BUDGET.perCall,
+  );
 
   assert.ok(
     grouped / calibration < RATIO_BUDGET.perCall,
-    `getGroupedChips cost ${(grouped / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.perCall}x`
+    `getGroupedChips cost ${(grouped / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.perCall}x`,
   );
   assert.ok(
     parsed / calibration < RATIO_BUDGET.perCall,
-    `parseTokens cost ${(parsed / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.perCall}x`
+    `parseTokens cost ${(parsed / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.perCall}x`,
   );
 });
 
@@ -243,29 +267,39 @@ test("resolving variant keys stays within budget", () => {
   // Measured at these same 10 calls: 0.01x calibration now, 15x with the scan.
   // The cold build catches the index itself getting expensive.
   const calls = variantCalls(10);
-  assert.ok(calls.length >= 10, `fixture has too few variant refs: ${calls.length}`);
+  assert.ok(
+    calls.length >= 10,
+    `fixture has too few variant refs: ${calls.length}`,
+  );
   const run = (cache: PresetCache) =>
-    calls.forEach(([group, val]) => PresetLogic.resolveVariantKey(group, val, cache));
+    calls.forEach(([group, val]) =>
+      PresetLogic.resolveVariantKey(group, val, cache),
+    );
 
   const build = fastestBuildMs((cache) => run(cache));
   const perCall = fastestPerCallMs(() => run(CACHE), 5, 8);
   const calibration = fastestPerCallMs(() => calibrationMs(CACHE), 5, 1);
 
-  logMeasurement("variant index build", build, build / calibration, RATIO_BUDGET.build);
+  logMeasurement(
+    "variant index build",
+    build,
+    build / calibration,
+    RATIO_BUDGET.build,
+  );
   logMeasurement(
     `resolveVariantKey x${calls.length}`,
     perCall,
     perCall / calibration,
-    RATIO_BUDGET.variantCalls
+    RATIO_BUDGET.variantCalls,
   );
 
   assert.ok(
     build / calibration < RATIO_BUDGET.build,
-    `building the variant index cost ${(build / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.build}x`
+    `building the variant index cost ${(build / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.build}x`,
   );
   assert.ok(
     perCall / calibration < RATIO_BUDGET.variantCalls,
-    `${calls.length} resolveVariantKey calls cost ${(perCall / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.variantCalls}x`
+    `${calls.length} resolveVariantKey calls cost ${(perCall / calibration).toFixed(1)}x calibration, budget ${RATIO_BUDGET.variantCalls}x`,
   );
 });
 
@@ -283,12 +317,12 @@ test("every preset key in the basket resolves to its own cache entry", () => {
     assert.equal(
       chip.styleKey,
       keys[index],
-      `chip ${index} resolved to ${chip.styleKey}, expected ${keys[index]}`
+      `chip ${index} resolved to ${chip.styleKey}, expected ${keys[index]}`,
     );
     assert.equal(
       chip.item,
       CACHE[keys[index]],
-      `chip ${index} lost its cache item`
+      `chip ${index} lost its cache item`,
     );
   });
 });
@@ -310,7 +344,7 @@ test("a token equal to a preset's raw text resolves to that preset", () => {
   assert.equal(
     (CACHE[chips[0].styleKey]?.preset ?? "").trim(),
     text,
-    `"${text}" resolved to ${chips[0].styleKey}, which does not carry that text`
+    `"${text}" resolved to ${chips[0].styleKey}, which does not carry that text`,
   );
 });
 
@@ -324,9 +358,13 @@ test("a weighted token resolves to the underlying preset key", () => {
   assert.equal(
     chips[0].styleKey,
     key,
-    `the weighted token should resolve to ${key}`
+    `the weighted token should resolve to ${key}`,
   );
-  assert.equal(chips[0].item, CACHE[key], "the weighted chip lost its cache item");
+  assert.equal(
+    chips[0].item,
+    CACHE[key],
+    "the weighted chip lost its cache item",
+  );
 });
 
 test("a token equal to a wrapped preset resolves to that preset", () => {
@@ -338,17 +376,20 @@ test("a token equal to a wrapped preset resolves to that preset", () => {
   assert.notEqual(
     wrapped,
     preset.trim(),
-    "the folder prepend should make the wrapped form differ from the raw preset"
+    "the folder prepend should make the wrapped form differ from the raw preset",
   );
 
   const chips = ChipProjection.getGroupedChips([wrapped], CACHE);
   assert.equal(chips.length, 1);
   const resolved = chips[0].styleKey;
-  assert.ok(CACHE[resolved]?.preset, `wrapped text resolved to nothing real: ${resolved}`);
+  assert.ok(
+    CACHE[resolved]?.preset,
+    `wrapped text resolved to nothing real: ${resolved}`,
+  );
   assert.equal(
     PresetLogic.getWrappedPreset(resolved, CACHE[resolved].preset ?? "", CACHE),
     wrapped,
-    "the wrapped text should resolve to the entry that produced it"
+    "the wrapped text should resolve to the entry that produced it",
   );
 });
 
@@ -372,7 +413,7 @@ test("every candidate the library offers is still recognised by the walk", () =>
   }
   assert.ok(
     probes.size >= 15,
-    `only ${probes.size} distinct first characters to probe; the fixture went quiet`
+    `only ${probes.size} distinct first characters to probe; the fixture went quiet`,
   );
 
   const unreachable: string[] = [];
@@ -380,12 +421,13 @@ test("every candidate the library offers is still recognised by the walk", () =>
     const tokens = PresetLogic.parseTokens(cand, CACHE);
     const covered =
       tokens.length === 1 && tokens[0].text === cand && !tokens[0].isPlainText;
-    if (!covered) unreachable.push(`${JSON.stringify(first)} (${JSON.stringify(cand)})`);
+    if (!covered)
+      unreachable.push(`${JSON.stringify(first)} (${JSON.stringify(cand)})`);
   }
   assert.deepEqual(
     unreachable,
     [],
-    `these candidates no longer match: ${unreachable.join(", ")}`
+    `these candidates no longer match: ${unreachable.join(", ")}`,
   );
 });
 
@@ -402,7 +444,7 @@ test("the walk still takes the longest candidate at a position", () => {
   assert.equal(
     tokens.length,
     1,
-    `expected one token, got ${JSON.stringify(tokens.map((t) => t.text))}`
+    `expected one token, got ${JSON.stringify(tokens.map((t) => t.text))}`,
   );
   assert.equal(tokens[0].key, "A/Long", "the shorter candidate won");
 });
@@ -433,7 +475,7 @@ test("expanding a group reference is nondeterministic without a roll manager", (
     }
     assert.ok(
       results.size > 1,
-      `expected the expansion to vary with the injected roll, got ${results.size} result(s)`
+      `expected the expansion to vary with the injected roll, got ${results.size} result(s)`,
     );
   } finally {
     Math.random = original;

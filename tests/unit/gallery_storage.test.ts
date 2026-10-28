@@ -26,11 +26,17 @@ function fakeStorage(initial: Record<string, string> = {}): Storage {
   const map = new Map<string, string>(Object.entries(initial));
   return {
     getItem: (k: string) => map.get(k) ?? null,
-    setItem: (k: string, v: string) => { map.set(k, v); },
-    removeItem: (k: string) => { map.delete(k); },
+    setItem: (k: string, v: string) => {
+      map.set(k, v);
+    },
+    removeItem: (k: string) => {
+      map.delete(k);
+    },
     clear: () => map.clear(),
     key: (i: number) => Array.from(map.keys())[i] ?? null,
-    get length() { return map.size; },
+    get length() {
+      return map.size;
+    },
   };
 }
 
@@ -61,7 +67,7 @@ test("the per-node pin key carries the node id and falls back to global", () => 
 
 // --- booleans -------------------------------------------------------------
 
-test("readBool is exactly the string \"true\", nothing else", () => {
+test('readBool is exactly the string "true", nothing else', () => {
   const storage = fakeStorage({
     on: "true",
     off: "false",
@@ -81,9 +87,17 @@ test("readBool's fallback covers the default-on keys", () => {
   // `comfy_preset_gallery_grouped` is read as `!== "false"`, so anything but
   // the literal "false" means grouped.
   const storage = fakeStorage({ off: "false" });
-  assert.equal(readBool("off", true, storage), true, "an explicit false still falls back");
+  assert.equal(
+    readBool("off", true, storage),
+    true,
+    "an explicit false still falls back",
+  );
   assert.equal(readBool("missing", true, storage), true, "an absent key is on");
-  assert.equal(readBool("missing", false, storage), false, "an absent key is off when defaulted off");
+  assert.equal(
+    readBool("missing", false, storage),
+    false,
+    "an absent key is off when defaulted off",
+  );
 });
 
 test("writeBool writes the string form the reader expects", () => {
@@ -116,7 +130,11 @@ test("readJson parses a stored value", () => {
   const storage = fakeStorage({ obj: '{"a":1}', arr: "[1,2]", nul: "null" });
   assert.deepEqual(readJson("obj", {}, storage), { a: 1 });
   assert.deepEqual(readJson("arr", [], storage), [1, 2]);
-  assert.equal(readJson("nul", "fallback", storage), null, "valid JSON null is not a missing value");
+  assert.equal(
+    readJson("nul", "fallback", storage),
+    null,
+    "valid JSON null is not a missing value",
+  );
 });
 
 test("readJson falls back on a missing or corrupt value", () => {
@@ -161,7 +179,10 @@ test("readIdList returns an empty list for anything that is not an array", () =>
   });
   for (const key of ["str", "num", "nul", "bad", "empty", "missing"]) {
     const list = readIdList(key, storage);
-    assert.ok(Array.isArray(list), `${key} gave ${typeof list}, expected an array`);
+    assert.ok(
+      Array.isArray(list),
+      `${key} gave ${typeof list}, expected an array`,
+    );
     assert.deepEqual(list, []);
   }
 });
@@ -194,11 +215,17 @@ test("defaultStorage survives a storage that throws when read", () => {
   const saved = globalThis.localStorage;
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
-    get() { throw new Error("blocked"); },
+    get() {
+      throw new Error("blocked");
+    },
   });
   try {
     assert.equal(defaultStorage(), null);
-    assert.equal(readBool("anything", true), true, "a blocked storage yields the defaults");
+    assert.equal(
+      readBool("anything", true),
+      true,
+      "a blocked storage yields the defaults",
+    );
     assert.deepEqual(readIdList("anything"), []);
   } finally {
     // Restored by descriptor rather than `delete`: the property is not

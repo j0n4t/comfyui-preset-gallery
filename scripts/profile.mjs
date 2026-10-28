@@ -41,7 +41,9 @@ const value = (name, fallback) => {
 const HEADFUL = flag("headful");
 const AS_JSON = flag("json");
 const TOP = Number(value("top", 12));
-const only = argv.filter((a) => !a.startsWith("--") && a !== value("top", null));
+const only = argv.filter(
+  (a) => !a.startsWith("--") && a !== value("top", null),
+);
 
 /**
  * PresetLogic helpers worth counting. Each was a measured hotspot at some
@@ -66,7 +68,10 @@ const SCENARIOS = [
   { name: "grid-compile", what: "library load: rebuild the grid" },
   { name: "grid-filter", what: "search: filter the grid" },
   { name: "basket-render", what: "render a 120-chip basket" },
-  { name: "raw-typing", what: "one keystroke in the raw textarea, popup included" },
+  {
+    name: "raw-typing",
+    what: "one keystroke in the raw textarea, popup included",
+  },
   { name: "expand", what: "expand the basket into the textarea" },
 ];
 
@@ -75,10 +80,13 @@ const INSTALL_BENCH = () => {
   const gallery = window.__gallery;
   const cache = gallery.session.cache;
   const keys = Object.keys(cache).filter(
-    (k) => cache[k]?.preset?.trim() && cache[k].preset.length > 12
+    (k) => cache[k]?.preset?.trim() && cache[k].preset.length > 12,
   );
 
-  const longText = keys.slice(0, 120).map((k) => cache[k].preset).join(", ");
+  const longText = keys
+    .slice(0, 120)
+    .map((k) => cache[k].preset)
+    .join(", ");
 
   // A keystroke in a long prompt that is halfway through a word: the textarea
   // holds the whole prompt, and the token being typed is what the autocomplete
@@ -110,7 +118,9 @@ const INSTALL_BENCH = () => {
       // Calling updateHighlights directly (as this scenario first did) measured
       // the smaller half and hid the popup entirely.
       gallery.basket.textarea.value = typingText;
-      gallery.basket.textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      gallery.basket.textarea.dispatchEvent(
+        new Event("input", { bubbles: true }),
+      );
     },
     expand: () => {
       const rm = gallery.session.rollManager;
@@ -203,7 +213,11 @@ function rankFrames(profile) {
     byName.set(key, (byName.get(key) || 0) + delta);
   }
   const ranked = [...byName.entries()]
-    .map(([key, us]) => ({ key, ms: us / 1000, pct: total ? (100 * us) / total : 0 }))
+    .map(([key, us]) => ({
+      key,
+      ms: us / 1000,
+      pct: total ? (100 * us) / total : 0,
+    }))
     .sort((a, b) => b.ms - a.ms);
   return { total: total / 1000, ranked };
 }
@@ -221,17 +235,17 @@ async function profileScenario(page, cdp, scenario, bench) {
   const { total, ranked } = rankFrames(profile);
   const counts = await page.evaluate(
     ({ name, counted }) => window.__bench.runWithCounts(name, counted),
-    { name: scenario.name, counted: COUNTED }
+    { name: scenario.name, counted: COUNTED },
   );
 
   // Load-normalised: the same scenario timed against the calibration loop,
   // interleaved so both see the same conditions.
   const ms = await page.evaluate(
     (name) => window.__bench.fastest(() => window.__bench.run(name), 4),
-    scenario.name
+    scenario.name,
   );
   const calibration = await page.evaluate(() =>
-    window.__bench.fastest(() => window.__bench.calibrate(), 4)
+    window.__bench.fastest(() => window.__bench.calibrate(), 4),
   );
 
   return {
@@ -250,25 +264,30 @@ function report(results, meta) {
     console.log(JSON.stringify({ meta, results }, null, 2));
     return;
   }
-  console.log(`\nlibrary: ${meta.entries} entries, ${meta.basket} basket-sized presets`);
+  console.log(
+    `\nlibrary: ${meta.entries} entries, ${meta.basket} basket-sized presets`,
+  );
   console.log("profiled through the dev harness (stubbed host, no ComfyUI)\n");
 
   for (const r of results) {
     console.log(`${r.name}  -  ${r.what}`);
     console.log(
       `  ${r.total.toFixed(0)} ms profiled   ${r.ms.toFixed(1)} ms timed` +
-        `   ${r.ratio.toFixed(2)}x calibration (${r.calibration.toFixed(1)} ms)`
+        `   ${r.ratio.toFixed(2)}x calibration (${r.calibration.toFixed(1)} ms)`,
     );
     console.log("  top frames by self time:");
     for (const f of r.ranked) {
-      console.log(`    ${f.ms.toFixed(1).padStart(7)} ms ${f.pct.toFixed(1).padStart(5)}%  ${f.key}`);
+      console.log(
+        `    ${f.ms.toFixed(1).padStart(7)} ms ${f.pct.toFixed(1).padStart(5)}%  ${f.key}`,
+      );
     }
     const hot = Object.entries(r.counts)
       .filter(([, n]) => n > 0)
       .sort((a, b) => b[1] - a[1]);
     if (hot.length) {
       console.log("  calls:");
-      for (const [name, n] of hot) console.log(`    ${String(n).padStart(8)}  ${name}`);
+      for (const [name, n] of hot)
+        console.log(`    ${String(n).padStart(8)}  ${name}`);
     }
     console.log("");
   }
@@ -276,8 +295,12 @@ function report(results, meta) {
   console.log("reading this:");
   console.log("  * A frame that is hot AND called a lot is the usual target.");
   console.log("  * Compare counts across runs, not milliseconds: a count that");
-  console.log("    jumps is a regression the timing will not show you on a busy host.");
-  console.log("  * The ratio is the number to compare between runs; ms is context.");
+  console.log(
+    "    jumps is a regression the timing will not show you on a busy host.",
+  );
+  console.log(
+    "  * The ratio is the number to compare between runs; ms is context.",
+  );
 }
 
 async function main() {
@@ -289,9 +312,12 @@ async function main() {
     const page = await browser.newPage();
     await page.goto(URL);
     await page.waitForFunction(
-      () => window.__report && window.__gallery && window.__report.report.length > 3,
+      () =>
+        window.__report &&
+        window.__gallery &&
+        window.__report.report.length > 3,
       null,
-      { timeout: 30_000 }
+      { timeout: 30_000 },
     );
 
     // The harness checks the UI mounted; a broken app would profile as fast.
@@ -302,7 +328,7 @@ async function main() {
     }));
     if (harness.failed) {
       console.error(
-        `harness is failing ${harness.failed}/${harness.total} checks: ${harness.failures.join(", ")}`
+        `harness is failing ${harness.failed}/${harness.total} checks: ${harness.failures.join(", ")}`,
       );
       console.error("fix that first - these numbers describe a broken app\n");
       failed = harness.failed;
@@ -321,7 +347,9 @@ async function main() {
     }));
 
     const cdp = await page.context().newCDPSession(page);
-    const wanted = SCENARIOS.filter((s) => only.length === 0 || only.includes(s.name));
+    const wanted = SCENARIOS.filter(
+      (s) => only.length === 0 || only.includes(s.name),
+    );
     const missing = only.filter((n) => !SCENARIOS.some((s) => s.name === n));
     if (missing.length) {
       console.error(`unknown scenario(s): ${missing.join(", ")}`);

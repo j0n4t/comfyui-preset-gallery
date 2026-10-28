@@ -20,7 +20,9 @@ function disabledButton(): HTMLButtonElement {
   return button;
 }
 
-function makeEnv({ selection = ["faces/portrait", "faces/macro", "scenery/hills"] as string[] } = {}) {
+function makeEnv({
+  selection = ["faces/portrait", "faces/macro", "scenery/hills"] as string[],
+} = {}) {
   const chipList = document.createElement("div");
   chipList.className = "j0n4t-pg-basket-pool";
   for (let index = 0; index < selection.length; index++) {
@@ -77,18 +79,34 @@ function makeEnv({ selection = ["faces/portrait", "faces/macro", "scenery/hills"
 
   const basket = {
     basket: chipList,
-    chipMenuManager: { close: () => { calls.closeMenu++; } },
-    focusChip: (index: number) => { calls.focusChip.push(index); },
-    saveCurrentState: () => { calls.saveCurrentState++; },
+    chipMenuManager: {
+      close: () => {
+        calls.closeMenu++;
+      },
+    },
+    focusChip: (index: number) => {
+      calls.focusChip.push(index);
+    },
+    saveCurrentState: () => {
+      calls.saveCurrentState++;
+    },
   };
 
   const selectionController = new BasketSelectionController(
     context as unknown as GalleryContext,
-    basket as unknown as import("../../web/PresetBasket.js").default
+    basket as unknown as import("../../web/PresetBasket.js").default,
   );
 
   const chipAt = (index: number) => chipList.children[index] as HTMLElement;
-  return { selection: selectionController, chips: chipList, calls, context, pinned, widgetValue: () => widgetValue, chipAt };
+  return {
+    selection: selectionController,
+    chips: chipList,
+    calls,
+    context,
+    pinned,
+    widgetValue: () => widgetValue,
+    chipAt,
+  };
 }
 
 const event = (init: KeyboardEventInit = {}) =>
@@ -172,7 +190,11 @@ test("the action buttons follow the selection", () => {
 
   env.pinned.add("faces/portrait");
   env.selection.updateActionButtons();
-  assert.match(dom.btnBasketPin.innerHTML, /Unpin/, "an all-pinned selection offers Unpin");
+  assert.match(
+    dom.btnBasketPin.innerHTML,
+    /Unpin/,
+    "an all-pinned selection offers Unpin",
+  );
 });
 
 // --- commands ---
@@ -183,7 +205,10 @@ test("deleteSelected removes the selected tokens and clears the selection", () =
 
   env.selection.deleteSelected();
 
-  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["faces/portrait", "scenery/hills"]);
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), [
+    "faces/portrait",
+    "scenery/hills",
+  ]);
   assert.equal(env.selection.selected.size, 0);
   assert.equal(env.calls.closeMenu, 1, "the chip menu is closed");
   assert.deepEqual(env.calls.focusChip, [1], "focus lands where the chip was");
@@ -195,8 +220,16 @@ test("moveSelected moves the selected chip past its target", () => {
 
   env.selection.moveSelected(0, true);
 
-  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["faces/portrait", "scenery/hills", "faces/macro"]);
-  assert.deepEqual([...env.selection.selected], [1], "the moved chip stays selected at its new index");
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), [
+    "faces/portrait",
+    "scenery/hills",
+    "faces/macro",
+  ]);
+  assert.deepEqual(
+    [...env.selection.selected],
+    [1],
+    "the moved chip stays selected at its new index",
+  );
 });
 
 test("moveSelected does nothing when the target is inside the selection", () => {
@@ -227,7 +260,14 @@ test("togglePins pins the whole selection, then unpins it", () => {
 const payload = (overrides: Record<string, unknown> = {}) => ({
   type: "comfyui-preset-gallery-basket",
   version: 1,
-  chips: [{ items: ["faces/portrait"], styleKey: "faces/portrait", pinned: false, rolls: {} }],
+  chips: [
+    {
+      items: ["faces/portrait"],
+      styleKey: "faces/portrait",
+      pinned: false,
+      rolls: {},
+    },
+  ],
   ...overrides,
 });
 
@@ -237,16 +277,64 @@ test("a well-formed payload is accepted", () => {
 
 test("a payload from another source is rejected", () => {
   const env = makeEnv();
-  assert.equal(env.selection.isClipboardPayload(payload({ type: "something-else" })), false);
-  assert.equal(env.selection.isClipboardPayload(payload({ version: 2 })), false);
+  assert.equal(
+    env.selection.isClipboardPayload(payload({ type: "something-else" })),
+    false,
+  );
+  assert.equal(
+    env.selection.isClipboardPayload(payload({ version: 2 })),
+    false,
+  );
   assert.equal(env.selection.isClipboardPayload(null), false);
   assert.equal(env.selection.isClipboardPayload("text"), false);
 });
 
 test("chips with bad items or roll offsets are rejected", () => {
   const env = makeEnv();
-  assert.equal(env.selection.isClipboardPayload(payload({ chips: [{ items: [], styleKey: "x", pinned: false, rolls: {} }] })), false);
-  assert.equal(env.selection.isClipboardPayload(payload({ chips: [{ items: [1], styleKey: "x", pinned: false, rolls: {} }] })), false);
-  assert.equal(env.selection.isClipboardPayload(payload({ chips: [{ items: ["x"], styleKey: "x", pinned: false, rolls: { g: [{ offset: -1, value: "v" }] } }] })), false);
-  assert.equal(env.selection.isClipboardPayload(payload({ chips: [{ items: ["x"], styleKey: "x", pinned: false, rolls: { g: [{ offset: 0, value: "v" }] } }] })), true);
+  assert.equal(
+    env.selection.isClipboardPayload(
+      payload({
+        chips: [{ items: [], styleKey: "x", pinned: false, rolls: {} }],
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    env.selection.isClipboardPayload(
+      payload({
+        chips: [{ items: [1], styleKey: "x", pinned: false, rolls: {} }],
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    env.selection.isClipboardPayload(
+      payload({
+        chips: [
+          {
+            items: ["x"],
+            styleKey: "x",
+            pinned: false,
+            rolls: { g: [{ offset: -1, value: "v" }] },
+          },
+        ],
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    env.selection.isClipboardPayload(
+      payload({
+        chips: [
+          {
+            items: ["x"],
+            styleKey: "x",
+            pinned: false,
+            rolls: { g: [{ offset: 0, value: "v" }] },
+          },
+        ],
+      }),
+    ),
+    true,
+  );
 });

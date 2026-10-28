@@ -34,7 +34,11 @@ export default class RawTextHighlighting {
       return;
     }
 
-    const tokens = PresetLogic.parseTokens(val, this.context.cache, this.ignorePreset);
+    const tokens = PresetLogic.parseTokens(
+      val,
+      this.context.cache,
+      this.ignorePreset,
+    );
     let html = "";
 
     tokens.forEach((token) => {
@@ -44,12 +48,17 @@ export default class RawTextHighlighting {
         html += `<span class="j0n4t-pg-raw-token" style="color: #4fc1ff;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else if (token.isVar || /^\{[^{}]+\}$/.test(token.text)) {
         const groupName = RawTextHighlighting.extractGroupName(token.text);
-        const varColor = PresetDisplay.getPresetColor(groupName, this.context.cache);
+        const varColor = PresetDisplay.getPresetColor(
+          groupName,
+          this.context.cache,
+        );
         html += `<span class="j0n4t-pg-raw-token" style="color: ${varColor}; font-weight: bold;">${PresetDOM.escapeHTML(token.text)}</span>`;
       } else {
         const itemKey = token.key || "";
         const item = token.item;
-        const textColor = itemKey ? PresetDisplay.getPresetColor(itemKey, this.context.cache) : "";
+        const textColor = itemKey
+          ? PresetDisplay.getPresetColor(itemKey, this.context.cache)
+          : "";
         const styleAttr = textColor ? ` style="color: ${textColor};"` : "";
         const titleAttr = item
           ? ` title="${PresetDOM.escapeHTML(`${PresetDisplay.toTitleCase(PresetDisplay.getPresetName(itemKey))} [${itemKey}]\n${PresetDOM.escapeHTML(item.preset || "")}`)}"`

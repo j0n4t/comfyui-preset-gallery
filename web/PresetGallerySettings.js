@@ -1,7 +1,12 @@
 import ModalUtils from "./ModalUtils.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
-import { STORAGE_KEYS, defaultStorage, readJson, writeJson } from "./GalleryStorage.js";
+import {
+  STORAGE_KEYS,
+  defaultStorage,
+  readJson,
+  writeJson,
+} from "./GalleryStorage.js";
 
 /**
  * Height modes offered in the Display tab, mirrored onto `data-height-mode` on
@@ -10,7 +15,11 @@ import { STORAGE_KEYS, defaultStorage, readJson, writeJson } from "./GalleryStor
  * "unlimited" leaves it uncapped so the gallery grows with the preset library.
  * Kept in sync with PresetGalleryApp.HEIGHT_STYLES.
  */
-const HEIGHT_MODES = /** @type {GalleryHeightMode[]} */ (["fit", "fixed", "unlimited"]);
+const HEIGHT_MODES = /** @type {GalleryHeightMode[]} */ ([
+  "fit",
+  "fixed",
+  "unlimited",
+]);
 const DEFAULT_HEIGHT_MODE = /** @type {GalleryHeightMode} */ ("fit");
 const DEFAULT_HEIGHT_FIXED = 640;
 
@@ -50,7 +59,9 @@ function toPanelSizes(value) {
  */
 function toFixedHeight(value) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : DEFAULT_HEIGHT_FIXED;
+  return Number.isFinite(parsed) && parsed > 0
+    ? Math.round(parsed)
+    : DEFAULT_HEIGHT_FIXED;
 }
 
 /**
@@ -125,7 +136,10 @@ export default class PresetGallerySettings {
     this.load();
     this.applyHeightMode();
     this.applyPanelSizes();
-    PresetDOM.injectStyles('j0n4t-pg-settings-styles', PresetGallerySettings.STYLES);
+    PresetDOM.injectStyles(
+      "j0n4t-pg-settings-styles",
+      PresetGallerySettings.STYLES,
+    );
 
     // Defer visual update slightly to ensure the main app has finished generating the DOM elements
     setTimeout(() => this.updateDiceVisuals(), 0);
@@ -164,8 +178,10 @@ export default class PresetGallerySettings {
     }
     this.rollMin = saved.rollMin !== undefined ? saved.rollMin : 10;
     this.rollMax = saved.rollMax !== undefined ? saved.rollMax : 20;
-    this.rollOnGeneration = saved.rollOnGeneration !== undefined ? saved.rollOnGeneration : false;
-    this.rollOnSeedChange = saved.rollOnSeedChange !== undefined ? saved.rollOnSeedChange : false;
+    this.rollOnGeneration =
+      saved.rollOnGeneration !== undefined ? saved.rollOnGeneration : false;
+    this.rollOnSeedChange =
+      saved.rollOnSeedChange !== undefined ? saved.rollOnSeedChange : false;
     this.diceBehavior = saved.diceBehavior || "variants";
     this.heightMode = toHeightMode(saved.heightMode);
     this.heightFixed = toFixedHeight(saved.heightFixed);
@@ -193,7 +209,7 @@ export default class PresetGallerySettings {
       showChipLibraryBadges: this.showChipLibraryBadges,
       showGridLibraryBadges: this.showGridLibraryBadges,
       disabledLibraries: this.disabledLibraries,
-      libraryOrder: this.libraryOrder
+      libraryOrder: this.libraryOrder,
     };
     writeJson(STORAGE_KEYS.settings, data, defaultStorage());
   }
@@ -221,7 +237,9 @@ export default class PresetGallerySettings {
   applyPanelSizes() {
     const dom = this.context.dom;
     if (!dom) return;
-    const sizes = /** @type {GalleryPanelSizes} */ (this.rememberPanelSizes ? this.panelSizes : {});
+    const sizes = /** @type {GalleryPanelSizes} */ (
+      this.rememberPanelSizes ? this.panelSizes : {}
+    );
     dom.basketContainer.style.height = sizes.basket ? `${sizes.basket}px` : "";
     dom.inpPreset.style.height = sizes.editor ? `${sizes.editor}px` : "";
   }
@@ -299,7 +317,9 @@ export default class PresetGallerySettings {
             <button type="button" data-role="down" title="Move down - lower priority" aria-label="Move ${PresetDOM.escapeHTML(lib.name)} down">▼</button>
           </span>`;
       }
-      const box = /** @type {HTMLInputElement | null} */ (row.querySelector("input[data-role='enabled']"));
+      const box = /** @type {HTMLInputElement | null} */ (
+        row.querySelector("input[data-role='enabled']")
+      );
       if (box) {
         box.checked = enabled.includes(id);
         box.disabled = isMain;
@@ -357,10 +377,16 @@ export default class PresetGallerySettings {
   }
 
   updateDiceVisuals() {
-    const diceBtn = document.querySelector('.j0n4t-pg-basket-reroll-btn');
+    const diceBtn = document.querySelector(".j0n4t-pg-basket-reroll-btn");
     if (!diceBtn) return;
-    diceBtn.classList.remove('roll-overwrite', 'roll-variants', 'auto-roll', 'auto-roll-seed');
-    const modeClass = this.diceBehavior === 'overwrite' ? 'roll-overwrite' : 'roll-variants';
+    diceBtn.classList.remove(
+      "roll-overwrite",
+      "roll-variants",
+      "auto-roll",
+      "auto-roll-seed",
+    );
+    const modeClass =
+      this.diceBehavior === "overwrite" ? "roll-overwrite" : "roll-variants";
     diceBtn.classList.add(modeClass);
     if (this.rollOnGeneration) {
       diceBtn.classList.add("auto-roll");
@@ -553,8 +579,10 @@ export default class PresetGallerySettings {
             this.heightFixed = toFixedHeight(heightFixedInput?.value);
             this.rememberPanelSizes = rememberPanelsCheck?.checked === true;
             this.qualifyChips = qualifyChipsCheck?.checked !== false;
-            this.showChipLibraryBadges = showChipLibraryBadgesCheck?.checked !== false;
-            this.showGridLibraryBadges = showGridLibraryBadgesCheck?.checked !== false;
+            this.showChipLibraryBadges =
+              showChipLibraryBadgesCheck?.checked !== false;
+            this.showGridLibraryBadges =
+              showGridLibraryBadgesCheck?.checked !== false;
 
             this.save();
             this.applyHeightMode();
@@ -563,8 +591,8 @@ export default class PresetGallerySettings {
             this.context.grid?.compile(this.context.cache);
             this.context.syncUI(this.context.widget.value);
             return true;
-          }
-        }
+          },
+        },
       ],
       onOpen: (modal) => {
         minInput = modal.querySelector("#j0n4t-pg-roll-min");
@@ -577,8 +605,12 @@ export default class PresetGallerySettings {
         heightFixedField = modal.querySelector("#j0n4t-pg-height-fixed-field");
         rememberPanelsCheck = modal.querySelector("#j0n4t-pg-remember-panels");
         qualifyChipsCheck = modal.querySelector("#j0n4t-pg-qualify-chips");
-        showChipLibraryBadgesCheck = modal.querySelector("#j0n4t-pg-show-chip-library-badges");
-        showGridLibraryBadgesCheck = modal.querySelector("#j0n4t-pg-show-grid-library-badges");
+        showChipLibraryBadgesCheck = modal.querySelector(
+          "#j0n4t-pg-show-chip-library-badges",
+        );
+        showGridLibraryBadgesCheck = modal.querySelector(
+          "#j0n4t-pg-show-grid-library-badges",
+        );
 
         // The library list comes from the server, so it is fetched on every open
         // and filled from whatever is served right now.
@@ -609,7 +641,8 @@ export default class PresetGallerySettings {
         // The pixel field only means anything in fixed mode.
         const syncFixedField = () => {
           if (heightFixedField) {
-            heightFixedField.style.display = heightModeSelect?.value === "fixed" ? "" : "none";
+            heightFixedField.style.display =
+              heightModeSelect?.value === "fixed" ? "" : "none";
           }
         };
         heightModeSelect?.addEventListener("change", syncFixedField);
@@ -626,11 +659,13 @@ export default class PresetGallerySettings {
             tabPanels.forEach((p) => p.classList.remove("active"));
 
             btn.classList.add("active");
-            const activePanel = modal.querySelector(`#j0n4t-pg-tab-${targetTab}`);
+            const activePanel = modal.querySelector(
+              `#j0n4t-pg-tab-${targetTab}`,
+            );
             if (activePanel) activePanel.classList.add("active");
           });
         });
-      }
+      },
     });
 
     return result === true;

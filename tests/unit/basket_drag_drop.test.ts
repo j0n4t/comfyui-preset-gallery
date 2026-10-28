@@ -23,24 +23,34 @@ function makeEnv({ selection = [] as string[] } = {}) {
   const calls = { updateWidgetValue: [] as string[][] };
   const context = {
     cache: CACHE,
-    getSelectedArray: () => widgetValue.split(",").map((s) => s.trim()).filter(Boolean),
+    getSelectedArray: () =>
+      widgetValue
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     updateWidgetValue: (arr: string[]) => {
       calls.updateWidgetValue.push(arr);
       widgetValue = arr.join(", ");
     },
   };
-  const basket = { basket: pool, container, selection: { selected: new Set<number>(), anchor: null, apply: () => {} } };
+  const basket = {
+    basket: pool,
+    container,
+    selection: { selected: new Set<number>(), anchor: null, apply: () => {} },
+  };
 
   const dragDrop = new BasketDragDrop(
     context as unknown as GalleryContext,
-    basket as unknown as import("../../web/PresetBasket.js").default
+    basket as unknown as import("../../web/PresetBasket.js").default,
   );
   return { dragDrop, pool, container, calls, widgetValue: () => widgetValue };
 }
 
 const dropEvent = (files: File[]) => {
   const event = new Event("drop", { bubbles: true, cancelable: true });
-  Object.defineProperty(event, "dataTransfer", { value: { files, types: ["Files"], getData: () => "" } });
+  Object.defineProperty(event, "dataTransfer", {
+    value: { files, types: ["Files"], getData: () => "" },
+  });
   return event;
 };
 
@@ -51,15 +61,28 @@ test("getImageFileFromDrop returns the first image among the files", () => {
   const text = new File(["x"], "notes.txt", { type: "text/plain" });
   const png = new File(["x"], "shot.png", { type: "image/png" });
 
-  assert.equal(env.dragDrop.getImageFileFromDrop(dropEvent([text, png]) as unknown as DragEvent), png);
+  assert.equal(
+    env.dragDrop.getImageFileFromDrop(
+      dropEvent([text, png]) as unknown as DragEvent,
+    ),
+    png,
+  );
 });
 
 test("getImageFileFromDrop ignores non-images and empty drops", () => {
   const env = makeEnv();
   const text = new File(["x"], "notes.txt", { type: "text/plain" });
 
-  assert.equal(env.dragDrop.getImageFileFromDrop(dropEvent([text]) as unknown as DragEvent), null);
-  assert.equal(env.dragDrop.getImageFileFromDrop(dropEvent([]) as unknown as DragEvent), null);
+  assert.equal(
+    env.dragDrop.getImageFileFromDrop(
+      dropEvent([text]) as unknown as DragEvent,
+    ),
+    null,
+  );
+  assert.equal(
+    env.dragDrop.getImageFileFromDrop(dropEvent([]) as unknown as DragEvent),
+    null,
+  );
 });
 
 // --- image metadata preview ---
@@ -87,7 +110,11 @@ test("addPromptAsChips appends the resolved keys and writes the selection", () =
 
   env.dragDrop.addPromptAsChips("faces/portrait, misty dawn");
 
-  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["scenery/hills", "faces/portrait", "misty dawn"]);
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), [
+    "scenery/hills",
+    "faces/portrait",
+    "misty dawn",
+  ]);
   assert.equal(env.widgetValue(), "scenery/hills, faces/portrait, misty dawn");
 });
 
@@ -106,7 +133,9 @@ test("a drop is ignored in raw mode, where the textarea owns the input", () => {
   env.dragDrop.init();
   env.container.classList.add("raw-mode");
   let handled = false;
-  env.dragDrop.handleImageDrop = async () => { handled = true; };
+  env.dragDrop.handleImageDrop = async () => {
+    handled = true;
+  };
   const png = new File(["x"], "shot.png", { type: "image/png" });
 
   env.pool.dispatchEvent(dropEvent([png]));

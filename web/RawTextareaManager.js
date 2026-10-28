@@ -37,11 +37,29 @@ export default class RawTextareaManager {
     this.highlightsEl = null;
     this.ignorePreset = ignorePreset || "";
 
-    this.highlighting = new RawTextHighlighting(this.textarea, this.context, this.ignorePreset, this.onSync);
-    this.hover = new RawTextHover(this.textarea, this.context, this.ignorePreset);
-    this.autocomplete = new RawTextAutocomplete(this.textarea, this.context, this.ignorePreset, this.onSync, this);
+    this.highlighting = new RawTextHighlighting(
+      this.textarea,
+      this.context,
+      this.ignorePreset,
+      this.onSync,
+    );
+    this.hover = new RawTextHover(
+      this.textarea,
+      this.context,
+      this.ignorePreset,
+    );
+    this.autocomplete = new RawTextAutocomplete(
+      this.textarea,
+      this.context,
+      this.ignorePreset,
+      this.onSync,
+      this,
+    );
 
-    PresetDOM.injectStyles("j0n4t-pg-raw-textarea-styles", RawTextareaManager.STYLES);
+    PresetDOM.injectStyles(
+      "j0n4t-pg-raw-textarea-styles",
+      RawTextareaManager.STYLES,
+    );
     this.initWrapper();
     this.initEvents();
     this.updateHighlights(this.ignorePreset);
@@ -75,7 +93,9 @@ export default class RawTextareaManager {
       if (this.onSync) this.onSync(this.textarea.value);
     };
 
-    this.textarea.addEventListener("input", () => this.updateHighlights(this.ignorePreset));
+    this.textarea.addEventListener("input", () =>
+      this.updateHighlights(this.ignorePreset),
+    );
     this.textarea.addEventListener("scroll", () => {
       if (this.highlightsEl) {
         this.highlightsEl.scrollTop = this.textarea.scrollTop;
@@ -85,8 +105,13 @@ export default class RawTextareaManager {
     this.textarea.addEventListener("change", sync);
     this.textarea.addEventListener("mousedown", (e) => e.stopPropagation());
 
-    this.textarea.addEventListener("mousemove", (e) => this.handleMouseMove(/** @type {MouseEvent} */(e)));
-    this.textarea.addEventListener("mouseleave", () => this.textarea.title = "");
+    this.textarea.addEventListener("mousemove", (e) =>
+      this.handleMouseMove(/** @type {MouseEvent} */ (e)),
+    );
+    this.textarea.addEventListener(
+      "mouseleave",
+      () => (this.textarea.title = ""),
+    );
   }
 
   /**
@@ -117,5 +142,4 @@ export default class RawTextareaManager {
   getTokenAtPosition(pos) {
     return this.hover.getTokenAtPosition(pos);
   }
-
 }

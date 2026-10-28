@@ -17,7 +17,10 @@ const CACHE: PresetCache = {
 
 function makeEnv(initialSelection: string[]) {
   let widgetValue = initialSelection.join(", ");
-  const calls = { updateWidgetValue: [] as string[][], focusChip: [] as (number | undefined)[] };
+  const calls = {
+    updateWidgetValue: [] as string[][],
+    focusChip: [] as (number | undefined)[],
+  };
 
   const basketEl = document.createElement("div");
   basketEl.className = "j0n4t-pg-basket";
@@ -28,7 +31,11 @@ function makeEnv(initialSelection: string[]) {
 
   const context = {
     cache: CACHE,
-    getSelectedArray: () => widgetValue.split(",").map((s) => s.trim()).filter(Boolean),
+    getSelectedArray: () =>
+      widgetValue
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     updateWidgetValue: (arr: string[]) => {
       calls.updateWidgetValue.push(arr);
       widgetValue = arr.join(", ");
@@ -36,7 +43,9 @@ function makeEnv(initialSelection: string[]) {
   };
   const delegate = {
     basket: basketEl,
-    focusChip: (idx?: number) => { calls.focusChip.push(idx); },
+    focusChip: (idx?: number) => {
+      calls.focusChip.push(idx);
+    },
   };
   return {
     context: context as unknown as GalleryContext,
@@ -50,7 +59,9 @@ function makeEnv(initialSelection: string[]) {
 function spawnInput(env: ReturnType<typeof makeEnv>): HTMLInputElement {
   const editor = new InlineEditorManager(env.context, env.delegate);
   editor.spawn(null, "");
-  const input = env.basketEl.querySelector<HTMLInputElement>(".j0n4t-pg-inline-edit");
+  const input = env.basketEl.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-inline-edit",
+  );
   assert.ok(input, "spawn creates an inline edit input");
   return input;
 }
@@ -60,10 +71,20 @@ test("spawn for a new chip inserts an editable chip before the add button and fo
   const editor = new InlineEditorManager(env.context, env.delegate);
   editor.spawn(null, "");
 
-  const chip = env.basketEl.querySelector(".j0n4t-pg-basket-chip.inline-editing");
+  const chip = env.basketEl.querySelector(
+    ".j0n4t-pg-basket-chip.inline-editing",
+  );
   assert.ok(chip, "an editable chip was inserted");
-  assert.equal(env.basketEl.querySelector(".j0n4t-pg-basket-add-btn")?.previousElementSibling, chip);
-  assert.equal(document.activeElement, chip.querySelector("input"), "the input is focused");
+  assert.equal(
+    env.basketEl.querySelector(".j0n4t-pg-basket-add-btn")
+      ?.previousElementSibling,
+    chip,
+  );
+  assert.equal(
+    document.activeElement,
+    chip.querySelector("input"),
+    "the input is focused",
+  );
 });
 
 test("spawn escapes the initial value in the HTML source", () => {
@@ -73,7 +94,11 @@ test("spawn escapes the initial value in the HTML source", () => {
 
   // escapeHTML of the attribute is covered in preset_dom.test.ts; here the
   // parsed value must be the plain text again, which is what editing needs
-  assert.equal(env.basketEl.querySelector<HTMLInputElement>(".j0n4t-pg-inline-edit")?.value, "<b>");
+  assert.equal(
+    env.basketEl.querySelector<HTMLInputElement>(".j0n4t-pg-inline-edit")
+      ?.value,
+    "<b>",
+  );
 });
 
 test("completing a {group:preset} selection saves the new value and refocuses the basket", () => {
@@ -92,24 +117,39 @@ test("completing a {group:preset} selection saves the new value and refocuses th
   assert.ok(groupRow.textContent?.includes("Faces"));
 
   groupRow.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-  assert.equal(input.value, "{Faces:", "the group is inserted and the popup stays open");
+  assert.equal(
+    input.value,
+    "{Faces:",
+    "the group is inserted and the popup stays open",
+  );
 
   // preset completion: the closing brace is added by onSelect itself, so the
   // query is typed while the brace is still open
   input.value = "{Faces:Portrait";
   input.dispatchEvent(new Event("input"));
-  const presetRow = Array.from(document.querySelectorAll(".j0n4t-pg-autocomplete-item")).find(
-    (row) => row.textContent?.includes("Portrait")
-  );
+  const presetRow = Array.from(
+    document.querySelectorAll(".j0n4t-pg-autocomplete-item"),
+  ).find((row) => row.textContent?.includes("Portrait"));
   assert.ok(presetRow, "preset suggestions open after the group");
   presetRow!.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
 
   // onSelect embeds the full cache key into the value
   assert.equal(input.value, "{Faces:Faces/Portrait}");
-  assert.equal(env.basketEl.querySelector(".j0n4t-pg-basket-chip"), null, "the chip is removed on save");
+  assert.equal(
+    env.basketEl.querySelector(".j0n4t-pg-basket-chip"),
+    null,
+    "the chip is removed on save",
+  );
   assert.equal(env.widgetValue(), "Faces/Portrait, {Faces:Faces/Portrait}");
-  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["Faces/Portrait", "{Faces:Faces/Portrait}"]);
-  assert.deepEqual(env.calls.focusChip, [1], "focus moves to the appended chip");
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), [
+    "Faces/Portrait",
+    "{Faces:Faces/Portrait}",
+  ]);
+  assert.deepEqual(
+    env.calls.focusChip,
+    [1],
+    "focus moves to the appended chip",
+  );
 });
 
 test("Enter without a popup open saves the typed value", () => {
@@ -120,7 +160,10 @@ test("Enter without a popup open saves the typed value", () => {
   input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
 
   assert.equal(env.widgetValue(), "Faces/Portrait, plain");
-  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["Faces/Portrait", "plain"]);
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), [
+    "Faces/Portrait",
+    "plain",
+  ]);
   assert.deepEqual(env.calls.focusChip, [1]);
 });
 
@@ -133,7 +176,11 @@ test("Escape discards the edit without touching the selection", () => {
 
   assert.equal(env.widgetValue(), "Faces/Portrait");
   assert.equal(env.calls.updateWidgetValue.length, 0);
-  assert.equal(env.basketEl.querySelector(".j0n4t-pg-basket-chip"), null, "the chip is removed on cancel");
+  assert.equal(
+    env.basketEl.querySelector(".j0n4t-pg-basket-chip"),
+    null,
+    "the chip is removed on cancel",
+  );
 });
 
 test("editing an existing chip replaces the selection entry", () => {
@@ -149,15 +196,25 @@ test("editing an existing chip replaces the selection entry", () => {
   const editor = new InlineEditorManager(env.context, env.delegate);
   editor.spawn(chip, "Faces/Portrait", 0, 1);
 
-  assert.ok(chip.classList.contains("inline-editing"), "the chip enters edit mode");
-  assert.equal(label.style.display, "none", "the label is hidden while editing");
+  assert.ok(
+    chip.classList.contains("inline-editing"),
+    "the chip enters edit mode",
+  );
+  assert.equal(
+    label.style.display,
+    "none",
+    "the label is hidden while editing",
+  );
 
   const input = chip.querySelector<HTMLInputElement>("input")!;
   input.value = "Faces/Macro";
   input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
 
   assert.equal(env.widgetValue(), "Faces/Macro");
-  assert.ok(!chip.classList.contains("inline-editing"), "edit mode is removed on finish");
+  assert.ok(
+    !chip.classList.contains("inline-editing"),
+    "edit mode is removed on finish",
+  );
   assert.equal(label.style.display, "", "the label is restored");
 });
 
@@ -176,7 +233,11 @@ test("a comma separated replacement expands through splitPresets", () => {
   input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
 
   assert.equal(env.widgetValue(), "a, b");
-  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["a", "b"], "the comma separates into two entries");
+  assert.deepEqual(
+    env.calls.updateWidgetValue.at(-1),
+    ["a", "b"],
+    "the comma separates into two entries",
+  );
 });
 
 test("clearing the value without chip indices deletes the selection entry", () => {
@@ -210,20 +271,27 @@ test("autocomplete suggests qualified presets and renders qualified root preset 
 
   const editor = new InlineEditorManager(env.context, env.delegate);
   editor.spawn(null, "");
-  const input = env.basketEl.querySelector<HTMLInputElement>(".j0n4t-pg-inline-edit")!;
+  const input = env.basketEl.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-inline-edit",
+  )!;
 
   // Querying for socks# finds the non-enumerable qualified key
   input.value = "socks#";
   input.dispatchEvent(new Event("input"));
-  const popupItems = Array.from(document.querySelectorAll(".j0n4t-pg-autocomplete-item"));
+  const popupItems = Array.from(
+    document.querySelectorAll(".j0n4t-pg-autocomplete-item"),
+  );
   assert.ok(popupItems.length > 0, "finds non-enumerable qualified preset");
-  assert.ok(popupItems.some((el) => el.textContent?.includes("socks#Faces/Portrait")));
+  assert.ok(
+    popupItems.some((el) => el.textContent?.includes("socks#Faces/Portrait")),
+  );
 
   // Querying for root preset renders title without lib qualifier in primary label
   input.value = "sample#root";
   input.dispatchEvent(new Event("input"));
-  const rootRow = Array.from(document.querySelectorAll(".j0n4t-pg-autocomplete-item"))
-    .find((el) => el.textContent?.includes("sample#root_preset"));
+  const rootRow = Array.from(
+    document.querySelectorAll(".j0n4t-pg-autocomplete-item"),
+  ).find((el) => el.textContent?.includes("sample#root_preset"));
   assert.ok(rootRow, "finds sample#root_preset");
   // First span has "Root Preset" (not "Sample#root Preset")
   const firstSpan = rootRow!.querySelector("span")!;
@@ -232,4 +300,3 @@ test("autocomplete suggests qualified presets and renders qualified root preset 
   const metaSpan = rootRow!.querySelector(".j0n4t-pg-autocomplete-meta")!;
   assert.equal(metaSpan.textContent, "sample#root_preset");
 });
-

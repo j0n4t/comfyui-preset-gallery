@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from "@playwright/test";
 
 // The other half of the split: the harness covers what the UI does, this covers
 // that the extension actually loads and mounts inside a real ComfyUI. It talks
@@ -7,32 +7,36 @@ import { test, expect, type Page } from '@playwright/test';
 //
 // Deliberately few and stable assertions - breadth belongs in gallery.spec.ts.
 
-const COMFY_URL = 'http://127.0.0.1:8188';
-const NODE_TYPE = 'PresetGalleryNode';
+const COMFY_URL = "http://127.0.0.1:8188";
+const NODE_TYPE = "PresetGalleryNode";
 
 // The frontend is served from a separate repo (ComfyUI_frontend), and this
 // suite's assertions are only valid against the build it was written
 // against. ComfyUI serves that build's manifest at its root; pin the commit
 // so a frontend swap fails here, loudly, instead of failing later as a wall
 // of LiteGraph errors (F15).
-const FRONTEND_COMMIT = 'dc6160bf354a185f010637e79aed1e0327bfdd6a'; // comfyui_frontend 1.58.0
+const FRONTEND_COMMIT = "dc6160bf354a185f010637e79aed1e0327bfdd6a"; // comfyui_frontend 1.58.0
 
 test.beforeAll(async ({ request }) => {
   let reachable = false;
   try {
-    const res = await request.get(`${COMFY_URL}/object_info/${NODE_TYPE}`, { timeout: 4000 });
+    const res = await request.get(`${COMFY_URL}/object_info/${NODE_TYPE}`, {
+      timeout: 4000,
+    });
     reachable = res.ok();
   } catch {
     reachable = false;
   }
   test.skip(!reachable, `ComfyUI is not running on ${COMFY_URL}`);
 
-  const manifest = await request.get(`${COMFY_URL}/build-manifest.json`, { timeout: 4000 });
+  const manifest = await request.get(`${COMFY_URL}/build-manifest.json`, {
+    timeout: 4000,
+  });
   const { commit } = (await manifest.json()) as { commit?: string };
   expect(
     commit,
     `the frontend build under test does not match the pin (expected ${FRONTEND_COMMIT}, comfyui_frontend 1.58.0)` +
-      ` - re-validate this suite against the new frontend and update FRONTEND_COMMIT`
+      ` - re-validate this suite against the new frontend and update FRONTEND_COMMIT`,
   ).toBe(FRONTEND_COMMIT);
 });
 
@@ -54,11 +58,11 @@ async function waitForComfy(page: Page) {
       );
     },
     NODE_TYPE,
-    { timeout: 30_000 }
+    { timeout: 30_000 },
   );
 }
 
-test('registers the extension with the frontend', async ({ page }) => {
+test("registers the extension with the frontend", async ({ page }) => {
   await waitForComfy(page);
 
   const names = await page.evaluate(() => {
@@ -68,10 +72,10 @@ test('registers the extension with the frontend', async ({ page }) => {
     return w.comfyAPI.app.app.extensions.map((e) => e.name).filter(Boolean);
   });
 
-  expect(names).toContain('Comfy.PresetGallery');
+  expect(names).toContain("Comfy.PresetGallery");
 });
 
-test('mounts the gallery when the node is created', async ({ page }) => {
+test("mounts the gallery when the node is created", async ({ page }) => {
   await waitForComfy(page);
 
   const mount = await page.evaluate((type) => {
@@ -87,14 +91,14 @@ test('mounts the gallery when the node is created', async ({ page }) => {
     // a restored workflow, so searching by type could pick up the wrong one.
     (window as unknown as { __pgTestNode?: unknown }).__pgTestNode = node;
 
-    const domWidget = node.widgets.find((x) => x.name === 'preset_gallery_ui');
+    const domWidget = node.widgets.find((x) => x.name === "preset_gallery_ui");
     const el = domWidget?.element ?? domWidget?.el;
     return {
       hasDomWidget: !!domWidget,
-      hasGrid: !!el?.querySelector('.j0n4t-pg-grid'),
-      hasSearch: !!el?.querySelector('.j0n4t-pg-search'),
-      hasBasket: !!el?.querySelector('.j0n4t-pg-basket-container'),
-      items: el?.querySelectorAll('.j0n4t-pg-item').length ?? 0,
+      hasGrid: !!el?.querySelector(".j0n4t-pg-grid"),
+      hasSearch: !!el?.querySelector(".j0n4t-pg-search"),
+      hasBasket: !!el?.querySelector(".j0n4t-pg-basket-container"),
+      items: el?.querySelectorAll(".j0n4t-pg-item").length ?? 0,
     };
   }, NODE_TYPE);
 
@@ -111,19 +115,29 @@ test('mounts the gallery when the node is created', async ({ page }) => {
     .poll(
       async () =>
         page.evaluate(() => {
-          const node = (window as unknown as {
-            __pgTestNode?: { widgets: Array<{ name: string; element?: HTMLElement; el?: HTMLElement }> };
-          }).__pgTestNode;
-          const domWidget = node?.widgets.find((x) => x.name === 'preset_gallery_ui');
+          const node = (
+            window as unknown as {
+              __pgTestNode?: {
+                widgets: Array<{
+                  name: string;
+                  element?: HTMLElement;
+                  el?: HTMLElement;
+                }>;
+              };
+            }
+          ).__pgTestNode;
+          const domWidget = node?.widgets.find(
+            (x) => x.name === "preset_gallery_ui",
+          );
           const el = domWidget?.element ?? domWidget?.el;
-          return el?.querySelectorAll('.j0n4t-pg-item').length ?? 0;
+          return el?.querySelectorAll(".j0n4t-pg-item").length ?? 0;
         }),
-      { timeout: 30_000 }
+      { timeout: 30_000 },
     )
     .toBeGreaterThan(0);
 });
 
-test('hides the widgets the UI drives', async ({ page }) => {
+test("hides the widgets the UI drives", async ({ page }) => {
   await waitForComfy(page);
 
   const hidden = await page.evaluate((type) => {
@@ -136,22 +150,27 @@ test('hides the widgets the UI drives', async ({ page }) => {
     };
     w.comfyAPI.app.app.graph.add(node);
     const named = node.widgets.filter((x) =>
-      ['preset_selection', 'evaluated_preset'].includes(x.name)
+      ["preset_selection", "evaluated_preset"].includes(x.name),
     );
-    return { count: named.length, allHidden: named.every((x) => x.hidden === true) };
+    return {
+      count: named.length,
+      allHidden: named.every((x) => x.hidden === true),
+    };
   }, NODE_TYPE);
 
   expect(hidden.count).toBe(2);
   expect(hidden.allHidden).toBe(true);
 });
 
-test('the backend exposes the node with its declared sockets', async ({ request }) => {
+test("the backend exposes the node with its declared sockets", async ({
+  request,
+}) => {
   const res = await request.get(`${COMFY_URL}/object_info/${NODE_TYPE}`);
   expect(res.ok()).toBe(true);
 
   const info = (await res.json())[NODE_TYPE];
   expect(info.input.required.preset_selection).toBeTruthy();
   expect(info.input.optional.base_preset[1].forceInput).toBe(true);
-  expect(info.output_name).toContain('final_preset');
-  expect(info.category).toBe('utils');
+  expect(info.output_name).toContain("final_preset");
+  expect(info.category).toBe("utils");
 });

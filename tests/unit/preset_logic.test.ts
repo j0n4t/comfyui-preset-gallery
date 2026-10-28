@@ -29,31 +29,32 @@ test("splitPresets splits on plain commas and trims whitespace", () => {
 });
 
 test("splitPresets does not split on a comma inside parentheses", () => {
-  assert.deepEqual(
-    PresetLogic.splitPresets("a, (detail:1.2), b"),
-    ["a", "(detail:1.2)", "b"]
-  );
+  assert.deepEqual(PresetLogic.splitPresets("a, (detail:1.2), b"), [
+    "a",
+    "(detail:1.2)",
+    "b",
+  ]);
 });
 
 test("splitPresets does not split on a comma inside angle brackets", () => {
-  assert.deepEqual(
-    PresetLogic.splitPresets("<lora:abc:0.8>, text"),
-    ["<lora:abc:0.8>", "text"]
-  );
+  assert.deepEqual(PresetLogic.splitPresets("<lora:abc:0.8>, text"), [
+    "<lora:abc:0.8>",
+    "text",
+  ]);
 });
 
 test("splitPresets does not split on a comma inside braces", () => {
-  assert.deepEqual(
-    PresetLogic.splitPresets("{group:alpha, beta}, c"),
-    ["{group:alpha, beta}", "c"]
-  );
+  assert.deepEqual(PresetLogic.splitPresets("{group:alpha, beta}, c"), [
+    "{group:alpha, beta}",
+    "c",
+  ]);
 });
 
 test("splitPresets handles nested brackets at any depth", () => {
-  assert.deepEqual(
-    PresetLogic.splitPresets("((a, b), c), {d: (e, f)}"),
-    ["((a, b), c)", "{d: (e, f)}"]
-  );
+  assert.deepEqual(PresetLogic.splitPresets("((a, b), c), {d: (e, f)}"), [
+    "((a, b), c)",
+    "{d: (e, f)}",
+  ]);
 });
 
 test("splitPresets clamps unbalanced closers without throwing", () => {
@@ -79,9 +80,15 @@ test("unwrapTilde strips surrounding tildes", () => {
 // enabled chips (never the raw tilde-wrapped selection value) ---
 test("parseBasketChip: tilde-disabled chip shows the preset's display name", () => {
   const result = PresetLogic.parseBasketChip(
-    { styleKey: "~Scenery/Hills~", item: null, subArray: ["~Scenery/Hills~"], startIndex: 0, endIndex: 1 },
+    {
+      styleKey: "~Scenery/Hills~",
+      item: null,
+      subArray: ["~Scenery/Hills~"],
+      startIndex: 0,
+      endIndex: 1,
+    },
     CACHE,
-    new RollManager()
+    new RollManager(),
   );
   // The disabled chip must display the preset's display text, not the raw
   // tilde-wrapped selection token.
@@ -91,14 +98,26 @@ test("parseBasketChip: tilde-disabled chip shows the preset's display name", () 
 
 test("parseBasketChip: enabled and tilde-disabled chips share the same display text", () => {
   const enabled = PresetLogic.parseBasketChip(
-    { styleKey: "Scenery/Hills", item: CACHE["Scenery/Hills"], subArray: ["Scenery/Hills"], startIndex: 0, endIndex: 1 },
+    {
+      styleKey: "Scenery/Hills",
+      item: CACHE["Scenery/Hills"],
+      subArray: ["Scenery/Hills"],
+      startIndex: 0,
+      endIndex: 1,
+    },
     CACHE,
-    new RollManager()
+    new RollManager(),
   );
   const disabled = PresetLogic.parseBasketChip(
-    { styleKey: "~Scenery/Hills~", item: null, subArray: ["~Scenery/Hills~"], startIndex: 0, endIndex: 1 },
+    {
+      styleKey: "~Scenery/Hills~",
+      item: null,
+      subArray: ["~Scenery/Hills~"],
+      startIndex: 0,
+      endIndex: 1,
+    },
     CACHE,
-    new RollManager()
+    new RollManager(),
   );
   // Both classes of chip render the same display text.
   assert.equal(enabled.cleanLabel, disabled.cleanLabel);
@@ -106,27 +125,67 @@ test("parseBasketChip: enabled and tilde-disabled chips share the same display t
 
 test("parseBasketChip: tilde-disabled chips with variants, tags and weights render the same text as enabled", () => {
   const cases = [
-    { label: "plain", disabled: "~Scenery/Hills~", enabled: "Scenery/Hills", item: CACHE["Scenery/Hills"] },
-    { label: "variant", disabled: "~{Scenery:Scenery/Sky}~", enabled: "{Scenery:Scenery/Sky}", item: null },
-    { label: "tag", disabled: "~<lora:test:0.5>~", enabled: "<lora:test:0.5>", item: null },
-    { label: "weighted", disabled: "~(Faces/Portrait:1.2)~", enabled: "(Faces/Portrait:1.2)", item: CACHE["Faces/Portrait"] },
+    {
+      label: "plain",
+      disabled: "~Scenery/Hills~",
+      enabled: "Scenery/Hills",
+      item: CACHE["Scenery/Hills"],
+    },
+    {
+      label: "variant",
+      disabled: "~{Scenery:Scenery/Sky}~",
+      enabled: "{Scenery:Scenery/Sky}",
+      item: null,
+    },
+    {
+      label: "tag",
+      disabled: "~<lora:test:0.5>~",
+      enabled: "<lora:test:0.5>",
+      item: null,
+    },
+    {
+      label: "weighted",
+      disabled: "~(Faces/Portrait:1.2)~",
+      enabled: "(Faces/Portrait:1.2)",
+      item: CACHE["Faces/Portrait"],
+    },
   ];
 
   for (const { label, disabled, enabled, item } of cases) {
     const disabledChip = PresetLogic.parseBasketChip(
-      { styleKey: disabled, item: null, subArray: [disabled], startIndex: 0, endIndex: 1 },
+      {
+        styleKey: disabled,
+        item: null,
+        subArray: [disabled],
+        startIndex: 0,
+        endIndex: 1,
+      },
       CACHE,
-      new RollManager()
+      new RollManager(),
     );
     const enabledChip = PresetLogic.parseBasketChip(
-      { styleKey: enabled, item, subArray: [enabled], startIndex: 0, endIndex: 1 },
+      {
+        styleKey: enabled,
+        item,
+        subArray: [enabled],
+        startIndex: 0,
+        endIndex: 1,
+      },
       CACHE,
-      new RollManager()
+      new RollManager(),
     );
 
     // The bare chip text must match the preset's display name, never the tilde-wrapped token.
-    assert.equal(disabledChip.cleanLabel, enabledChip.cleanLabel, `${label} display name`);
-    assert.equal(disabledChip.tooltipTitle, enabledChip.tooltipTitle, `${label} tooltip body`);
+    assert.equal(
+      disabledChip.cleanLabel,
+      enabledChip.cleanLabel,
+      `${label} display name`,
+    );
+    assert.equal(
+      disabledChip.tooltipTitle,
+      enabledChip.tooltipTitle,
+      `${label} tooltip body`,
+    );
   }
 });
 
@@ -196,7 +255,10 @@ test("splitVariantValue leaves childVarsStr empty for plain text", () => {
 });
 
 test("splitVariantValue handles an empty string", () => {
-  assert.deepEqual(PresetLogic.splitVariantValue(""), { baseVal: "", childVarsStr: "" });
+  assert.deepEqual(PresetLogic.splitVariantValue(""), {
+    baseVal: "",
+    childVarsStr: "",
+  });
 });
 
 // --- isVirtualNull ---
@@ -216,19 +278,31 @@ test("isVirtualNull rejects real values and empty strings", () => {
 // --- resolveVariantKey ---
 
 test("resolveVariantKey matches the exact cache key", () => {
-  assert.equal(PresetLogic.resolveVariantKey("Faces", "Faces/Portrait", CACHE), "Faces/Portrait");
+  assert.equal(
+    PresetLogic.resolveVariantKey("Faces", "Faces/Portrait", CACHE),
+    "Faces/Portrait",
+  );
 });
 
 test("resolveVariantKey matches keys case-insensitively", () => {
-  assert.equal(PresetLogic.resolveVariantKey("Faces", "faces/portrait", CACHE), "Faces/Portrait");
+  assert.equal(
+    PresetLogic.resolveVariantKey("Faces", "faces/portrait", CACHE),
+    "Faces/Portrait",
+  );
 });
 
 test("resolveVariantKey matches a preset name alone", () => {
-  assert.equal(PresetLogic.resolveVariantKey("Faces", "portrait", CACHE), "Faces/Portrait");
+  assert.equal(
+    PresetLogic.resolveVariantKey("Faces", "portrait", CACHE),
+    "Faces/Portrait",
+  );
 });
 
 test("resolveVariantKey matches a name when the key carries the group prefix", () => {
-  assert.equal(PresetLogic.resolveVariantKey("", "portrait", CACHE), "Faces/Portrait");
+  assert.equal(
+    PresetLogic.resolveVariantKey("", "portrait", CACHE),
+    "Faces/Portrait",
+  );
 });
 
 test("resolveVariantKey returns null for an unknown value or empty input", () => {
@@ -247,7 +321,10 @@ test("resolveVariantKey returns the first key claiming a name, not the last", ()
   };
   // Both entries claim "smile"; the scan returned whichever came first, and in a
   // real library 32 lowercased names are claimed by more than one key.
-  assert.equal(PresetLogic.resolveVariantKey("pose", "smile", cache), "Action/Smile");
+  assert.equal(
+    PresetLogic.resolveVariantKey("pose", "smile", cache),
+    "Action/Smile",
+  );
 });
 
 test("resolveVariantKey returns the first key claiming a full key, not the last", () => {
@@ -257,7 +334,10 @@ test("resolveVariantKey returns the first key claiming a full key, not the last"
     "Pose/Smile": { preset: "a" },
     "pose/smile": { preset: "b" },
   };
-  assert.equal(PresetLogic.resolveVariantKey("pose", "POSE/SMILE", cache), "Pose/Smile");
+  assert.equal(
+    PresetLogic.resolveVariantKey("pose", "POSE/SMILE", cache),
+    "Pose/Smile",
+  );
 });
 
 test("resolveVariantKey's group argument does not change the result", () => {
@@ -269,14 +349,20 @@ test("resolveVariantKey's group argument does not change the result", () => {
   // before it already covered - so it could never decide anything, and a group
   // match must not be preferred over cache order.
   for (const group of ["", "action", "pose", "zzz"]) {
-    assert.equal(PresetLogic.resolveVariantKey(group, "smile", cache), "Action/Smile");
+    assert.equal(
+      PresetLogic.resolveVariantKey(group, "smile", cache),
+      "Action/Smile",
+    );
   }
 });
 
 test("resolveVariantKey still resolves a key that carries no preset", () => {
   // The scan never checked for a preset, so the index must not either.
   const cache: PresetCache = { "Color/Red": { __color__: "#ff0000" } };
-  assert.equal(PresetLogic.resolveVariantKey("color", "red", cache), "Color/Red");
+  assert.equal(
+    PresetLogic.resolveVariantKey("color", "red", cache),
+    "Color/Red",
+  );
 });
 
 // --- escapeRegExp ---
@@ -292,12 +378,15 @@ test("escapeRegExp produces a pattern that matches the literal string", () => {
 test("getWrappedPreset applies the folder prepend and append", () => {
   assert.equal(
     PresetLogic.getWrappedPreset("Faces/Portrait", "portrait, solo", CACHE),
-    "cinematic portrait, solo 8k"
+    "cinematic portrait, solo 8k",
   );
 });
 
 test("getWrappedPreset trims and returns the base when no config exists", () => {
-  assert.equal(PresetLogic.getWrappedPreset("RootPreset", "  root text  ", CACHE), "root text");
+  assert.equal(
+    PresetLogic.getWrappedPreset("RootPreset", "  root text  ", CACHE),
+    "root text",
+  );
   assert.equal(PresetLogic.getWrappedPreset("RootPreset", "", CACHE), "");
 });
 
@@ -306,21 +395,21 @@ test("getWrappedPreset trims and returns the base when no config exists", () => 
 test("getUnrolledTemplate expands preset references", () => {
   assert.equal(
     PresetLogic.getUnrolledTemplate("RootPreset, extra", CACHE),
-    "root text, extra"
+    "root text, extra",
   );
 });
 
 test("getUnrolledTemplate keeps {group} tokens intact", () => {
   assert.equal(
     PresetLogic.getUnrolledTemplate("{Scenery:hills}, plain", CACHE),
-    "{Scenery:hills}, plain"
+    "{Scenery:hills}, plain",
   );
 });
 
 test("getUnrolledTemplate expands presets and keeps group tokens in one pass", () => {
   assert.equal(
     PresetLogic.getUnrolledTemplate("Faces/Portrait, {Scenery}", CACHE),
-    "cinematic portrait, solo 8k, {Scenery}"
+    "cinematic portrait, solo 8k, {Scenery}",
   );
 });
 
@@ -341,7 +430,7 @@ test("getUnrolledTemplate returns an empty string for empty input", () => {
 test("expandRecursively resolves a variant to its preset text", () => {
   assert.equal(
     PresetLogic.expandRecursively("{Faces:portrait}", CACHE),
-    "cinematic portrait, solo 8k"
+    "cinematic portrait, solo 8k",
   );
 });
 
@@ -354,19 +443,25 @@ test("expandRecursively expands variants nested inside a preset", () => {
     "Faces/Portrait": { preset: "{Scenery:hills} look" },
     "Scenery/Hills": { preset: "rolling hills" },
   };
-  assert.equal(PresetLogic.expandRecursively("{Faces:portrait}", cache), "rolling hills look");
+  assert.equal(
+    PresetLogic.expandRecursively("{Faces:portrait}", cache),
+    "rolling hills look",
+  );
 });
 
 test("expandRecursively expands plain preset references", () => {
   assert.equal(
     PresetLogic.expandRecursively("RootPreset, done", CACHE),
-    "root text, done"
+    "root text, done",
   );
 });
 
 test("expandRecursively rolls a group using the injected RollManager", () => {
   const rollManager = new RollManager({ faces_0: "Faces/Portrait" });
-  assert.equal(PresetLogic.expandRecursively("{Faces}", CACHE, new Set(), rollManager), "cinematic portrait, solo 8k");
+  assert.equal(
+    PresetLogic.expandRecursively("{Faces}", CACHE, new Set(), rollManager),
+    "cinematic portrait, solo 8k",
+  );
   assert.equal(rollManager.getCount("faces"), 1);
 });
 
@@ -374,18 +469,24 @@ test("expandRecursively resolves a roll when the stored slot is empty", () => {
   const cache: PresetCache = { "Faces/Portrait": { preset: "portrait" } };
   const rollManager = new RollManager();
   // single match: the roll is deterministic regardless of Math.random
-  assert.equal(PresetLogic.expandRecursively("{Faces}", cache, new Set(), rollManager), "portrait");
+  assert.equal(
+    PresetLogic.expandRecursively("{Faces}", cache, new Set(), rollManager),
+    "portrait",
+  );
   assert.equal(rollManager.getCount("faces"), 1);
 });
 
 test("expandRecursively terminates on circular preset references", () => {
   const circular: PresetCache = {
     "A/One": { preset: "{B}" },
-    "B": { preset: "{A/One}" },
+    B: { preset: "{A/One}" },
   };
   const result = PresetLogic.expandRecursively("A/One", circular);
   assert.ok(typeof result === "string");
-  assert.ok(result.length < 200, "expansion should terminate quickly, not grow unboundedly");
+  assert.ok(
+    result.length < 200,
+    "expansion should terminate quickly, not grow unboundedly",
+  );
 });
 
 // --- getGroupMatches ---
@@ -410,11 +511,16 @@ test("getGroupMatches ignores config keys, keys without presets and folderless k
     "FacesX/Y": { preset: "p" },
     "Faces/Portrait": { preset: "p" },
   };
-  assert.deepEqual(PresetLogic.getGroupMatches("faces", cache), ["Faces/Portrait"]);
+  assert.deepEqual(PresetLogic.getGroupMatches("faces", cache), [
+    "Faces/Portrait",
+  ]);
 });
 
 test("getGroupMatches is case-insensitive on the group name", () => {
-  assert.deepEqual(PresetLogic.getGroupMatches("FACES", CACHE), ["Faces/Portrait", "Faces/Macro"]);
+  assert.deepEqual(PresetLogic.getGroupMatches("FACES", CACHE), [
+    "Faces/Portrait",
+    "Faces/Macro",
+  ]);
 });
 
 test("getGroupMatches returns an empty list for an unknown group", () => {
@@ -433,9 +539,18 @@ test("getGroupMatches matches a middle segment of a deeper folder", () => {
   // The folder is "a/b/c", so "b" is a middle segment: neither a prefix nor a
   // suffix, and the predicate does not match it.
   assert.deepEqual(PresetLogic.getGroupMatches("b", cache), []);
-  assert.deepEqual(PresetLogic.getGroupMatches("a/b", cache), ["A/B/C/One", "A/B/C/Two"]);
-  assert.deepEqual(PresetLogic.getGroupMatches("b/c", cache), ["A/B/C/One", "A/B/C/Two"]);
-  assert.deepEqual(PresetLogic.getGroupMatches("c", cache), ["A/B/C/One", "A/B/C/Two"]);
+  assert.deepEqual(PresetLogic.getGroupMatches("a/b", cache), [
+    "A/B/C/One",
+    "A/B/C/Two",
+  ]);
+  assert.deepEqual(PresetLogic.getGroupMatches("b/c", cache), [
+    "A/B/C/One",
+    "A/B/C/Two",
+  ]);
+  assert.deepEqual(PresetLogic.getGroupMatches("c", cache), [
+    "A/B/C/One",
+    "A/B/C/Two",
+  ]);
 });
 
 test("getGroupMatches lists each key once when a folder repeats a segment", () => {
@@ -444,7 +559,10 @@ test("getGroupMatches lists each key once when a folder repeats a segment", () =
     "A/A/One": { preset: "p" },
     "A/Two": { preset: "p" },
   };
-  assert.deepEqual(PresetLogic.getGroupMatches("a", cache), ["A/A/One", "A/Two"]);
+  assert.deepEqual(PresetLogic.getGroupMatches("a", cache), [
+    "A/A/One",
+    "A/Two",
+  ]);
 });
 
 test("getGroupMatches keeps cache order", () => {
@@ -456,7 +574,7 @@ test("getGroupMatches keeps cache order", () => {
   assert.deepEqual(
     PresetLogic.getGroupMatches("faces", cache),
     ["Z/Faces/One", "A/Faces/One", "M/Faces/One"],
-    "rolls pick by index, so the order must not be sorted"
+    "rolls pick by index, so the order must not be sorted",
   );
 });
 
@@ -472,7 +590,7 @@ test("mutating a getGroupMatches result does not corrupt later calls", () => {
   assert.deepEqual(
     PresetLogic.getGroupMatches("faces", cache),
     ["Faces/Portrait", "Faces/Macro"],
-    "the result must be a copy; the index is shared between calls"
+    "the result must be a copy; the index is shared between calls",
   );
 });
 
@@ -591,11 +709,17 @@ test("parseChipDetails returns empty metadata for empty input", () => {
 // --- findPresetMatch ---
 
 test("findPresetMatch matches an exact key, the preset text and the wrapped text", () => {
-  assert.equal(PresetLogic.findPresetMatch("Faces/Portrait", CACHE)?.key, "Faces/Portrait");
-  assert.equal(PresetLogic.findPresetMatch("portrait, solo", CACHE)?.key, "Faces/Portrait");
+  assert.equal(
+    PresetLogic.findPresetMatch("Faces/Portrait", CACHE)?.key,
+    "Faces/Portrait",
+  );
+  assert.equal(
+    PresetLogic.findPresetMatch("portrait, solo", CACHE)?.key,
+    "Faces/Portrait",
+  );
   assert.equal(
     PresetLogic.findPresetMatch("cinematic portrait, solo 8k", CACHE)?.key,
-    "Faces/Portrait"
+    "Faces/Portrait",
   );
 });
 
@@ -614,7 +738,10 @@ test("findPresetMatch returns the first entry claiming a string, not the last", 
     "Pose/Smile": { preset: "smile" },
   };
   // Both entries claim "smile"; the scan returned whichever came first.
-  assert.equal(PresetLogic.findPresetMatch("smile", cache)?.key, "Action/Smile");
+  assert.equal(
+    PresetLogic.findPresetMatch("smile", cache)?.key,
+    "Action/Smile",
+  );
 });
 
 test("findPresetMatch ignores entries without a preset", () => {
@@ -664,14 +791,27 @@ test("splitQualifiedKey separates the library from the path", () => {
     libraryId: null,
     key: "#wear/sock",
   });
-  assert.deepEqual(PresetLogic.splitQualifiedKey(""), { libraryId: null, key: "" });
+  assert.deepEqual(PresetLogic.splitQualifiedKey(""), {
+    libraryId: null,
+    key: "",
+  });
 });
 
 test("a qualified chip expands to its own library's text, a plain one to the winner's", () => {
-  assert.equal(PresetLogic.expandRecursively("socks#wear/sock/ankle", MERGED), "main ankle");
-  assert.equal(PresetLogic.expandRecursively("wear/sock/ankle", MERGED), "socks ankle");
+  assert.equal(
+    PresetLogic.expandRecursively("socks#wear/sock/ankle", MERGED),
+    "main ankle",
+  );
+  assert.equal(
+    PresetLogic.expandRecursively("wear/sock/ankle", MERGED),
+    "socks ankle",
+  );
   // the qualifier never reaches the expanded prompt
-  assert.ok(!PresetLogic.expandRecursively("socks#wear/sock/ankle", MERGED).includes("#"));
+  assert.ok(
+    !PresetLogic.expandRecursively("socks#wear/sock/ankle", MERGED).includes(
+      "#",
+    ),
+  );
 });
 
 test("a group roll sees both libraries' entries under the plain folder", () => {
@@ -689,7 +829,10 @@ test("findPresetMatch resolves a qualified key", () => {
 });
 
 test("parseTokens matches a qualified chip as one token", () => {
-  const tokens = PresetLogic.parseTokens("socks#wear/sock/ankle, plain", MERGED);
+  const tokens = PresetLogic.parseTokens(
+    "socks#wear/sock/ankle, plain",
+    MERGED,
+  );
   const first = tokens.find((t) => t.key);
   assert.equal(first?.key, "socks#wear/sock/ankle");
   assert.equal(first?.text, "socks#wear/sock/ankle");
@@ -704,7 +847,6 @@ test("findPresetMatch and expandRecursively fall back to the plain key for winni
   const expanded = PresetLogic.expandRecursively("main#wear/sock/knee", MERGED);
   assert.equal(expanded, "main knee");
 });
-
 
 test("parseBasketChip tooltipTitle does not duplicate preset text when unexpanded", () => {
   const chipData = {
@@ -732,7 +874,10 @@ test("parseBasketChip tooltipTitle includes expanded text when preset expands to
     endIndex: 1,
   };
   const parsed = PresetLogic.parseBasketChip(chipData, cacheWithMacro);
-  assert.equal(parsed.tooltipTitle, "simple look, extra\n\nCombo [look/combo]\nlook/simple, extra");
+  assert.equal(
+    parsed.tooltipTitle,
+    "simple look, extra\n\nCombo [look/combo]\nlook/simple, extra",
+  );
 });
 
 // --- tooltipTitle: the final evaluated value ---
@@ -754,28 +899,43 @@ test("parseBasketChip tooltipTitle shows the evaluated value of a rolled variant
   const parsed = PresetLogic.parseBasketChip(chipData, cache);
   assert.equal(
     parsed.tooltipTitle,
-    "portrait, solo\n\nPortrait [faces/portrait]\nportrait, solo\n\nRolled Variants:\n🎲 Faces: portrait"
+    "portrait, solo\n\nPortrait [faces/portrait]\nportrait, solo\n\nRolled Variants:\n🎲 Faces: portrait",
   );
 });
 
 test("parseBasketChip tooltipTitle shows the evaluated value of a plain tag", () => {
   const cache: PresetCache = { "faces/portrait": { preset: "portrait, solo" } };
   const parsed = PresetLogic.parseBasketChip(
-    { styleKey: "<lora:my lora:1.2>", item: null, subArray: ["<lora:my lora:1.2>"], startIndex: 0, endIndex: 1 },
-    cache
+    {
+      styleKey: "<lora:my lora:1.2>",
+      item: null,
+      subArray: ["<lora:my lora:1.2>"],
+      startIndex: 0,
+      endIndex: 1,
+    },
+    cache,
   );
   // No cache item behind the chip, so the evaluated value is all there is -
   // and the header, which names a preset, is absent.
   assert.equal(parsed.tooltipTitle, "<lora:my lora:1.2>");
-  assert.ok(!parsed.tooltipTitle.includes("["), "a tag carries no preset header");
+  assert.ok(
+    !parsed.tooltipTitle.includes("["),
+    "a tag carries no preset header",
+  );
 });
 
 test("parseBasketChip tooltipTitle shows the evaluated value of a weighted tag", () => {
   // A weight is applied to the evaluated text, so the tooltip has to show the
   // weighted form rather than the bare tag.
   const parsed = PresetLogic.parseBasketChip(
-    { styleKey: "(<lora:my lora:1.2>:1.5)", item: null, subArray: ["(<lora:my lora:1.2>:1.5)"], startIndex: 0, endIndex: 1 },
-    {}
+    {
+      styleKey: "(<lora:my lora:1.2>:1.5)",
+      item: null,
+      subArray: ["(<lora:my lora:1.2>:1.5)"],
+      startIndex: 0,
+      endIndex: 1,
+    },
+    {},
   );
   assert.equal(parsed.tooltipTitle, "(<lora:my lora:1.2>:1.5)");
 });
@@ -783,16 +943,31 @@ test("parseBasketChip tooltipTitle shows the evaluated value of a weighted tag",
 test("parseBasketChip tooltipTitle shows the evaluated value of a weighted preset", () => {
   const cache: PresetCache = { "faces/portrait": { preset: "portrait, solo" } };
   const parsed = PresetLogic.parseBasketChip(
-    { styleKey: "(faces/portrait:1.5)", item: cache["faces/portrait"], subArray: ["(faces/portrait:1.5)"], startIndex: 0, endIndex: 1 },
-    cache
+    {
+      styleKey: "(faces/portrait:1.5)",
+      item: cache["faces/portrait"],
+      subArray: ["(faces/portrait:1.5)"],
+      startIndex: 0,
+      endIndex: 1,
+    },
+    cache,
   );
-  assert.equal(parsed.tooltipTitle, "(portrait, solo:1.5)\n\nPortrait [faces/portrait]\nportrait, solo");
+  assert.equal(
+    parsed.tooltipTitle,
+    "(portrait, solo:1.5)\n\nPortrait [faces/portrait]\nportrait, solo",
+  );
 });
 
 test("parseBasketChip tooltipTitle keeps a single header when the chip equals its preset", () => {
   const parsed = PresetLogic.parseBasketChip(
-    { styleKey: "wear/sock/knee", item: { preset: "main knee" }, subArray: ["wear/sock/knee"], startIndex: 0, endIndex: 1 },
-    { "wear/sock/knee": { preset: "main knee" } }
+    {
+      styleKey: "wear/sock/knee",
+      item: { preset: "main knee" },
+      subArray: ["wear/sock/knee"],
+      startIndex: 0,
+      endIndex: 1,
+    },
+    { "wear/sock/knee": { preset: "main knee" } },
   );
   assert.equal(parsed.tooltipTitle, "Knee [wear/sock/knee]\nmain knee");
 });
@@ -807,7 +982,7 @@ test("parseBasketChip resolves a preset key embedded in a weighted chip", () => 
   const raw = "({pose} prop/furn/sofa:1.15)";
   const parsed = PresetLogic.parseBasketChip(
     { styleKey: raw, item: null, subArray: [raw], startIndex: 0, endIndex: 1 },
-    cache
+    cache,
   );
   assert.equal(parsed.chipExpanded, "(standing pose sofa furniture:1.15)");
 });
@@ -821,7 +996,7 @@ test("parseBasketChip tooltip shows the evaluated value and the raw chip once", 
   const raw = "({pose} {char} prop/furn/sofa:1.15)";
   const parsed = PresetLogic.parseBasketChip(
     { styleKey: raw, item: null, subArray: [raw], startIndex: 0, endIndex: 1 },
-    cache
+    cache,
   );
   // evaluated value, raw chip text, roll record - no repeated expansion
   assert.equal(
@@ -832,17 +1007,22 @@ test("parseBasketChip tooltip shows the evaluated value and the raw chip once", 
       "\n" +
       "Rolled Variants:\n" +
       "🎲 Pose: stand\n" +
-      "🎲 Char: hero"
+      "🎲 Char: hero",
   );
 });
 
 test("parseBasketChip tooltipTitle shows the raw chip for a virtual null", () => {
   const cache: PresetCache = { "hair/blonde": { preset: "blonde hair" } };
   const parsed = PresetLogic.parseBasketChip(
-    { styleKey: "{hair:none}", item: null, subArray: ["{hair:none}"], startIndex: 0, endIndex: 1 },
-    cache
+    {
+      styleKey: "{hair:none}",
+      item: null,
+      subArray: ["{hair:none}"],
+      startIndex: 0,
+      endIndex: 1,
+    },
+    cache,
   );
   // The chip evaluates to nothing, so the tooltip must not be blank.
   assert.equal(parsed.tooltipTitle, "{hair:none}");
 });
-

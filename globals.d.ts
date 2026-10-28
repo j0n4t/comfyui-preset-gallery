@@ -152,7 +152,6 @@ type CacheDerived = {
   variantKeyIndex?: Map<string, string>;
 };
 
-
 type BasketTab = {
   id: string;
   title: string;
@@ -187,7 +186,9 @@ type GalleryPanelSizes = {
  */
 type GalleryContext = {
   session: import("./web/PresetSession.js").default;
-  dom: ReturnType<import("./web/PresetGalleryApp.js").default["buildDOMStructure"]>;
+  dom: ReturnType<
+    import("./web/PresetGalleryApp.js").default["buildDOMStructure"]
+  >;
   /** ComfyUI widget; shape is host-provided. */
   widget: any;
   editor: import("./web/PresetEditor.js").default;
@@ -215,7 +216,11 @@ type GalleryContext = {
   syncUI: (val: string) => void | Promise<void>;
   loadGallery: () => Promise<void>;
   updateWidgetValue: (arr: string[]) => void;
-  restoreTabSelection: (tab: { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }) => void;
+  restoreTabSelection: (tab: {
+    basket?: string[];
+    pins?: string[];
+    rolls?: Record<string, string>;
+  }) => void;
   applyLibraries: (ids: string[]) => void;
   selectionKey: (key: string) => string;
   refreshLibraries: () => Promise<void>;

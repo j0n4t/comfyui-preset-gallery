@@ -12,15 +12,23 @@ import type PresetBasket from "../../web/PresetBasket.js";
 // a real component can be built on top of it.
 
 /** In-memory stand-in for localStorage. */
-function fakeStorage(initial: Record<string, string> = {}): Storage & { _map: Map<string, string> } {
+function fakeStorage(
+  initial: Record<string, string> = {},
+): Storage & { _map: Map<string, string> } {
   const map = new Map<string, string>(Object.entries(initial));
   return {
     getItem: (k: string) => map.get(k) ?? null,
-    setItem: (k: string, v: string) => { map.set(k, v); },
-    removeItem: (k: string) => { map.delete(k); },
+    setItem: (k: string, v: string) => {
+      map.set(k, v);
+    },
+    removeItem: (k: string) => {
+      map.delete(k);
+    },
     clear: () => map.clear(),
     key: (i: number) => Array.from(map.keys())[i] ?? null,
-    get length() { return map.size; },
+    get length() {
+      return map.size;
+    },
     _map: map,
   };
 }
@@ -32,7 +40,11 @@ type FakeView = {
   syncUI: (val: string) => void | Promise<void>;
   loadGallery: () => Promise<void>;
   updateWidgetValue: (arr: string[]) => void;
-  restoreTabSelection: (tab: { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }) => void;
+  restoreTabSelection: (tab: {
+    basket?: string[];
+    pins?: string[];
+    rolls?: Record<string, string>;
+  }) => void;
   applyLibraries: (ids: string[]) => void;
   selectionKey: (key: string) => string;
   refreshLibraries: () => Promise<void>;
@@ -42,7 +54,11 @@ type FakeView = {
 /** Records which view/host methods the context forwarded to. */
 function fakeView(): FakeView & { calls: unknown[][] } {
   const calls: unknown[][] = [];
-  const record = (name: string) => (...args: unknown[]) => { calls.push([name, ...args]); };
+  const record =
+    (name: string) =>
+    (...args: unknown[]) => {
+      calls.push([name, ...args]);
+    };
   return {
     calls,
     setPanelCollapseState: record("setPanelCollapseState"),
@@ -52,14 +68,23 @@ function fakeView(): FakeView & { calls: unknown[][] } {
     updateWidgetValue: record("updateWidgetValue"),
     restoreTabSelection: record("restoreTabSelection"),
     applyLibraries: record("applyLibraries"),
-    selectionKey: (key: string) => { calls.push(["selectionKey", key]); return key; },
+    selectionKey: (key: string) => {
+      calls.push(["selectionKey", key]);
+      return key;
+    },
     refreshLibraries: () => Promise.resolve(),
     settleEmptiedLibrary: () => Promise.resolve(),
-    loadGallery: () => { calls.push(["loadGallery"]); return Promise.resolve(); },
+    loadGallery: () => {
+      calls.push(["loadGallery"]);
+      return Promise.resolve();
+    },
   };
 }
 
-function makeContext({ widgetValue = "", storage = fakeStorage() }: {
+function makeContext({
+  widgetValue = "",
+  storage = fakeStorage(),
+}: {
   widgetValue?: string;
   storage?: Storage | null;
 } = {}) {
@@ -72,7 +97,9 @@ function makeContext({ widgetValue = "", storage = fakeStorage() }: {
   // A test never builds the whole structure; the cast is deliberate and
   // confined to this stub. The factory keeps the full type, so a caller
   // that reads a key the context declares is still checked.
-  const dom = {} as unknown as ReturnType<import("../../web/PresetGalleryApp.js").default["buildDOMStructure"]>;
+  const dom = {} as unknown as ReturnType<
+    import("../../web/PresetGalleryApp.js").default["buildDOMStructure"]
+  >;
   const context = createGalleryContext({ session, dom, widget, view });
   return { session, widget, view, context };
 }
@@ -112,7 +139,10 @@ test("getSelectedArray reads the widget value at call time", () => {
   const { widget, context } = makeContext({ widgetValue: "Faces/Portrait" });
   assert.deepEqual(context.getSelectedArray(), ["Faces/Portrait"]);
   widget.value = "Faces/Portrait, Scenery/Hills";
-  assert.deepEqual(context.getSelectedArray(), ["Faces/Portrait", "Scenery/Hills"]);
+  assert.deepEqual(context.getSelectedArray(), [
+    "Faces/Portrait",
+    "Scenery/Hills",
+  ]);
 });
 
 test("pin and folder helpers delegate to the session", () => {
@@ -177,9 +207,20 @@ test("ChipMenuManager methods that do not touch the DOM work on a fake context",
   assert.equal(manager._resolveInputValue(noInput, "🎲 Random"), "");
   assert.equal(manager._resolveInputValue(noInput, "🚫 None (Omit)"), "none");
 
-  const input = { _options: [{ key: "Faces/Portrait", display: "Portrait" }] } as unknown as HTMLInputElement;
+  const input = {
+    _options: [{ key: "Faces/Portrait", display: "Portrait" }],
+  } as unknown as HTMLInputElement;
   assert.equal(manager._resolveInputValue(input, "Portrait"), "Faces/Portrait");
-  assert.equal(manager._resolveInputValue(input, "Faces/Portrait"), "Faces/Portrait");
+  assert.equal(
+    manager._resolveInputValue(input, "Faces/Portrait"),
+    "Faces/Portrait",
+  );
   assert.equal(manager._resolveInputValue(input, "Unknown"), "Unknown");
-  assert.equal(manager._resolveInputValue({} as unknown as HTMLInputElement, "Faces/Portrait"), "Faces/Portrait");
+  assert.equal(
+    manager._resolveInputValue(
+      {} as unknown as HTMLInputElement,
+      "Faces/Portrait",
+    ),
+    "Faces/Portrait",
+  );
 });

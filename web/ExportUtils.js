@@ -33,67 +33,68 @@ import PresetDisplay from "./PresetDisplay.js";
  */
 
 const loadJSZip = async () => {
-    if (window.JSZip) return window.JSZip;
-    return new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
-        script.onload = () => resolve(window.JSZip);
-        script.onerror = () => reject(new Error("Failed to load JSZip library"));
-        document.head.appendChild(script);
-    });
+  if (window.JSZip) return window.JSZip;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    script.onload = () => resolve(window.JSZip);
+    script.onerror = () => reject(new Error("Failed to load JSZip library"));
+    document.head.appendChild(script);
+  });
 };
 
 const ExportUtils = {
-    /**
-     * @param {string[]} selectedKeys 
-     * @param {PresetCache} presets 
-     * @param {PresetCache | null} [existingPresets=null]
-     * @returns {SelectionSummary}
-     */
-    getSelectionSummary(selectedKeys, presets, existingPresets = null) {
-        let summary = {
-            newCount: 0,
-            replacedCount: 0,
-            sameCount: 0,
-            total: selectedKeys.length
-        };
+  /**
+   * @param {string[]} selectedKeys
+   * @param {PresetCache} presets
+   * @param {PresetCache | null} [existingPresets=null]
+   * @returns {SelectionSummary}
+   */
+  getSelectionSummary(selectedKeys, presets, existingPresets = null) {
+    let summary = {
+      newCount: 0,
+      replacedCount: 0,
+      sameCount: 0,
+      total: selectedKeys.length,
+    };
 
-        selectedKeys.forEach(key => {
-            const item = presets[key];
-            if (!item) return;
+    selectedKeys.forEach((key) => {
+      const item = presets[key];
+      if (!item) return;
 
-            if (existingPresets && existingPresets[key]) {
-                const oldText = existingPresets[key].preset || "";
-                const newText = item.preset || "";
-                const oldImg = existingPresets[key].filename || null;
-                const newImg = item.filename || null;
+      if (existingPresets && existingPresets[key]) {
+        const oldText = existingPresets[key].preset || "";
+        const newText = item.preset || "";
+        const oldImg = existingPresets[key].filename || null;
+        const newImg = item.filename || null;
 
-                if (oldText !== newText || oldImg !== newImg) {
-                    summary.replacedCount++;
-                } else {
-                    summary.sameCount++;
-                }
-            } else {
-                summary.newCount++;
-            }
-        });
+        if (oldText !== newText || oldImg !== newImg) {
+          summary.replacedCount++;
+        } else {
+          summary.sameCount++;
+        }
+      } else {
+        summary.newCount++;
+      }
+    });
 
-        return summary;
-    },
+    return summary;
+  },
 
-    /**
-     * @param {PresetCache} presets
-     * @param {PresetCache | null} [existingPresets=null] 
-     * @returns {SelectorTreeResult}
-     */
-    buildPresetSelectorTree(presets, existingPresets = null) {
-        const container = document.createElement("div");
-        container.className = "j0n4t-pg-selector-container";
+  /**
+   * @param {PresetCache} presets
+   * @param {PresetCache | null} [existingPresets=null]
+   * @returns {SelectorTreeResult}
+   */
+  buildPresetSelectorTree(presets, existingPresets = null) {
+    const container = document.createElement("div");
+    container.className = "j0n4t-pg-selector-container";
 
-        const controls = document.createElement("div");
-        controls.className = "j0n4t-pg-selector-controls";
+    const controls = document.createElement("div");
+    controls.className = "j0n4t-pg-selector-controls";
 
-        controls.innerHTML = `
+    controls.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
         <label class="j0n4t-pg-checkbox-wrap" style="margin: 0;">
           <input type="checkbox" id="j0n4t-pg-sel-all" checked />
@@ -102,65 +103,73 @@ const ExportUtils = {
         <button type="button" id="j0n4t-pg-toggle-collapse-all" style="background: transparent; border: 1px solid #777; color: inherit; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">Collapse All</button>
       </div>
     `;
-        container.appendChild(controls);
+    container.appendChild(controls);
 
-        const treeBox = document.createElement("div");
-        treeBox.className = "j0n4t-pg-selector-tree";
+    const treeBox = document.createElement("div");
+    treeBox.className = "j0n4t-pg-selector-tree";
 
-        /** @type {Record<string, PresetMatch[]>} */
-        const groups = {};
-        for (const [key, item] of Object.entries(presets).sort((a, b) => a[0].localeCompare(b[0]))) {
-            const hasContent = item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename);
-            if (!hasContent) continue;
+    /** @type {Record<string, PresetMatch[]>} */
+    const groups = {};
+    for (const [key, item] of Object.entries(presets).sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    )) {
+      const hasContent =
+        item &&
+        ((typeof item.preset === "string" && item.preset.trim().length > 0) ||
+          item.filename);
+      if (!hasContent) continue;
 
-            const gKey = PresetDisplay.getPresetFolder(key) || "root_presets";
-            if (!groups[gKey]) groups[gKey] = [];
-            groups[gKey].push({ key, item });
-        }
+      const gKey = PresetDisplay.getPresetFolder(key) || "root_presets";
+      if (!groups[gKey]) groups[gKey] = [];
+      groups[gKey].push({ key, item });
+    }
 
-        for (const [gKey, items] of Object.entries(groups)) {
-            let gName;
-            let groupHex = "#007acc";
-            if (gKey === "root_presets") {
-                gName = "Root Presets";
-            } else {
-                gName = gKey.split("/").map(PresetDisplay.toTitleCase).join(" › ");
-                if (presets[gKey] && presets[gKey].__color__) groupHex = presets[gKey].__color__;
-            }
+    for (const [gKey, items] of Object.entries(groups)) {
+      let gName;
+      let groupHex = "#007acc";
+      if (gKey === "root_presets") {
+        gName = "Root Presets";
+      } else {
+        gName = gKey.split("/").map(PresetDisplay.toTitleCase).join(" › ");
+        if (presets[gKey] && presets[gKey].__color__)
+          groupHex = presets[gKey].__color__;
+      }
 
-            let newCount = 0; let replacedCount = 0; let sameCount = 0;
-            if (existingPresets) {
-                items.forEach(({ key, item }) => {
-                    if (existingPresets[key]) {
-                        const oldText = existingPresets[key].preset || "";
-                        const newText = item.preset || "";
-                        const oldImg = existingPresets[key].filename || null;
-                        const newImg = item.filename || null;
-                        if (oldText !== newText || oldImg !== newImg) replacedCount++;
-                        else sameCount++;
-                    } else {
-                        newCount++;
-                    }
-                });
-            }
+      let newCount = 0;
+      let replacedCount = 0;
+      let sameCount = 0;
+      if (existingPresets) {
+        items.forEach(({ key, item }) => {
+          if (existingPresets[key]) {
+            const oldText = existingPresets[key].preset || "";
+            const newText = item.preset || "";
+            const oldImg = existingPresets[key].filename || null;
+            const newImg = item.filename || null;
+            if (oldText !== newText || oldImg !== newImg) replacedCount++;
+            else sameCount++;
+          } else {
+            newCount++;
+          }
+        });
+      }
 
-            let statsHtml = "";
-            if (existingPresets) {
-                statsHtml = `
+      let statsHtml = "";
+      if (existingPresets) {
+        statsHtml = `
           <div style="display: flex; gap: 4px; font-size: 0.75em; align-items: center; margin-left: auto;">
             ${newCount > 0 ? `<span style="background: #2b8a3e; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;">+${newCount} New</span>` : ""}
             ${replacedCount > 0 ? `<span style="background: #e67700; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;">~${replacedCount} Replaced</span>` : ""}
             ${sameCount > 0 ? `<span style="background: #495057; color: white; padding: 2px 6px; border-radius: 12px; font-weight: 500;">=${sameCount} Same</span>` : ""}
           </div>
         `;
-            }
+      }
 
-            const groupEl = document.createElement("div");
-            groupEl.className = "j0n4t-pg-tree-group";
+      const groupEl = document.createElement("div");
+      groupEl.className = "j0n4t-pg-tree-group";
 
-            const groupHeader = document.createElement("div");
-            groupHeader.className = "j0n4t-pg-tree-group-header";
-            groupHeader.innerHTML = `
+      const groupHeader = document.createElement("div");
+      groupHeader.className = "j0n4t-pg-tree-group-header";
+      groupHeader.innerHTML = `
         <div style="display: flex; align-items: center; width: 100%; padding-right: 4px;">
           <span class="j0n4t-pg-collapse-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em;">▼</span>
           <span class="j0n4t-pg-edit-group-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Rename Folder">✎</span>
@@ -171,53 +180,59 @@ const ExportUtils = {
           ${statsHtml}
         </div>
       `;
-            groupEl.appendChild(groupHeader);
+      groupEl.appendChild(groupHeader);
 
-            const itemsBox = document.createElement("div");
-            itemsBox.className = "j0n4t-pg-tree-group-items";
+      const itemsBox = document.createElement("div");
+      itemsBox.className = "j0n4t-pg-tree-group-items";
 
-            items.forEach(({ key, item }) => {
-                let detailsHtml = "";
-                let hasDiff = false; let isNew = false; let isSame = false;
+      items.forEach(({ key, item }) => {
+        let detailsHtml = "";
+        let hasDiff = false;
+        let isNew = false;
+        let isSame = false;
 
-                if (existingPresets && existingPresets[key]) {
-                    const oldText = existingPresets[key].preset || "";
-                    const newText = item.preset || "";
-                    const oldImg = existingPresets[key].filename || null;
-                    const newImg = item.filename || null;
+        if (existingPresets && existingPresets[key]) {
+          const oldText = existingPresets[key].preset || "";
+          const newText = item.preset || "";
+          const oldImg = existingPresets[key].filename || null;
+          const newImg = item.filename || null;
 
-                    if (oldText !== newText || oldImg !== newImg) {
-                        hasDiff = true;
-                        let textDiffHtml = oldText !== newText
-                            ? `<div style="color: #ff6b6b; margin-bottom: 4px;"><strong>- Current:</strong><br/>${PresetDOM.escapeHTML(oldText)}</div><div style="color: #51cf66;"><strong>+ Imported:</strong><br/>${PresetDOM.escapeHTML(newText)}</div>`
-                            : `<div style="color: #888; font-style: italic;">(Text unchanged)</div>`;
-                        let imgDiffHtml = oldImg !== newImg ? `<div style="margin-top: 6px; color: #fcc419;"><strong>* Image/Thumbnail modified</strong></div>` : "";
-                        detailsHtml = `${textDiffHtml}${imgDiffHtml}`;
-                    } else {
-                        isSame = true;
-                    }
-                } else if (existingPresets) {
-                    isNew = true;
-                }
+          if (oldText !== newText || oldImg !== newImg) {
+            hasDiff = true;
+            let textDiffHtml =
+              oldText !== newText
+                ? `<div style="color: #ff6b6b; margin-bottom: 4px;"><strong>- Current:</strong><br/>${PresetDOM.escapeHTML(oldText)}</div><div style="color: #51cf66;"><strong>+ Imported:</strong><br/>${PresetDOM.escapeHTML(newText)}</div>`
+                : `<div style="color: #888; font-style: italic;">(Text unchanged)</div>`;
+            let imgDiffHtml =
+              oldImg !== newImg
+                ? `<div style="margin-top: 6px; color: #fcc419;"><strong>* Image/Thumbnail modified</strong></div>`
+                : "";
+            detailsHtml = `${textDiffHtml}${imgDiffHtml}`;
+          } else {
+            isSame = true;
+          }
+        } else if (existingPresets) {
+          isNew = true;
+        }
 
-                if (!hasDiff) {
-                    detailsHtml = `
+        if (!hasDiff) {
+          detailsHtml = `
                         <div style="color: #bbb; margin-bottom: 4px;"><strong>Content:</strong><br/>${PresetDOM.escapeHTML(item.preset || "(Empty)")}</div>
                         ${item.filename ? `<div style="margin-top: 6px;"><img src="${item.filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
                     `;
-                }
+        }
 
-                const currentImgHtml = item.filename
-                    ? `<div style="margin-bottom: 4px;"><span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${item.filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" /></div>`
-                    : `<div style="margin-bottom: 4px; font-style: italic; color: #888; font-size: 0.85em;">No current image</div>`;
+        const currentImgHtml = item.filename
+          ? `<div style="margin-bottom: 4px;"><span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${item.filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" /></div>`
+          : `<div style="margin-bottom: 4px; font-style: italic; color: #888; font-size: 0.85em;">No current image</div>`;
 
-                const detailsContainerHtml = `
-                    <div class="j0n4t-pg-details-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.15); border-left: 2px solid ${hasDiff ? '#fcc419' : '#51cf66'}; font-family: monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
+        const detailsContainerHtml = `
+                    <div class="j0n4t-pg-details-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.15); border-left: 2px solid ${hasDiff ? "#fcc419" : "#51cf66"}; font-family: monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto; border-radius: 4px;">
                         ${detailsHtml}
                     </div>
                     `;
 
-                const editContainerHtml = `
+        const editContainerHtml = `
                     <div class="j0n4t-pg-edit-container" style="display: none; padding: 8px; margin-top: 4px; margin-left: 54px; background: rgba(0,0,0,0.25); border-left: 2px solid #4dabf7; font-size: 0.85em; border-radius: 4px;">
                         <label style="display:block; margin-bottom:2px;">Name</label>
                         <input type="text" class="edit-name" value="${PresetDOM.escapeHTML(PresetDisplay.getPresetName(key))}" style="width: 100%; margin-bottom: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 4px;" />
@@ -237,21 +252,23 @@ const ExportUtils = {
                     </div>
                     `;
 
-                const itemRow = document.createElement("div");
-                itemRow.className = "j0n4t-pg-tree-item";
-                itemRow.style.display = "flex";
-                itemRow.style.flexDirection = "column";
+        const itemRow = document.createElement("div");
+        itemRow.className = "j0n4t-pg-tree-item";
+        itemRow.style.display = "flex";
+        itemRow.style.flexDirection = "column";
 
-                let itemStatusTag = "";
-                let status = hasDiff ? "replaced" : (isNew ? "new" : "same");
-                if (hasDiff) itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #fcc419; margin-left: 6px;">(Replaced)</span>`;
-                if (isNew) itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #51cf66; margin-left: 6px;">(New)</span>`;
+        let itemStatusTag = "";
+        let status = hasDiff ? "replaced" : isNew ? "new" : "same";
+        if (hasDiff)
+          itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #fcc419; margin-left: 6px;">(Replaced)</span>`;
+        if (isNew)
+          itemStatusTag = `<span style="font-size: 0.75em; font-weight: bold; color: #51cf66; margin-left: 6px;">(New)</span>`;
 
-                const checkedAttr = isSame ? "" : "checked";
+        const checkedAttr = isSame ? "" : "checked";
 
-                itemRow.innerHTML = `
+        itemRow.innerHTML = `
                     <div style="display: flex; align-items: center; width: 100%;">
-                        <span class="j0n4t-pg-details-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em; color: ${hasDiff ? '#fcc419' : '#888'};" title="Toggle Details">⊞</span>
+                        <span class="j0n4t-pg-details-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em; color: ${hasDiff ? "#fcc419" : "#888"};" title="Toggle Details">⊞</span>
                         <span class="j0n4t-pg-edit-btn" style="cursor: pointer; padding-right: 8px; user-select: none; font-size: 0.9em; color: #4dabf7;" title="Edit Item">✎</span>
                         <label class="j0n4t-pg-checkbox-wrap" style="flex: 1; margin: 0;">
                         <input type="checkbox" class="j0n4t-pg-item-cb" data-group="${PresetDOM.escapeHTML(gKey)}" data-status="${status}" data-user-modified="false" value="${PresetDOM.escapeHTML(key)}" ${checkedAttr} />
@@ -263,249 +280,356 @@ const ExportUtils = {
                     ${editContainerHtml}
                     `;
 
-                const detailsBtn = /** @type {HTMLSpanElement} */ (itemRow.querySelector(".j0n4t-pg-details-btn"));
-                const detailsContainer = /** @type {HTMLDivElement} */ (itemRow.querySelector(".j0n4t-pg-details-container"));
-                detailsBtn.addEventListener("click", () => {
-                    const isHidden = detailsContainer.style.display === "none";
-                    detailsContainer.style.display = isHidden ? "block" : "none";
-                    detailsBtn.textContent = isHidden ? "⊟" : "⊞";
-                });
+        const detailsBtn = /** @type {HTMLSpanElement} */ (
+          itemRow.querySelector(".j0n4t-pg-details-btn")
+        );
+        const detailsContainer = /** @type {HTMLDivElement} */ (
+          itemRow.querySelector(".j0n4t-pg-details-container")
+        );
+        detailsBtn.addEventListener("click", () => {
+          const isHidden = detailsContainer.style.display === "none";
+          detailsContainer.style.display = isHidden ? "block" : "none";
+          detailsBtn.textContent = isHidden ? "⊟" : "⊞";
+        });
 
-                const editBtn = /** @type {HTMLSpanElement} */ (itemRow.querySelector(".j0n4t-pg-edit-btn"));
-                const editContainer = /** @type {HTMLDivElement} */ (itemRow.querySelector(".j0n4t-pg-edit-container"));
-                const saveBtn = /** @type {HTMLButtonElement} */ (editContainer.querySelector(".edit-save"));
+        const editBtn = /** @type {HTMLSpanElement} */ (
+          itemRow.querySelector(".j0n4t-pg-edit-btn")
+        );
+        const editContainer = /** @type {HTMLDivElement} */ (
+          itemRow.querySelector(".j0n4t-pg-edit-container")
+        );
+        const saveBtn = /** @type {HTMLButtonElement} */ (
+          editContainer.querySelector(".edit-save")
+        );
 
-                editBtn.addEventListener("click", () => {
-                    editContainer.style.display = editContainer.style.display === "none" ? "block" : "none";
-                });
+        editBtn.addEventListener("click", () => {
+          editContainer.style.display =
+            editContainer.style.display === "none" ? "block" : "none";
+        });
 
-                saveBtn.addEventListener("click", async () => {
-                    const newNameInput = /** @type {HTMLInputElement} */ (editContainer.querySelector(".edit-name"));
-                    const newTextInput = /** @type {HTMLTextAreaElement} */ (editContainer.querySelector(".edit-text"));
-                    const fileInput = /** @type {HTMLInputElement} */ (editContainer.querySelector(".edit-image"));
-                    const cb = /** @type {HTMLInputElement} */ (itemRow.querySelector(".j0n4t-pg-item-cb"));
+        saveBtn.addEventListener("click", async () => {
+          const newNameInput = /** @type {HTMLInputElement} */ (
+            editContainer.querySelector(".edit-name")
+          );
+          const newTextInput = /** @type {HTMLTextAreaElement} */ (
+            editContainer.querySelector(".edit-text")
+          );
+          const fileInput = /** @type {HTMLInputElement} */ (
+            editContainer.querySelector(".edit-image")
+          );
+          const cb = /** @type {HTMLInputElement} */ (
+            itemRow.querySelector(".j0n4t-pg-item-cb")
+          );
 
-                    const oldKey = cb.value;
-                    const folder = PresetDisplay.getPresetFolder(oldKey);
-                    const cleanName = newNameInput.value.trim().toLowerCase().replace(/ /g, "_");
-                    const newKey = (folder && folder !== "root_presets") ? `${folder}/${cleanName}` : cleanName;
+          const oldKey = cb.value;
+          const folder = PresetDisplay.getPresetFolder(oldKey);
+          const cleanName = newNameInput.value
+            .trim()
+            .toLowerCase()
+            .replace(/ /g, "_");
+          const newKey =
+            folder && folder !== "root_presets"
+              ? `${folder}/${cleanName}`
+              : cleanName;
 
-                    presets[oldKey].preset = newTextInput.value.trim();
-                    if (fileInput.files && fileInput.files[0]) {
-                        const dataUrl = await new Promise((res) => {
-                            const reader = new FileReader();
-                            reader.onload = e => res(/** @type {string} */(e.target?.result));
-                            if (fileInput.files) reader.readAsDataURL(fileInput.files[0]);
-                        });
-                        presets[oldKey].filename = await PresetDOM.createThumbnail(dataUrl);
+          presets[oldKey].preset = newTextInput.value.trim();
+          if (fileInput.files && fileInput.files[0]) {
+            const dataUrl = await new Promise((res) => {
+              const reader = new FileReader();
+              reader.onload = (e) =>
+                res(/** @type {string} */ (e.target?.result));
+              if (fileInput.files) reader.readAsDataURL(fileInput.files[0]);
+            });
+            presets[oldKey].filename = await PresetDOM.createThumbnail(dataUrl);
 
-                        const imgWrap = /** @type {HTMLDivElement} */ (editContainer.querySelector(".edit-img-preview-wrap"));
-                        imgWrap.innerHTML = `<span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${presets[oldKey].filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" />`;
-                        fileInput.value = "";
-                    }
+            const imgWrap = /** @type {HTMLDivElement} */ (
+              editContainer.querySelector(".edit-img-preview-wrap")
+            );
+            imgWrap.innerHTML = `<span style="display:block; font-size:0.8em; color:#888;">Current Image:</span><img src="${presets[oldKey].filename}" style="max-height: 60px; max-width: 100%; border-radius: 4px; display: block;" />`;
+            fileInput.value = "";
+          }
 
-                    if (newKey !== oldKey) {
-                        presets[newKey] = presets[oldKey];
-                        delete presets[oldKey];
-                        cb.value = newKey;
-                        const nameEL = itemRow.querySelector(".j0n4t-pg-item-name");
-                        if (nameEL) { nameEL.textContent = newNameInput.value; }
-                    }
+          if (newKey !== oldKey) {
+            presets[newKey] = presets[oldKey];
+            delete presets[oldKey];
+            cb.value = newKey;
+            const nameEL = itemRow.querySelector(".j0n4t-pg-item-name");
+            if (nameEL) {
+              nameEL.textContent = newNameInput.value;
+            }
+          }
 
-                    editContainer.style.display = "none";
-                    cb.dataset.userModified = "true";
-                    cb.checked = true;
+          editContainer.style.display = "none";
+          cb.dataset.userModified = "true";
+          cb.checked = true;
 
-                    let updatedDetailsHtml = `
+          let updatedDetailsHtml = `
             <div style="color: #bbb; margin-bottom: 4px;"><strong>Content (Edited):</strong><br/>${PresetDOM.escapeHTML(newTextInput.value)}</div>
             ${presets[newKey || oldKey].filename ? `<div style="margin-top: 6px;"><img src="${presets[newKey || oldKey].filename}" style="max-height: 80px; border-radius: 4px;" /></div>` : ""}
           `;
-                    detailsContainer.innerHTML = updatedDetailsHtml;
-                });
-
-                itemsBox.appendChild(itemRow);
-            });
-
-            const groupEditBtn = /** @type {HTMLSpanElement | null} */ (groupHeader.querySelector(".j0n4t-pg-edit-group-btn"));
-            if (groupEditBtn) {
-                groupEditBtn.addEventListener("click", async () => {
-                    const newGroupName = prompt(
-                        "Rename Folder (use / to separate nested folders):",
-                        gKey === "root_presets" ? "" : gKey
-                    );
-                    if (newGroupName === null) return;
-                    const cleanNewFolder = newGroupName.trim().split("/")
-                        .map((part) => part.trim().toLowerCase().replace(/ /g, "_"))
-                        .filter(Boolean)
-                        .join("/");
-                    if (cleanNewFolder === gKey) return;
-
-                    const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (itemsBox.querySelectorAll(".j0n4t-pg-item-cb"));
-                    const keyMoves = Array.from(checkboxes, (cb) => {
-                        const oldKey = cb.value;
-                        const itemName = PresetDisplay.getPresetName(oldKey);
-                        return { cb, oldKey, newKey: cleanNewFolder ? `${cleanNewFolder}/${itemName}` : itemName };
-                    });
-                    const movingKeys = new Set(keyMoves.map(({ oldKey }) => oldKey));
-                    if (keyMoves.some(({ newKey }) => newKey in presets && !movingKeys.has(newKey))) {
-                        await ModalUtils.alert("A preset with that name already exists in the destination folder.");
-                        return;
-                    }
-
-                    for (const { oldKey, newKey, cb } of keyMoves) {
-                        if (presets[oldKey]) {
-                            presets[newKey] = presets[oldKey];
-                            delete presets[oldKey];
-                        }
-                        cb.value = newKey;
-                        cb.dataset.group = cleanNewFolder || "root_presets";
-                    }
-
-                    if (gKey !== "root_presets" && presets[gKey]?.__color__) {
-                        if (cleanNewFolder) {
-                            presets[cleanNewFolder] = {
-                                ...(presets[cleanNewFolder] || {}),
-                                __color__: presets[gKey].__color__,
-                            };
-                        }
-                        delete presets[gKey].__color__;
-                        if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
-                    }
-
-                    const groupCb = /** @type {HTMLInputElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-cb"));
-                    if (groupCb) groupCb.dataset.group = cleanNewFolder || "root_presets";
-
-                    const groupNameEl = /** @type {HTMLElement | null} */ (groupHeader.querySelector(".j0n4t-pg-group-name"));
-                    if (groupNameEl) {
-                        const displayName = cleanNewFolder
-                            ? cleanNewFolder.split("/").map(PresetDisplay.toTitleCase).join(" › ")
-                            : "Root Presets";
-                        groupNameEl.innerHTML = `<strong>${PresetDOM.escapeHTML(displayName)}</strong> (${items.length})`;
-                    }
-                });
-            }
-
-            const collapseBtn = /** @type {HTMLSpanElement | null} */ (groupHeader.querySelector(".j0n4t-pg-collapse-btn"));
-            if (collapseBtn) {
-                collapseBtn.addEventListener("click", () => {
-                    const isCollapsed = itemsBox.style.display === "none";
-                    itemsBox.style.display = isCollapsed ? "" : "none";
-                    collapseBtn.textContent = isCollapsed ? "▼" : "▶";
-                });
-            }
-
-            groupEl.appendChild(itemsBox);
-            treeBox.appendChild(groupEl);
-        }
-
-        container.appendChild(treeBox);
-
-        const masterCb = /** @type {HTMLInputElement | null} */ (controls.querySelector("#j0n4t-pg-sel-all"));
-        const toggleAllBtn = /** @type {HTMLButtonElement | null} */ (controls.querySelector("#j0n4t-pg-toggle-collapse-all"));
-        const groupCbs = /** @type {NodeListOf<HTMLInputElement>} */ (treeBox.querySelectorAll(".j0n4t-pg-group-cb"));
-        const itemCbs = /** @type {NodeListOf<HTMLInputElement>} */ (treeBox.querySelectorAll(".j0n4t-pg-item-cb"));
-
-        let isAllCollapsed = false;
-        if (toggleAllBtn) {
-            toggleAllBtn.addEventListener("click", () => {
-                isAllCollapsed = !isAllCollapsed;
-                toggleAllBtn.textContent = isAllCollapsed ? "Expand All" : "Collapse All";
-                treeBox.querySelectorAll(".j0n4t-pg-collapse-btn").forEach((btn, idx) => {
-                    btn.textContent = isAllCollapsed ? "▶" : "▼";
-                    const box = /** @type {HTMLElement | null} */ (treeBox.querySelectorAll(".j0n4t-pg-tree-group-items")[idx]);
-                    if (box) box.style.display = isAllCollapsed ? "none" : "";
-                });
-            });
-        }
-
-        const updateGroupAndMasterStates = () => {
-            let allItemsChecked = true;
-            let anyItemChecked = false;
-
-            groupCbs.forEach((gCb) => {
-                const gKey = gCb.dataset.group || "";
-                const groupItems = /** @type {NodeListOf<HTMLInputElement>} */ (treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`));
-                const checkedCount = Array.from(groupItems).filter((c) => c.checked).length;
-                gCb.checked = (checkedCount === groupItems.length && groupItems.length > 0);
-                gCb.indeterminate = (checkedCount > 0 && checkedCount < groupItems.length);
-                if (checkedCount > 0) anyItemChecked = true;
-                if (checkedCount < groupItems.length) allItemsChecked = false;
-            });
-
-            if (masterCb) {
-                masterCb.checked = allItemsChecked;
-                masterCb.indeterminate = !allItemsChecked && anyItemChecked;
-            }
-        };
-
-        if (masterCb) {
-            masterCb.addEventListener("change", () => {
-                itemCbs.forEach((cb) => { cb.checked = masterCb.checked; cb.dataset.userModified = "true"; });
-                groupCbs.forEach((cb) => { cb.checked = masterCb.checked; cb.indeterminate = false; });
-            });
-        }
-
-        groupCbs.forEach((gCb) => {
-            gCb.addEventListener("change", () => {
-                const gKey = gCb.dataset.group || "";
-                treeBox.querySelectorAll(`.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`).forEach(cb => {
-                    const itemCb = /** @type {HTMLInputElement} */ (cb);
-                    itemCb.checked = gCb.checked;
-                    itemCb.dataset.userModified = "true";
-                });
-                updateGroupAndMasterStates();
-            });
+          detailsContainer.innerHTML = updatedDetailsHtml;
         });
 
+        itemsBox.appendChild(itemRow);
+      });
+
+      const groupEditBtn = /** @type {HTMLSpanElement | null} */ (
+        groupHeader.querySelector(".j0n4t-pg-edit-group-btn")
+      );
+      if (groupEditBtn) {
+        groupEditBtn.addEventListener("click", async () => {
+          const newGroupName = prompt(
+            "Rename Folder (use / to separate nested folders):",
+            gKey === "root_presets" ? "" : gKey,
+          );
+          if (newGroupName === null) return;
+          const cleanNewFolder = newGroupName
+            .trim()
+            .split("/")
+            .map((part) => part.trim().toLowerCase().replace(/ /g, "_"))
+            .filter(Boolean)
+            .join("/");
+          if (cleanNewFolder === gKey) return;
+
+          const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (
+            itemsBox.querySelectorAll(".j0n4t-pg-item-cb")
+          );
+          const keyMoves = Array.from(checkboxes, (cb) => {
+            const oldKey = cb.value;
+            const itemName = PresetDisplay.getPresetName(oldKey);
+            return {
+              cb,
+              oldKey,
+              newKey: cleanNewFolder
+                ? `${cleanNewFolder}/${itemName}`
+                : itemName,
+            };
+          });
+          const movingKeys = new Set(keyMoves.map(({ oldKey }) => oldKey));
+          if (
+            keyMoves.some(
+              ({ newKey }) => newKey in presets && !movingKeys.has(newKey),
+            )
+          ) {
+            await ModalUtils.alert(
+              "A preset with that name already exists in the destination folder.",
+            );
+            return;
+          }
+
+          for (const { oldKey, newKey, cb } of keyMoves) {
+            if (presets[oldKey]) {
+              presets[newKey] = presets[oldKey];
+              delete presets[oldKey];
+            }
+            cb.value = newKey;
+            cb.dataset.group = cleanNewFolder || "root_presets";
+          }
+
+          if (gKey !== "root_presets" && presets[gKey]?.__color__) {
+            if (cleanNewFolder) {
+              presets[cleanNewFolder] = {
+                ...(presets[cleanNewFolder] || {}),
+                __color__: presets[gKey].__color__,
+              };
+            }
+            delete presets[gKey].__color__;
+            if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
+          }
+
+          const groupCb = /** @type {HTMLInputElement | null} */ (
+            groupHeader.querySelector(".j0n4t-pg-group-cb")
+          );
+          if (groupCb) groupCb.dataset.group = cleanNewFolder || "root_presets";
+
+          const groupNameEl = /** @type {HTMLElement | null} */ (
+            groupHeader.querySelector(".j0n4t-pg-group-name")
+          );
+          if (groupNameEl) {
+            const displayName = cleanNewFolder
+              ? cleanNewFolder
+                  .split("/")
+                  .map(PresetDisplay.toTitleCase)
+                  .join(" › ")
+              : "Root Presets";
+            groupNameEl.innerHTML = `<strong>${PresetDOM.escapeHTML(displayName)}</strong> (${items.length})`;
+          }
+        });
+      }
+
+      const collapseBtn = /** @type {HTMLSpanElement | null} */ (
+        groupHeader.querySelector(".j0n4t-pg-collapse-btn")
+      );
+      if (collapseBtn) {
+        collapseBtn.addEventListener("click", () => {
+          const isCollapsed = itemsBox.style.display === "none";
+          itemsBox.style.display = isCollapsed ? "" : "none";
+          collapseBtn.textContent = isCollapsed ? "▼" : "▶";
+        });
+      }
+
+      groupEl.appendChild(itemsBox);
+      treeBox.appendChild(groupEl);
+    }
+
+    container.appendChild(treeBox);
+
+    const masterCb = /** @type {HTMLInputElement | null} */ (
+      controls.querySelector("#j0n4t-pg-sel-all")
+    );
+    const toggleAllBtn = /** @type {HTMLButtonElement | null} */ (
+      controls.querySelector("#j0n4t-pg-toggle-collapse-all")
+    );
+    const groupCbs = /** @type {NodeListOf<HTMLInputElement>} */ (
+      treeBox.querySelectorAll(".j0n4t-pg-group-cb")
+    );
+    const itemCbs = /** @type {NodeListOf<HTMLInputElement>} */ (
+      treeBox.querySelectorAll(".j0n4t-pg-item-cb")
+    );
+
+    let isAllCollapsed = false;
+    if (toggleAllBtn) {
+      toggleAllBtn.addEventListener("click", () => {
+        isAllCollapsed = !isAllCollapsed;
+        toggleAllBtn.textContent = isAllCollapsed
+          ? "Expand All"
+          : "Collapse All";
+        treeBox
+          .querySelectorAll(".j0n4t-pg-collapse-btn")
+          .forEach((btn, idx) => {
+            btn.textContent = isAllCollapsed ? "▶" : "▼";
+            const box = /** @type {HTMLElement | null} */ (
+              treeBox.querySelectorAll(".j0n4t-pg-tree-group-items")[idx]
+            );
+            if (box) box.style.display = isAllCollapsed ? "none" : "";
+          });
+      });
+    }
+
+    const updateGroupAndMasterStates = () => {
+      let allItemsChecked = true;
+      let anyItemChecked = false;
+
+      groupCbs.forEach((gCb) => {
+        const gKey = gCb.dataset.group || "";
+        const groupItems = /** @type {NodeListOf<HTMLInputElement>} */ (
+          treeBox.querySelectorAll(
+            `.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`,
+          )
+        );
+        const checkedCount = Array.from(groupItems).filter(
+          (c) => c.checked,
+        ).length;
+        gCb.checked =
+          checkedCount === groupItems.length && groupItems.length > 0;
+        gCb.indeterminate =
+          checkedCount > 0 && checkedCount < groupItems.length;
+        if (checkedCount > 0) anyItemChecked = true;
+        if (checkedCount < groupItems.length) allItemsChecked = false;
+      });
+
+      if (masterCb) {
+        masterCb.checked = allItemsChecked;
+        masterCb.indeterminate = !allItemsChecked && anyItemChecked;
+      }
+    };
+
+    if (masterCb) {
+      masterCb.addEventListener("change", () => {
         itemCbs.forEach((cb) => {
-            cb.addEventListener("change", () => { cb.dataset.userModified = "true"; updateGroupAndMasterStates(); });
+          cb.checked = masterCb.checked;
+          cb.dataset.userModified = "true";
         });
+        groupCbs.forEach((cb) => {
+          cb.checked = masterCb.checked;
+          cb.indeterminate = false;
+        });
+      });
+    }
 
+    groupCbs.forEach((gCb) => {
+      gCb.addEventListener("change", () => {
+        const gKey = gCb.dataset.group || "";
+        treeBox
+          .querySelectorAll(
+            `.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`,
+          )
+          .forEach((cb) => {
+            const itemCb = /** @type {HTMLInputElement} */ (cb);
+            itemCb.checked = gCb.checked;
+            itemCb.dataset.userModified = "true";
+          });
         updateGroupAndMasterStates();
+      });
+    });
 
-        return {
-            element: container,
-            getSelectedKeys: () => Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map((cb) => /** @type {HTMLInputElement} */(cb).value),
-            getPresets: () => presets,
-            applyDuplicateStrategy: (strategy) => {
-                let stateChanged = false;
-                itemCbs.forEach((cb) => {
-                    if (cb.dataset.userModified === "true") return;
-                    const status = cb.dataset.status;
-                    if (status === "new") return;
+    itemCbs.forEach((cb) => {
+      cb.addEventListener("change", () => {
+        cb.dataset.userModified = "true";
+        updateGroupAndMasterStates();
+      });
+    });
 
-                    let targetState = cb.checked;
-                    if (strategy === "skip") targetState = false;
-                    else if (strategy === "overwrite") targetState = status === "replaced";
-                    else if (strategy === "keep_both") targetState = true;
+    updateGroupAndMasterStates();
 
-                    if (cb.checked !== targetState) { cb.checked = targetState; stateChanged = true; }
-                });
-                if (stateChanged) updateGroupAndMasterStates();
-            }
-        };
-    },
+    return {
+      element: container,
+      getSelectedKeys: () =>
+        Array.from(treeBox.querySelectorAll(".j0n4t-pg-item-cb:checked")).map(
+          (cb) => /** @type {HTMLInputElement} */ (cb).value,
+        ),
+      getPresets: () => presets,
+      applyDuplicateStrategy: (strategy) => {
+        let stateChanged = false;
+        itemCbs.forEach((cb) => {
+          if (cb.dataset.userModified === "true") return;
+          const status = cb.dataset.status;
+          if (status === "new") return;
 
-    /**
-     * @param {string} defaultLibraryId
-     * @param {(config: ExportConfig) => void} onExport
-     */
-    async showExportModal(defaultLibraryId, onExport) {
-        const libraries = await PresetGalleryAPI.fetchLibraries();
-        const availableLibraries = libraries.length
-            ? libraries
-            : [{ id: PresetGalleryAPI.DEFAULT_LIBRARY_ID, name: PresetGalleryAPI.DEFAULT_LIBRARY_ID, default: true }];
-        let libraryId = availableLibraries.some((library) => library.id === defaultLibraryId)
-            ? defaultLibraryId
-            : availableLibraries[0].id;
-        let presets = await PresetGalleryAPI.getPresets(libraryId);
+          let targetState = cb.checked;
+          if (strategy === "skip") targetState = false;
+          else if (strategy === "overwrite")
+            targetState = status === "replaced";
+          else if (strategy === "keep_both") targetState = true;
 
-        const overlay = document.createElement("div");
-        overlay.className = "j0n4t-pg-modal-overlay";
+          if (cb.checked !== targetState) {
+            cb.checked = targetState;
+            stateChanged = true;
+          }
+        });
+        if (stateChanged) updateGroupAndMasterStates();
+      },
+    };
+  },
 
-        const modal = document.createElement("div");
-        modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
-        modal.innerHTML = `
+  /**
+   * @param {string} defaultLibraryId
+   * @param {(config: ExportConfig) => void} onExport
+   */
+  async showExportModal(defaultLibraryId, onExport) {
+    const libraries = await PresetGalleryAPI.fetchLibraries();
+    const availableLibraries = libraries.length
+      ? libraries
+      : [
+          {
+            id: PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+            name: PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+            default: true,
+          },
+        ];
+    let libraryId = availableLibraries.some(
+      (library) => library.id === defaultLibraryId,
+    )
+      ? defaultLibraryId
+      : availableLibraries[0].id;
+    let presets = await PresetGalleryAPI.getPresets(libraryId);
+
+    const overlay = document.createElement("div");
+    overlay.className = "j0n4t-pg-modal-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
+    modal.innerHTML = `
       <h3>📦 Export Selected Presets</h3>
       <div class="j0n4t-pg-modal-field">
         <label for="j0n4t-pg-exp-library">Library</label>
@@ -546,259 +670,329 @@ const ExportUtils = {
       </div>
     `;
 
-        overlay.appendChild(modal);
+    overlay.appendChild(modal);
 
-        const mount = /** @type {HTMLElement | null} */ (modal.querySelector("#j0n4t-pg-tree-mount"));
-        /** @type {SelectorTreeResult} */
-        let tree;
-        const renderLibrary = () => {
-            tree = ExportUtils.buildPresetSelectorTree(presets);
-            if (!mount) return;
-            const hasPresets = Object.values(presets).some((item) => item?.preset || item?.filename);
-            if (hasPresets) {
-                mount.replaceChildren(tree.element);
-            } else {
-                const emptyState = document.createElement("div");
-                emptyState.textContent = "This library has no presets to export.";
-                mount.replaceChildren(emptyState);
-            }
-        };
+    const mount = /** @type {HTMLElement | null} */ (
+      modal.querySelector("#j0n4t-pg-tree-mount")
+    );
+    /** @type {SelectorTreeResult} */
+    let tree;
+    const renderLibrary = () => {
+      tree = ExportUtils.buildPresetSelectorTree(presets);
+      if (!mount) return;
+      const hasPresets = Object.values(presets).some(
+        (item) => item?.preset || item?.filename,
+      );
+      if (hasPresets) {
+        mount.replaceChildren(tree.element);
+      } else {
+        const emptyState = document.createElement("div");
+        emptyState.textContent = "This library has no presets to export.";
+        mount.replaceChildren(emptyState);
+      }
+    };
+    renderLibrary();
+
+    const libraryEl = /** @type {HTMLSelectElement | null} */ (
+      modal.querySelector("#j0n4t-pg-exp-library")
+    );
+    if (libraryEl && mount) {
+      libraryEl.addEventListener("change", async () => {
+        const requestedLibrary = libraryEl.value;
+        const libraryPresets =
+          await PresetGalleryAPI.getPresets(requestedLibrary);
+        if (libraryEl.value !== requestedLibrary) return;
+        libraryId = requestedLibrary;
+        presets = libraryPresets;
         renderLibrary();
+      });
+    }
 
-        const libraryEl = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-exp-library"));
-        if (libraryEl && mount) {
-            libraryEl.addEventListener("change", async () => {
-                const requestedLibrary = libraryEl.value;
-                const libraryPresets = await PresetGalleryAPI.getPresets(requestedLibrary);
-                if (libraryEl.value !== requestedLibrary) return;
-                libraryId = requestedLibrary;
-                presets = libraryPresets;
-                renderLibrary();
-            });
+    const close = () => overlay.remove();
+    const cancelBtn = /** @type {HTMLButtonElement | null} */ (
+      modal.querySelector("#j0n4t-pg-exp-cancel")
+    );
+    if (cancelBtn) cancelBtn.addEventListener("click", close);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+
+    const confirmBtn = /** @type {HTMLButtonElement | null} */ (
+      modal.querySelector("#j0n4t-pg-exp-confirm")
+    );
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", async () => {
+        const selectedKeys = tree.getSelectedKeys();
+        if (!selectedKeys.length) {
+          await ModalUtils.alert(
+            "Please select at least one preset to export.",
+          );
+          return;
         }
+        const formatEl = /** @type {HTMLSelectElement | null} */ (
+          modal.querySelector("#j0n4t-pg-exp-format")
+        );
+        const modeEl = /** @type {HTMLSelectElement | null} */ (
+          modal.querySelector("#j0n4t-pg-exp-mode")
+        );
+        const colorsEl = /** @type {HTMLInputElement | null} */ (
+          modal.querySelector("#j0n4t-pg-exp-colors")
+        );
 
-        const close = () => overlay.remove();
-        const cancelBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-exp-cancel"));
-        if (cancelBtn) cancelBtn.addEventListener("click", close);
-
-        overlay.addEventListener("click", (e) => {
-            if (e.target === overlay) close();
-        });
-
-        const confirmBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-exp-confirm"));
-        if (confirmBtn) {
-            confirmBtn.addEventListener("click", async () => {
-                const selectedKeys = tree.getSelectedKeys();
-                if (!selectedKeys.length) {
-                    await ModalUtils.alert("Please select at least one preset to export.");
-                    return;
-                }
-                const formatEl = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-exp-format"));
-                const modeEl = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-exp-mode"));
-                const colorsEl = /** @type {HTMLInputElement | null} */ (modal.querySelector("#j0n4t-pg-exp-colors"));
-
-                const format = formatEl ? formatEl.value : "zip";
-                const mode = modeEl ? modeEl.value : "full";
-                const includeColors = colorsEl ? colorsEl.checked : true;
-                const editedPresets = tree.getPresets();
-                const summary = ExportUtils.getSelectionSummary(selectedKeys, editedPresets);
-                if (await ModalUtils.confirm(
-                    `📦 Export Summary (${format.toUpperCase()}):\n` +
-                    `• Total Styles Exported: ${summary.total}\n` +
-                    `• Mode: ${mode}`
-                )) {
-                    close();
-                    onExport({ format, mode, selectedKeys, includeColors, editedPresets, libraryId });
-                }
-            });
+        const format = formatEl ? formatEl.value : "zip";
+        const mode = modeEl ? modeEl.value : "full";
+        const includeColors = colorsEl ? colorsEl.checked : true;
+        const editedPresets = tree.getPresets();
+        const summary = ExportUtils.getSelectionSummary(
+          selectedKeys,
+          editedPresets,
+        );
+        if (
+          await ModalUtils.confirm(
+            `📦 Export Summary (${format.toUpperCase()}):\n` +
+              `• Total Styles Exported: ${summary.total}\n` +
+              `• Mode: ${mode}`,
+          )
+        ) {
+          close();
+          onExport({
+            format,
+            mode,
+            selectedKeys,
+            includeColors,
+            editedPresets,
+            libraryId,
+          });
         }
+      });
+    }
 
-        document.body.appendChild(overlay);
-    },
+    document.body.appendChild(overlay);
+  },
+
+  /**
+   * @param {ExportConfig} config
+   */
+  async exportPresets({
+    format = "zip",
+    mode = "full",
+    selectedKeys = null,
+    includeColors = true,
+    editedPresets = {},
+  }) {
+    /** @type {PresetCache} */
+    let presets = editedPresets;
 
     /**
-     * @param {ExportConfig} config 
+     * @param {PresetCache} [presetMap]
+     * @param {string[] | null} [keys]
+     * @returns {Set<string>}
      */
-    async exportPresets({ format = "zip", mode = "full", selectedKeys = null, includeColors = true, editedPresets = {} }) {
-        /** @type {PresetCache} */
-        let presets = editedPresets;
+    const getActiveFolders = (presetMap = {}, keys = null) => {
+      const active = new Set();
+      const targetKeys = keys || Object.keys(presetMap);
+      for (const k of targetKeys) {
+        const item = presetMap?.[k];
+        if (
+          item &&
+          ((typeof item.preset === "string" && item.preset.trim().length > 0) ||
+            item.filename)
+        ) {
+          const parts = k.split("/");
+          while (parts.length > 1) {
+            parts.pop();
+            active.add(parts.join("/"));
+          }
+        }
+      }
+      return active;
+    };
 
-        /**
-         * @param {PresetCache} [presetMap]
-         * @param {string[] | null} [keys]
-         * @returns {Set<string>}
-         */
-        const getActiveFolders = (presetMap = {}, keys = null) => {
-            const active = new Set();
-            const targetKeys = keys || Object.keys(presetMap);
-            for (const k of targetKeys) {
-                const item = presetMap?.[k];
-                if (item && ((typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename)) {
-                    const parts = k.split("/");
-                    while (parts.length > 1) {
-                        parts.pop();
-                        active.add(parts.join("/"));
-                    }
-                }
-            }
-            return active;
-        };
+    if (selectedKeys && Array.isArray(selectedKeys)) {
+      /** @type {PresetCache} */
+      const filtered = {};
+      for (const k of selectedKeys) {
+        if (presets?.[k]) {
+          const itemCopy = { ...presets[k] };
+          if (!includeColors) delete itemCopy.__color__;
+          filtered[k] = itemCopy;
+        }
+      }
+      if (includeColors) {
+        const activeFolders = getActiveFolders(presets, selectedKeys);
+        for (const folder of activeFolders) {
+          if (presets?.[folder] && presets[folder].__color__) {
+            filtered[folder] = {
+              ...(filtered[folder] || {}),
+              __color__: presets[folder].__color__,
+            };
+          }
+        }
+      }
+      presets = filtered;
+    } else {
+      const activeFolders = getActiveFolders(presets);
+      /** @type {PresetCache} */
+      const filtered = {};
+      for (const [k, item] of Object.entries(presets)) {
+        if (!item) continue;
+        const hasContent =
+          (typeof item.preset === "string" && item.preset.trim().length > 0) ||
+          item.filename;
+        if (hasContent) {
+          const copy = { ...item };
+          if (!includeColors) delete copy.__color__;
+          filtered[k] = copy;
+        } else if (includeColors && item.__color__ && activeFolders.has(k)) {
+          filtered[k] = { __color__: item.__color__ };
+        }
+      }
+      presets = filtered;
+    }
 
-        if (selectedKeys && Array.isArray(selectedKeys)) {
-            /** @type {PresetCache} */
-            const filtered = {};
-            for (const k of selectedKeys) {
-                if (presets?.[k]) {
-                    const itemCopy = { ...presets[k] };
-                    if (!includeColors) delete itemCopy.__color__;
-                    filtered[k] = itemCopy;
-                }
+    presets = Object.keys(presets)
+      .sort()
+      .reduce((acc, key) => {
+        acc[key] = presets[key];
+        return acc;
+      }, /** @type {PresetCache} */ ({}));
+
+    if (format === "zip") {
+      try {
+        const JSZip = await loadJSZip();
+        const zip = new JSZip();
+
+        for (const [key, item] of Object.entries(presets)) {
+          if (item.preset) {
+            zip.file(`${key}.txt`, item.preset || "");
+
+            if (mode !== "preset-only" && item.filename) {
+              const parsed = PresetLogic.parseDataURL(item.filename);
+              if (parsed) {
+                zip.file(`${key}.${parsed.ext}`, parsed.base64, {
+                  base64: true,
+                });
+              }
             }
-            if (includeColors) {
-                const activeFolders = getActiveFolders(presets, selectedKeys);
-                for (const folder of activeFolders) {
-                    if (presets?.[folder] && presets[folder].__color__) {
-                        filtered[folder] = { ...(filtered[folder] || {}), __color__: presets[folder].__color__ };
-                    }
-                }
-            }
-            presets = filtered;
-        } else {
-            const activeFolders = getActiveFolders(presets);
-            /** @type {PresetCache} */
-            const filtered = {};
-            for (const [k, item] of Object.entries(presets)) {
-                if (!item) continue;
-                const hasContent = (typeof item.preset === "string" && item.preset.trim().length > 0) || item.filename;
-                if (hasContent) {
-                    const copy = { ...item };
-                    if (!includeColors) delete copy.__color__;
-                    filtered[k] = copy;
-                } else if (includeColors && item.__color__ && activeFolders.has(k)) {
-                    filtered[k] = { __color__: item.__color__ };
-                }
-            }
-            presets = filtered;
+          }
+
+          if (includeColors && item.__color__) {
+            zip.file(`${key}/__color__.txt`, item.__color__);
+          }
         }
 
-        presets = Object.keys(presets).sort().reduce((acc, key) => {
-            acc[key] = presets[key];
-            return acc;
-        }, /** @type {PresetCache} */({}));
-
-        if (format === "zip") {
-            try {
-                const JSZip = await loadJSZip();
-                const zip = new JSZip();
-
-                for (const [key, item] of Object.entries(presets)) {
-                    if (item.preset) {
-                        zip.file(`${key}.txt`, item.preset || "");
-
-                        if (mode !== "preset-only" && item.filename) {
-                            const parsed = PresetLogic.parseDataURL(item.filename);
-                            if (parsed) {
-                                zip.file(`${key}.${parsed.ext}`, parsed.base64, { base64: true });
-                            }
-                        }
-                    }
-
-                    if (includeColors && item.__color__) {
-                        zip.file(`${key}/__color__.txt`, item.__color__);
-                    }
-                }
-
-                const blob = await zip.generateAsync({ type: "blob" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `presets_${mode}.zip`;
-                a.click();
-                URL.revokeObjectURL(url);
-            } catch (err) {
-                await ModalUtils.alert("ZIP export failed: " + /** @type {Error} */ (err).message);
-            }
-            return;
-        }
-
-        let dataStr;
-        let mimeType;
-        let ext;
-
-        if (mode === "preset-only") {
-            const nested = NestedPresetUtils.flatToNested(presets, true, includeColors);
-            if (format === "yaml") {
-                dataStr = YAMLUtils.stringify(nested);
-                mimeType = "text/yaml";
-                ext = "yaml";
-            } else {
-                dataStr = JSON.stringify(nested, null, 2);
-                mimeType = "application/json";
-                ext = "json";
-            }
-        } else {
-            /** @type {PresetCache} */
-            const exportData = {};
-            for (const [key, item] of Object.entries(presets)) {
-                if (item.preset) {
-                    /** @type {PresetCacheItem} */
-                    const exportItem = {
-                        preset: item.preset,
-                        filename: item.filename,
-                    };
-                    if (includeColors && item.__color__) {
-                        exportItem.__color__ = item.__color__;
-                    }
-                    exportData[key] = exportItem;
-                } else if (includeColors && item.__color__) {
-                    exportData[key] = { __color__: item.__color__ };
-                }
-            }
-            if (format === "yaml") {
-                const nestedFull = NestedPresetUtils.flatToNested(exportData, false, includeColors);
-                dataStr = YAMLUtils.stringify(nestedFull);
-                mimeType = "text/yaml";
-                ext = "yaml";
-            } else {
-                dataStr = JSON.stringify(exportData, null, 2);
-                mimeType = "application/json";
-                ext = "json";
-            }
-        }
-
-        const blob = new Blob([dataStr], { type: mimeType });
+        const blob = await zip.generateAsync({ type: "blob" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `presets_${mode}.${ext}`;
+        a.download = `presets_${mode}.zip`;
         a.click();
         URL.revokeObjectURL(url);
-    },
+      } catch (err) {
+        await ModalUtils.alert(
+          "ZIP export failed: " + /** @type {Error} */ (err).message,
+        );
+      }
+      return;
+    }
 
-    /**
-     * @param {PresetCache} importedPresets
-     * @param {string} defaultLibraryId the library to preselect
-     * @param {(result: { selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }) => void} onConfirm
-     */
-    async showImportModal(importedPresets, defaultLibraryId, onConfirm) {
-        const libraries = await PresetGalleryAPI.fetchLibraries();
-        const availableLibraries = libraries.length
-            ? libraries
-            : [{ id: PresetGalleryAPI.DEFAULT_LIBRARY_ID, name: PresetGalleryAPI.DEFAULT_LIBRARY_ID, default: true }];
-        let libraryId = availableLibraries.some((library) => library.id === defaultLibraryId)
-            ? defaultLibraryId
-            : availableLibraries[0].id;
-        let currentPresets = await PresetGalleryAPI.getPresets(libraryId);
-        const overlay = document.createElement("div");
-        overlay.className = "j0n4t-pg-modal-overlay";
+    let dataStr;
+    let mimeType;
+    let ext;
 
-        const modal = document.createElement("div");
-        modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
+    if (mode === "preset-only") {
+      const nested = NestedPresetUtils.flatToNested(
+        presets,
+        true,
+        includeColors,
+      );
+      if (format === "yaml") {
+        dataStr = YAMLUtils.stringify(nested);
+        mimeType = "text/yaml";
+        ext = "yaml";
+      } else {
+        dataStr = JSON.stringify(nested, null, 2);
+        mimeType = "application/json";
+        ext = "json";
+      }
+    } else {
+      /** @type {PresetCache} */
+      const exportData = {};
+      for (const [key, item] of Object.entries(presets)) {
+        if (item.preset) {
+          /** @type {PresetCacheItem} */
+          const exportItem = {
+            preset: item.preset,
+            filename: item.filename,
+          };
+          if (includeColors && item.__color__) {
+            exportItem.__color__ = item.__color__;
+          }
+          exportData[key] = exportItem;
+        } else if (includeColors && item.__color__) {
+          exportData[key] = { __color__: item.__color__ };
+        }
+      }
+      if (format === "yaml") {
+        const nestedFull = NestedPresetUtils.flatToNested(
+          exportData,
+          false,
+          includeColors,
+        );
+        dataStr = YAMLUtils.stringify(nestedFull);
+        mimeType = "text/yaml";
+        ext = "yaml";
+      } else {
+        dataStr = JSON.stringify(exportData, null, 2);
+        mimeType = "application/json";
+        ext = "json";
+      }
+    }
 
-        const duplicates = Object.keys(importedPresets).filter((k) => k in currentPresets && importedPresets[k].preset);
-        const createLibraryOption = "__create_new_library__";
+    const blob = new Blob([dataStr], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `presets_${mode}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 
-        modal.innerHTML = `
+  /**
+   * @param {PresetCache} importedPresets
+   * @param {string} defaultLibraryId the library to preselect
+   * @param {(result: { selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }) => void} onConfirm
+   */
+  async showImportModal(importedPresets, defaultLibraryId, onConfirm) {
+    const libraries = await PresetGalleryAPI.fetchLibraries();
+    const availableLibraries = libraries.length
+      ? libraries
+      : [
+          {
+            id: PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+            name: PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+            default: true,
+          },
+        ];
+    let libraryId = availableLibraries.some(
+      (library) => library.id === defaultLibraryId,
+    )
+      ? defaultLibraryId
+      : availableLibraries[0].id;
+    let currentPresets = await PresetGalleryAPI.getPresets(libraryId);
+    const overlay = document.createElement("div");
+    overlay.className = "j0n4t-pg-modal-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
+
+    const duplicates = Object.keys(importedPresets).filter(
+      (k) => k in currentPresets && importedPresets[k].preset,
+    );
+    const createLibraryOption = "__create_new_library__";
+
+    modal.innerHTML = `
       <h3>📥 Import Presets</h3>
       <div class="j0n4t-pg-modal-field">
         <label for="j0n4t-pg-imp-library">Import into library</label>
@@ -831,271 +1025,357 @@ const ExportUtils = {
       </div>
     `;
 
-        overlay.appendChild(modal);
+    overlay.appendChild(modal);
 
-        let tree = ExportUtils.buildPresetSelectorTree(importedPresets, currentPresets);
-        const mount = /** @type {HTMLElement | null} */ (modal.querySelector("#j0n4t-pg-tree-mount"));
-        if (mount) mount.appendChild(tree.element);
+    let tree = ExportUtils.buildPresetSelectorTree(
+      importedPresets,
+      currentPresets,
+    );
+    const mount = /** @type {HTMLElement | null} */ (
+      modal.querySelector("#j0n4t-pg-tree-mount")
+    );
+    if (mount) mount.appendChild(tree.element);
 
-        const libraryEl = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-imp-library"));
-        const duplicateLabel = modal.querySelector("#j0n4t-pg-dup-label");
-        if (libraryEl && mount) {
-            libraryEl.addEventListener("change", async () => {
-                const requestedLibrary = libraryEl.value;
-                if (requestedLibrary === createLibraryOption) {
-                    const newLibraryId = await ModalUtils.prompt(
-                        "Create New Library",
-                        ""
-                    );
-                    const validId = newLibraryId && /^[A-Za-z0-9_-]+$/.test(newLibraryId)
-                        && !["main", "default"].includes(newLibraryId.toLowerCase());
-                    const alreadyExists = newLibraryId && availableLibraries.some(
-                        (library) => library.id.toLowerCase() === newLibraryId.toLowerCase()
-                    );
-                    if (!validId || alreadyExists) {
-                        if (newLibraryId !== null) {
-                            await ModalUtils.alert(alreadyExists
-                                ? "A library with that ID already exists."
-                                : "Use only letters, numbers, underscores, and hyphens. The ID cannot be main or default.");
-                        }
-                        libraryEl.value = libraryId;
-                        return;
-                    }
-
-                    libraryId = newLibraryId;
-                    currentPresets = {};
-                    const option = document.createElement("option");
-                    option.value = newLibraryId;
-                    option.textContent = newLibraryId;
-                    libraryEl.insertBefore(option, libraryEl.querySelector(`option[value="${createLibraryOption}"]`));
-                    libraryEl.value = newLibraryId;
-                    if (duplicateLabel) duplicateLabel.textContent = "Handling Duplicate Presets (0 detected)";
-                    tree = ExportUtils.buildPresetSelectorTree(importedPresets, currentPresets);
-                    mount.replaceChildren(tree.element);
-                    return;
-                }
-                const libraryPresets = await PresetGalleryAPI.getPresets(requestedLibrary);
-                if (libraryEl.value !== requestedLibrary) return;
-                libraryId = requestedLibrary;
-                currentPresets = libraryPresets;
-                const duplicateCount = Object.keys(importedPresets).filter(
-                    (key) => key in currentPresets && importedPresets[key].preset
-                ).length;
-                if (duplicateLabel) {
-                    duplicateLabel.textContent = `Handling Duplicate Presets (${duplicateCount} detected)`;
-                }
-                tree = ExportUtils.buildPresetSelectorTree(importedPresets, currentPresets);
-                mount.replaceChildren(tree.element);
-            });
-        }
-
-        const dupSelect = /** @type {HTMLSelectElement | null} */ (modal.querySelector("#j0n4t-pg-dup-strategy"));
-        if (dupSelect) {
-            dupSelect.addEventListener("change", (e) => {
-                const target = /** @type {HTMLSelectElement} */ (e.target);
-                tree.applyDuplicateStrategy(target.value);
-            });
-        }
-
-        const close = () => overlay.remove();
-        const cancelBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-imp-cancel"));
-        if (cancelBtn) cancelBtn.addEventListener("click", close);
-
-        overlay.addEventListener("click", (e) => {
-            if (e.target === overlay) close();
-        });
-
-        const confirmBtn = /** @type {HTMLButtonElement | null} */ (modal.querySelector("#j0n4t-pg-imp-confirm"));
-        if (confirmBtn) {
-            confirmBtn.addEventListener("click", async () => {
-                const selectedKeys = tree.getSelectedKeys();
-                if (!selectedKeys.length) {
-                    await ModalUtils.alert("Please select at least one preset to import.");
-                    return;
-                }
-                const duplicateStrategy = dupSelect ? dupSelect.value : "overwrite";
-                const colorsEl = /** @type {HTMLInputElement | null} */ (modal.querySelector("#j0n4t-pg-imp-colors"));
-                const importColors = colorsEl ? colorsEl.checked : true;
-                const editedPresets = tree.getPresets();
-                const summary = ExportUtils.getSelectionSummary(selectedKeys, editedPresets, currentPresets);
-                if (await ModalUtils.confirm(
-                    `📊 Import Summary:\n` +
-                    `• Total Selected: ${summary.total}\n` +
-                    `• New Styles: ${summary.newCount}\n` +
-                    `• Replaced Styles: ${summary.replacedCount}\n` +
-                    `• Unchanged Styles: ${summary.sameCount}`
-                )) {
-                    close();
-                    onConfirm({ selectedKeys, duplicateStrategy, importColors, editedPresets, libraryId });
-                }
-            });
-        }
-
-        document.body.appendChild(overlay);
-    },
-
-    /**
-     * @param {File} file
-     * @returns {Promise<{ success: boolean }>}
-     */
-    /**
-     * @param {File} file
-     * @param {string} defaultLibraryId the library to preselect
-     */
-    async importFile(file, defaultLibraryId) {
-        /** @type {PresetCache} */
-        let importedPresets = {};
-
-        if (file.name.toLowerCase().endsWith(".zip")) {
-            try {
-                const JSZip = await loadJSZip();
-                const zip = await JSZip.loadAsync(file);
-                /** @type {Record<string, any>} */
-                const txtFiles = {};
-                /** @type {Record<string, { entry: any, ext: string }>} */
-                const imgFiles = {};
-
-                for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-                    const entry = /** @type {any} */ (zipEntry);
-                    if (entry.dir) continue;
-                    const normalizedPath = relativePath.replace(/\\/g, "/").replace(/^[/\\]+/, "");
-                    if (normalizedPath.endsWith("/__color__.txt") || normalizedPath === "__color__.txt") {
-                        const groupKey = normalizedPath.replace(/\/?__color__\.txt$/i, "").toLowerCase().replace(/ /g, "_");
-                        const colorVal = (await entry.async("string")).trim();
-                        if (groupKey) {
-                            importedPresets[groupKey] = { ...(importedPresets[groupKey] || {}), __color__: colorVal };
-                        }
-                        continue;
-                    }
-                    const lastDot = normalizedPath.lastIndexOf(".");
-                    if (lastDot === -1) continue;
-                    const ext = normalizedPath.slice(lastDot + 1).toLowerCase();
-                    const keyPath = normalizedPath.slice(0, lastDot);
-                    if (ext === "txt") {
-                        txtFiles[keyPath] = entry;
-                    } else if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) {
-                        imgFiles[keyPath] = { entry, ext };
-                    }
-                }
-
-                for (const [key, txtEntry] of Object.entries(txtFiles)) {
-                    const presetText = await txtEntry.async("string");
-                    let filename;
-                    if (imgFiles[key]) {
-                        const { entry, ext } = imgFiles[key];
-                        const base64 = await entry.async("base64");
-                        const mime = PresetLogic.getMimeType(ext);
-                        const dataUrl = `data:${mime};base64,${base64}`;
-                        filename = await PresetDOM.createThumbnail(dataUrl);
-                    }
-                    const cleanKey = key.toLowerCase().replace(/ /g, "_");
-                    if (!cleanKey) continue;
-                    importedPresets[cleanKey] = {
-                        ...(importedPresets[cleanKey] || {}),
-                        preset: presetText,
-                        filename: filename,
-                    };
-                }
-            } catch (err) {
-                await ModalUtils.alert("Failed to parse ZIP file: " + /** @type {Error} */ (err).message);
-                return { success: false };
+    const libraryEl = /** @type {HTMLSelectElement | null} */ (
+      modal.querySelector("#j0n4t-pg-imp-library")
+    );
+    const duplicateLabel = modal.querySelector("#j0n4t-pg-dup-label");
+    if (libraryEl && mount) {
+      libraryEl.addEventListener("change", async () => {
+        const requestedLibrary = libraryEl.value;
+        if (requestedLibrary === createLibraryOption) {
+          const newLibraryId = await ModalUtils.prompt(
+            "Create New Library",
+            "",
+          );
+          const validId =
+            newLibraryId &&
+            /^[A-Za-z0-9_-]+$/.test(newLibraryId) &&
+            !["main", "default"].includes(newLibraryId.toLowerCase());
+          const alreadyExists =
+            newLibraryId &&
+            availableLibraries.some(
+              (library) =>
+                library.id.toLowerCase() === newLibraryId.toLowerCase(),
+            );
+          if (!validId || alreadyExists) {
+            if (newLibraryId !== null) {
+              await ModalUtils.alert(
+                alreadyExists
+                  ? "A library with that ID already exists."
+                  : "Use only letters, numbers, underscores, and hyphens. The ID cannot be main or default.",
+              );
             }
-        } else {
-            try {
-                const text = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve(/** @type {string} */(e.target?.result));
-                    reader.onerror = reject;
-                    reader.readAsText(file);
-                });
-                let parsedData = null;
-                if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
-                    parsedData = YAMLUtils.parse(/** @type {string} */(text));
-                } else {
-                    parsedData = JSON.parse(/** @type {string} */(text));
-                }
-                if (typeof parsedData !== "object" || parsedData === null) {
-                    throw new Error("Invalid file structure");
-                }
-                importedPresets = NestedPresetUtils.nestedToFlat(parsedData);
-                for (const item of Object.values(importedPresets)) {
-                    if (item && item.filename && item.filename.startsWith("data:image/")) {
-                        item.filename = await PresetDOM.createThumbnail(item.filename);
-                    }
-                }
-            } catch (err) {
-                await ModalUtils.alert("Failed to parse file: " + /** @type {Error} */ (err).message);
-                return { success: false };
-            }
+            libraryEl.value = libraryId;
+            return;
+          }
+
+          libraryId = newLibraryId;
+          currentPresets = {};
+          const option = document.createElement("option");
+          option.value = newLibraryId;
+          option.textContent = newLibraryId;
+          libraryEl.insertBefore(
+            option,
+            libraryEl.querySelector(`option[value="${createLibraryOption}"]`),
+          );
+          libraryEl.value = newLibraryId;
+          if (duplicateLabel)
+            duplicateLabel.textContent =
+              "Handling Duplicate Presets (0 detected)";
+          tree = ExportUtils.buildPresetSelectorTree(
+            importedPresets,
+            currentPresets,
+          );
+          mount.replaceChildren(tree.element);
+          return;
         }
-
-        if (Object.keys(importedPresets).length === 0) {
-            await ModalUtils.alert("No valid presets found in the imported file.");
-            return { success: false };
+        const libraryPresets =
+          await PresetGalleryAPI.getPresets(requestedLibrary);
+        if (libraryEl.value !== requestedLibrary) return;
+        libraryId = requestedLibrary;
+        currentPresets = libraryPresets;
+        const duplicateCount = Object.keys(importedPresets).filter(
+          (key) => key in currentPresets && importedPresets[key].preset,
+        ).length;
+        if (duplicateLabel) {
+          duplicateLabel.textContent = `Handling Duplicate Presets (${duplicateCount} detected)`;
         }
-
-        return new Promise((resolve) => {
-            ExportUtils.showImportModal(
-                importedPresets,
-                defaultLibraryId,
-                async (/** @type {{ selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }} */ { selectedKeys, duplicateStrategy, importColors, editedPresets, libraryId }) => {
-                const currentPresets = await PresetGalleryAPI.getPresets(libraryId);
-                const importedActiveFolders = new Set();
-
-                for (const key of selectedKeys) {
-                    const item = editedPresets[key] || importedPresets[key];
-                    if (!item || (!item.preset && !item.filename)) continue;
-
-                    let targetKey = key;
-                    if (targetKey in currentPresets && currentPresets[targetKey].preset) {
-                        if (duplicateStrategy === "skip") {
-                            continue;
-                        } else if (duplicateStrategy === "keep_both") {
-                            let copyIndex = 1;
-                            const parts = key.split("/");
-                            const baseName = parts.pop();
-                            const folderPrefix = parts.length ? parts.join("/") + "/" : "";
-                            while (`${folderPrefix}${baseName}_copy_${copyIndex}` in currentPresets && currentPresets[`${folderPrefix}${baseName}_copy_${copyIndex}`].preset) {
-                                copyIndex++;
-                            }
-                            targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
-                        }
-                    }
-
-                    const newItem = { ...item };
-                    if (!importColors) delete newItem.__color__;
-                    currentPresets[targetKey] = newItem;
-
-                    const targetParts = targetKey.split("/");
-                    while (targetParts.length > 1) {
-                        targetParts.pop();
-                        importedActiveFolders.add(targetParts.join("/"));
-                    }
-
-                    const origParts = key.split("/");
-                    while (origParts.length > 1) {
-                        origParts.pop();
-                        importedActiveFolders.add(origParts.join("/"));
-                    }
-                }
-
-                if (importColors) {
-                    for (const folderKey of importedActiveFolders) {
-                        const sourceItem = editedPresets[folderKey] || importedPresets[folderKey];
-                        if (sourceItem && sourceItem.__color__) {
-                            currentPresets[folderKey] = {
-                                ...(currentPresets[folderKey] || {}),
-                                __color__: sourceItem.__color__
-                            };
-                        }
-                    }
-                }
-
-                await PresetGalleryAPI.savePresets(currentPresets, libraryId);
-                resolve({ success: true });
-            });
-        });
+        tree = ExportUtils.buildPresetSelectorTree(
+          importedPresets,
+          currentPresets,
+        );
+        mount.replaceChildren(tree.element);
+      });
     }
+
+    const dupSelect = /** @type {HTMLSelectElement | null} */ (
+      modal.querySelector("#j0n4t-pg-dup-strategy")
+    );
+    if (dupSelect) {
+      dupSelect.addEventListener("change", (e) => {
+        const target = /** @type {HTMLSelectElement} */ (e.target);
+        tree.applyDuplicateStrategy(target.value);
+      });
+    }
+
+    const close = () => overlay.remove();
+    const cancelBtn = /** @type {HTMLButtonElement | null} */ (
+      modal.querySelector("#j0n4t-pg-imp-cancel")
+    );
+    if (cancelBtn) cancelBtn.addEventListener("click", close);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+
+    const confirmBtn = /** @type {HTMLButtonElement | null} */ (
+      modal.querySelector("#j0n4t-pg-imp-confirm")
+    );
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", async () => {
+        const selectedKeys = tree.getSelectedKeys();
+        if (!selectedKeys.length) {
+          await ModalUtils.alert(
+            "Please select at least one preset to import.",
+          );
+          return;
+        }
+        const duplicateStrategy = dupSelect ? dupSelect.value : "overwrite";
+        const colorsEl = /** @type {HTMLInputElement | null} */ (
+          modal.querySelector("#j0n4t-pg-imp-colors")
+        );
+        const importColors = colorsEl ? colorsEl.checked : true;
+        const editedPresets = tree.getPresets();
+        const summary = ExportUtils.getSelectionSummary(
+          selectedKeys,
+          editedPresets,
+          currentPresets,
+        );
+        if (
+          await ModalUtils.confirm(
+            `📊 Import Summary:\n` +
+              `• Total Selected: ${summary.total}\n` +
+              `• New Styles: ${summary.newCount}\n` +
+              `• Replaced Styles: ${summary.replacedCount}\n` +
+              `• Unchanged Styles: ${summary.sameCount}`,
+          )
+        ) {
+          close();
+          onConfirm({
+            selectedKeys,
+            duplicateStrategy,
+            importColors,
+            editedPresets,
+            libraryId,
+          });
+        }
+      });
+    }
+
+    document.body.appendChild(overlay);
+  },
+
+  /**
+   * @param {File} file
+   * @returns {Promise<{ success: boolean }>}
+   */
+  /**
+   * @param {File} file
+   * @param {string} defaultLibraryId the library to preselect
+   */
+  async importFile(file, defaultLibraryId) {
+    /** @type {PresetCache} */
+    let importedPresets = {};
+
+    if (file.name.toLowerCase().endsWith(".zip")) {
+      try {
+        const JSZip = await loadJSZip();
+        const zip = await JSZip.loadAsync(file);
+        /** @type {Record<string, any>} */
+        const txtFiles = {};
+        /** @type {Record<string, { entry: any, ext: string }>} */
+        const imgFiles = {};
+
+        for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+          const entry = /** @type {any} */ (zipEntry);
+          if (entry.dir) continue;
+          const normalizedPath = relativePath
+            .replace(/\\/g, "/")
+            .replace(/^[/\\]+/, "");
+          if (
+            normalizedPath.endsWith("/__color__.txt") ||
+            normalizedPath === "__color__.txt"
+          ) {
+            const groupKey = normalizedPath
+              .replace(/\/?__color__\.txt$/i, "")
+              .toLowerCase()
+              .replace(/ /g, "_");
+            const colorVal = (await entry.async("string")).trim();
+            if (groupKey) {
+              importedPresets[groupKey] = {
+                ...(importedPresets[groupKey] || {}),
+                __color__: colorVal,
+              };
+            }
+            continue;
+          }
+          const lastDot = normalizedPath.lastIndexOf(".");
+          if (lastDot === -1) continue;
+          const ext = normalizedPath.slice(lastDot + 1).toLowerCase();
+          const keyPath = normalizedPath.slice(0, lastDot);
+          if (ext === "txt") {
+            txtFiles[keyPath] = entry;
+          } else if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) {
+            imgFiles[keyPath] = { entry, ext };
+          }
+        }
+
+        for (const [key, txtEntry] of Object.entries(txtFiles)) {
+          const presetText = await txtEntry.async("string");
+          let filename;
+          if (imgFiles[key]) {
+            const { entry, ext } = imgFiles[key];
+            const base64 = await entry.async("base64");
+            const mime = PresetLogic.getMimeType(ext);
+            const dataUrl = `data:${mime};base64,${base64}`;
+            filename = await PresetDOM.createThumbnail(dataUrl);
+          }
+          const cleanKey = key.toLowerCase().replace(/ /g, "_");
+          if (!cleanKey) continue;
+          importedPresets[cleanKey] = {
+            ...(importedPresets[cleanKey] || {}),
+            preset: presetText,
+            filename: filename,
+          };
+        }
+      } catch (err) {
+        await ModalUtils.alert(
+          "Failed to parse ZIP file: " + /** @type {Error} */ (err).message,
+        );
+        return { success: false };
+      }
+    } else {
+      try {
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) =>
+            resolve(/** @type {string} */ (e.target?.result));
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+        let parsedData = null;
+        if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
+          parsedData = YAMLUtils.parse(/** @type {string} */ (text));
+        } else {
+          parsedData = JSON.parse(/** @type {string} */ (text));
+        }
+        if (typeof parsedData !== "object" || parsedData === null) {
+          throw new Error("Invalid file structure");
+        }
+        importedPresets = NestedPresetUtils.nestedToFlat(parsedData);
+        for (const item of Object.values(importedPresets)) {
+          if (
+            item &&
+            item.filename &&
+            item.filename.startsWith("data:image/")
+          ) {
+            item.filename = await PresetDOM.createThumbnail(item.filename);
+          }
+        }
+      } catch (err) {
+        await ModalUtils.alert(
+          "Failed to parse file: " + /** @type {Error} */ (err).message,
+        );
+        return { success: false };
+      }
+    }
+
+    if (Object.keys(importedPresets).length === 0) {
+      await ModalUtils.alert("No valid presets found in the imported file.");
+      return { success: false };
+    }
+
+    return new Promise((resolve) => {
+      ExportUtils.showImportModal(
+        importedPresets,
+        defaultLibraryId,
+        async (
+          /** @type {{ selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }} */ {
+            selectedKeys,
+            duplicateStrategy,
+            importColors,
+            editedPresets,
+            libraryId,
+          },
+        ) => {
+          const currentPresets = await PresetGalleryAPI.getPresets(libraryId);
+          const importedActiveFolders = new Set();
+
+          for (const key of selectedKeys) {
+            const item = editedPresets[key] || importedPresets[key];
+            if (!item || (!item.preset && !item.filename)) continue;
+
+            let targetKey = key;
+            if (
+              targetKey in currentPresets &&
+              currentPresets[targetKey].preset
+            ) {
+              if (duplicateStrategy === "skip") {
+                continue;
+              } else if (duplicateStrategy === "keep_both") {
+                let copyIndex = 1;
+                const parts = key.split("/");
+                const baseName = parts.pop();
+                const folderPrefix = parts.length ? parts.join("/") + "/" : "";
+                while (
+                  `${folderPrefix}${baseName}_copy_${copyIndex}` in
+                    currentPresets &&
+                  currentPresets[`${folderPrefix}${baseName}_copy_${copyIndex}`]
+                    .preset
+                ) {
+                  copyIndex++;
+                }
+                targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
+              }
+            }
+
+            const newItem = { ...item };
+            if (!importColors) delete newItem.__color__;
+            currentPresets[targetKey] = newItem;
+
+            const targetParts = targetKey.split("/");
+            while (targetParts.length > 1) {
+              targetParts.pop();
+              importedActiveFolders.add(targetParts.join("/"));
+            }
+
+            const origParts = key.split("/");
+            while (origParts.length > 1) {
+              origParts.pop();
+              importedActiveFolders.add(origParts.join("/"));
+            }
+          }
+
+          if (importColors) {
+            for (const folderKey of importedActiveFolders) {
+              const sourceItem =
+                editedPresets[folderKey] || importedPresets[folderKey];
+              if (sourceItem && sourceItem.__color__) {
+                currentPresets[folderKey] = {
+                  ...(currentPresets[folderKey] || {}),
+                  __color__: sourceItem.__color__,
+                };
+              }
+            }
+          }
+
+          await PresetGalleryAPI.savePresets(currentPresets, libraryId);
+          resolve({ success: true });
+        },
+      );
+    });
+  },
 };
 
 export default ExportUtils;

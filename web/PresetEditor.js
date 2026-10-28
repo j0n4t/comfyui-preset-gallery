@@ -44,8 +44,14 @@ export default class PresetEditor {
     this.currentMode = "new";
     this.isSaved = true;
 
-    PresetDOM.injectStyles("j0n4t-pg-editor-btn-styles", PresetEditor.EDITOR_BTN_STYLES);
-    PresetDOM.injectStyles("j0n4t-pg-editor-preview-styles", PresetEditor.EDITOR_PREVIEW_STYLES);
+    PresetDOM.injectStyles(
+      "j0n4t-pg-editor-btn-styles",
+      PresetEditor.EDITOR_BTN_STYLES,
+    );
+    PresetDOM.injectStyles(
+      "j0n4t-pg-editor-preview-styles",
+      PresetEditor.EDITOR_PREVIEW_STYLES,
+    );
 
     this.rawPresetManager = new RawTextareaManager(
       this.dom.inpPreset,
@@ -56,7 +62,8 @@ export default class PresetEditor {
           this.isSaved = false;
           this.updateBanner();
         }
-      });
+      },
+    );
 
     this.bindEvents();
     this.initFolderAutocomplete();
@@ -69,7 +76,7 @@ export default class PresetEditor {
       if (this.dom.inpFile.files?.[0]) {
         if (this.localPreviewUrl) URL.revokeObjectURL(this.localPreviewUrl);
         imgSrc = this.localPreviewUrl = URL.createObjectURL(
-          this.dom.inpFile.files[0]
+          this.dom.inpFile.files[0],
         );
       } else if (
         this.editingKey &&
@@ -154,7 +161,8 @@ export default class PresetEditor {
     // the merge put it there first.
     const { libraryId: qualifiedLib, key: plainKey } =
       PresetLogic.splitQualifiedKey(styleKey);
-    const ownerLib = qualifiedLib ?? this.context.session?.ownerOfKey?.(styleKey) ?? null;
+    const ownerLib =
+      qualifiedLib ?? this.context.session?.ownerOfKey?.(styleKey) ?? null;
 
     const parts = plainKey.split("/");
     this.dom.inpName.value = parts.pop() || "";
@@ -215,7 +223,7 @@ export default class PresetEditor {
    */
   targetFolder() {
     const { libraryId, key } = PresetLogic.splitQualifiedKey(
-      this.dom.inpFolder.value.trim()
+      this.dom.inpFolder.value.trim(),
     );
     return { libraryId, folder: key };
   }
@@ -251,7 +259,9 @@ export default class PresetEditor {
     // a folder that names no library writes where the entry being edited lives,
     // or to the bundled library for a new one
     const targetLibrary =
-      namedLibrary || this.editingLibraryId() || PresetGalleryAPI.DEFAULT_LIBRARY_ID;
+      namedLibrary ||
+      this.editingLibraryId() ||
+      PresetGalleryAPI.DEFAULT_LIBRARY_ID;
     const cleanFolder = folder.toLowerCase().replace(/ /g, "_");
     const uniqueKey = (cleanFolder ? `${cleanFolder}/` : "") + name;
     let selections = this.context.getSelectedArray();
@@ -260,7 +270,12 @@ export default class PresetEditor {
     // so it always asks - against the library the save lands in, not the merge.
     const target = this.targetCache(targetLibrary);
     if (
-      PresetEditor.shouldConfirmOverwrite(this.currentMode, this.editingKey, uniqueKey, target) &&
+      PresetEditor.shouldConfirmOverwrite(
+        this.currentMode,
+        this.editingKey,
+        uniqueKey,
+        target,
+      ) &&
       !(await ModalUtils.confirm(`Overwrite "${uniqueKey}"?`))
     ) {
       return;
@@ -291,7 +306,10 @@ export default class PresetEditor {
       libraryId: targetLibrary,
       // `undefined` rather than null: the API treats a missing id as the
       // bundled library, and null would be a second way to say that.
-      sourceLibraryId: this.currentMode === "edit" ? this.editingLibraryId() ?? undefined : undefined,
+      sourceLibraryId:
+        this.currentMode === "edit"
+          ? (this.editingLibraryId() ?? undefined)
+          : undefined,
     });
 
     if (!res.success) {
@@ -301,7 +319,10 @@ export default class PresetEditor {
 
     // a library named in the folder field that the list does not know yet has
     // just been created on the server, so re-read the list to pick it up
-    if (namedLibrary && !this.context.session?.libraries?.some((lib) => lib.id === namedLibrary)) {
+    if (
+      namedLibrary &&
+      !this.context.session?.libraries?.some((lib) => lib.id === namedLibrary)
+    ) {
       await this.context.refreshLibraries();
     }
 
@@ -311,7 +332,7 @@ export default class PresetEditor {
       this.context.cache[this.editingKey]
     ) {
       selections = selections.map((item) =>
-        item === this.editingKey ? uniqueKey : item
+        item === this.editingKey ? uniqueKey : item,
       );
     }
 
@@ -332,13 +353,13 @@ export default class PresetEditor {
 
     await PresetGalleryAPI.deletePreset(
       this.editingKey,
-      this.editingLibraryId() ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID
+      this.editingLibraryId() ?? PresetGalleryAPI.DEFAULT_LIBRARY_ID,
     );
     // deleting the last preset may have emptied the library it came from
     await this.context.settleEmptiedLibrary(this.editingLibraryId());
     await this.context.loadGallery();
     this.context.updateWidgetValue(
-      this.context.getSelectedArray().filter((v) => v !== this.editingKey)
+      this.context.getSelectedArray().filter((v) => v !== this.editingKey),
     );
     this.clearFields();
   }
@@ -357,7 +378,9 @@ export default class PresetEditor {
     this.dom.inpPreset.addEventListener("input", markDirty);
 
     this.dom.editorPreview.addEventListener("click", async (e) => {
-      if (/** @type {HTMLElement} */ (e.target)?.closest("#j0n4t-pg-rm-img-btn")) {
+      if (
+        /** @type {HTMLElement} */ (e.target)?.closest("#j0n4t-pg-rm-img-btn")
+      ) {
         e.stopPropagation();
         if (await ModalUtils.confirm("Clear image?")) {
           this.resetImageState();
@@ -367,9 +390,11 @@ export default class PresetEditor {
     });
 
     this.dom.editorPreview.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
+      if ((e.key === "Enter" && !e.ctrlKey) || e.key === " ") {
         e.preventDefault();
-        if (/** @type {HTMLElement} */ (e.target)?.closest("#j0n4t-pg-rm-img-btn")) {
+        if (
+          /** @type {HTMLElement} */ (e.target)?.closest("#j0n4t-pg-rm-img-btn")
+        ) {
           e.stopPropagation();
           if (await ModalUtils.confirm("Clear image?")) {
             this.resetImageState();
@@ -437,9 +462,13 @@ export default class PresetEditor {
         const { libraryId, key: folderQuery } =
           PresetLogic.splitQualifiedKey(normalizedQuery);
         if (!folderQuery) return [];
-        const allFolders = PresetDisplay.getAllPresetFolders(this.context.cache);
-        const matches = PresetDisplay.getTopMatches(allFolders, folderQuery.toLowerCase(), (f) =>
-          f.replace(/_/g, " ")
+        const allFolders = PresetDisplay.getAllPresetFolders(
+          this.context.cache,
+        );
+        const matches = PresetDisplay.getTopMatches(
+          allFolders,
+          folderQuery.toLowerCase(),
+          (f) => f.replace(/_/g, " "),
         );
         if (!libraryId) return matches;
         return matches.map(({ item, ...match }) => ({
@@ -451,7 +480,7 @@ export default class PresetEditor {
       onSelect: (match) => {
         this.dom.inpFolder.value = match;
         this.dom.inpFolder.focus();
-        this.dom.inpFolder.dispatchEvent(new Event('input', { bubbles: true }));
+        this.dom.inpFolder.dispatchEvent(new Event("input", { bubbles: true }));
       },
     });
   }

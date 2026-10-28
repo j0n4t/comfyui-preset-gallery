@@ -3,7 +3,6 @@ import PresetDOM from "./PresetDOM.js";
 import PresetLogic from "./PresetLogic.js";
 import PresetDisplay from "./PresetDisplay.js";
 
-
 export default class InlineEditorManager {
   /**
    * @param {GalleryContext} context
@@ -16,36 +15,50 @@ export default class InlineEditorManager {
   }
 
   /**
-   * 
+   *
    * @param {HTMLElement | null} [chipElement]
    * @param {string} [initialValue]
    * @param {number} [startIndex]
-   * @param {number} [endIndex] 
-   * @returns 
+   * @param {number} [endIndex]
+   * @returns
    */
-  spawn(chipElement, initialValue = "", startIndex = undefined, endIndex = undefined) {
+  spawn(
+    chipElement,
+    initialValue = "",
+    startIndex = undefined,
+    endIndex = undefined,
+  ) {
     const isNew = !chipElement;
     const inputHtml = `<input type="text" class="j0n4t-pg-inline-edit" enterkeyhint="enter" value="${PresetDOM.escapeHTML(initialValue)}" tabindex="0" />`;
     let input;
-    const addBtn = /** @type {HTMLElement} */(this.basket.querySelector(".j0n4t-pg-basket-add-btn"));
+    const addBtn = /** @type {HTMLElement} */ (
+      this.basket.querySelector(".j0n4t-pg-basket-add-btn")
+    );
 
     if (isNew) {
       const newChipHtml = `<div class="j0n4t-pg-basket-chip inline-editing">${inputHtml}</div>`;
       if (addBtn) {
         addBtn.insertAdjacentHTML("beforebegin", newChipHtml);
-        chipElement = /** @type {HTMLElement} */(addBtn.previousElementSibling);
+        chipElement = /** @type {HTMLElement} */ (
+          addBtn.previousElementSibling
+        );
       } else {
         this.basket.insertAdjacentHTML("beforeend", newChipHtml);
-        chipElement = /** @type {HTMLElement} */(this.basket.lastElementChild);
+        chipElement = /** @type {HTMLElement} */ (this.basket.lastElementChild);
       }
       if (!chipElement) return;
       input = chipElement.querySelector("input");
     } else {
-      if (!chipElement || chipElement.classList.contains("inline-editing")) return;
+      if (!chipElement || chipElement.classList.contains("inline-editing"))
+        return;
       chipElement.classList.add("inline-editing");
       chipElement.draggable = false;
-      const label = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-label"));
-      const weight = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-weight"));
+      const label = /** @type {HTMLElement} */ (
+        chipElement.querySelector(".j0n4t-pg-basket-chip-label")
+      );
+      const weight = /** @type {HTMLElement} */ (
+        chipElement.querySelector(".j0n4t-pg-basket-chip-weight")
+      );
       if (label) label.style.display = "none";
       if (weight) weight.style.display = "none";
       chipElement.insertAdjacentHTML("afterbegin", inputHtml);
@@ -77,8 +90,12 @@ export default class InlineEditorManager {
       } else {
         chipElement.classList.remove("inline-editing");
         chipElement.draggable = true;
-        const label = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-label"));
-        const weight = /** @type {HTMLElement} */(chipElement.querySelector(".j0n4t-pg-basket-chip-weight"));
+        const label = /** @type {HTMLElement} */ (
+          chipElement.querySelector(".j0n4t-pg-basket-chip-label")
+        );
+        const weight = /** @type {HTMLElement} */ (
+          chipElement.querySelector(".j0n4t-pg-basket-chip-weight")
+        );
         if (label) label.style.display = "";
         if (weight) weight.style.display = "";
       }
@@ -93,7 +110,9 @@ export default class InlineEditorManager {
           targetFocusIndex = selections.length - 1;
         } else if (!isNew && newVal !== initialValue) {
           if (startIndex !== undefined && endIndex !== undefined) {
-            const newValues = newVal.includes(",") ? PresetLogic.splitPresets(newVal) : [newVal];
+            const newValues = newVal.includes(",")
+              ? PresetLogic.splitPresets(newVal)
+              : [newVal];
             selections.splice(startIndex, endIndex - startIndex, ...newValues);
             this.context.updateWidgetValue(selections);
           } else {
@@ -102,8 +121,7 @@ export default class InlineEditorManager {
               if (newVal) {
                 selections[idx] = newVal;
                 targetFocusIndex = idx;
-              }
-              else {
+              } else {
                 selections.splice(idx, 1);
               }
               this.context.updateWidgetValue(selections);
@@ -120,42 +138,76 @@ export default class InlineEditorManager {
       container: document.body,
       getMatches: (query, cursor) => {
         const textBeforeCursor = query.substring(0, cursor);
-        const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
-        const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
-        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
+        const lastOpenBrace = textBeforeCursor.lastIndexOf("{");
+        const lastCloseBrace = textBeforeCursor.lastIndexOf("}");
+        const isInsideBrackets =
+          lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
 
         if (isInsideBrackets) {
           const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
-          const colonIndex = bracketContent.indexOf(':');
+          const colonIndex = bracketContent.indexOf(":");
 
           if (colonIndex === -1) {
             const groupQuery = bracketContent.trim().toLowerCase();
             const groupsSet = new Set();
             for (const k of Object.keys(this.context.cache)) {
-              const folder = PresetDisplay.getPresetFolder ? PresetDisplay.getPresetFolder(k) : k.split('/')[0];
+              const folder = PresetDisplay.getPresetFolder
+                ? PresetDisplay.getPresetFolder(k)
+                : k.split("/")[0];
               if (folder) groupsSet.add(folder);
             }
             const groups = Array.from(groupsSet);
             /** @type {PresetCache} */
             const dummyCache = {};
-            groups.forEach(g => { dummyCache[g] = { preset: g }; });
-            return PresetDisplay.getTopMatches(groups, groupQuery, (g) => g, dummyCache);
-          } else {
-            const groupName = bracketContent.substring(0, colonIndex).trim().toLowerCase();
-            const presetQuery = bracketContent.substring(colonIndex + 1).trim().toLowerCase();
-
-            const presetMatches = Object.keys(this.context.cache).filter((k) => {
-              if (!this.context.cache[k]?.preset) return false;
-              const folder = PresetDisplay.getPresetFolder ? PresetDisplay.getPresetFolder(k) : k.split('/')[0];
-              return folder.toLowerCase() === groupName || folder.toLowerCase().startsWith(groupName + "/") || folder.toLowerCase().endsWith("/" + groupName);
+            groups.forEach((g) => {
+              dummyCache[g] = { preset: g };
             });
+            return PresetDisplay.getTopMatches(
+              groups,
+              groupQuery,
+              (g) => g,
+              dummyCache,
+            );
+          } else {
+            const groupName = bracketContent
+              .substring(0, colonIndex)
+              .trim()
+              .toLowerCase();
+            const presetQuery = bracketContent
+              .substring(colonIndex + 1)
+              .trim()
+              .toLowerCase();
 
-            return PresetDisplay.getTopMatches(presetMatches, presetQuery, (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]), this.context.cache);
+            const presetMatches = Object.keys(this.context.cache).filter(
+              (k) => {
+                if (!this.context.cache[k]?.preset) return false;
+                const folder = PresetDisplay.getPresetFolder
+                  ? PresetDisplay.getPresetFolder(k)
+                  : k.split("/")[0];
+                return (
+                  folder.toLowerCase() === groupName ||
+                  folder.toLowerCase().startsWith(groupName + "/") ||
+                  folder.toLowerCase().endsWith("/" + groupName)
+                );
+              },
+            );
+
+            return PresetDisplay.getTopMatches(
+              presetMatches,
+              presetQuery,
+              (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]),
+              this.context.cache,
+            );
           }
         } else {
           query = query.trim().toLowerCase();
           if (!query) return [];
-          return PresetDisplay.getTopMatches(Object.getOwnPropertyNames(this.context.cache), query, (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]), this.context.cache);
+          return PresetDisplay.getTopMatches(
+            Object.getOwnPropertyNames(this.context.cache),
+            query,
+            (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]),
+            this.context.cache,
+          );
         }
       },
       renderItem: (match) => {
@@ -170,13 +222,14 @@ export default class InlineEditorManager {
         const query = input.value;
         const cursor = input.selectionStart || 0;
         const textBeforeCursor = query.substring(0, cursor);
-        const lastOpenBrace = textBeforeCursor.lastIndexOf('{');
-        const lastCloseBrace = textBeforeCursor.lastIndexOf('}');
-        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
+        const lastOpenBrace = textBeforeCursor.lastIndexOf("{");
+        const lastCloseBrace = textBeforeCursor.lastIndexOf("}");
+        const isInsideBrackets =
+          lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
 
         if (isInsideBrackets) {
           const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
-          const colonIndex = bracketContent.indexOf(':');
+          const colonIndex = bracketContent.indexOf(":");
 
           if (colonIndex === -1) {
             const before = query.substring(0, lastOpenBrace);

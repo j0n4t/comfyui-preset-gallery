@@ -15,13 +15,13 @@ should not require reasoning about `{group:value}` expansion, and vice versa.
 
 ### Path helpers
 
-| Helper | Returns |
-| --- | --- |
-| `getPresetFolder(key)` | the parent path, `Faces/Portrait` → `Faces` |
-| `getPresetName(key)` | the last segment, `Faces/Portrait` → `Portrait` |
-| `getPresetBaseFolder(key)` | the root segment, `wear/sock/knee` → `wear` |
-| `getUiFolder(key)` | the breadcrumb form, `wear/sock` → `wear › sock` |
-| `getPresetInitials(key)` | up to 6 characters, `socks#wear/sock` → `So` |
+| Helper                     | Returns                                          |
+| -------------------------- | ------------------------------------------------ |
+| `getPresetFolder(key)`     | the parent path, `Faces/Portrait` → `Faces`      |
+| `getPresetName(key)`       | the last segment, `Faces/Portrait` → `Portrait`  |
+| `getPresetBaseFolder(key)` | the root segment, `wear/sock/knee` → `wear`      |
+| `getUiFolder(key)`         | the breadcrumb form, `wear/sock` → `wear › sock` |
+| `getPresetInitials(key)`   | up to 6 characters, `socks#wear/sock` → `So`     |
 
 All of them read the **plain path behind a library qualifier**. A merged cache
 files every entry a library displaced under `libraryId#key`, so
@@ -52,7 +52,7 @@ the name is `sock`, and a colour hashes `wear` rather than `socks#wear`.
   for a qualified key so two libraries' entries are told apart.
 - `getTopMatches(list, query, blobFn, cache, ignorePreset)` — the ranked
   suggestion list. Every whitespace-separated query word must appear in the blob.
-  Matches whose blob *starts with* the query outrank fuzzy ones, and within each
+  Matches whose blob _starts with_ the query outrank fuzzy ones, and within each
   bucket the earlier occurrence wins; each bucket is capped at three. A cache
   entry with no preset is not a candidate unless it is a virtual null.
 

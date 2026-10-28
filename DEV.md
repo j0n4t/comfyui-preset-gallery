@@ -6,16 +6,16 @@ repo are produced. The plan, phase history and probe findings live in
 
 ## Running
 
-| Command | What it does |
-|---|---|
-| `npm test` | Unit tests (`node --test`, `tests/unit`) |
-| `npm run test:py` | Pytest wiring tests (`tests/python`) |
-| `npm run verify` | lint + typecheck + unit + pytest — the gate before pushing |
-| `npm run test:e2e` | Playwright suite against the `dev/` harness (chromium, serialized) |
-| `npm run test:e2e:smoke` | The `@smoke`-tagged load/search/basket tests only |
-| `npm run profile` | Whole-app bottleneck report in a browser (see below) |
-| `python tools/mutation_check.py` | Applies source mutations; each must fail its test file |
-| `npm run screenshot` | Regenerates `sample.png` (see below) |
+| Command                          | What it does                                                       |
+| -------------------------------- | ------------------------------------------------------------------ |
+| `npm test`                       | Unit tests (`node --test`, `tests/unit`)                           |
+| `npm run test:py`                | Pytest wiring tests (`tests/python`)                               |
+| `npm run verify`                 | lint + typecheck + unit + pytest — the gate before pushing         |
+| `npm run test:e2e`               | Playwright suite against the `dev/` harness (chromium, serialized) |
+| `npm run test:e2e:smoke`         | The `@smoke`-tagged load/search/basket tests only                  |
+| `npm run profile`                | Whole-app bottleneck report in a browser (see below)               |
+| `python tools/mutation_check.py` | Applies source mutations; each must fail its test file             |
+| `npm run screenshot`             | Regenerates `sample.png` (see below)                               |
 
 ## Layout
 
@@ -64,7 +64,7 @@ counts are load-independent outright, and a count that jumps is a regression the
 timing will not show you.
 
 It is deliberately **not** part of `npm run verify`: a wall-clock threshold in CI
-would flake, and it needs a browser. The guards that *do* gate a push live in
+would flake, and it needs a browser. The guards that _do_ gate a push live in
 `tests/unit/preset_logic.perf.test.ts`, and they compare against a calibration
 for the same reason.
 

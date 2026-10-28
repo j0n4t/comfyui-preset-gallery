@@ -30,7 +30,11 @@ function buildLookupMap(cache) {
     const item = cache[key];
     if (!item) continue;
     if (item.preset?.trim()) {
-      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
+      const wrappedPreset = PresetLogic.getWrappedPreset(
+        key,
+        item.preset,
+        cache,
+      );
       if (wrappedPreset) {
         lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });
       }
@@ -80,21 +84,42 @@ function getGroupedChips(activeList, cache) {
       const subArray = activeList.slice(i, i + len);
       const joined = subArray.join(", ");
       const { core: coreJoined } = PresetLogic.parseWeight(joined);
-      const lookup = (/** @type {string} */ k) => lookupMap.get(k) || (
-        PresetLogic.splitQualifiedKey(k).libraryId
+      const lookup = (/** @type {string} */ k) =>
+        lookupMap.get(k) ||
+        (PresetLogic.splitQualifiedKey(k).libraryId
           ? lookupMap.get(PresetLogic.splitQualifiedKey(k).key)
-          : null
-      );
-      const cached = (len === 1)
-        ? (lookup(coreJoined) || lookup(coreJoined.replace(/\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g, '{$1}')))
-        : null;
+          : null);
+      const cached =
+        len === 1
+          ? lookup(coreJoined) ||
+            lookup(
+              coreJoined.replace(
+                /\{([^{}:]+):(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g,
+                "{$1}",
+              ),
+            )
+          : null;
 
-      if (cached || len === 1 || coreJoined.match(/^<[^<>]+>$/) || coreJoined.match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}$/)) {
-        const qualifiedInput = len === 1 && PresetLogic.splitQualifiedKey(coreJoined).libraryId;
-        const resolvedStyleKey = qualifiedInput ? coreJoined : (cached?.foundKey || subArray[0]);
+      if (
+        cached ||
+        len === 1 ||
+        coreJoined.match(/^<[^<>]+>$/) ||
+        coreJoined.match(
+          /^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}$/,
+        )
+      ) {
+        const qualifiedInput =
+          len === 1 && PresetLogic.splitQualifiedKey(coreJoined).libraryId;
+        const resolvedStyleKey = qualifiedInput
+          ? coreJoined
+          : cached?.foundKey || subArray[0];
         matched = {
           styleKey: resolvedStyleKey,
-          item: cached?.foundItem || (cached?.foundKey ? cache[cached.foundKey] : cache[resolvedStyleKey]),
+          item:
+            cached?.foundItem ||
+            (cached?.foundKey
+              ? cache[cached.foundKey]
+              : cache[resolvedStyleKey]),
           startIndex: i,
           endIndex: i + len,
           subArray,

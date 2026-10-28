@@ -13,7 +13,10 @@ import PresetGalleryAPI from "../../web/PresetGalleryAPI.js";
 // ModalUtils.confirm, which are stubbed per test.
 
 const CACHE: PresetCache = {
-  "faces/portrait": { preset: "portrait, solo", filename: "data:image/png;base64,x" },
+  "faces/portrait": {
+    preset: "portrait, solo",
+    filename: "data:image/png;base64,x",
+  },
   "scenery/landscape": { preset: "nature" },
 };
 
@@ -84,8 +87,30 @@ function makeDom(): FakeDom {
   const btnSave = document.createElement("button");
   const btnDel = document.createElement("button");
   const btnClearFields = document.createElement("button");
-  document.body.append(editor, banner, inpName, inpFolder, inpPreset, editorPreview, inpFile, btnSave, btnDel, btnClearFields);
-  return { editor, banner, inpName, inpFolder, inpPreset, editorPreview, inpFile, btnSave, btnDel, btnClearFields };
+  document.body.append(
+    editor,
+    banner,
+    inpName,
+    inpFolder,
+    inpPreset,
+    editorPreview,
+    inpFile,
+    btnSave,
+    btnDel,
+    btnClearFields,
+  );
+  return {
+    editor,
+    banner,
+    inpName,
+    inpFolder,
+    inpPreset,
+    editorPreview,
+    inpFile,
+    btnSave,
+    btnDel,
+    btnClearFields,
+  };
 }
 
 function makeEditor(dom: FakeDom): {
@@ -97,7 +122,12 @@ function makeEditor(dom: FakeDom): {
     setPanelCollapseState: boolean[];
   };
 } {
-  const calls = { loadGallery: 0, updateWidgetValue: [] as string[][], syncEditorHighlight: 0, setPanelCollapseState: [] as boolean[] };
+  const calls = {
+    loadGallery: 0,
+    updateWidgetValue: [] as string[][],
+    syncEditorHighlight: 0,
+    setPanelCollapseState: [] as boolean[],
+  };
   const context = {
     dom,
     cache: CACHE,
@@ -105,22 +135,37 @@ function makeEditor(dom: FakeDom): {
       libraryCaches: new Map([["main", CACHE]]),
       libraries: [{ id: "main", name: "Main" }],
     },
-    syncEditorHighlight: () => { calls.syncEditorHighlight++; },
-    setPanelCollapseState: (collapsed: boolean) => { calls.setPanelCollapseState.push(collapsed); },
-    loadGallery: () => { calls.loadGallery++; return Promise.resolve(); },
+    syncEditorHighlight: () => {
+      calls.syncEditorHighlight++;
+    },
+    setPanelCollapseState: (collapsed: boolean) => {
+      calls.setPanelCollapseState.push(collapsed);
+    },
+    loadGallery: () => {
+      calls.loadGallery++;
+      return Promise.resolve();
+    },
     refreshLibraries: () => Promise.resolve(),
     settleEmptiedLibrary: () => Promise.resolve(),
     getSelectedArray: () => [],
-    updateWidgetValue: (arr: string[]) => { calls.updateWidgetValue.push(arr); },
+    updateWidgetValue: (arr: string[]) => {
+      calls.updateWidgetValue.push(arr);
+    },
   };
-  return { editor: new PresetEditor(context as unknown as GalleryContext), calls };
+  return {
+    editor: new PresetEditor(context as unknown as GalleryContext),
+    calls,
+  };
 }
 
 function click(el: HTMLElement): void {
   el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 }
 
-function typeInto(el: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+function typeInto(
+  el: HTMLInputElement | HTMLTextAreaElement,
+  value: string,
+): void {
   el.value = value;
   el.dispatchEvent(new Event("input", { bubbles: true }));
 }
@@ -128,23 +173,53 @@ function typeInto(el: HTMLInputElement | HTMLTextAreaElement, value: string): vo
 // --- shouldConfirmOverwrite (the real static) ---
 
 test("new mode: confirms overwrite when key exists in cache", () => {
-  assert.equal(PresetEditor.shouldConfirmOverwrite("new", "", "faces/portrait", CACHE), true);
+  assert.equal(
+    PresetEditor.shouldConfirmOverwrite("new", "", "faces/portrait", CACHE),
+    true,
+  );
 });
 
 test("new mode: no confirmation when key does not exist", () => {
-  assert.equal(PresetEditor.shouldConfirmOverwrite("new", "", "new/preset", CACHE), false);
+  assert.equal(
+    PresetEditor.shouldConfirmOverwrite("new", "", "new/preset", CACHE),
+    false,
+  );
 });
 
 test("edit mode: no confirmation when saving to same key (no rename)", () => {
-  assert.equal(PresetEditor.shouldConfirmOverwrite("edit", "faces/portrait", "faces/portrait", CACHE), false);
+  assert.equal(
+    PresetEditor.shouldConfirmOverwrite(
+      "edit",
+      "faces/portrait",
+      "faces/portrait",
+      CACHE,
+    ),
+    false,
+  );
 });
 
 test("edit mode: no confirmation when renamed to a new unique key", () => {
-  assert.equal(PresetEditor.shouldConfirmOverwrite("edit", "faces/portrait", "faces/renamed", CACHE), false);
+  assert.equal(
+    PresetEditor.shouldConfirmOverwrite(
+      "edit",
+      "faces/portrait",
+      "faces/renamed",
+      CACHE,
+    ),
+    false,
+  );
 });
 
 test("edit mode: confirms overwrite when renamed to an existing different key", () => {
-  assert.equal(PresetEditor.shouldConfirmOverwrite("edit", "faces/portrait", "scenery/landscape", CACHE), true);
+  assert.equal(
+    PresetEditor.shouldConfirmOverwrite(
+      "edit",
+      "faces/portrait",
+      "scenery/landscape",
+      CACHE,
+    ),
+    true,
+  );
 });
 
 // --- banner / field state ---
@@ -160,8 +235,14 @@ test("clearFields resets the panel to the new-preset state", () => {
   assert.equal(dom.inpPreset.value, "");
   assert.equal(dom.banner.innerText, "✨ Creating New Preset");
   assert.equal(dom.btnSave.innerText, "Save");
-  assert.ok(dom.editor.classList.contains("no-image"), "the image state resets");
-  assert.ok(dom.editorPreview.innerHTML.includes("j0n4t-pg-initials"), "the preview falls back to initials");
+  assert.ok(
+    dom.editor.classList.contains("no-image"),
+    "the image state resets",
+  );
+  assert.ok(
+    dom.editorPreview.innerHTML.includes("j0n4t-pg-initials"),
+    "the preview falls back to initials",
+  );
 });
 
 test("openPreset fills the fields and marks the edit mode", () => {
@@ -170,7 +251,11 @@ test("openPreset fills the fields and marks the edit mode", () => {
 
   editor.openPreset("faces/portrait");
 
-  assert.equal(dom.inpName.value, "portrait", "the name comes from the lowercased key");
+  assert.equal(
+    dom.inpName.value,
+    "portrait",
+    "the name comes from the lowercased key",
+  );
   assert.equal(dom.inpFolder.value, "faces");
   assert.equal(dom.inpPreset.value, "portrait, solo");
   assert.equal(dom.banner.innerText, "✅ faces/portrait");
@@ -195,25 +280,43 @@ test("openPreset with a qualified key strips the qualifier into the folder field
     "sample#Faces/Portrait": { preset: "rim light" },
     "faces/portrait": { preset: "portrait, solo" },
   };
-  const calls = { loadGallery: 0, updateWidgetValue: [] as string[][], syncEditorHighlight: 0, setPanelCollapseState: [] as boolean[] };
+  const calls = {
+    loadGallery: 0,
+    updateWidgetValue: [] as string[][],
+    syncEditorHighlight: 0,
+    setPanelCollapseState: [] as boolean[],
+  };
   const context = {
     dom,
     cache,
     session: undefined,
-    syncEditorHighlight: () => { calls.syncEditorHighlight++; },
-    setPanelCollapseState: (collapsed: boolean) => { calls.setPanelCollapseState.push(collapsed); },
-    loadGallery: () => { calls.loadGallery++; return Promise.resolve(); },
+    syncEditorHighlight: () => {
+      calls.syncEditorHighlight++;
+    },
+    setPanelCollapseState: (collapsed: boolean) => {
+      calls.setPanelCollapseState.push(collapsed);
+    },
+    loadGallery: () => {
+      calls.loadGallery++;
+      return Promise.resolve();
+    },
     refreshLibraries: () => Promise.resolve(),
     settleEmptiedLibrary: () => Promise.resolve(),
     getSelectedArray: () => [],
-    updateWidgetValue: (arr: string[]) => { calls.updateWidgetValue.push(arr); },
+    updateWidgetValue: (arr: string[]) => {
+      calls.updateWidgetValue.push(arr);
+    },
   };
   const editor = new PresetEditor(context as unknown as GalleryContext);
 
   editor.openPreset("sample#Faces/Portrait");
 
   assert.equal(dom.inpName.value, "Portrait");
-  assert.equal(dom.inpFolder.value, "sample#Faces", "the qualifier is kept in the folder field");
+  assert.equal(
+    dom.inpFolder.value,
+    "sample#Faces",
+    "the qualifier is kept in the folder field",
+  );
   assert.equal(dom.inpPreset.value, "rim light");
 });
 
@@ -222,28 +325,47 @@ test("openPreset with a plain key owned by a non-default library shows the quali
   const cache: PresetCache = {
     "Sample/Cinematic": { preset: "cinematic" },
   };
-  const calls = { loadGallery: 0, updateWidgetValue: [] as string[][], syncEditorHighlight: 0, setPanelCollapseState: [] as boolean[] };
+  const calls = {
+    loadGallery: 0,
+    updateWidgetValue: [] as string[][],
+    syncEditorHighlight: 0,
+    setPanelCollapseState: [] as boolean[],
+  };
   const context = {
     dom,
     cache,
     session: {
-      ownerOfKey: (key: string) => key === "Sample/Cinematic" ? "sample" : null,
+      ownerOfKey: (key: string) =>
+        key === "Sample/Cinematic" ? "sample" : null,
       libraries: [{ id: "sample", name: "Sample" }],
     },
-    syncEditorHighlight: () => { calls.syncEditorHighlight++; },
-    setPanelCollapseState: (collapsed: boolean) => { calls.setPanelCollapseState.push(collapsed); },
-    loadGallery: () => { calls.loadGallery++; return Promise.resolve(); },
+    syncEditorHighlight: () => {
+      calls.syncEditorHighlight++;
+    },
+    setPanelCollapseState: (collapsed: boolean) => {
+      calls.setPanelCollapseState.push(collapsed);
+    },
+    loadGallery: () => {
+      calls.loadGallery++;
+      return Promise.resolve();
+    },
     refreshLibraries: () => Promise.resolve(),
     settleEmptiedLibrary: () => Promise.resolve(),
     getSelectedArray: () => [],
-    updateWidgetValue: (arr: string[]) => { calls.updateWidgetValue.push(arr); },
+    updateWidgetValue: (arr: string[]) => {
+      calls.updateWidgetValue.push(arr);
+    },
   };
   const editor = new PresetEditor(context as unknown as GalleryContext);
 
   editor.openPreset("Sample/Cinematic");
 
   assert.equal(dom.inpName.value, "Cinematic");
-  assert.equal(dom.inpFolder.value, "sample#Sample", "non-default library is shown in the folder qualifier");
+  assert.equal(
+    dom.inpFolder.value,
+    "sample#Sample",
+    "non-default library is shown in the folder qualifier",
+  );
 });
 
 test("openPreset with a plain key owned by the main library leaves the folder unqualified", () => {
@@ -252,7 +374,11 @@ test("openPreset with a plain key owned by the main library leaves the folder un
 
   editor.openPreset("faces/portrait");
 
-  assert.equal(dom.inpFolder.value, "faces", "the default library does not add a qualifier");
+  assert.equal(
+    dom.inpFolder.value,
+    "faces",
+    "the default library does not add a qualifier",
+  );
 });
 
 test("folder autocomplete preserves a typed library qualifier", () => {
@@ -262,7 +388,7 @@ test("folder autocomplete preserves a typed library qualifier", () => {
   dom.inpFolder.dispatchEvent(new Event("input", { bubbles: true }));
 
   const suggestion = document.querySelector<HTMLElement>(
-    ".j0n4t-pg-folder-autocomplete-item"
+    ".j0n4t-pg-folder-autocomplete-item",
   );
   assert.equal(suggestion?.textContent, "Sample#faces");
   suggestion?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
@@ -289,7 +415,11 @@ test("typing marks the edit dirty", () => {
 
   typeInto(dom.inpName, "Renamed");
 
-  assert.equal(dom.banner.innerText, "📝 faces/portrait", "the banner switches to dirty");
+  assert.equal(
+    dom.banner.innerText,
+    "📝 faces/portrait",
+    "the banner switches to dirty",
+  );
   assert.equal(dom.btnSave.innerText, "Save", "the button invites saving");
 });
 
@@ -309,7 +439,11 @@ test("handleSave in edit mode persists through the API and reloads", async () =>
   assert.equal(saveCalls[0].presetText, "updated text");
   assert.equal(saveCalls[0].mode, "edit");
   assert.equal(calls.loadGallery, 1, "the library reloads after save");
-  assert.equal(dom.banner.innerText, "✅ faces/portrait", "the banner returns to saved");
+  assert.equal(
+    dom.banner.innerText,
+    "✅ faces/portrait",
+    "the banner returns to saved",
+  );
 });
 
 test("handleSave derives the name from the preset text when the name is empty", async () => {
@@ -323,7 +457,11 @@ test("handleSave derives the name from the preset text when the name is empty", 
   await new Promise((resolve) => setTimeout(resolve, 0)); // let the async save run
 
   assert.equal(saveCalls.length, 1);
-  assert.equal(saveCalls[0].name, "hello_world", "spaces become underscores and the case is lowered");
+  assert.equal(
+    saveCalls[0].name,
+    "hello_world",
+    "spaces become underscores and the case is lowered",
+  );
   assert.equal(saveCalls[0].presetText, "Hello World");
 });
 
@@ -376,7 +514,9 @@ test("Shift+Enter triggers a quick save", async () => {
   editor.clearFields();
   typeInto(dom.inpPreset, "quick save");
 
-  dom.inpPreset.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", shiftKey: true }));
+  dom.inpPreset.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Enter", shiftKey: true }),
+  );
 
   assert.equal(saveCalls.length, 1);
   assert.equal(saveCalls[0].name, "quick_save");
@@ -388,12 +528,20 @@ test("paste suggests a name when the name field is empty", () => {
   editor.clearFields();
 
   const pasteEvent = new Event("paste");
-  (pasteEvent as unknown as { clipboardData: { getData: (t: string) => string } }).clipboardData = {
+  (
+    pasteEvent as unknown as {
+      clipboardData: { getData: (t: string) => string };
+    }
+  ).clipboardData = {
     getData: () => "My Cool Preset!",
   };
   dom.inpPreset.dispatchEvent(pasteEvent);
 
-  assert.equal(dom.inpName.value, "my_cool_preset", "the suggestion is cleaned into a name");
+  assert.equal(
+    dom.inpName.value,
+    "my_cool_preset",
+    "the suggestion is cleaned into a name",
+  );
 });
 
 test("paste does not suggest a name once one exists in edit mode", () => {
@@ -403,7 +551,11 @@ test("paste does not suggest a name once one exists in edit mode", () => {
   typeInto(dom.inpName, "keep me");
 
   const pasteEvent = new Event("paste");
-  (pasteEvent as unknown as { clipboardData: { getData: (t: string) => string } }).clipboardData = {
+  (
+    pasteEvent as unknown as {
+      clipboardData: { getData: (t: string) => string };
+    }
+  ).clipboardData = {
     getData: () => "My Cool Preset!",
   };
   dom.inpPreset.dispatchEvent(pasteEvent);
@@ -461,5 +613,8 @@ test("resetImageState clears the file input and the has-image class", () => {
   assert.equal(dom.inpFile.value, "");
   assert.ok(dom.editor.classList.contains("no-image"));
   assert.ok(!dom.editor.classList.contains("has-image"));
-  assert.ok(dom.editorPreview.innerHTML.includes("j0n4t-pg-initials"), "the preview resets to initials");
+  assert.ok(
+    dom.editorPreview.innerHTML.includes("j0n4t-pg-initials"),
+    "the preview resets to initials",
+  );
 });

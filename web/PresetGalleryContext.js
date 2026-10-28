@@ -55,19 +55,26 @@ export default function createGalleryContext({ session, dom, widget, view }) {
     transferPin: (/** @type {string} */ oldVal, /** @type {string} */ newVal) =>
       session.transferPin(oldVal, newVal),
     getCollapsedFolders: () => session.getCollapsedFolders(),
-    setCollapsedFolders: (/** @type {string[]} */ list) => session.setCollapsedFolders(list),
+    setCollapsedFolders: (/** @type {string[]} */ list) =>
+      session.setCollapsedFolders(list),
     getExcludedRollFolders: () => session.getExcludedRollFolders(),
-    setExcludedRollFolders: (/** @type {string[]} */ list) => session.setExcludedRollFolders(list),
+    setExcludedRollFolders: (/** @type {string[]} */ list) =>
+      session.setExcludedRollFolders(list),
 
-    setPanelCollapseState: (/** @type {boolean} */ collapsed) => view.setPanelCollapseState(collapsed),
+    setPanelCollapseState: (/** @type {boolean} */ collapsed) =>
+      view.setPanelCollapseState(collapsed),
     syncEditorHighlight: () => view.syncEditorHighlight(),
-    openEditorForPreset: (/** @type {string} */ styleKey, /** @type {boolean} */ focus) =>
-      view.openEditorForPreset(styleKey, focus),
+    openEditorForPreset: (
+      /** @type {string} */ styleKey,
+      /** @type {boolean} */ focus,
+    ) => view.openEditorForPreset(styleKey, focus),
     syncUI: (/** @type {string} */ val) => view.syncUI(val),
     loadGallery: () => view.loadGallery(),
-    updateWidgetValue: (/** @type {string[]} */ arr) => view.updateWidgetValue(arr),
-    restoreTabSelection: (/** @type {{ basket?: string[], pins?: string[], rolls?: Record<string, string> }} */ tab) =>
-      view.restoreTabSelection(tab),
+    updateWidgetValue: (/** @type {string[]} */ arr) =>
+      view.updateWidgetValue(arr),
+    restoreTabSelection: (
+      /** @type {{ basket?: string[], pins?: string[], rolls?: Record<string, string> }} */ tab,
+    ) => view.restoreTabSelection(tab),
     applyLibraries: (/** @type {string[]} */ ids) => view.applyLibraries(ids),
     selectionKey: (/** @type {string} */ key) => view.selectionKey(key),
     refreshLibraries: () => view.refreshLibraries(),
@@ -78,12 +85,16 @@ export default function createGalleryContext({ session, dom, widget, view }) {
   Object.defineProperties(ctx, {
     cache: {
       get: () => session.cache,
-      set: (/** @type {PresetCache} */ v) => { session.cache = v; },
+      set: (/** @type {PresetCache} */ v) => {
+        session.cache = v;
+      },
       enumerable: true,
     },
     pinnedChips: {
       get: () => session.pinnedChips,
-      set: (/** @type {Set<string>} */ v) => { session.pinnedChips = v; },
+      set: (/** @type {Set<string>} */ v) => {
+        session.pinnedChips = v;
+      },
       enumerable: true,
     },
     rollManager: {

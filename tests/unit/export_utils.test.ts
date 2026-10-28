@@ -12,11 +12,16 @@ import PresetGalleryAPI from "../../web/PresetGalleryAPI.js";
 // --- getSelectionSummary ---
 
 test("getSelectionSummary counts everything as new without an existing library", () => {
-  const summary = ExportUtils.getSelectionSummary(
-    ["A/One", "B/Two"],
-    { "A/One": { preset: "a" }, "B/Two": { preset: "b" } }
-  );
-  assert.deepEqual(summary, { newCount: 2, replacedCount: 0, sameCount: 0, total: 2 });
+  const summary = ExportUtils.getSelectionSummary(["A/One", "B/Two"], {
+    "A/One": { preset: "a" },
+    "B/Two": { preset: "b" },
+  });
+  assert.deepEqual(summary, {
+    newCount: 2,
+    replacedCount: 0,
+    sameCount: 0,
+    total: 2,
+  });
 });
 
 test("getSelectionSummary classifies replaced, same and new against the existing library", () => {
@@ -31,26 +36,30 @@ test("getSelectionSummary classifies replaced, same and new against the existing
       "A/One": { preset: "a" },
       "B/Two": { preset: "b" },
       "C/Three": { filename: "y.png" },
-    }
+    },
   );
-  assert.deepEqual(summary, { newCount: 0, replacedCount: 2, sameCount: 1, total: 4 });
+  assert.deepEqual(summary, {
+    newCount: 0,
+    replacedCount: 2,
+    sameCount: 1,
+    total: 4,
+  });
 });
 
 test("getSelectionSummary counts an unchanged preset as same, not new", () => {
   const summary = ExportUtils.getSelectionSummary(
     ["A/One"],
     { "A/One": { preset: "a" } },
-    { "A/One": { preset: "a" } }
+    { "A/One": { preset: "a" } },
   );
   assert.equal(summary.sameCount, 1);
   assert.equal(summary.newCount, 0);
 });
 
 test("getSelectionSummary keeps missing keys in the total but in no bucket", () => {
-  const summary = ExportUtils.getSelectionSummary(
-    ["A/One", "Missing"],
-    { "A/One": { preset: "a" } }
-  );
+  const summary = ExportUtils.getSelectionSummary(["A/One", "Missing"], {
+    "A/One": { preset: "a" },
+  });
   assert.equal(summary.total, 2);
   assert.equal(summary.newCount, 1);
 });
@@ -71,13 +80,23 @@ function sorted(keys: string[]): string[] {
 test("buildPresetSelectorTree groups presets by folder and skips color-only entries", () => {
   const tree = ExportUtils.buildPresetSelectorTree(PRESETS);
   const groups = tree.element.querySelectorAll(".j0n4t-pg-tree-group");
-  assert.equal(groups.length, 2, "ghost folder has no content and is not rendered");
-
-  const names = Array.from(groups).map((g) =>
-    g.querySelector(".j0n4t-pg-group-name")?.textContent ?? ""
+  assert.equal(
+    groups.length,
+    2,
+    "ghost folder has no content and is not rendered",
   );
-  assert.ok(names.some((n) => n.includes("Faces (2)")), `unexpected group names: ${names}`);
-  assert.ok(names.some((n) => n.includes("Root Presets (1)")), `unexpected group names: ${names}`);
+
+  const names = Array.from(groups).map(
+    (g) => g.querySelector(".j0n4t-pg-group-name")?.textContent ?? "",
+  );
+  assert.ok(
+    names.some((n) => n.includes("Faces (2)")),
+    `unexpected group names: ${names}`,
+  );
+  assert.ok(
+    names.some((n) => n.includes("Root Presets (1)")),
+    `unexpected group names: ${names}`,
+  );
 
   const items = tree.element.querySelectorAll(".j0n4t-pg-tree-item");
   assert.equal(items.length, 3);
@@ -87,7 +106,7 @@ test("buildPresetSelectorTree checks every item when there is no existing librar
   const tree = ExportUtils.buildPresetSelectorTree(PRESETS);
   assert.deepEqual(
     sorted(tree.getSelectedKeys()),
-    ["Faces/Macro", "Faces/Portrait", "RootPreset"].sort()
+    ["Faces/Macro", "Faces/Portrait", "RootPreset"].sort(),
   );
 });
 
@@ -96,7 +115,7 @@ test("buildPresetSelectorTree marks identical presets as same and leaves them un
     "Faces/Portrait": { preset: "portrait" },
   });
   const portrait = tree.element.querySelector<HTMLInputElement>(
-    '.j0n4t-pg-item-cb[value="Faces/Portrait"]'
+    '.j0n4t-pg-item-cb[value="Faces/Portrait"]',
   );
   assert.equal(portrait?.dataset.status, "same");
   assert.equal(portrait?.checked, false);
@@ -111,7 +130,7 @@ test("buildPresetSelectorTree marks changed text as replaced and shows the diff"
     "Faces/Portrait": { preset: "something else" },
   });
   const portrait = tree.element.querySelector<HTMLInputElement>(
-    '.j0n4t-pg-item-cb[value="Faces/Portrait"]'
+    '.j0n4t-pg-item-cb[value="Faces/Portrait"]',
   );
   assert.equal(portrait?.dataset.status, "replaced");
   assert.equal(portrait?.checked, true);
@@ -127,10 +146,10 @@ test("buildPresetSelectorTree marks changed text as replaced and shows the diff"
 test("buildPresetSelectorTree marks an image-only change as replaced", () => {
   const tree = ExportUtils.buildPresetSelectorTree(
     { "Faces/Portrait": { preset: "portrait", filename: "new.png" } },
-    { "Faces/Portrait": { preset: "portrait", filename: "old.png" } }
+    { "Faces/Portrait": { preset: "portrait", filename: "old.png" } },
   );
   const portrait = tree.element.querySelector<HTMLInputElement>(
-    '.j0n4t-pg-item-cb[value="Faces/Portrait"]'
+    '.j0n4t-pg-item-cb[value="Faces/Portrait"]',
   );
   assert.equal(portrait?.dataset.status, "replaced");
 });
@@ -138,10 +157,10 @@ test("buildPresetSelectorTree marks an image-only change as replaced", () => {
 test("buildPresetSelectorTree marks unknown presets as new and checks them", () => {
   const tree = ExportUtils.buildPresetSelectorTree(
     { "Faces/Portrait": { preset: "portrait" } },
-    { "RootPreset": { preset: "root" } }
+    { RootPreset: { preset: "root" } },
   );
   const portrait = tree.element.querySelector<HTMLInputElement>(
-    '.j0n4t-pg-item-cb[value="Faces/Portrait"]'
+    '.j0n4t-pg-item-cb[value="Faces/Portrait"]',
   );
   assert.equal(portrait?.dataset.status, "new");
   assert.equal(portrait?.checked, true);
@@ -158,20 +177,28 @@ function buildDiffTree() {
   });
 }
 
-function checkboxes(tree: ReturnType<typeof ExportUtils.buildPresetSelectorTree>) {
+function checkboxes(
+  tree: ReturnType<typeof ExportUtils.buildPresetSelectorTree>,
+) {
   return tree.element.querySelectorAll<HTMLInputElement>(".j0n4t-pg-item-cb");
 }
 
 test("applyDuplicateStrategy skip unchecks replaced and new but keeps user-modified items", () => {
   const tree = buildDiffTree();
-  const macro = Array.from(checkboxes(tree)).find((cb) => cb.value === "Faces/Macro");
+  const macro = Array.from(checkboxes(tree)).find(
+    (cb) => cb.value === "Faces/Macro",
+  );
   assert.ok(macro);
   macro.dataset.userModified = "true";
   macro.checked = true;
 
   tree.applyDuplicateStrategy("skip");
 
-  assert.equal(macro.checked, true, "a user-modified checkbox is never touched");
+  assert.equal(
+    macro.checked,
+    true,
+    "a user-modified checkbox is never touched",
+  );
   const selected = tree.getSelectedKeys();
   assert.ok(!selected.includes("Faces/Portrait"), "same items stay unchecked");
 });
@@ -185,7 +212,11 @@ test("applyDuplicateStrategy overwrite checks only the replaced items", () => {
 test("applyDuplicateStrategy keep_both checks every non-user-modified item", () => {
   const tree = buildDiffTree();
   tree.applyDuplicateStrategy("keep_both");
-  assert.deepEqual(sorted(tree.getSelectedKeys()), ["Faces/Macro", "Faces/Portrait", "RootPreset"]);
+  assert.deepEqual(sorted(tree.getSelectedKeys()), [
+    "Faces/Macro",
+    "Faces/Portrait",
+    "RootPreset",
+  ]);
 });
 
 test("getPresets returns the map the tree was built with", () => {
@@ -197,7 +228,9 @@ test("export modal switches libraries and reports the selected library", async (
   const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
   const originalGetPresets = PresetGalleryAPI.getPresets;
   const originalConfirm = ModalUtils.confirm;
-  let exportedConfig: { libraryId?: string; selectedKeys?: string[] | null } | undefined;
+  let exportedConfig:
+    | { libraryId?: string; selectedKeys?: string[] | null }
+    | undefined;
 
   try {
     PresetGalleryAPI.fetchLibraries = async () => [
@@ -217,14 +250,16 @@ test("export modal switches libraries and reports the selected library", async (
       exportedConfig = config;
     });
 
-    const librarySelect = document.querySelector<HTMLSelectElement>("#j0n4t-pg-exp-library");
+    const librarySelect = document.querySelector<HTMLSelectElement>(
+      "#j0n4t-pg-exp-library",
+    );
     assert.ok(librarySelect);
     librarySelect.value = "second";
     librarySelect.dispatchEvent(new Event("change"));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const selectedPreset = document.querySelector<HTMLInputElement>(
-      '.j0n4t-pg-item-cb[value="Second"]'
+      '.j0n4t-pg-item-cb[value="Second"]',
     );
     assert.ok(selectedPreset);
     document.querySelector<HTMLButtonElement>("#j0n4t-pg-exp-confirm")?.click();
@@ -236,7 +271,9 @@ test("export modal switches libraries and reports the selected library", async (
     PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
     PresetGalleryAPI.getPresets = originalGetPresets;
     ModalUtils.confirm = originalConfirm;
-    document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());
+    document
+      .querySelectorAll(".j0n4t-pg-modal-overlay")
+      .forEach((overlay) => overlay.remove());
   }
 });
 
@@ -258,15 +295,21 @@ test("import modal compares against and targets the selected library", async () 
     };
     ModalUtils.confirm = async () => true;
 
-    await ExportUtils.showImportModal({ Imported: { preset: "new" } }, "main", ({ libraryId }) => {
-      importTarget = libraryId;
-    });
+    await ExportUtils.showImportModal(
+      { Imported: { preset: "new" } },
+      "main",
+      ({ libraryId }) => {
+        importTarget = libraryId;
+      },
+    );
 
     assert.match(
       document.querySelector("#j0n4t-pg-dup-label")?.textContent ?? "",
-      /1 detected/
+      /1 detected/,
     );
-    const librarySelect = document.querySelector<HTMLSelectElement>("#j0n4t-pg-imp-library");
+    const librarySelect = document.querySelector<HTMLSelectElement>(
+      "#j0n4t-pg-imp-library",
+    );
     assert.ok(librarySelect);
     librarySelect.value = "second";
     librarySelect.dispatchEvent(new Event("change"));
@@ -274,7 +317,7 @@ test("import modal compares against and targets the selected library", async () 
 
     assert.match(
       document.querySelector("#j0n4t-pg-dup-label")?.textContent ?? "",
-      /0 detected/
+      /0 detected/,
     );
     document.querySelector<HTMLButtonElement>("#j0n4t-pg-imp-confirm")?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -284,7 +327,9 @@ test("import modal compares against and targets the selected library", async () 
     PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
     PresetGalleryAPI.getPresets = originalGetPresets;
     ModalUtils.confirm = originalConfirm;
-    document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());
+    document
+      .querySelectorAll(".j0n4t-pg-modal-overlay")
+      .forEach((overlay) => overlay.remove());
   }
 });
 
@@ -303,11 +348,17 @@ test("import modal can target a new library", async () => {
     ModalUtils.confirm = async () => true;
     ModalUtils.prompt = async () => "new_styles";
 
-    await ExportUtils.showImportModal({ Imported: { preset: "new" } }, "main", ({ libraryId }) => {
-      importTarget = libraryId;
-    });
+    await ExportUtils.showImportModal(
+      { Imported: { preset: "new" } },
+      "main",
+      ({ libraryId }) => {
+        importTarget = libraryId;
+      },
+    );
 
-    const librarySelect = document.querySelector<HTMLSelectElement>("#j0n4t-pg-imp-library");
+    const librarySelect = document.querySelector<HTMLSelectElement>(
+      "#j0n4t-pg-imp-library",
+    );
     assert.ok(librarySelect);
     librarySelect.value = "__create_new_library__";
     librarySelect.dispatchEvent(new Event("change"));
@@ -324,7 +375,9 @@ test("import modal can target a new library", async () => {
     PresetGalleryAPI.getPresets = originalGetPresets;
     ModalUtils.confirm = originalConfirm;
     ModalUtils.prompt = originalPrompt;
-    document.querySelectorAll(".j0n4t-pg-modal-overlay").forEach((overlay) => overlay.remove());
+    document
+      .querySelectorAll(".j0n4t-pg-modal-overlay")
+      .forEach((overlay) => overlay.remove());
   }
 });
 
@@ -342,17 +395,20 @@ test("renaming a nested folder uses and preserves its slash-separated path", () 
       return "Faces/Editorial";
     };
     const tree = ExportUtils.buildPresetSelectorTree(presets);
-    const group = Array.from(tree.element.querySelectorAll(".j0n4t-pg-tree-group"))
-      .find((element) =>
-        element.querySelector<HTMLInputElement>(".j0n4t-pg-group-cb")?.dataset.group === "Faces/Portraits"
-      );
+    const group = Array.from(
+      tree.element.querySelectorAll(".j0n4t-pg-tree-group"),
+    ).find(
+      (element) =>
+        element.querySelector<HTMLInputElement>(".j0n4t-pg-group-cb")?.dataset
+          .group === "Faces/Portraits",
+    );
     assert.ok(group);
     group.querySelector<HTMLElement>(".j0n4t-pg-edit-group-btn")?.click();
 
     assert.equal(promptDefault, "Faces/Portraits");
     assert.equal(
       group.querySelector<HTMLInputElement>(".j0n4t-pg-item-cb")?.value,
-      "faces/editorial/Studio"
+      "faces/editorial/Studio",
     );
     assert.equal(presets["faces/editorial/Studio"]?.preset, "studio");
     assert.equal(presets["faces/editorial"]?.__color__, "#ff0000");

@@ -6,12 +6,12 @@ the ownership boundary so the work is re-usable and reviewable.
 
 ## Ownership
 
-| Module | Responsibility |
-|---|---|
-| `web/RawTextareaManager.js` | Thin coordinator: styles, the static `extractGroupName` helper, DOM wrapper assembly, style injection, and the textarea-specific event glue (`input`, `scroll`, `change`, `mousedown`, `mousemove`, `mouseleave`). |
+| Module                       | Responsibility                                                                                                                                                                                                               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/RawTextareaManager.js`  | Thin coordinator: styles, the static `extractGroupName` helper, DOM wrapper assembly, style injection, and the textarea-specific event glue (`input`, `scroll`, `change`, `mousedown`, `mousemove`, `mouseleave`).           |
 | `web/RawTextHighlighting.js` | Token highlighting: renders the overlay (`highlightsEl`) from parsed tokens — plain text, tags, variants, and presets. Reads `context.cache` and `PresetLogic` grammar; imports `PresetDisplay` for colours and titles only. |
-| `web/RawTextHover.js` | Hover metadata: char position, token lookup, tooltip title. Reads `context.cache` for the token; imports `PresetDisplay` for titles only. |
-| `web/RawTextAutocomplete.js` | Raw-text autocomplete sync: wraps `AutocompleteManager` and re-runs `manager.updateHighlights` after every edit. Imports `AutocompleteManager` plus `PresetLogic`/`PresetDisplay` for matching and expansion. |
+| `web/RawTextHover.js`        | Hover metadata: char position, token lookup, tooltip title. Reads `context.cache` for the token; imports `PresetDisplay` for titles only.                                                                                    |
+| `web/RawTextAutocomplete.js` | Raw-text autocomplete sync: wraps `AutocompleteManager` and re-runs `manager.updateHighlights` after every edit. Imports `AutocompleteManager` plus `PresetLogic`/`PresetDisplay` for matching and expansion.                |
 
 `RawTextareaManager` constructs one instance of each sub-module and wires them:
 

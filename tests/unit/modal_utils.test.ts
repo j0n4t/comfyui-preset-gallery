@@ -11,7 +11,11 @@ function overlay(): HTMLDivElement | null {
 }
 
 function modalButtons(): HTMLButtonElement[] {
-  return Array.from(document.querySelectorAll<HTMLButtonElement>(".j0n4t-pg-modal-actions button"));
+  return Array.from(
+    document.querySelectorAll<HTMLButtonElement>(
+      ".j0n4t-pg-modal-actions button",
+    ),
+  );
 }
 
 function closeViaBackdrop(): void {
@@ -25,7 +29,10 @@ test("alert renders an escaped message under a Notice title and closes on OK", a
   const ov = overlay();
   assert.ok(ov, "overlay is mounted on open");
   assert.equal(ov.querySelector("h3")?.textContent, "Notice");
-  assert.ok(ov.innerHTML.includes("&lt;b&gt;notice&lt;/b&gt;"), "message is HTML-escaped");
+  assert.ok(
+    ov.innerHTML.includes("&lt;b&gt;notice&lt;/b&gt;"),
+    "message is HTML-escaped",
+  );
 
   ov.querySelector<HTMLButtonElement>('button[data-default="true"]')?.click();
   await promise;
@@ -52,7 +59,11 @@ test("prompt resolves the typed value on OK and null on Cancel", async () => {
   const input = ov.querySelector<HTMLInputElement>(".j0n4t-pg-modal-input");
   assert.ok(input, "prompt renders an input");
   assert.equal(input.value, "abc", "default value is applied");
-  assert.ok(ov.querySelector(".j0n4t-pg-modal")?.className.includes("j0n4t-pg-modal-expand"));
+  assert.ok(
+    ov
+      .querySelector(".j0n4t-pg-modal")
+      ?.className.includes("j0n4t-pg-modal-expand"),
+  );
 
   input.value = "typed";
   modalButtons()[1].click();
@@ -70,7 +81,10 @@ test("show without buttons renders a single OK that resolves true", async () => 
   const btns = modalButtons();
   assert.equal(btns.length, 1);
   assert.equal(btns[0].textContent, "OK");
-  assert.ok(overlay()?.innerHTML.includes("<i>raw</i>"), "content HTML is injected as-is");
+  assert.ok(
+    overlay()?.innerHTML.includes("<i>raw</i>"),
+    "content HTML is injected as-is",
+  );
   btns[0].click();
   assert.equal(await promise, true);
   assert.equal(overlay(), null);
@@ -121,10 +135,14 @@ test("focus returns to the previously focused element on close", async () => {
     if (document.activeElement && document.activeElement !== btn) break;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  assert.notEqual(document.activeElement, btn, "the modal took focus while open");
+  assert.notEqual(
+    document.activeElement,
+    btn,
+    "the modal took focus while open",
+  );
   assert.ok(
     overlay()?.contains(document.activeElement as Node),
-    "focus is inside the modal while it is open"
+    "focus is inside the modal while it is open",
   );
 
   closeViaBackdrop();
@@ -144,5 +162,8 @@ test("injectStyles dedups the modal stylesheet across multiple shows", async () 
   closeViaBackdrop();
   await second;
 
-  assert.equal(document.querySelectorAll('style#j0n4t-pg-modal-styles').length, 1);
+  assert.equal(
+    document.querySelectorAll("style#j0n4t-pg-modal-styles").length,
+    1,
+  );
 });

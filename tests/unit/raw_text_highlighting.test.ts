@@ -34,9 +34,15 @@ test("plain text renders escaped plain-text spans", () => {
   const el = document.createElement("div");
   h.attach(el);
   h.updateHighlights();
-  assert.equal(h.highlightsEl!.querySelectorAll(".j0n4t-pg-raw-token").length, 1);
+  assert.equal(
+    h.highlightsEl!.querySelectorAll(".j0n4t-pg-raw-token").length,
+    1,
+  );
   assert.ok(h.highlightsEl!.innerHTML.includes("a &amp; b"));
-  assert.equal(h.highlightsEl!.querySelectorAll(".j0n4t-pg-raw-token")[0].textContent, "a & b");
+  assert.equal(
+    h.highlightsEl!.querySelectorAll(".j0n4t-pg-raw-token")[0].textContent,
+    "a & b",
+  );
 });
 
 test("tags render in the tag colour", () => {
@@ -44,7 +50,9 @@ test("tags render in the tag colour", () => {
   const el = document.createElement("div");
   h.attach(el);
   h.updateHighlights();
-  const span = h.highlightsEl!.querySelector(".j0n4t-pg-raw-token") as HTMLElement;
+  const span = h.highlightsEl!.querySelector(
+    ".j0n4t-pg-raw-token",
+  ) as HTMLElement;
   assert.equal(span.style.color, "rgb(79, 193, 255)");
 });
 
@@ -53,7 +61,9 @@ test("variant tokens render bold in the group colour", () => {
   const el = document.createElement("div");
   h.attach(el);
   h.updateHighlights();
-  const span = h.highlightsEl!.querySelector(".j0n4t-pg-raw-token") as HTMLElement;
+  const span = h.highlightsEl!.querySelector(
+    ".j0n4t-pg-raw-token",
+  ) as HTMLElement;
   assert.equal(span.style.fontWeight, "bold");
 });
 
@@ -62,7 +72,9 @@ test("known presets render in the preset colour with a tooltip", () => {
   const el = document.createElement("div");
   h.attach(el);
   h.updateHighlights();
-  const span = h.highlightsEl!.querySelector(".j0n4t-pg-raw-token") as HTMLElement;
+  const span = h.highlightsEl!.querySelector(
+    ".j0n4t-pg-raw-token",
+  ) as HTMLElement;
   assert.match(span.style.color, /^rgb\(\d+, \d+, \d+\)$/);
   assert.ok(span.title.includes("Portrait [Faces/Portrait]"));
 });
@@ -73,17 +85,25 @@ test("ignorePreset renders the ignored preset as plain text", () => {
   h.attach(el);
   h.updateHighlights("Faces/Portrait");
   const span = highlightSpan(h);
-  console.error("DEBUG span:", span.innerHTML, "classList:", Array.from(span.classList));
+  console.error(
+    "DEBUG span:",
+    span.innerHTML,
+    "classList:",
+    Array.from(span.classList),
+  );
   assert.ok(span.classList.contains("plain-text"));
   assert.equal(span.title, "");
 });
 
 test("extractGroupName splits the group name from a variant", () => {
-  assert.equal(RawTextHighlighting.extractGroupName("{Faces:Portrait}"), "Faces");
+  assert.equal(
+    RawTextHighlighting.extractGroupName("{Faces:Portrait}"),
+    "Faces",
+  );
   assert.equal(RawTextHighlighting.extractGroupName("{Faces}"), "Faces");
   assert.equal(
     RawTextHighlighting.extractGroupName("{Faces:Portrait,Scenery:Landscape}"),
-    "Faces"
+    "Faces",
   );
   assert.equal(RawTextHighlighting.extractGroupName("{}"), "");
 });

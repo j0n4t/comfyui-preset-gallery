@@ -15,7 +15,13 @@ function makeAuto(textareaValue = "", ignorePreset: string | null = null) {
   const context = { cache: CACHE } as unknown as GalleryContext;
   const onSync = () => {};
   const manager = { updateHighlights: () => {} };
-  return new RawTextAutocomplete(textarea, context, ignorePreset, onSync, manager);
+  return new RawTextAutocomplete(
+    textarea,
+    context,
+    ignorePreset,
+    onSync,
+    manager,
+  );
 }
 
 test("ignorePreset is preserved from the constructor", () => {
@@ -26,5 +32,8 @@ test("ignorePreset is preserved from the constructor", () => {
 test("init wires the textarea input and the manager", () => {
   const auto = makeAuto("hello");
   assert.equal(auto.textarea.value, "hello");
-  assert.ok(auto.manager !== undefined, "the raw-text manager is forwarded to AutocompleteManager");
+  assert.ok(
+    auto.manager !== undefined,
+    "the raw-text manager is forwarded to AutocompleteManager",
+  );
 });

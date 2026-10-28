@@ -7,12 +7,18 @@ import PresetGallerySettings from "../../web/PresetGallerySettings.js";
 // mirrors them onto the reroll dice button's classes. The context is a stub
 // that records syncUI; localStorage is an in-memory mock.
 
-function fakeStorage(initial: Record<string, string> = {}): Map<string, string> {
+function fakeStorage(
+  initial: Record<string, string> = {},
+): Map<string, string> {
   const map = new Map<string, string>(Object.entries(initial));
   globalThis.localStorage = {
     getItem: (k: string) => map.get(k) ?? null,
-    setItem: (k: string, v: string) => { map.set(k, v); },
-    removeItem: (k: string) => { map.delete(k); },
+    setItem: (k: string, v: string) => {
+      map.set(k, v);
+    },
+    removeItem: (k: string) => {
+      map.delete(k);
+    },
     clear: () => map.clear(),
   } as unknown as Storage;
   return map;
@@ -30,7 +36,9 @@ function makeSettings(dom?: DomStub): {
   widgetValue: string;
 } {
   const state = { widgetValue: "Faces/Portrait" };
-  const syncUI = (val: string) => { state.widgetValue = val; };
+  const syncUI = (val: string) => {
+    state.widgetValue = val;
+  };
   const settings = new PresetGallerySettings({
     syncUI,
     widget: { value: state.widgetValue },
@@ -78,11 +86,31 @@ test("loads defaults when nothing is saved", () => {
   assert.equal(settings.heightFixed, 640);
   assert.equal(settings.rememberPanelSizes, false, "panel sizes are opt-in");
   assert.deepEqual(settings.panelSizes, {});
-  assert.deepEqual(settings.disabledLibraries, [], "nothing is switched off by default");
-  assert.deepEqual(settings.libraryOrder, [], "the server's order is used until the user picks one");
-  assert.equal(settings.qualifyChips, true, "chips keep their library tag by default");
-  assert.equal(settings.showChipLibraryBadges, true, "chip library badges are shown by default");
-  assert.equal(settings.showGridLibraryBadges, true, "grid library badges are shown by default");
+  assert.deepEqual(
+    settings.disabledLibraries,
+    [],
+    "nothing is switched off by default",
+  );
+  assert.deepEqual(
+    settings.libraryOrder,
+    [],
+    "the server's order is used until the user picks one",
+  );
+  assert.equal(
+    settings.qualifyChips,
+    true,
+    "chips keep their library tag by default",
+  );
+  assert.equal(
+    settings.showChipLibraryBadges,
+    true,
+    "chip library badges are shown by default",
+  );
+  assert.equal(
+    settings.showGridLibraryBadges,
+    true,
+    "grid library badges are shown by default",
+  );
 });
 
 test("loads previously saved values", () => {
@@ -113,7 +141,11 @@ test("falls back to the default height mode for an unrecognised one", () => {
   });
   const { settings } = makeSettings();
   assert.equal(settings.heightMode, "fit");
-  assert.equal(settings.heightFixed, 420, "the valid half of the pair is still honoured");
+  assert.equal(
+    settings.heightFixed,
+    420,
+    "the valid half of the pair is still honoured",
+  );
 });
 
 test("falls back to the default fixed height when the stored one is unusable", () => {
@@ -165,7 +197,7 @@ test("save writes all preferences", () => {
       showGridLibraryBadges: true,
       disabledLibraries: [],
       libraryOrder: [],
-    })
+    }),
   );
 });
 
@@ -184,7 +216,9 @@ test("updateDiceVisuals reflects the dice behavior and auto-roll flags", async (
   const { settings } = makeSettings();
   await tick();
 
-  const btn = document.querySelector<HTMLButtonElement>(".j0n4t-pg-basket-reroll-btn")!;
+  const btn = document.querySelector<HTMLButtonElement>(
+    ".j0n4t-pg-basket-reroll-btn",
+  )!;
   assert.ok(btn.classList.contains("roll-variants"), "default behavior class");
   assert.ok(!btn.classList.contains("auto-roll"));
   assert.ok(!btn.classList.contains("auto-roll-seed"));
@@ -195,7 +229,10 @@ test("updateDiceVisuals reflects the dice behavior and auto-roll flags", async (
   settings.updateDiceVisuals();
 
   assert.ok(btn.classList.contains("roll-overwrite"));
-  assert.ok(!btn.classList.contains("roll-variants"), "the old behavior class is removed");
+  assert.ok(
+    !btn.classList.contains("roll-variants"),
+    "the old behavior class is removed",
+  );
   assert.ok(btn.classList.contains("auto-roll"));
   assert.ok(btn.classList.contains("auto-roll-seed"));
 });
@@ -210,12 +247,20 @@ test("openModal renders the settings tab and switches tabs", async () => {
   const modal = document.querySelector(".j0n4t-pg-modal-overlay");
   assert.ok(modal, "modal is mounted");
   const minInput = modal.querySelector<HTMLInputElement>("#j0n4t-pg-roll-min");
-  assert.equal(minInput?.value, "10", "min input is seeded from the loaded value");
+  assert.equal(
+    minInput?.value,
+    "10",
+    "min input is seeded from the loaded value",
+  );
 
   const tab = (name: string) =>
-    modal.querySelector<HTMLButtonElement>(`.j0n4t-pg-tab-btn[data-tab="${name}"]`)!;
+    modal.querySelector<HTMLButtonElement>(
+      `.j0n4t-pg-tab-btn[data-tab="${name}"]`,
+    )!;
   const isActive = (name: string) =>
-    modal.querySelector(`#j0n4t-pg-tab-${name}`)?.classList.contains("active") ?? false;
+    modal
+      .querySelector(`#j0n4t-pg-tab-${name}`)
+      ?.classList.contains("active") ?? false;
 
   tab("display").click();
   assert.ok(isActive("display"));
@@ -236,7 +281,9 @@ test("openModal save persists the inputs and syncs the widget", async () => {
   const map = fakeStorage();
   let synced: string | null = null;
   const settings = new PresetGallerySettings({
-    syncUI: (val: string) => { synced = val; },
+    syncUI: (val: string) => {
+      synced = val;
+    },
     widget: { value: "Faces/Portrait" },
   } as unknown as GalleryContext);
 
@@ -244,10 +291,16 @@ test("openModal save persists the inputs and syncs the widget", async () => {
   const modal = document.querySelector(".j0n4t-pg-modal-overlay")!;
   modal.querySelector<HTMLInputElement>("#j0n4t-pg-roll-min")!.value = "3";
   modal.querySelector<HTMLInputElement>("#j0n4t-pg-roll-max")!.value = "7";
-  modal.querySelector<HTMLInputElement>("#j0n4t-pg-roll-on-gen")!.checked = true;
-  modal.querySelector<HTMLSelectElement>("#j0n4t-pg-dice-behavior")!.value = "overwrite";
-  modal.querySelector<HTMLInputElement>("#j0n4t-pg-show-chip-library-badges")!.checked = false;
-  modal.querySelector<HTMLInputElement>("#j0n4t-pg-show-grid-library-badges")!.checked = false;
+  modal.querySelector<HTMLInputElement>("#j0n4t-pg-roll-on-gen")!.checked =
+    true;
+  modal.querySelector<HTMLSelectElement>("#j0n4t-pg-dice-behavior")!.value =
+    "overwrite";
+  modal.querySelector<HTMLInputElement>(
+    "#j0n4t-pg-show-chip-library-badges",
+  )!.checked = false;
+  modal.querySelector<HTMLInputElement>(
+    "#j0n4t-pg-show-grid-library-badges",
+  )!.checked = false;
   modal.querySelector<HTMLButtonElement>('button[data-index="1"]')?.click(); // Save
 
   assert.equal(await promise, true, "Save resolves the modal promise");
@@ -268,7 +321,7 @@ test("openModal save persists the inputs and syncs the widget", async () => {
       showGridLibraryBadges: false,
       disabledLibraries: [],
       libraryOrder: [],
-    })
+    }),
   );
   assert.equal(settings.showChipLibraryBadges, false);
   assert.equal(settings.showGridLibraryBadges, false);
@@ -289,7 +342,11 @@ test("openModal save clamps an invalid min and an empty max to at least the min"
 
   assert.equal(await promise, true);
   assert.equal(settings.rollMin, 1, "min is clamped up to 1");
-  assert.equal(settings.rollMax, 1, "an unparsable max reads as 0 and is raised to the min");
+  assert.equal(
+    settings.rollMax,
+    1,
+    "an unparsable max reads as 0 and is raised to the min",
+  );
   const saved = JSON.parse(map.get("pg_settings")!) as Record<string, unknown>;
   assert.equal(saved.rollMin, 1);
   assert.equal(saved.rollMax, 1);
@@ -318,7 +375,11 @@ test("applyHeightMode mirrors the mode onto the gallery element", () => {
   const dom = makeDom();
   const { settings } = makeSettings(dom);
 
-  assert.equal(dom.wrap.dataset.heightMode, "fit", "the default is applied on construction");
+  assert.equal(
+    dom.wrap.dataset.heightMode,
+    "fit",
+    "the default is applied on construction",
+  );
   assert.equal(dom.wrap.style.getPropertyValue("--pg-fixed-height"), "640px");
 
   settings.heightMode = "unlimited";
@@ -353,13 +414,31 @@ test("the Display tab seeds the mode and hides the pixel field unless fixed", as
 
   const modal = document.querySelector(".j0n4t-pg-modal-overlay");
   assert.ok(modal);
-  const modeSelect = modal.querySelector<HTMLSelectElement>("#j0n4t-pg-height-mode")!;
-  const fixedField = modal.querySelector<HTMLDivElement>("#j0n4t-pg-height-fixed-field")!;
-  const fixedInput = modal.querySelector<HTMLInputElement>("#j0n4t-pg-height-fixed")!;
+  const modeSelect = modal.querySelector<HTMLSelectElement>(
+    "#j0n4t-pg-height-mode",
+  )!;
+  const fixedField = modal.querySelector<HTMLDivElement>(
+    "#j0n4t-pg-height-fixed-field",
+  )!;
+  const fixedInput = modal.querySelector<HTMLInputElement>(
+    "#j0n4t-pg-height-fixed",
+  )!;
 
-  assert.equal(modeSelect.value, "fit", "the select is seeded from the loaded mode");
-  assert.equal(fixedInput.value, "420", "the input is seeded from the loaded height");
-  assert.equal(fixedField.style.display, "none", "hidden while the mode is not fixed");
+  assert.equal(
+    modeSelect.value,
+    "fit",
+    "the select is seeded from the loaded mode",
+  );
+  assert.equal(
+    fixedInput.value,
+    "420",
+    "the input is seeded from the loaded height",
+  );
+  assert.equal(
+    fixedField.style.display,
+    "none",
+    "hidden while the mode is not fixed",
+  );
 
   modeSelect.value = "fixed";
   modeSelect.dispatchEvent(new Event("change"));
@@ -376,8 +455,10 @@ test("openModal save applies the chosen height mode to the gallery element", asy
   const promise = settings.openModal();
 
   const modal = document.querySelector(".j0n4t-pg-modal-overlay")!;
-  modal.querySelector<HTMLSelectElement>("#j0n4t-pg-height-mode")!.value = "fixed";
-  modal.querySelector<HTMLInputElement>("#j0n4t-pg-height-fixed")!.value = "480";
+  modal.querySelector<HTMLSelectElement>("#j0n4t-pg-height-mode")!.value =
+    "fixed";
+  modal.querySelector<HTMLInputElement>("#j0n4t-pg-height-fixed")!.value =
+    "480";
   modal.querySelector<HTMLButtonElement>('button[data-index="1"]')?.click(); // Save
 
   assert.equal(await promise, true);
@@ -396,8 +477,10 @@ test("openModal save rounds the fixed height and falls back on an emptied one", 
 
   const first = settings.openModal();
   const modal = document.querySelector(".j0n4t-pg-modal-overlay")!;
-  modal.querySelector<HTMLSelectElement>("#j0n4t-pg-height-mode")!.value = "fixed";
-  modal.querySelector<HTMLInputElement>("#j0n4t-pg-height-fixed")!.value = "480.6";
+  modal.querySelector<HTMLSelectElement>("#j0n4t-pg-height-mode")!.value =
+    "fixed";
+  modal.querySelector<HTMLInputElement>("#j0n4t-pg-height-fixed")!.value =
+    "480.6";
   modal.querySelector<HTMLButtonElement>('button[data-index="1"]')?.click(); // Save
   assert.equal(await first, true);
   assert.equal(settings.heightFixed, 481, "rounded to a whole pixel");
@@ -407,10 +490,15 @@ test("openModal save rounds the fixed height and falls back on an emptied one", 
   emptied.querySelector<HTMLInputElement>("#j0n4t-pg-height-fixed")!.value = "";
   emptied.querySelector<HTMLButtonElement>('button[data-index="1"]')?.click(); // Save
   assert.equal(await second, true);
-  assert.equal(settings.heightFixed, 640, "an emptied input falls back to the default");
   assert.equal(
-    (JSON.parse(map.get("pg_settings")!) as Record<string, unknown>).heightFixed,
-    640
+    settings.heightFixed,
+    640,
+    "an emptied input falls back to the default",
+  );
+  assert.equal(
+    (JSON.parse(map.get("pg_settings")!) as Record<string, unknown>)
+      .heightFixed,
+    640,
   );
 });
 
@@ -435,16 +523,26 @@ test("the Display tab lists the libraries the server serves as a checkbox list",
 
   const rows = modal.querySelectorAll(".j0n4t-pg-library-row");
   assert.equal(rows.length, 2, "one row per served library");
-  assert.equal(rows[0].getAttribute("data-id"), "main", "the enabled one comes first");
-  assert.equal(rows[1].getAttribute("data-id"), "socks", "the disabled one after it");
-  // the bundled library is always on and cannot be switched off
   assert.equal(
-    rows[0].querySelector<HTMLInputElement>("input[data-role='enabled']")!.disabled,
-    true
+    rows[0].getAttribute("data-id"),
+    "main",
+    "the enabled one comes first",
   );
   assert.equal(
-    rows[1].querySelector<HTMLInputElement>("input[data-role='enabled']")!.checked,
-    false
+    rows[1].getAttribute("data-id"),
+    "socks",
+    "the disabled one after it",
+  );
+  // the bundled library is always on and cannot be switched off
+  assert.equal(
+    rows[0].querySelector<HTMLInputElement>("input[data-role='enabled']")!
+      .disabled,
+    true,
+  );
+  assert.equal(
+    rows[1].querySelector<HTMLInputElement>("input[data-role='enabled']")!
+      .checked,
+    false,
   );
 
   modal.querySelector<HTMLButtonElement>('button[data-index="0"]')?.click(); // Cancel
@@ -465,12 +563,18 @@ test("every library the server serves is enabled until the user switches one off
     { id: "hair", name: "Hair", default: false },
   ];
 
-  assert.deepEqual(settings.enabledIds(), ["main", "socks", "hair"], "the server's own order");
+  assert.deepEqual(
+    settings.enabledIds(),
+    ["main", "socks", "hair"],
+    "the server's own order",
+  );
   assert.equal(settings.isLibraryEnabled("hair"), true);
 });
 
 test("a saved order is honoured, and a library the server stopped serving is dropped", () => {
-  fakeStorage({ pg_settings: JSON.stringify({ libraryOrder: ["hair", "main"] }) });
+  fakeStorage({
+    pg_settings: JSON.stringify({ libraryOrder: ["hair", "main"] }),
+  });
   const dom = makeDom();
   const settings = new PresetGallerySettings({
     syncUI: () => {},
@@ -502,11 +606,19 @@ test("applyLibraries hands the enabled set to the gallery and persists the choic
   ];
 
   settings.applyLibraries(["main", "socks"]);
-  assert.deepEqual(calls, [["main", "socks"]], "the gallery is asked to re-merge");
   assert.deepEqual(
-    (JSON.parse(localStorage.getItem("pg_settings")!) as Record<string, unknown>)
-      .libraryOrder,
-    ["main", "socks"]
+    calls,
+    [["main", "socks"]],
+    "the gallery is asked to re-merge",
+  );
+  assert.deepEqual(
+    (
+      JSON.parse(localStorage.getItem("pg_settings")!) as Record<
+        string,
+        unknown
+      >
+    ).libraryOrder,
+    ["main", "socks"],
   );
 });
 
@@ -576,13 +688,25 @@ test("moveLibrary reorders the priority and clamps at both ends", () => {
   assert.deepEqual(settings.libraryOrder, ["main", "hair", "socks"]);
 
   settings.moveLibrary("main", -1);
-  assert.deepEqual(settings.enabledIds(), ["main", "hair", "socks"], "the top is clamped");
+  assert.deepEqual(
+    settings.enabledIds(),
+    ["main", "hair", "socks"],
+    "the top is clamped",
+  );
 
   settings.moveLibrary("socks", 1);
-  assert.deepEqual(settings.enabledIds(), ["main", "hair", "socks"], "the bottom is clamped");
+  assert.deepEqual(
+    settings.enabledIds(),
+    ["main", "hair", "socks"],
+    "the bottom is clamped",
+  );
 
   settings.moveLibrary("ghost", -1);
-  assert.deepEqual(settings.enabledIds(), ["main", "hair", "socks"], "an unknown id is ignored");
+  assert.deepEqual(
+    settings.enabledIds(),
+    ["main", "hair", "socks"],
+    "an unknown id is ignored",
+  );
   assert.equal(calls.length, 1, "only the real move re-applied");
 });
 
@@ -610,17 +734,19 @@ test("syncLibraryList puts enabled libraries first and disables the bundled one"
   assert.deepEqual(
     rows.map((row) => row.getAttribute("data-id")),
     ["socks", "main", "hair"],
-    "enabled in merge order, then the disabled ones"
+    "enabled in merge order, then the disabled ones",
   );
   assert.equal(
-    rows[1].querySelector<HTMLInputElement>("input[data-role='enabled']")!.disabled,
+    rows[1].querySelector<HTMLInputElement>("input[data-role='enabled']")!
+      .disabled,
     true,
-    "the bundled library cannot be switched off"
+    "the bundled library cannot be switched off",
   );
   assert.equal(
-    rows[2].querySelector<HTMLInputElement>("input[data-role='enabled']")!.checked,
+    rows[2].querySelector<HTMLInputElement>("input[data-role='enabled']")!
+      .checked,
     false,
-    "a served but disabled library is listed unchecked"
+    "a served but disabled library is listed unchecked",
   );
 });
 
@@ -650,7 +776,11 @@ test("applyPanelSizes leaves the panels alone while the option is off", () => {
   const dom = makeDom();
   const { settings } = makeSettings(dom);
 
-  assert.equal(dom.basketContainer.style.height, "", "the stored size is not applied");
+  assert.equal(
+    dom.basketContainer.style.height,
+    "",
+    "the stored size is not applied",
+  );
   assert.equal(dom.inpPreset.style.height, "");
 
   // Turning it off again clears whatever the browser had written on a drag.
@@ -676,15 +806,24 @@ test("drops panel sizes that are not usable heights", () => {
 
 test("the Display tab remembers the panel-size flag", async () => {
   const map = fakeStorage({
-    pg_settings: JSON.stringify({ rememberPanelSizes: true, panelSizes: { basket: 150 } }),
+    pg_settings: JSON.stringify({
+      rememberPanelSizes: true,
+      panelSizes: { basket: 150 },
+    }),
   });
   const dom = makeDom();
   const { settings } = makeSettings(dom);
-  assert.equal(dom.basketContainer.style.height, "150px", "restored before the modal opens");
+  assert.equal(
+    dom.basketContainer.style.height,
+    "150px",
+    "restored before the modal opens",
+  );
 
   const promise = settings.openModal();
   const modal = document.querySelector(".j0n4t-pg-modal-overlay")!;
-  const check = modal.querySelector<HTMLInputElement>("#j0n4t-pg-remember-panels")!;
+  const check = modal.querySelector<HTMLInputElement>(
+    "#j0n4t-pg-remember-panels",
+  )!;
   assert.equal(check.checked, true, "seeded from the loaded value");
 
   check.checked = false;
@@ -692,8 +831,16 @@ test("the Display tab remembers the panel-size flag", async () => {
 
   assert.equal(await promise, true);
   assert.equal(settings.rememberPanelSizes, false);
-  assert.equal(dom.basketContainer.style.height, "", "the applied size is cleared");
+  assert.equal(
+    dom.basketContainer.style.height,
+    "",
+    "the applied size is cleared",
+  );
   const saved = JSON.parse(map.get("pg_settings")!) as Record<string, unknown>;
   assert.equal(saved.rememberPanelSizes, false);
-  assert.deepEqual(saved.panelSizes, { basket: 150 }, "the sizes are kept for when it is turned back on");
+  assert.deepEqual(
+    saved.panelSizes,
+    { basket: 150 },
+    "the sizes are kept for when it is turned back on",
+  );
 });

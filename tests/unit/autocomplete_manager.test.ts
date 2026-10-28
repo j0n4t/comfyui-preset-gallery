@@ -12,7 +12,7 @@ type SelectSpy = { calls: unknown[]; keepOpen: boolean };
 function makeManager(
   input: HTMLInputElement,
   onKeyDown?: (e: KeyboardEvent) => boolean,
-  onBlur?: () => void
+  onBlur?: () => void,
 ): { manager: AutocompleteManager; spy: SelectSpy } {
   const spy: SelectSpy = { calls: [], keepOpen: false };
   const manager = new AutocompleteManager({
@@ -46,7 +46,9 @@ function makeInput(): HTMLInputElement {
 }
 
 function rows(manager: AutocompleteManager): HTMLElement[] {
-  return Array.from(manager.popupEl?.querySelectorAll(".j0n4t-pg-autocomplete-item") ?? []);
+  return Array.from(
+    manager.popupEl?.querySelectorAll(".j0n4t-pg-autocomplete-item") ?? [],
+  );
 }
 
 test("opens a popup with one row per match and marks the first active", () => {

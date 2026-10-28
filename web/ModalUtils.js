@@ -2,7 +2,7 @@ import PresetDOM from "./PresetDOM.js";
 
 /**
  * @typedef {Object} ModalButton
- * @property {string} text 
+ * @property {string} text
  * @property {string} [className]
  * @property {() => void} [callback]
  * @property {boolean} [isDefault]
@@ -38,7 +38,7 @@ export default class ModalUtils {
     return ModalUtils.show({
       title: "Notice",
       content: `<div style="font-size: 11px; color: #ccc; line-height: 1.4;">${PresetDOM.escapeHTML(message)}</div>`,
-      buttons: [{ text: "OK", isDefault: true, closeOnFinish: true }]
+      buttons: [{ text: "OK", isDefault: true, closeOnFinish: true }],
     });
   }
 
@@ -53,8 +53,13 @@ export default class ModalUtils {
       content: `<div style="font-size: 11px; color: #ccc; line-height: 1.4;">${PresetDOM.escapeHTML(message)}</div>`,
       buttons: [
         { text: "Cancel", closeOnFinish: true, callback: () => false },
-        { text: "Confirm", isDefault: true, closeOnFinish: true, callback: () => true }
-      ]
+        {
+          text: "Confirm",
+          isDefault: true,
+          closeOnFinish: true,
+          callback: () => true,
+        },
+      ],
     });
     return result === true;
   }
@@ -78,11 +83,16 @@ export default class ModalUtils {
       `,
       buttons: [
         { text: "Cancel", closeOnFinish: true, callback: () => null },
-        { text: "OK", isDefault: true, closeOnFinish: true, callback: () => (inputEl ? inputEl.value : null) }
+        {
+          text: "OK",
+          isDefault: true,
+          closeOnFinish: true,
+          callback: () => (inputEl ? inputEl.value : null),
+        },
       ],
       onOpen: (modal) => {
         inputEl = modal.querySelector(".j0n4t-pg-modal-input");
-      }
+      },
     });
     return result ?? null;
   }
@@ -100,7 +110,9 @@ export default class ModalUtils {
   static show(options) {
     return new Promise((resolve) => {
       ModalUtils.injectStyles();
-      const previouslyFocusedElement = /** @type {HTMLElement} */ (document.activeElement);
+      const previouslyFocusedElement = /** @type {HTMLElement} */ (
+        document.activeElement
+      );
 
       const overlay = document.createElement("div");
       overlay.className = "j0n4t-pg-modal-overlay";
@@ -108,11 +120,14 @@ export default class ModalUtils {
       modal.className = `j0n4t-pg-modal${options.expand ? " j0n4t-pg-modal-expand" : ""}`;
 
       const buttonsHTML = options.buttons
-        ? options.buttons.map((btn, idx) =>
-          `<button type="button" data-index="${idx}" class="j0n4t-pg-btn${btn.className ? " " + btn.className : ""}" ${btn.isDefault ? 'style="background:#007acc;" data-default="true"' : ""}>
+        ? options.buttons
+            .map(
+              (btn, idx) =>
+                `<button type="button" data-index="${idx}" class="j0n4t-pg-btn${btn.className ? " " + btn.className : ""}" ${btn.isDefault ? 'style="background:#007acc;" data-default="true"' : ""}>
             ${PresetDOM.escapeHTML(btn.text)}
-          </button>`
-        ).join("")
+          </button>`,
+            )
+            .join("")
         : `<button type="button" class="j0n4t-pg-btn" style="background:#007acc;" data-default="true">OK</button>`;
 
       modal.innerHTML = `
@@ -125,7 +140,10 @@ export default class ModalUtils {
       const cleanup = () => {
         document.removeEventListener("keydown", handleKeyDown);
         overlay.remove();
-        if (previouslyFocusedElement && typeof previouslyFocusedElement.focus === "function") {
+        if (
+          previouslyFocusedElement &&
+          typeof previouslyFocusedElement.focus === "function"
+        ) {
           previouslyFocusedElement.focus();
         }
       };
@@ -133,7 +151,11 @@ export default class ModalUtils {
       const handleKeyDown = (/** @type {KeyboardEvent} */ e) => {
         if (e.key === "Escape") {
           e.preventDefault();
-          const cancelBtn = options.buttons ? options.buttons.find(b => b.text.toLowerCase() === "cancel" || !b.isDefault) : null;
+          const cancelBtn = options.buttons
+            ? options.buttons.find(
+                (b) => b.text.toLowerCase() === "cancel" || !b.isDefault,
+              )
+            : null;
           if (cancelBtn && cancelBtn.callback) {
             resolve(cancelBtn.callback());
           } else {
@@ -142,7 +164,9 @@ export default class ModalUtils {
           cleanup();
         } else if (e.key === "Enter" && !e.ctrlKey) {
           e.preventDefault();
-          const defaultBtnEl = /** @type {HTMLElement} */ (modal.querySelector('button[data-default="true"]'));
+          const defaultBtnEl = /** @type {HTMLElement} */ (
+            modal.querySelector('button[data-default="true"]')
+          );
           if (defaultBtnEl) defaultBtnEl.click();
         }
       };
@@ -151,7 +175,9 @@ export default class ModalUtils {
 
       if (options.buttons) {
         options.buttons.forEach((button, index) => {
-          const btnElement = modal.querySelector(`button[data-index="${index}"]`);
+          const btnElement = modal.querySelector(
+            `button[data-index="${index}"]`,
+          );
           if (btnElement) {
             btnElement.addEventListener("click", () => {
               const result = button.callback ? button.callback() : undefined;
@@ -175,7 +201,9 @@ export default class ModalUtils {
       });
 
       document.body.appendChild(overlay);
-      if (options.onOpen) { options.onOpen(modal, overlay); }
+      if (options.onOpen) {
+        options.onOpen(modal, overlay);
+      }
 
       requestAnimationFrame(() => {
         setTimeout(() => {
@@ -184,7 +212,9 @@ export default class ModalUtils {
             inputEl.focus();
             inputEl.select();
           } else {
-            const defaultBtnEl = /** @type {HTMLElement} */ (modal.querySelector('button[data-default="true"]'));
+            const defaultBtnEl = /** @type {HTMLElement} */ (
+              modal.querySelector('button[data-default="true"]')
+            );
             if (defaultBtnEl) defaultBtnEl.focus();
           }
         }, 50);

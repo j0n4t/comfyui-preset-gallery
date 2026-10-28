@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 const HARNESS_PORT = 8878;
 const HARNESS_URL = `http://127.0.0.1:${HARNESS_PORT}/dev/index.html`;
@@ -17,7 +17,7 @@ const HARNESS_URL = `http://127.0.0.1:${HARNESS_PORT}/dev/index.html`;
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -25,10 +25,10 @@ export default defineConfig({
   // throttled, and parallel workers put several full browser pages in flight
   // at once, which starved firefox into intermittent mount races.
   workers: 1,
-  reporter: 'html',
+  reporter: "html",
   use: {
     baseURL: `http://127.0.0.1:${HARNESS_PORT}`,
-    trace: 'on-first-retry',
+    trace: "on-first-retry",
   },
 
   webServer: {
@@ -39,11 +39,13 @@ export default defineConfig({
   },
 
   projects: (() => {
-    const projects = [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }];
+    const projects = [
+      { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    ];
     if (process.env.CI) {
       projects.push(
-        { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-        { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+        { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+        { name: "webkit", use: { ...devices["Desktop Safari"] } },
       );
     }
     return projects;

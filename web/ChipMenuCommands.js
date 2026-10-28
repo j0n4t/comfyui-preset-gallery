@@ -48,17 +48,30 @@ export default class ChipMenuCommands {
     if (e.key === "Delete") {
       e.stopPropagation();
       e.preventDefault();
-      const delEl = /** @type {HTMLElement} */ (popup.querySelector('[data-action="del"]'));
+      const delEl = /** @type {HTMLElement} */ (
+        popup.querySelector('[data-action="del"]')
+      );
       if (delEl) delEl.click();
       return;
     }
     if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") {
-      const keyMap = { p: "pin", s: "swap", e: "edit", l: "locate", c: "create", w: "toggle-weight", d: "disable" };
-      const action = keyMap[/** @type {keyof typeof keyMap} */ (e.key.toLowerCase())];
+      const keyMap = {
+        p: "pin",
+        s: "swap",
+        e: "edit",
+        l: "locate",
+        c: "create",
+        w: "toggle-weight",
+        d: "disable",
+      };
+      const action =
+        keyMap[/** @type {keyof typeof keyMap} */ (e.key.toLowerCase())];
       if (action) {
         e.stopPropagation();
         e.preventDefault();
-        const actionEl = /** @type {HTMLElement} */ (popup.querySelector(`[data-action="${action}"]`));
+        const actionEl = /** @type {HTMLElement} */ (
+          popup.querySelector(`[data-action="${action}"]`)
+        );
         if (actionEl) actionEl.click();
       }
     }
@@ -84,13 +97,13 @@ export default class ChipMenuCommands {
         this.context.pinnedChips.delete(rawToken);
         chipElement.classList.remove("pinned");
         actionEl.classList.remove("active-pin");
-        actionEl.querySelector('svg')?.setAttribute("fill", "none");
+        actionEl.querySelector("svg")?.setAttribute("fill", "none");
         actionEl.title = "Pin";
       } else {
         this.context.pinnedChips?.add(rawToken);
         chipElement.classList.add("pinned");
         actionEl.classList.add("active-pin");
-        actionEl.querySelector('svg')?.setAttribute("fill", "currentColor");
+        actionEl.querySelector("svg")?.setAttribute("fill", "currentColor");
         actionEl.title = "Unpin";
       }
       this.context.savePins();
@@ -99,7 +112,9 @@ export default class ChipMenuCommands {
     }
 
     if (action === "toggle-weight") {
-      const wMod = /** @type {HTMLElement} */ (popup.querySelector(".j0n4t-pg-weight-modifier"));
+      const wMod = /** @type {HTMLElement} */ (
+        popup.querySelector(".j0n4t-pg-weight-modifier")
+      );
       if (!wMod) return false;
       wMod.style.display = wMod.style.display === "none" ? "flex" : "none";
       if (wMod.style.display === "flex") {
@@ -109,7 +124,9 @@ export default class ChipMenuCommands {
     }
 
     if (action === "weight-minus" || action === "weight-plus") {
-      const input = /** @type {HTMLInputElement} */ (popup.querySelector(".j0n4t-pg-weight-input"));
+      const input = /** @type {HTMLInputElement} */ (
+        popup.querySelector(".j0n4t-pg-weight-input")
+      );
       if (!input) return false;
       let val = parseFloat(input.value) || 1.0;
       val += action === "weight-plus" ? 0.05 : -0.05;
@@ -139,7 +156,9 @@ export default class ChipMenuCommands {
       for (let i = startIndex; i < endIndex; i++) {
         const token = next[i];
         const disabled = PresetLogic.isTildeDisabled(token);
-        const nextToken = disabled ? PresetLogic.unwrapTilde(token) : `~${token}~`;
+        const nextToken = disabled
+          ? PresetLogic.unwrapTilde(token)
+          : `~${token}~`;
         next[i] = nextToken;
         // A tilde toggle renames the chip's key, so move any pin with it.
         this.context.transferPin(token, nextToken);
@@ -170,7 +189,11 @@ export default class ChipMenuCommands {
    */
   _editPreset(chipElement, startIndex, endIndex) {
     const styleKey = chipElement.dataset.id || "";
-    const { core: coreKey, weight: currentWeight, isWeighted } = PresetLogic.parseWeight(styleKey);
+    const {
+      core: coreKey,
+      weight: currentWeight,
+      isWeighted,
+    } = PresetLogic.parseWeight(styleKey);
     const item = this.context.cache[coreKey];
     if (item) {
       this.context.openEditorForPreset(coreKey, true);
@@ -183,7 +206,12 @@ export default class ChipMenuCommands {
     } else if (rawPreset) {
       editVal = rawPreset;
     }
-    this.basket.inlineEditorManager.spawn(chipElement, editVal, startIndex, endIndex);
+    this.basket.inlineEditorManager.spawn(
+      chipElement,
+      editVal,
+      startIndex,
+      endIndex,
+    );
   }
 
   /**
@@ -193,13 +221,22 @@ export default class ChipMenuCommands {
    */
   _swapPreset(chipElement, startIndex, endIndex) {
     const styleKey = chipElement.dataset.id || "";
-    const { core: coreKey, weight: currentWeight, isWeighted } = PresetLogic.parseWeight(styleKey);
+    const {
+      core: coreKey,
+      weight: currentWeight,
+      isWeighted,
+    } = PresetLogic.parseWeight(styleKey);
     const editVal = this.context.cache[coreKey]?.preset || coreKey;
     let val = editVal;
     if (isWeighted && val) {
       val = `(${val}:${currentWeight})`;
     }
-    this.basket.inlineEditorManager.spawn(chipElement, val, startIndex, endIndex);
+    this.basket.inlineEditorManager.spawn(
+      chipElement,
+      val,
+      startIndex,
+      endIndex,
+    );
   }
 
   /** @param {HTMLElement} chipElement */
@@ -209,7 +246,10 @@ export default class ChipMenuCommands {
     let locateKey = coreKey;
     const presetVal = chipElement.dataset.preset;
     if (presetVal) {
-      const presetMatch = PresetLogic.findPresetMatch(presetVal, this.context.cache);
+      const presetMatch = PresetLogic.findPresetMatch(
+        presetVal,
+        this.context.cache,
+      );
       if (presetMatch) locateKey = presetMatch.key;
     }
     this.basket.locatePreset(locateKey);
@@ -222,14 +262,18 @@ export default class ChipMenuCommands {
     const item = this.context.cache[coreKey];
     this.context.setPanelCollapseState(false);
     this.context.editor.clearFields();
-    this.context.editor.dom.inpPreset.value = item && item.preset ? item.preset : coreKey;
+    this.context.editor.dom.inpPreset.value =
+      item && item.preset ? item.preset : coreKey;
     this.context.editor.rawPresetManager?.updateHighlights();
-    const cleanName =
-      coreKey
-        .replace(/^<(lora|lyco):/i, "")
-        .replace(/>$/, "")
-        .split(":")[0]
-        .split("/").pop()?.replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
+    const cleanName = coreKey
+      .replace(/^<(lora|lyco):/i, "")
+      .replace(/>$/, "")
+      .split(":")[0]
+      .split("/")
+      .pop()
+      ?.replace(/[^a-zA-Z0-9\s-_]/g, "")
+      .trim()
+      .replace(/\s+/g, "_");
     if (cleanName) this.context.editor.dom.inpName.value = cleanName;
     this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
     this.context.editor.dom.inpPreset.focus();
@@ -255,9 +299,11 @@ export default class ChipMenuCommands {
   onEditVar(chipElement, editVarBtn, popup) {
     const group = editVarBtn.dataset.group;
     const gIndex = Number(editVarBtn.dataset.gindex);
-    const inputEl = /** @type {HTMLInputElement} */ (popup.querySelector(
-      `input.j0n4t-pg-var-input[data-group="${group}"][data-gindex="${gIndex}"]`
-    ));
+    const inputEl = /** @type {HTMLInputElement} */ (
+      popup.querySelector(
+        `input.j0n4t-pg-var-input[data-group="${group}"][data-gindex="${gIndex}"]`,
+      )
+    );
     let rawVal = inputEl?.value;
     if (rawVal === "🚫 None (Omit)" || inputEl?.dataset.key === "none") return;
     let variantKey = this.manager._resolveInputValue(inputEl, rawVal);
@@ -265,12 +311,21 @@ export default class ChipMenuCommands {
       const chipIndex = Number(chipElement.dataset.index);
       if (!isNaN(chipIndex)) {
         const activeList = this.context.getSelectedArray();
-        const chipsData = ChipProjection.getGroupedChips(activeList, this.context.cache);
+        const chipsData = ChipProjection.getGroupedChips(
+          activeList,
+          this.context.cache,
+        );
         const tracer = new RollManager(this.context.rollManager.rolls);
-        const targetGroup = group?.trim().toLowerCase().replace(/\s+/g, "_") || "";
+        const targetGroup =
+          group?.trim().toLowerCase().replace(/\s+/g, "_") || "";
         for (let i = 0; i < chipsData.length; i++) {
           const startCounts = tracer.cloneCounts();
-          PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), tracer);
+          PresetLogic.expandRecursively(
+            chipsData[i].styleKey,
+            this.context.cache,
+            new Set(),
+            tracer,
+          );
           if (i === chipIndex) {
             const targetRollIndex = (startCounts[targetGroup] || 0) + gIndex;
             variantKey = tracer.peekRoll(targetGroup, targetRollIndex);
@@ -280,7 +335,10 @@ export default class ChipMenuCommands {
       }
     }
     if (variantKey) {
-      const presetMatch = PresetLogic.findPresetMatch(variantKey, this.context.cache);
+      const presetMatch = PresetLogic.findPresetMatch(
+        variantKey,
+        this.context.cache,
+      );
       if (presetMatch) variantKey = presetMatch.key;
       this.context.openEditorForPreset(variantKey, true);
     }
@@ -301,13 +359,21 @@ export default class ChipMenuCommands {
     inputEl.dataset.key = selectedVal;
 
     const groupRegex = PresetLogic.createGroupRegex(group);
-    const replacement = selectedVal ? `{${group}:${selectedVal}}` : `{${group}}`;
+    const replacement = selectedVal
+      ? `{${group}:${selectedVal}}`
+      : `{${group}}`;
 
     const currentKey = chipElement.dataset.id || "";
     const currentPreset = chipElement.dataset.preset || "";
-    const { core: activeCoreKey, isWeighted: isActiveWeighted, weightStr: activeWeight } =
-      PresetLogic.parseWeight(currentKey);
-    const unrolled = PresetLogic.getUnrolledTemplate(activeCoreKey, this.context.cache);
+    const {
+      core: activeCoreKey,
+      isWeighted: isActiveWeighted,
+      weightStr: activeWeight,
+    } = PresetLogic.parseWeight(currentKey);
+    const unrolled = PresetLogic.getUnrolledTemplate(
+      activeCoreKey,
+      this.context.cache,
+    );
 
     /**
      * @param {string} str
@@ -316,14 +382,17 @@ export default class ChipMenuCommands {
      */
     const replaceNth = (str, regex, replStr) => {
       let matchCount = 0;
-      return str.replace(regex, /** @param {string} match */ (match) => {
-        if (matchCount === gIndex) {
+      return str.replace(
+        regex,
+        /** @param {string} match */ (match) => {
+          if (matchCount === gIndex) {
+            matchCount++;
+            return replStr;
+          }
           matchCount++;
-          return replStr;
-        }
-        matchCount++;
-        return match;
-      });
+          return match;
+        },
+      );
     };
 
     let newStyleKey = currentKey;
@@ -334,20 +403,32 @@ export default class ChipMenuCommands {
       if (attempt !== currentKey) newStyleKey = attempt;
     }
     if (newStyleKey === currentKey && isSub && rootGroup) {
-      newStyleKey = PresetLogic.replaceNestedRoot(currentKey, rootGroup, group, replacement);
+      newStyleKey = PresetLogic.replaceNestedRoot(
+        currentKey,
+        rootGroup,
+        group,
+        replacement,
+      );
     }
     if (newStyleKey === currentKey && currentPreset.match(groupRegex)) {
       const attempt = replaceNth(currentPreset, groupRegex, replacement);
       if (attempt !== currentPreset) newStyleKey = attempt;
     }
     if (newStyleKey === currentKey && isSub && rootGroup) {
-      const attempt = PresetLogic.replaceNestedRoot(currentPreset, rootGroup, group, replacement);
+      const attempt = PresetLogic.replaceNestedRoot(
+        currentPreset,
+        rootGroup,
+        group,
+        replacement,
+      );
       if (attempt !== currentPreset) newStyleKey = attempt;
     }
     if (newStyleKey === currentKey && unrolled.match(groupRegex)) {
       const attempt = replaceNth(unrolled, groupRegex, replacement);
       if (attempt !== unrolled) {
-        newStyleKey = isActiveWeighted ? `(${attempt}:${activeWeight})` : attempt;
+        newStyleKey = isActiveWeighted
+          ? `(${attempt}:${activeWeight})`
+          : attempt;
         coreReplaced = true;
       }
     }
@@ -368,7 +449,10 @@ export default class ChipMenuCommands {
     if (isNaN(val)) return;
     const currentKey = chipElement.dataset.id || "";
     const { core: activeCoreKey } = PresetLogic.parseWeight(currentKey);
-    const finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
+    const finalNewKey =
+      val === 1.0
+        ? activeCoreKey
+        : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
     chipElement.dataset.id = finalNewKey;
     return finalNewKey;
   }

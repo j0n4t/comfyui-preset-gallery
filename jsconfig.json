@@ -1,15 +1,9 @@
 {
-    "compilerOptions": {
-        "target": "esnext",
-        "module": "esnext",
-        "checkJs": true
-    },
-    "include": [
-        "web/**/*",
-        "globals.d.ts"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "checkJs": true
+  },
+  "include": ["web/**/*", "globals.d.ts"],
+  "exclude": ["node_modules", "dist"]
 }

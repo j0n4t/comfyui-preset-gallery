@@ -9,9 +9,13 @@ import ChipProjection from "./ChipProjection.js";
 import RawTextareaManager from "./RawTextareaManager.js";
 import RollManager from "./RollManager.js";
 import YAMLUtils from "./YAMLUtils.js";
-import { STORAGE_KEYS, defaultStorage, readBool, writeBool } from "./GalleryStorage.js";
+import {
+  STORAGE_KEYS,
+  defaultStorage,
+  readBool,
+  writeBool,
+} from "./GalleryStorage.js";
 import PresetDisplay from "./PresetDisplay.js";
-
 
 export default class PresetBasket {
   static BASKET_CONTAINER_STYLES = /*css*/ `
@@ -128,15 +132,22 @@ export default class PresetBasket {
     this.inlineEditorManager = new InlineEditorManager(this.context, this);
     this.chipMenuManager = new ChipMenuManager(this.context, this);
 
-    PresetDOM.injectStyles("j0n4t-pg-basket-container-styles", PresetBasket.BASKET_CONTAINER_STYLES);
-    PresetDOM.injectStyles("j0n4t-pg-basket-chip-etc-styles", PresetBasket.BASKET_CHIP_ETC_STYLES);
+    PresetDOM.injectStyles(
+      "j0n4t-pg-basket-container-styles",
+      PresetBasket.BASKET_CONTAINER_STYLES,
+    );
+    PresetDOM.injectStyles(
+      "j0n4t-pg-basket-chip-etc-styles",
+      PresetBasket.BASKET_CHIP_ETC_STYLES,
+    );
 
     // Restructure container to include the side tabs sidebar
     this.container.style.display = "flex";
     this.container.style.flexDirection = "row";
 
     const mainPane = document.createElement("div");
-    mainPane.style.cssText = "flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;";
+    mainPane.style.cssText =
+      "flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;";
     while (this.container.firstChild) {
       mainPane.appendChild(this.container.firstChild);
     }
@@ -151,8 +162,12 @@ export default class PresetBasket {
     this.container.appendChild(sidebar);
     this.container.appendChild(mainPane);
 
-    this.tabsSidebarList = /** @type {HTMLElement} */ (sidebar.querySelector(".j0n4t-pg-basket-tabs-list"));
-    this.tabAddBtn = /** @type {HTMLElement} */ (sidebar.querySelector(".j0n4t-pg-basket-tab-add-btn"));
+    this.tabsSidebarList = /** @type {HTMLElement} */ (
+      sidebar.querySelector(".j0n4t-pg-basket-tabs-list")
+    );
+    this.tabAddBtn = /** @type {HTMLElement} */ (
+      sidebar.querySelector(".j0n4t-pg-basket-tab-add-btn")
+    );
 
     /** @type {PresetBasketTabs} */
     this.tabState = new PresetBasketTabs(context);
@@ -165,7 +180,10 @@ export default class PresetBasket {
     // Track what is being dragged over the tab sidebar
     this._sidebarDragState = null;
     document.addEventListener("pointerdown", (e) => {
-      if (this.tabMenu && !this.tabMenu.contains(/** @type {Node} */(e.target))) {
+      if (
+        this.tabMenu &&
+        !this.tabMenu.contains(/** @type {Node} */ (e.target))
+      ) {
         this.closeTabMenu();
       }
     });
@@ -175,21 +193,29 @@ export default class PresetBasket {
 
     // Custom event: external code can dispatch this to add chips to a new tab
     // Usage: container.dispatchEvent(new CustomEvent("preset-gallery:add-chips-to-new-tab", { detail: { chips: ["preset1", "preset2"] } }))
-    this.container.addEventListener("preset-gallery:add-chips-to-new-tab", (e) => {
-      // @ts-expect-error bleh
-      const chips = e.detail?.chips;
-      if (Array.isArray(chips) && chips.length > 0) {
-        this.addChipsToNewTab(chips);
-      }
-    });
+    this.container.addEventListener(
+      "preset-gallery:add-chips-to-new-tab",
+      (e) => {
+        // @ts-expect-error bleh
+        const chips = e.detail?.chips;
+        if (Array.isArray(chips) && chips.length > 0) {
+          this.addChipsToNewTab(chips);
+        }
+      },
+    );
 
-    this.rawManager = new RawTextareaManager(this.textarea, this.context, null, (val) => {
-      const tokens = PresetLogic.parseTokens(val, this.context.cache);
-      const selections = tokens
-        .filter((t) => !t.isDelimiter && t.text.trim())
-        .map((t) => (t.key ? t.key : t.text.trim()));
-      this.context.updateWidgetValue(selections);
-    });
+    this.rawManager = new RawTextareaManager(
+      this.textarea,
+      this.context,
+      null,
+      (val) => {
+        const tokens = PresetLogic.parseTokens(val, this.context.cache);
+        const selections = tokens
+          .filter((t) => !t.isDelimiter && t.text.trim())
+          .map((t) => (t.key ? t.key : t.text.trim()));
+        this.context.updateWidgetValue(selections);
+      },
+    );
 
     this.dragDrop.init();
     this.initSidebarDragAndDrop();
@@ -239,16 +265,19 @@ export default class PresetBasket {
    */
   _updateTabSidebarActiveState() {
     if (!this.tabsSidebarList) return;
-    this.tabsSidebarList.querySelectorAll(".j0n4t-pg-basket-tab-item").forEach((item, index) => {
-      const id = item.getAttribute("data-tab-id");
-      const isActive = this.tabState.isActive(id);
-      item.classList.toggle("active", isActive);
-      item.setAttribute("aria-selected", String(isActive));
+    this.tabsSidebarList
+      .querySelectorAll(".j0n4t-pg-basket-tab-item")
+      .forEach((item, index) => {
+        const id = item.getAttribute("data-tab-id");
+        const isActive = this.tabState.isActive(id);
+        item.classList.toggle("active", isActive);
+        item.setAttribute("aria-selected", String(isActive));
 
-      const targetTab = this.tabState.find(id);
-      const baseTitle = targetTab?.title || `Tab ${index + 1}`;
-      /** @type {HTMLElement} */ (item).title = `${PresetDOM.escapeHTML(baseTitle)}${isActive ? " (Click for tab options)" : ""}`;
-    });
+        const targetTab = this.tabState.find(id);
+        const baseTitle = targetTab?.title || `Tab ${index + 1}`;
+        /** @type {HTMLElement} */ (item).title =
+          `${PresetDOM.escapeHTML(baseTitle)}${isActive ? " (Click for tab options)" : ""}`;
+      });
   }
 
   createNewTab() {
@@ -299,7 +328,9 @@ export default class PresetBasket {
    * dragging onto an existing tab appends the spread contents to that tab.
    */
   initSidebarDragAndDrop() {
-    const sidebar = /** @type {HTMLElement | null} */ (this.container.querySelector(".j0n4t-pg-basket-tabs-sidebar"));
+    const sidebar = /** @type {HTMLElement | null} */ (
+      this.container.querySelector(".j0n4t-pg-basket-tabs-sidebar")
+    );
     if (!sidebar) return;
 
     sidebar.addEventListener("dragenter", (/** @type {DragEvent} */ e) => {
@@ -320,7 +351,11 @@ export default class PresetBasket {
     });
 
     sidebar.addEventListener("dragleave", (/** @type {DragEvent} */ e) => {
-      if (e.relatedTarget && sidebar.contains(/** @type {Node} */(e.relatedTarget))) return;
+      if (
+        e.relatedTarget &&
+        sidebar.contains(/** @type {Node} */ (e.relatedTarget))
+      )
+        return;
       sidebar.classList.remove("drag-over");
     });
 
@@ -338,7 +373,9 @@ export default class PresetBasket {
       if (chips.length === 0) return;
 
       // Check if we dropped on a specific tab item
-      const tabItem = /** @type {HTMLElement | null} */ (e.target)?.closest?.(".j0n4t-pg-basket-tab-item");
+      const tabItem = /** @type {HTMLElement | null} */ (e.target)?.closest?.(
+        ".j0n4t-pg-basket-tab-item",
+      );
 
       if (tabItem) {
         const tabId = tabItem.getAttribute("data-tab-id");
@@ -350,7 +387,9 @@ export default class PresetBasket {
 
       // Dropped on sidebar background or add button — create a new tab with the spread chips
       const presetName = PresetDisplay.getPresetName(styleKey);
-      const tabTitle = presetName ? PresetDisplay.toTitleCase(presetName) : undefined;
+      const tabTitle = presetName
+        ? PresetDisplay.toTitleCase(presetName)
+        : undefined;
       this.addChipsToNewTab(chips, tabTitle);
     });
 
@@ -362,7 +401,9 @@ export default class PresetBasket {
       if (e.dataTransfer.getData("source/basket") === "true") return;
 
       this._clearTabDropTargets();
-      const tabItem = /** @type {HTMLElement | null} */ (e.target)?.closest?.(".j0n4t-pg-basket-tab-item");
+      const tabItem = /** @type {HTMLElement | null} */ (e.target)?.closest?.(
+        ".j0n4t-pg-basket-tab-item",
+      );
       if (tabItem) {
         tabItem.classList.add("drop-target");
       }
@@ -374,9 +415,11 @@ export default class PresetBasket {
   }
 
   _clearTabDropTargets() {
-    this.tabsSidebarList?.querySelectorAll(".j0n4t-pg-basket-tab-item.drop-target").forEach(el => {
-      el.classList.remove("drop-target");
-    });
+    this.tabsSidebarList
+      ?.querySelectorAll(".j0n4t-pg-basket-tab-item.drop-target")
+      .forEach((el) => {
+        el.classList.remove("drop-target");
+      });
   }
 
   /** @param {string} tabId */
@@ -418,10 +461,18 @@ export default class PresetBasket {
     document.body.appendChild(menu);
     this.tabMenu = menu;
 
-    menu.addEventListener("blur", (e) => {
-      if (e.relatedTarget && menu.contains(/** @type {Node} */(e.relatedTarget))) return;
-      this.closeTabMenu();
-    }, true);
+    menu.addEventListener(
+      "blur",
+      (e) => {
+        if (
+          e.relatedTarget &&
+          menu.contains(/** @type {Node} */ (e.relatedTarget))
+        )
+          return;
+        this.closeTabMenu();
+      },
+      true,
+    );
 
     const menuRect = menu.getBoundingClientRect();
     if (menuRect.right > window.innerWidth) {
@@ -431,7 +482,8 @@ export default class PresetBasket {
       menu.style.top = `${Math.max(0, window.innerHeight - menuRect.height - 4)}px`;
     }
 
-    const [duplicateButton, closeButton, exportButton, importButton] = menu.querySelectorAll("button");
+    const [duplicateButton, closeButton, exportButton, importButton] =
+      menu.querySelectorAll("button");
     duplicateButton.addEventListener("click", () => {
       this.closeTabMenu();
       this.duplicateTab(tabId);
@@ -476,9 +528,9 @@ export default class PresetBasket {
       const isActive = this.tabState.isActive(tab.id);
       const displayName = `${index + 1}`;
       html += `
-        <div class="j0n4t-pg-basket-tab-item ${isActive ? 'active' : ''}"
+        <div class="j0n4t-pg-basket-tab-item ${isActive ? "active" : ""}"
              data-tab-id="${tab.id}"
-             title="${PresetDOM.escapeHTML(tab.title || ('Tab ' + (index + 1)))}${(isActive ? " (Click for tab options)" : "")}"
+             title="${PresetDOM.escapeHTML(tab.title || "Tab " + (index + 1))}${isActive ? " (Click for tab options)" : ""}"
              tabindex="0" role="tab" aria-selected="${isActive}">
           ${displayName}
         </div>
@@ -486,28 +538,29 @@ export default class PresetBasket {
     });
     this.tabsSidebarList.innerHTML = html;
 
-    this.tabsSidebarList.querySelectorAll(".j0n4t-pg-basket-tab-item").forEach(item => {
-      const openOptions = () => {
-        const tabId = item.getAttribute("data-tab-id");
-        if (tabId) {
-          if (this.tabState.isActive(tabId)) {
-            const tabRect = item.getBoundingClientRect();
-            this.openTabMenu(tabId, tabRect);
+    this.tabsSidebarList
+      .querySelectorAll(".j0n4t-pg-basket-tab-item")
+      .forEach((item) => {
+        const openOptions = () => {
+          const tabId = item.getAttribute("data-tab-id");
+          if (tabId) {
+            if (this.tabState.isActive(tabId)) {
+              const tabRect = item.getBoundingClientRect();
+              this.openTabMenu(tabId, tabRect);
+            } else {
+              this.switchTab(tabId);
+            }
           }
-          else {
-            this.switchTab(tabId);
+        };
+        item.addEventListener("click", openOptions);
+        // @ts-expect-error blah ts boring
+        item.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openOptions();
           }
-        }
-      };
-      item.addEventListener("click", openOptions);
-      // @ts-expect-error blah ts boring
-      item.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openOptions();
-        }
+        });
       });
-    });
   }
 
   /**
@@ -520,16 +573,19 @@ export default class PresetBasket {
     const tab = this.tabState.active();
     if (!tab) return;
 
-    const currentTitle = tab.title || '';
-    titleEl.style.display = 'none';
+    const currentTitle = tab.title || "";
+    titleEl.style.display = "none";
 
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'j0n4t-pg-inline-edit';
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "j0n4t-pg-inline-edit";
     input.value = currentTitle;
-    input.style.width = '100%';
-    input.style.minWidth = '60px';
-    /** @type {HTMLElement} */ (titleEl.parentNode).insertBefore(input, titleEl.nextSibling);
+    input.style.width = "100%";
+    input.style.minWidth = "60px";
+    /** @type {HTMLElement} */ (titleEl.parentNode).insertBefore(
+      input,
+      titleEl.nextSibling,
+    );
 
     let isFinishing = false;
     const finishEdit = (/** @type {boolean} */ save) => {
@@ -538,7 +594,7 @@ export default class PresetBasket {
 
       const newVal = input.value.trim();
       input.remove();
-      titleEl.style.display = '';
+      titleEl.style.display = "";
 
       if (save && newVal && newVal !== currentTitle) {
         this.tabState.rename(newVal);
@@ -550,19 +606,19 @@ export default class PresetBasket {
     input.focus();
     input.select();
 
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
         e.preventDefault();
         e.stopPropagation();
         finishEdit(true);
-      } else if (e.key === 'Escape') {
+      } else if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         finishEdit(false);
       }
     });
 
-    input.addEventListener('blur', () => finishEdit(true));
+    input.addEventListener("blur", () => finishEdit(true));
   }
 
   /**
@@ -575,8 +631,8 @@ export default class PresetBasket {
     const tab = this.tabState.active();
     if (!tab) return;
 
-    const icon = '\u{1F9FA}';
-    titleEl.textContent = `${icon} ${tab.title || 'Tab'}`;
+    const icon = "\u{1F9FA}";
+    titleEl.textContent = `${icon} ${tab.title || "Tab"}`;
   }
 
   /**
@@ -585,12 +641,16 @@ export default class PresetBasket {
   async exportTabs() {
     const { default: ModalUtils } = await import("./ModalUtils.js");
 
-    const tabRows = this.tabState.tabs.map((tab, index) => `
+    const tabRows = this.tabState.tabs
+      .map(
+        (tab, index) => `
       <label style="display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer;">
         <input type="checkbox" data-tab-index="${index}" checked />
         <span>${PresetDOM.escapeHTML(tab.title || `Tab ${index + 1}`)}</span>
       </label>
-    `).join("");
+    `,
+      )
+      .join("");
 
     /** @type {number[]} */
     let selectedIndexes = [];
@@ -607,24 +667,32 @@ export default class PresetBasket {
       buttons: [
         { text: "Cancel", closeOnFinish: true, callback: () => null },
         {
-          text: "Export", isDefault: true, closeOnFinish: true, callback: () => {
+          text: "Export",
+          isDefault: true,
+          closeOnFinish: true,
+          callback: () => {
             if (modalRef) {
-              modalRef.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
-                if (/** @type {HTMLInputElement} */ (checkbox).checked) {
-                  const index = Number(/** @type { HTMLInputElement } */(checkbox).dataset.tabIndex);
-                  if (index >= 0 && index < this.tabState.tabs.length) {
-                    selectedIndexes.push(index);
+              modalRef
+                .querySelectorAll("input[type=checkbox]")
+                .forEach((checkbox) => {
+                  if (/** @type {HTMLInputElement} */ (checkbox).checked) {
+                    const index = Number(
+                      /** @type { HTMLInputElement } */ (checkbox).dataset
+                        .tabIndex,
+                    );
+                    if (index >= 0 && index < this.tabState.tabs.length) {
+                      selectedIndexes.push(index);
+                    }
                   }
-                }
-              });
+                });
             }
             return true;
-          }
-        }
+          },
+        },
       ],
       onOpen: (modal) => {
         modalRef = modal;
-      }
+      },
     });
 
     if (!result) return;
@@ -636,15 +704,15 @@ export default class PresetBasket {
 
     const exportData = {
       version: 1,
-      tabs: selectedIndexes.map(index => {
+      tabs: selectedIndexes.map((index) => {
         const tab = this.tabState.tabs[index];
         return {
           title: tab.title,
           basket: tab.basket.join(", "),
           pins: tab.pins.join(", "),
-          rolls: tab.rolls
+          rolls: tab.rolls,
         };
-      })
+      }),
     };
 
     const yamlContent = YAMLUtils.stringify(exportData);
@@ -689,12 +757,16 @@ export default class PresetBasket {
         return;
       }
 
-      const tabRows = data.tabs.map((/** @type {{ title: any; }} */ tab, /** @type {number} */ index) => `
+      const tabRows = data.tabs
+        .map(
+          (/** @type {{ title: any; }} */ tab, /** @type {number} */ index) => `
         <label style="display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer;">
           <input type="checkbox" data-tab-index="${index}" checked />
           <span>${PresetDOM.escapeHTML(tab.title || `Tab ${index + 1}`)}</span>
         </label>
-      `).join("");
+      `,
+        )
+        .join("");
 
       /** @type {BasketTab[]} */
       let selectedTabs = [];
@@ -711,25 +783,33 @@ export default class PresetBasket {
         buttons: [
           { text: "Cancel", closeOnFinish: true, callback: () => null },
           {
-            text: "Import", isDefault: true, closeOnFinish: true, callback: () => {
+            text: "Import",
+            isDefault: true,
+            closeOnFinish: true,
+            callback: () => {
               if (modalRef) {
                 selectedTabs = [];
-                modalRef.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
-                  if (/** @type { HTMLInputElement } */ (checkbox).checked) {
-                    const index = Number(/** @type { HTMLInputElement } */(checkbox).dataset.tabIndex);
-                    if (index >= 0 && index < data.tabs.length) {
-                      selectedTabs.push(data.tabs[index]);
+                modalRef
+                  .querySelectorAll("input[type=checkbox]")
+                  .forEach((checkbox) => {
+                    if (/** @type { HTMLInputElement } */ (checkbox).checked) {
+                      const index = Number(
+                        /** @type { HTMLInputElement } */ (checkbox).dataset
+                          .tabIndex,
+                      );
+                      if (index >= 0 && index < data.tabs.length) {
+                        selectedTabs.push(data.tabs[index]);
+                      }
                     }
-                  }
-                });
+                  });
               }
               return true;
-            }
-          }
+            },
+          },
         ],
         onOpen: (modal) => {
           modalRef = modal;
-        }
+        },
       });
 
       if (!result) return;
@@ -744,7 +824,9 @@ export default class PresetBasket {
       this.renderTabsList();
       this.updateBasketTitle();
 
-      await ModalUtils.alert(`Successfully imported ${selectedTabs.length} tab(s).`);
+      await ModalUtils.alert(
+        `Successfully imported ${selectedTabs.length} tab(s).`,
+      );
     } catch (err) {
       // @ts-expect-error bleh
       await ModalUtils.alert("Failed to import tabs: " + err.message);
@@ -756,8 +838,14 @@ export default class PresetBasket {
 
     dom.btnBasketMultiSelect.addEventListener("click", () => {
       this.selection.multiSelect = !this.selection.multiSelect;
-      dom.btnBasketMultiSelect.classList.toggle("active", this.selection.multiSelect);
-      dom.btnBasketMultiSelect.setAttribute("aria-pressed", String(this.selection.multiSelect));
+      dom.btnBasketMultiSelect.classList.toggle(
+        "active",
+        this.selection.multiSelect,
+      );
+      dom.btnBasketMultiSelect.setAttribute(
+        "aria-pressed",
+        String(this.selection.multiSelect),
+      );
       dom.btnBasketMultiSelect.title = this.selection.multiSelect
         ? "Exit multi-selection mode"
         : "Enable multi-selection mode";
@@ -773,20 +861,38 @@ export default class PresetBasket {
     dom.btnBasketPaste.addEventListener("click", () => {
       void this.selection.paste();
     });
-    dom.btnBasketPin.addEventListener("click", () => this.selection.togglePins());
-    dom.btnBasketDelete.addEventListener("click", () => this.selection.deleteSelected());
-    dom.btnBasketDisable.addEventListener("click", () => this.toggleDisabledSelected());
+    dom.btnBasketPin.addEventListener("click", () =>
+      this.selection.togglePins(),
+    );
+    dom.btnBasketDelete.addEventListener("click", () =>
+      this.selection.deleteSelected(),
+    );
+    dom.btnBasketDisable.addEventListener("click", () =>
+      this.toggleDisabledSelected(),
+    );
     this.selection.updateActionButtons();
 
-    dom.chkBasketRaw.checked = readBool(STORAGE_KEYS.rawBasket, false, defaultStorage());
+    dom.chkBasketRaw.checked = readBool(
+      STORAGE_KEYS.rawBasket,
+      false,
+      defaultStorage(),
+    );
     dom.basketContainer.classList.toggle("raw-mode", dom.chkBasketRaw.checked);
     dom.chkBasketRaw.addEventListener("change", () => {
-      writeBool(STORAGE_KEYS.rawBasket, dom.chkBasketRaw.checked, defaultStorage());
-      dom.basketContainer.classList.toggle("raw-mode", dom.chkBasketRaw.checked);
+      writeBool(
+        STORAGE_KEYS.rawBasket,
+        dom.chkBasketRaw.checked,
+        defaultStorage(),
+      );
+      dom.basketContainer.classList.toggle(
+        "raw-mode",
+        dom.chkBasketRaw.checked,
+      );
     });
 
     this.basket.addEventListener("dblclick", (e) => {
-      /** @type {HTMLElement | null} */ const chip = /** @type {HTMLElement} */ (e.target).closest('.j0n4t-pg-basket-chip');
+      /** @type {HTMLElement | null} */ const chip =
+        /** @type {HTMLElement} */ (e.target).closest(".j0n4t-pg-basket-chip");
       if (chip) {
         e.stopPropagation();
         this.chipMenuManager.close(false);
@@ -794,14 +900,23 @@ export default class PresetBasket {
         const styleKey = chip.dataset.id || "";
         let editVal = styleKey;
         const rawPreset = chip.dataset.preset;
-        const { core: coreKey, weightStr, isWeighted } = PresetLogic.parseWeight(styleKey);
+        const {
+          core: coreKey,
+          weightStr,
+          isWeighted,
+        } = PresetLogic.parseWeight(styleKey);
         if (isWeighted) {
           editVal = `(${coreKey}:${weightStr})`;
         } else if (rawPreset) {
           editVal = rawPreset;
         }
 
-        this.inlineEditorManager.spawn(chip, editVal, Number(chip.dataset.start), Number(chip.dataset.end));
+        this.inlineEditorManager.spawn(
+          chip,
+          editVal,
+          Number(chip.dataset.start),
+          Number(chip.dataset.end),
+        );
       } else {
         e.stopPropagation();
         this.inlineEditorManager.spawn(null, "");
@@ -815,13 +930,15 @@ export default class PresetBasket {
       }
 
       const target = /** @type {HTMLElement} */ (e.target);
-      const addBtn = target.closest('.j0n4t-pg-basket-add-btn');
+      const addBtn = target.closest(".j0n4t-pg-basket-add-btn");
       if (addBtn) return this.inlineEditorManager.spawn(null, "");
 
       if (target.closest("input")) return;
 
-      const weightBadge = target.closest('.j0n4t-pg-basket-chip-weight');
-      /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
+      const weightBadge = target.closest(".j0n4t-pg-basket-chip-weight");
+      /** @type {HTMLElement | null} */ const chip = target.closest(
+        ".j0n4t-pg-basket-chip",
+      );
 
       if (chip) {
         e.stopPropagation();
@@ -844,7 +961,10 @@ export default class PresetBasket {
         const presetVal = chip.dataset.preset;
 
         if (presetVal) {
-          const match = PresetLogic.findPresetMatch(presetVal, this.context.cache);
+          const match = PresetLogic.findPresetMatch(
+            presetVal,
+            this.context.cache,
+          );
           if (match) targetKey = match.key;
         } else if (this.context.cache?.[evalId]) {
           targetKey = evalId;
@@ -852,22 +972,30 @@ export default class PresetBasket {
           targetKey = coreKey;
         }
 
-        if (!this.context.dom.editor.classList.contains("collapsed") && this.context.editor.isSaved) {
+        if (
+          !this.context.dom.editor.classList.contains("collapsed") &&
+          this.context.editor.isSaved
+        ) {
           this.context.openEditorForPreset(targetKey);
         }
       } else {
         this.selection.selected.clear();
         this.selection.anchor = null;
         this.selection.apply();
-        /** @type {HTMLElement} */ (this.basket.querySelector('.j0n4t-pg-basket-add-btn')).focus();
+        /** @type {HTMLElement} */ (
+          this.basket.querySelector(".j0n4t-pg-basket-add-btn")
+        ).focus();
       }
     });
 
     this.basket.addEventListener("change", (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
-      /** @type {HTMLInputElement | null} */ const dynamicInput = target.closest('input.text-input, input.bool-input, input.num-input');
+      /** @type {HTMLInputElement | null} */ const dynamicInput =
+        target.closest("input.text-input, input.bool-input, input.num-input");
       if (dynamicInput) {
-        /** @type {HTMLElement | null} */ const chip = dynamicInput.closest('.j0n4t-pg-basket-chip');
+        /** @type {HTMLElement | null} */ const chip = dynamicInput.closest(
+          ".j0n4t-pg-basket-chip",
+        );
         if (!chip) return;
         const styleKey = chip.dataset.id || "";
         const startIndex = Number(chip.dataset.start);
@@ -882,7 +1010,10 @@ export default class PresetBasket {
         } else {
           newValue = dynamicInput.value.trim();
         }
-        const newStyleKey = PresetLogic.expandRecursively(styleKey, this.context.cache).replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
+        const newStyleKey = PresetLogic.expandRecursively(
+          styleKey,
+          this.context.cache,
+        ).replace(/([:;])[^:;]+(>)$/, `$1${newValue}$2`);
 
         this.updateChipSelection(startIndex, endIndex, newStyleKey);
       }
@@ -891,51 +1022,84 @@ export default class PresetBasket {
     this.basket.addEventListener("keydown", (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
       const modifierKey = e.ctrlKey || e.metaKey;
-      const focusedChip = /** @type {HTMLElement} */ (target.closest(".j0n4t-pg-basket-chip"));
+      const focusedChip = /** @type {HTMLElement} */ (
+        target.closest(".j0n4t-pg-basket-chip")
+      );
 
-      if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "x" &&
-        (focusedChip || this.selection.selected.size > 0)) {
+      if (
+        !target.closest("input") &&
+        modifierKey &&
+        e.key.toLowerCase() === "x" &&
+        (focusedChip || this.selection.selected.size > 0)
+      ) {
         e.preventDefault();
         e.stopPropagation();
-        if (focusedChip && !this.selection.selected.has(Number(focusedChip.dataset.index))) {
+        if (
+          focusedChip &&
+          !this.selection.selected.has(Number(focusedChip.dataset.index))
+        ) {
           const index = Number(focusedChip.dataset.index);
           this.selection.selected = new Set([index]);
           this.selection.anchor = index;
           this.selection.apply(index);
         }
-        void this.selection.copySelected(focusedChip).then(() => this.selection.deleteSelected());
+        void this.selection
+          .copySelected(focusedChip)
+          .then(() => this.selection.deleteSelected());
         return;
       }
-      if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "c" &&
-        (focusedChip || this.selection.selected.size > 0)) {
+      if (
+        !target.closest("input") &&
+        modifierKey &&
+        e.key.toLowerCase() === "c" &&
+        (focusedChip || this.selection.selected.size > 0)
+      ) {
         e.preventDefault();
         e.stopPropagation();
         this.selection.copySelected(focusedChip);
         return;
       }
-      if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "v") {
+      if (
+        !target.closest("input") &&
+        modifierKey &&
+        e.key.toLowerCase() === "v"
+      ) {
         e.preventDefault();
         e.stopPropagation();
         this.selection.paste();
         return;
       }
-      if (!target.closest("input") && modifierKey && e.key.toLowerCase() === "a" &&
-        (focusedChip || target.closest(".j0n4t-pg-basket-add-btn"))) {
+      if (
+        !target.closest("input") &&
+        modifierKey &&
+        e.key.toLowerCase() === "a" &&
+        (focusedChip || target.closest(".j0n4t-pg-basket-add-btn"))
+      ) {
         e.preventDefault();
         e.stopPropagation();
-        const chips = Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
+        const chips = Array.from(
+          this.basket.querySelectorAll(".j0n4t-pg-basket-chip"),
+        );
         this.selection.selected = new Set(
-          chips.map(chip => Number(/** @type {HTMLElement} */(chip).dataset.index))
+          chips.map((chip) =>
+            Number(/** @type {HTMLElement} */ (chip).dataset.index),
+          ),
         );
         const anchorIndex = focusedChip
           ? Number(focusedChip.dataset.index)
-          : Number(/** @type {HTMLElement | undefined} */(chips[0])?.dataset.index);
+          : Number(
+              /** @type {HTMLElement | undefined} */ (chips[0])?.dataset.index,
+            );
         this.selection.anchor = chips.length ? anchorIndex : null;
         this.selection.apply(chips.length ? anchorIndex : undefined);
         return;
       }
 
-      if (!target.closest("input") && focusedChip && e.key.toLowerCase() === "d") {
+      if (
+        !target.closest("input") &&
+        focusedChip &&
+        e.key.toLowerCase() === "d"
+      ) {
         e.preventDefault();
         e.stopPropagation();
         const current = this.context.getSelectedArray();
@@ -943,26 +1107,38 @@ export default class PresetBasket {
         if (index >= 0 && index < current.length) {
           const token = current[index];
           const disabled = PresetLogic.isTildeDisabled(token);
-          current[index] = disabled ? PresetLogic.unwrapTilde(token) : `~${token}~`;
+          current[index] = disabled
+            ? PresetLogic.unwrapTilde(token)
+            : `~${token}~`;
           this.context.updateWidgetValue([...current]);
           // The basket re-rendered and detached the old node; immediately
           // re-focus the chip (via its index) so pressing "d" again toggles
           // without a separate click.
-          const next = /** @type {HTMLElement} */ (document.querySelector(
-            `.j0n4t-pg-basket-chip[data-index="${index}"]`
-          ));
+          const next = /** @type {HTMLElement} */ (
+            document.querySelector(
+              `.j0n4t-pg-basket-chip[data-index="${index}"]`,
+            )
+          );
           if (next) next.focus();
         }
         return;
       }
 
-      if (!target.closest("input") && focusedChip && !e.altKey &&
+      if (
+        !target.closest("input") &&
+        focusedChip &&
+        !e.altKey &&
         (e.shiftKey || modifierKey) &&
-        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)
+      ) {
         const chipElements = /** @type {HTMLElement[]} */ (
           Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"))
         );
-        const targetChip = this.getSpatialTarget(focusedChip, e.key, chipElements);
+        const targetChip = this.getSpatialTarget(
+          focusedChip,
+          e.key,
+          chipElements,
+        );
         if (targetChip) {
           e.preventDefault();
           e.stopPropagation();
@@ -970,7 +1146,7 @@ export default class PresetBasket {
             this.selection.anchor ??= Number(focusedChip.dataset.index);
             this.selection.selectRange(
               this.selection.anchor,
-              Number(targetChip.dataset.index)
+              Number(targetChip.dataset.index),
             );
           } else {
             this.selection.handleChip(targetChip, e);
@@ -979,8 +1155,10 @@ export default class PresetBasket {
         return;
       }
 
-      if (e.key === "Enter" && !e.ctrlKey || e.key === " ") {
-        /** @type {HTMLElement | null} */ const triggerable = target.closest(".j0n4t-pg-basket-add-btn, .j0n4t-pg-basket-chip");
+      if ((e.key === "Enter" && !e.ctrlKey) || e.key === " ") {
+        /** @type {HTMLElement | null} */ const triggerable = target.closest(
+          ".j0n4t-pg-basket-add-btn, .j0n4t-pg-basket-chip",
+        );
         if (triggerable && !target.closest("input")) {
           e.stopPropagation();
           e.preventDefault();
@@ -988,20 +1166,29 @@ export default class PresetBasket {
         }
       }
 
-      if ((e.key === "+" || e.key === "=" || e.key === "-") && !target.closest("input")) {
-        /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
+      if (
+        (e.key === "+" || e.key === "=" || e.key === "-") &&
+        !target.closest("input")
+      ) {
+        /** @type {HTMLElement | null} */ const chip = target.closest(
+          ".j0n4t-pg-basket-chip",
+        );
         if (chip) {
           e.stopPropagation();
           e.preventDefault();
           const startIndex = Number(chip.dataset.start);
           const endIndex = Number(chip.dataset.end);
           const styleKey = chip.dataset.id || "";
-          const { core: activeCoreKey, weight: currentWeight } = PresetLogic.parseWeight(styleKey);
+          const { core: activeCoreKey, weight: currentWeight } =
+            PresetLogic.parseWeight(styleKey);
 
           let val = currentWeight || 1.0;
-          val += (e.key === "+" || e.key === "=") ? 0.05 : -0.05;
+          val += e.key === "+" || e.key === "=" ? 0.05 : -0.05;
 
-          let finalNewKey = val === 1.0 ? activeCoreKey : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
+          let finalNewKey =
+            val === 1.0
+              ? activeCoreKey
+              : `(${activeCoreKey}:${Number(val.toFixed(2))})`;
 
           if (this.updateChipSelection(startIndex, endIndex, finalNewKey)) {
             this.focusChip(startIndex);
@@ -1011,9 +1198,14 @@ export default class PresetBasket {
       }
 
       if (e.key === "Delete" && !target.closest("input")) {
-        /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
-        if (chip && this.selection.selected.size > 1 &&
-          this.selection.selected.has(Number(chip.dataset.index))) {
+        /** @type {HTMLElement | null} */ const chip = target.closest(
+          ".j0n4t-pg-basket-chip",
+        );
+        if (
+          chip &&
+          this.selection.selected.size > 1 &&
+          this.selection.selected.has(Number(chip.dataset.index))
+        ) {
           e.stopPropagation();
           e.preventDefault();
           this.selection.deleteSelected();
@@ -1034,12 +1226,16 @@ export default class PresetBasket {
       }
 
       if (e.key === "p" && !target.closest("input")) {
-        /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
+        /** @type {HTMLElement | null} */ const chip = target.closest(
+          ".j0n4t-pg-basket-chip",
+        );
         if (chip) {
           e.stopPropagation();
           e.preventDefault();
-          if (this.selection.selected.size > 1 &&
-            this.selection.selected.has(Number(chip.dataset.index))) {
+          if (
+            this.selection.selected.size > 1 &&
+            this.selection.selected.has(Number(chip.dataset.index))
+          ) {
             this.selection.togglePins();
           } else {
             this.togglePin(chip);
@@ -1050,7 +1246,7 @@ export default class PresetBasket {
 
       if (!target.closest("input") && !this.chipMenuManager.popupEl) {
         /** @type {HTMLElement | null} */
-        const chip = target.closest('.j0n4t-pg-basket-chip');
+        const chip = target.closest(".j0n4t-pg-basket-chip");
         if (chip) {
           const keyMap = { s: "swap", e: "edit", l: "locate", c: "create" };
           // @ts-expect-error bleh
@@ -1059,41 +1255,71 @@ export default class PresetBasket {
             e.stopPropagation();
             e.preventDefault();
             const styleKey = chip.dataset.id || "";
-            const { core: coreKey, weight: currentWeight, isWeighted } = PresetLogic.parseWeight(styleKey);
+            const {
+              core: coreKey,
+              weight: currentWeight,
+              isWeighted,
+            } = PresetLogic.parseWeight(styleKey);
             const startIndex = Number(chip.dataset.start);
             const endIndex = Number(chip.dataset.end);
             const item = this.context.cache[coreKey];
 
             if (action === "swap") {
               let editVal = this.context.cache[coreKey]?.preset || coreKey;
-              if (isWeighted && editVal) editVal = `(${editVal}:${currentWeight})`;
-              this.inlineEditorManager.spawn(chip, editVal, startIndex, endIndex);
+              if (isWeighted && editVal)
+                editVal = `(${editVal}:${currentWeight})`;
+              this.inlineEditorManager.spawn(
+                chip,
+                editVal,
+                startIndex,
+                endIndex,
+              );
             } else if (action === "edit") {
               if (item) {
                 this.context.openEditorForPreset(coreKey, true);
               } else {
                 let editVal = styleKey;
                 const rawPreset = chip.dataset.preset;
-                if (isWeighted && rawPreset) editVal = `(${rawPreset}:${currentWeight})`;
+                if (isWeighted && rawPreset)
+                  editVal = `(${rawPreset}:${currentWeight})`;
                 else if (rawPreset) editVal = rawPreset;
-                this.inlineEditorManager.spawn(chip, editVal, startIndex, endIndex);
+                this.inlineEditorManager.spawn(
+                  chip,
+                  editVal,
+                  startIndex,
+                  endIndex,
+                );
               }
             } else if (action === "locate") {
               let locateKey = coreKey;
               const presetVal = chip.dataset.preset;
               if (presetVal) {
-                const presetMatch = PresetLogic.findPresetMatch(presetVal, this.context.cache);
+                const presetMatch = PresetLogic.findPresetMatch(
+                  presetVal,
+                  this.context.cache,
+                );
                 if (presetMatch) locateKey = presetMatch.key;
               }
               this.locatePreset(locateKey);
             } else if (action === "create") {
               this.context.setPanelCollapseState(false);
               this.context.editor.clearFields();
-              this.context.editor.dom.inpPreset.value = item && item.preset ? item.preset : coreKey;
+              this.context.editor.dom.inpPreset.value =
+                item && item.preset ? item.preset : coreKey;
               this.context.editor.rawPresetManager?.updateHighlights();
-              const cleanName = coreKey.replace(/^<(lora|lyco):/i, "").replace(/>$/, "").split(":")[0].split("/").pop()?.replace(/[^a-zA-Z0-9\s-_]/g, "").trim().replace(/\s+/g, "_");
+              const cleanName = coreKey
+                .replace(/^<(lora|lyco):/i, "")
+                .replace(/>$/, "")
+                .split(":")[0]
+                .split("/")
+                .pop()
+                ?.replace(/[^a-zA-Z0-9\s-_]/g, "")
+                .trim()
+                .replace(/\s+/g, "_");
               if (cleanName) this.context.editor.dom.inpName.value = cleanName;
-              this.context.editor.dom.inpPreset.dispatchEvent(new Event("input"));
+              this.context.editor.dom.inpPreset.dispatchEvent(
+                new Event("input"),
+              );
               this.context.editor.dom.inpPreset.focus();
             }
             return;
@@ -1107,8 +1333,14 @@ export default class PresetBasket {
         }
       }
 
-      if (!target.closest("input") && !e.altKey && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
-        /** @type {HTMLElement | null} */ const currentElement = target.closest('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn');
+      if (
+        !target.closest("input") &&
+        !e.altKey &&
+        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)
+      ) {
+        /** @type {HTMLElement | null} */ const currentElement = target.closest(
+          ".j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn",
+        );
         if (currentElement) {
           const targetEl = this.getSpatialTarget(currentElement, e.key);
           if (targetEl) {
@@ -1116,7 +1348,9 @@ export default class PresetBasket {
             e.preventDefault();
             targetEl.focus();
             if (targetEl.classList.contains("j0n4t-pg-basket-chip")) {
-              const index = Number(/** @type {HTMLElement} */(targetEl).dataset.index);
+              const index = Number(
+                /** @type {HTMLElement} */ (targetEl).dataset.index,
+              );
               this.selection.selected = new Set([index]);
               this.selection.anchor = index;
               this.selection.apply(index);
@@ -1125,17 +1359,32 @@ export default class PresetBasket {
         }
       }
 
-      if (e.altKey && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
-        /** @type {HTMLElement | null} */ const chip = target.closest('.j0n4t-pg-basket-chip');
+      if (
+        e.altKey &&
+        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)
+      ) {
+        /** @type {HTMLElement | null} */ const chip = target.closest(
+          ".j0n4t-pg-basket-chip",
+        );
         if (!chip) return;
-        const chipElements = /** @type {HTMLElement[]} */(Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip')));
-        const selectedIndexes = this.selection.selected.has(Number(chip.dataset.index))
+        const chipElements = /** @type {HTMLElement[]} */ (
+          Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"))
+        );
+        const selectedIndexes = this.selection.selected.has(
+          Number(chip.dataset.index),
+        )
           ? this.selection.selected
           : new Set([Number(chip.dataset.index)]);
-        const moving = chipElements.filter(item => selectedIndexes.has(Number(item.dataset.index)));
+        const moving = chipElements.filter((item) =>
+          selectedIndexes.has(Number(item.dataset.index)),
+        );
         let targetChip = this.getSpatialTarget(chip, e.key, chipElements);
         const visited = new Set([chip]);
-        while (targetChip && selectedIndexes.has(Number(targetChip.dataset.index)) && !visited.has(targetChip)) {
+        while (
+          targetChip &&
+          selectedIndexes.has(Number(targetChip.dataset.index)) &&
+          !visited.has(targetChip)
+        ) {
           visited.add(targetChip);
           targetChip = this.getSpatialTarget(targetChip, e.key, chipElements);
         }
@@ -1144,14 +1393,20 @@ export default class PresetBasket {
           e.stopPropagation();
           e.preventDefault();
           const placeAfter = e.key === "ArrowRight" || e.key === "ArrowDown";
-          this.selection.moveSelected(Number(targetChip.dataset.index), placeAfter, selectedIndexes);
+          this.selection.moveSelected(
+            Number(targetChip.dataset.index),
+            placeAfter,
+            selectedIndexes,
+          );
         }
       }
     });
 
     this.basket.addEventListener("dragstart", (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
-      /** @type {HTMLElement | null} */ const chip = target.closest(".j0n4t-pg-basket-chip");
+      /** @type {HTMLElement | null} */ const chip = target.closest(
+        ".j0n4t-pg-basket-chip",
+      );
       if (chip) {
         const chipIndex = Number(chip.dataset.index);
         if (!this.selection.selected.has(chipIndex)) {
@@ -1159,19 +1414,32 @@ export default class PresetBasket {
           this.selection.anchor = chipIndex;
           this.selection.apply(chipIndex);
         }
-        const draggedChips = Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"))
-          .filter(item => this.selection.selected.has(Number(/** @type {HTMLElement} */(item).dataset.index)));
-        draggedChips.forEach(item => item.classList.add("dragging"));
+        const draggedChips = Array.from(
+          this.basket.querySelectorAll(".j0n4t-pg-basket-chip"),
+        ).filter((item) =>
+          this.selection.selected.has(
+            Number(/** @type {HTMLElement} */ (item).dataset.index),
+          ),
+        );
+        draggedChips.forEach((item) => item.classList.add("dragging"));
         e.dataTransfer?.setData("text/plain", chip.dataset.id || "");
         e.dataTransfer?.setData("source/basket", "true");
-        e.dataTransfer?.setData("source/basket_start", chip.dataset.start || "");
+        e.dataTransfer?.setData(
+          "source/basket_start",
+          chip.dataset.start || "",
+        );
         e.dataTransfer?.setData("source/basket_end", chip.dataset.end || "");
-        e.dataTransfer?.setData("source/basket_indexes", JSON.stringify([...this.selection.selected]));
+        e.dataTransfer?.setData(
+          "source/basket_indexes",
+          JSON.stringify([...this.selection.selected]),
+        );
       }
     });
 
     this.basket.addEventListener("dragend", () => {
-      this.basket.querySelectorAll(".j0n4t-pg-basket-chip").forEach(c => c.classList.remove("dragging"));
+      this.basket
+        .querySelectorAll(".j0n4t-pg-basket-chip")
+        .forEach((c) => c.classList.remove("dragging"));
       this.dragDrop.removeDropIndicator();
     });
   }
@@ -1184,7 +1452,13 @@ export default class PresetBasket {
    * @returns {HTMLElement | null}
    */
   getSpatialTarget(currentElement, key, candidateElements) {
-    const elements = candidateElements || Array.from(this.basket.querySelectorAll('.j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn'));
+    const elements =
+      candidateElements ||
+      Array.from(
+        this.basket.querySelectorAll(
+          ".j0n4t-pg-basket-chip, .j0n4t-pg-basket-add-btn",
+        ),
+      );
     const currentIndex = elements.indexOf(currentElement);
     if (currentIndex === -1) return null;
 
@@ -1195,28 +1469,37 @@ export default class PresetBasket {
       const currentRect = currentElement.getBoundingClientRect();
       const currentCenterX = currentRect.left + currentRect.width / 2;
 
-      const rects = elements.map(el => ({ el, rect: el.getBoundingClientRect() }));
+      const rects = elements.map((el) => ({
+        el,
+        rect: el.getBoundingClientRect(),
+      }));
 
-      const candidates = rects.filter(item => {
+      const candidates = rects.filter((item) => {
         if (key === "ArrowUp") return item.rect.bottom <= currentRect.top + 4;
         return item.rect.top >= currentRect.bottom - 4;
       });
 
       if (candidates.length === 0) return null;
 
-      const targetY = key === "ArrowUp"
-        ? Math.max(...candidates.map(c => c.rect.bottom))
-        : Math.min(...candidates.map(c => c.rect.top));
+      const targetY =
+        key === "ArrowUp"
+          ? Math.max(...candidates.map((c) => c.rect.bottom))
+          : Math.min(...candidates.map((c) => c.rect.top));
 
-      const rowItems = candidates.filter(c =>
-        Math.abs((key === "ArrowUp" ? c.rect.bottom : c.rect.top) - targetY) < 4
+      const rowItems = candidates.filter(
+        (c) =>
+          Math.abs((key === "ArrowUp" ? c.rect.bottom : c.rect.top) - targetY) <
+          4,
       );
 
-      const closestItem = rowItems.reduce((closest, item) => {
-        const itemCenterX = item.rect.left + item.rect.width / 2;
-        const diff = Math.abs(itemCenterX - currentCenterX);
-        return diff < closest.diff ? { item, diff } : closest;
-      }, { item: rowItems[0], diff: Infinity }).item;
+      const closestItem = rowItems.reduce(
+        (closest, item) => {
+          const itemCenterX = item.rect.left + item.rect.width / 2;
+          const diff = Math.abs(itemCenterX - currentCenterX);
+          return diff < closest.diff ? { item, diff } : closest;
+        },
+        { item: rowItems[0], diff: Infinity },
+      ).item;
 
       return closestItem.el;
     }
@@ -1231,13 +1514,22 @@ export default class PresetBasket {
    */
   reRollChipGroup(chipIndex, groupRaw, gIndex) {
     const activeList = this.context.getSelectedArray();
-    const chipsData = ChipProjection.getGroupedChips(activeList, this.context.cache);
+    const chipsData = ChipProjection.getGroupedChips(
+      activeList,
+      this.context.cache,
+    );
     const tracer = new RollManager(this.context.rollManager.rolls);
-    const targetGroup = groupRaw?.trim().toLowerCase().replace(/\s+/g, "_") || "";
+    const targetGroup =
+      groupRaw?.trim().toLowerCase().replace(/\s+/g, "_") || "";
 
     for (let i = 0; i < chipsData.length; i++) {
       const startCounts = tracer.cloneCounts();
-      PresetLogic.expandRecursively(chipsData[i].styleKey, this.context.cache, new Set(), tracer);
+      PresetLogic.expandRecursively(
+        chipsData[i].styleKey,
+        this.context.cache,
+        new Set(),
+        tracer,
+      );
 
       if (i === chipIndex) {
         const start = startCounts[targetGroup] || 0;
@@ -1266,13 +1558,23 @@ export default class PresetBasket {
   focusChip(startIndex) {
     setTimeout(() => {
       let target = null;
-      if (startIndex !== undefined && startIndex !== null && startIndex !== "") {
+      if (
+        startIndex !== undefined &&
+        startIndex !== null &&
+        startIndex !== ""
+      ) {
         target = this.basket.querySelector(`[data-start="${startIndex}"]`);
         if (!target) {
-          const chips = Array.from(this.basket.querySelectorAll(".j0n4t-pg-basket-chip"));
+          const chips = Array.from(
+            this.basket.querySelectorAll(".j0n4t-pg-basket-chip"),
+          );
           const idx = Number(startIndex);
           if (!isNaN(idx)) {
-            target = chips.find(c => Number(/** @type {HTMLElement} */(c).dataset.start) >= idx) || chips[chips.length - 1];
+            target =
+              chips.find(
+                (c) =>
+                  Number(/** @type {HTMLElement} */ (c).dataset.start) >= idx,
+              ) || chips[chips.length - 1];
           }
         }
       }
@@ -1280,7 +1582,7 @@ export default class PresetBasket {
         target = this.basket.querySelector(".j0n4t-pg-basket-add-btn");
       }
       if (target) {
-        /** @type {HTMLElement} */(target).focus();
+        /** @type {HTMLElement} */ (target).focus();
       }
     }, 50);
   }
@@ -1352,7 +1654,9 @@ export default class PresetBasket {
   /** @param {HTMLElement} chip */
   togglePin(chip) {
     const currentList = this.context.getSelectedArray();
-    const rawToken = currentList.slice(Number(chip.dataset.start), Number(chip.dataset.end)).join(', ');
+    const rawToken = currentList
+      .slice(Number(chip.dataset.start), Number(chip.dataset.end))
+      .join(", ");
     if (this.context.pinnedChips?.has(rawToken)) {
       this.context.pinnedChips.delete(rawToken);
       chip.classList.remove("pinned");
@@ -1373,19 +1677,36 @@ export default class PresetBasket {
     if (!this._updatingTextarea) {
       this.context.rollManager.resetCounts();
       const expandedList = activeList.map((/** @type {string} */ itemStr) => {
-        const { core: coreKey, weightStr, isWeighted } = PresetLogic.parseWeight(itemStr);
+        const {
+          core: coreKey,
+          weightStr,
+          isWeighted,
+        } = PresetLogic.parseWeight(itemStr);
         if (isWeighted) {
-          const coreExpanded = PresetLogic.expandRecursively(coreKey, this.context.cache, new Set(), this.context.rollManager);
+          const coreExpanded = PresetLogic.expandRecursively(
+            coreKey,
+            this.context.cache,
+            new Set(),
+            this.context.rollManager,
+          );
           return `(${coreExpanded}:${weightStr})`;
         }
-        return PresetLogic.expandRecursively(itemStr, this.context.cache, new Set(), this.context.rollManager);
+        return PresetLogic.expandRecursively(
+          itemStr,
+          this.context.cache,
+          new Set(),
+          this.context.rollManager,
+        );
       });
       this.textarea.value = expandedList.join(", ");
     }
     this.rawManager.updateHighlights();
 
     let htmlBuffer = "";
-    const chipsData = ChipProjection.getGroupedChips(activeList, this.context.cache);
+    const chipsData = ChipProjection.getGroupedChips(
+      activeList,
+      this.context.cache,
+    );
 
     this.context.rollManager.resetCounts();
 
@@ -1394,32 +1715,48 @@ export default class PresetBasket {
         chipData,
         this.context.cache,
         this.context.rollManager,
-        this.context.session
+        this.context.session,
       );
 
       const rawItems = activeList.slice(chipData.startIndex, chipData.endIndex);
-      const rawVal = rawItems.join(', ');
+      const rawVal = rawItems.join(", ");
       const isPinned = this.context.pinnedChips?.has(rawVal);
 
-      const libId = PresetLogic.splitQualifiedKey(chipData.styleKey).libraryId ||
+      const libId =
+        PresetLogic.splitQualifiedKey(chipData.styleKey).libraryId ||
         this.context.session?.ownerOfKey?.(chipData.styleKey);
-      const isDuplicate = this.context.session?.isDuplicateKey?.(chipData.styleKey);
+      const isDuplicate = this.context.session?.isDuplicateKey?.(
+        chipData.styleKey,
+      );
       const showLib = libId && (isDuplicate || libId !== "main");
-      const libName = (libId ? this.context.session?.libraryName?.(libId) : null) || libId;
-      const libBadge = showLib && this.context.settings?.showChipLibraryBadges !== false
-        ? `<span class="j0n4t-pg-lib-badge" title="From the ${PresetDOM.escapeHTML(libName)} library">${PresetDOM.escapeHTML(libName)}</span>`
-        : "";
+      const libName =
+        (libId ? this.context.session?.libraryName?.(libId) : null) || libId;
+      const libBadge =
+        showLib && this.context.settings?.showChipLibraryBadges !== false
+          ? `<span class="j0n4t-pg-lib-badge" title="From the ${PresetDOM.escapeHTML(libName)} library">${PresetDOM.escapeHTML(libName)}</span>`
+          : "";
 
       let labelContent = `${PresetDOM.escapeHTML(chip.processed.cleanLabel)}${libBadge}`;
-      if ((!chip.processed.chipData.item || chipData.styleKey.startsWith("_/combo")) && chip.processed.segmentedLabels) {
-        labelContent = `<div class="j0n4t-pg-basket-chip-segments">` +
-          chip.processed.segmentedLabels.filter(Boolean).map(p => `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`).join('') +
+      if (
+        (!chip.processed.chipData.item ||
+          chipData.styleKey.startsWith("_/combo")) &&
+        chip.processed.segmentedLabels
+      ) {
+        labelContent =
+          `<div class="j0n4t-pg-basket-chip-segments">` +
+          chip.processed.segmentedLabels
+            .filter(Boolean)
+            .map(
+              (p) =>
+                `<span class="j0n4t-pg-basket-chip-segment">${PresetDOM.escapeHTML(p)}</span>`,
+            )
+            .join("") +
           `</div>`;
       }
       const tooltipTitle = chip.processed.tooltipTitle;
 
       htmlBuffer += `
-        <div class="j0n4t-pg-basket-chip ${isPinned ? 'pinned' : ''} ${this.selection.selected.has(index) ? 'selected' : ''} ${chip.disabled ? 'disabled' : ''}" tabindex="0" role="option" aria-selected="${this.selection.selected.has(index)}"
+        <div class="j0n4t-pg-basket-chip ${isPinned ? "pinned" : ""} ${this.selection.selected.has(index) ? "selected" : ""} ${chip.disabled ? "disabled" : ""}" tabindex="0" role="option" aria-selected="${this.selection.selected.has(index)}"
              draggable="true" 
              title="${PresetDOM.escapeHTML(tooltipTitle)}"
              data-id="${PresetDOM.escapeHTML(chip.processed.joinedStr)}"
@@ -1444,16 +1781,16 @@ export default class PresetBasket {
   }
 
   /**
-   * @param {number} startIndex 
-   * @param {number} endIndex 
-   * @param {string} newStyleKey 
+   * @param {number} startIndex
+   * @param {number} endIndex
+   * @param {string} newStyleKey
    * @returns {boolean}
    */
   updateChipSelection(startIndex, endIndex, newStyleKey) {
     const selections = this.context.getSelectedArray();
     if (startIndex >= selections.length) return false;
 
-    const oldRawVal = selections.slice(startIndex, endIndex).join(', ');
+    const oldRawVal = selections.slice(startIndex, endIndex).join(", ");
     this.context.transferPin(oldRawVal, newStyleKey);
     selections.splice(startIndex, endIndex - startIndex, newStyleKey);
     this.context.updateWidgetValue(selections);
@@ -1488,7 +1825,7 @@ export default class PresetBasket {
         ? PresetLogic.isTildeDisabled(t)
           ? PresetLogic.unwrapTilde(t)
           : `~${t}~`
-        : t
+        : t,
     );
     // A tilde toggle renames the chip's key, so move any pin with it. If the
     // pin stayed on the old key it would be lost the moment any chip changed.
@@ -1502,15 +1839,22 @@ export default class PresetBasket {
 
   /** @param {string} styleKey */
   locatePreset(styleKey) {
-    /** @type {HTMLElement | null} */ const itemEl = this.context.dom.grid.querySelector(`.j0n4t-pg-item[data-style="${PresetDOM.escapeHTML(styleKey)}"]`);
+    /** @type {HTMLElement | null} */ const itemEl =
+      this.context.dom.grid.querySelector(
+        `.j0n4t-pg-item[data-style="${PresetDOM.escapeHTML(styleKey)}"]`,
+      );
     if (itemEl) {
       this.context.dom.search.value = "";
       let prev = /** @type {HTMLElement} */ (itemEl.previousElementSibling);
       while (prev && !prev.classList.contains("j0n4t-pg-group-header"))
-        prev =  /** @type {HTMLElement} */ (prev.previousElementSibling);
+        prev = /** @type {HTMLElement} */ (prev.previousElementSibling);
       if (prev?.classList.contains("collapsed")) {
         prev.classList.remove("collapsed");
-        this.context.setCollapsedFolders(this.context.getCollapsedFolders().filter((/** @type {string} */ f) => f !== prev.dataset.groupRaw));
+        this.context.setCollapsedFolders(
+          this.context
+            .getCollapsedFolders()
+            .filter((/** @type {string} */ f) => f !== prev.dataset.groupRaw),
+        );
       }
       this.context.grid.executeFilterPipeline();
       if (this.context.dom.wrap.classList.contains("hide-gallery-mode")) {

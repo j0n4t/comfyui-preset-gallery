@@ -1,171 +1,283 @@
 <!doctype html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <title>Preset Gallery UI harness</title>
-  <style>
-    body { font-family: sans-serif; margin: 0; background: #111; color: #ddd; }
-    #report { padding: 8px 12px; font-size: 12px; line-height: 1.6; border-bottom: 1px solid #333; }
-    #report b { color: #7cc; }
-    #report .fail { color: #f77; }
-    #report .pass { color: #7c7; }
-    #mount { padding: 8px; }
+  <head>
+    <meta charset="utf-8" />
+    <title>Preset Gallery UI harness</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        background: #111;
+        color: #ddd;
+      }
+      #report {
+        padding: 8px 12px;
+        font-size: 12px;
+        line-height: 1.6;
+        border-bottom: 1px solid #333;
+      }
+      #report b {
+        color: #7cc;
+      }
+      #report .fail {
+        color: #f77;
+      }
+      #report .pass {
+        color: #7c7;
+      }
+      #mount {
+        padding: 8px;
+      }
 
-    #output-panel { margin-top: 10px; padding: 8px 12px; font-family: sans-serif; display: flex; flex-direction: column; gap: 6px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; }
-    #output-header { display: flex; justify-content: flex-start; }
-    #output-textarea { width: 100%; min-height: 140px; padding: 8px 10px; background: #111; color: #eec; border: 1px solid #444; border-radius: 3px; font-size: 12px; line-height: 1.6; box-sizing: border-box;resize: vertical; font-family: monospace; }
-    #output-textarea:focus { outline: 1px solid #007acc; }
-    pre { margin: 0; white-space: pre-wrap; }
-  </style>
-</head>
-<body>
-<div id="report">loading harness...</div>
-<div id="mount"></div>
+      #output-panel {
+        margin-top: 10px;
+        padding: 8px 12px;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 4px;
+      }
+      #output-header {
+        display: flex;
+        justify-content: flex-start;
+      }
+      #output-textarea {
+        width: 100%;
+        min-height: 140px;
+        padding: 8px 10px;
+        background: #111;
+        color: #eec;
+        border: 1px solid #444;
+        border-radius: 3px;
+        font-size: 12px;
+        line-height: 1.6;
+        box-sizing: border-box;
+        resize: vertical;
+        font-family: monospace;
+      }
+      #output-textarea:focus {
+        outline: 1px solid #007acc;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="report">loading harness...</div>
+    <div id="mount"></div>
 
-<div id="output-panel">
-  <div id="output-header">
-    <button id="btnGenerate" class="output-btn" type="button">Generate prompt</button>
-  </div>
-  <textarea id="outputTextarea" class="output-textarea" placeholder="Prompt will appear here (same expansion as the queued chat prompt)" readonly></textarea>
-</div>
+    <div id="output-panel">
+      <div id="output-header">
+        <button id="btnGenerate" class="output-btn" type="button">
+          Generate prompt
+        </button>
+      </div>
+      <textarea
+        id="outputTextarea"
+        class="output-textarea"
+        placeholder="Prompt will appear here (same expansion as the queued chat prompt)"
+        readonly
+      ></textarea>
+    </div>
 
-<script type="module">
-// UI harness: runs the real web/ modules against a stubbed ComfyUI host, with
-// no ComfyUI and no backend. The only fake is the host object - if this file
-// ever needs to fake more than that, the UI has grown a new host dependency.
-//
-// Exposes window.__gallery and window.__report so browser tests can drive it.
+    <script type="module">
+      // UI harness: runs the real web/ modules against a stubbed ComfyUI host, with
+      // no ComfyUI and no backend. The only fake is the host object - if this file
+      // ever needs to fake more than that, the UI has grown a new host dependency.
+      //
+      // Exposes window.__gallery and window.__report so browser tests can drive it.
 
-const report = [];
-const add = (name, value, ok = true) => report.push({ name, value: String(value), ok });
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+      const report = [];
+      const add = (name, value, ok = true) =>
+        report.push({ name, value: String(value), ok });
+      const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Mirrors the host's `BaseDOMWidgetImpl.set value(v)`: store, then fire
-// `callback`. The extension relies on that - `updateWidgetValue` assigns the
-// value and the callback it triggers is what renders. A plain object property
-// silently drops every render, which is how the stub was breaking the
-// "clicking a preset adds a chip" tests.
-function fakeWidget(name) {
-  const w = { name, hidden: false, _value: "" };
-  Object.defineProperty(w, "value", {
-    configurable: true,
-    get() {
-      return this._value;
-    },
-    set(v) {
-      this._value = v;
-      if (typeof this.callback === "function") this.callback(v);
-    },
-  });
-  return w;
-}
+      // Mirrors the host's `BaseDOMWidgetImpl.set value(v)`: store, then fire
+      // `callback`. The extension relies on that - `updateWidgetValue` assigns the
+      // value and the callback it triggers is what renders. A plain object property
+      // silently drops every render, which is how the stub was breaking the
+      // "clicking a preset adds a chip" tests.
+      function fakeWidget(name) {
+        const w = { name, hidden: false, _value: "" };
+        Object.defineProperty(w, "value", {
+          configurable: true,
+          get() {
+            return this._value;
+          },
+          set(v) {
+            this._value = v;
+            if (typeof this.callback === "function") this.callback(v);
+          },
+        });
+        return w;
+      }
 
-function fakeNode(id) {
-  return {
-    id,
-    comfyClass: "PresetGalleryNode",
-    size: [400, 640],
-    min_size: [400, 640],
-    properties: {},
-    graph: { _nodes: [], _version: 0 },
-    domWidgets: [],
-    setSize(size) { this.size = size; },
-    widgets: [fakeWidget("preset_selection"), fakeWidget("evaluated_preset")],
-    addDOMWidget(name, type, el) {
-      this.domWidgets.push({ name, type, el });
-      document.getElementById("mount").appendChild(el);
-    },
-  };
-}
+      function fakeNode(id) {
+        return {
+          id,
+          comfyClass: "PresetGalleryNode",
+          size: [400, 640],
+          min_size: [400, 640],
+          properties: {},
+          graph: { _nodes: [], _version: 0 },
+          domWidgets: [],
+          setSize(size) {
+            this.size = size;
+          },
+          widgets: [
+            fakeWidget("preset_selection"),
+            fakeWidget("evaluated_preset"),
+          ],
+          addDOMWidget(name, type, el) {
+            this.domWidgets.push({ name, type, el });
+            document.getElementById("mount").appendChild(el);
+          },
+        };
+      }
 
-try {
-  const { app } = await import("/scripts/app.js");
+      try {
+        const { app } = await import("/scripts/app.js");
 
-  // Importing the registration module is what calls app.registerExtension.
-  await import("/web/PresetGalleryRegistration.js");
+        // Importing the registration module is what calls app.registerExtension.
+        await import("/web/PresetGalleryRegistration.js");
 
-  const extension = app.__extensions.find((e) => e.name === "Comfy.PresetGallery");
-  add("extension registered", !!extension);
-  add("exposes a command + keybinding",
-    !!(extension?.commands?.length && extension?.keybindings?.length));
+        const extension = app.__extensions.find(
+          (e) => e.name === "Comfy.PresetGallery",
+        );
+        add("extension registered", !!extension);
+        add(
+          "exposes a command + keybinding",
+          !!(extension?.commands?.length && extension?.keybindings?.length),
+        );
 
-  // Drive the same hook ComfyUI drives when a node is created.
-  const nodeType = { prototype: { onNodeCreated: function () {} } };
-  await extension.beforeRegisterNodeDef(nodeType, { name: "PresetGalleryNode" });
+        // Drive the same hook ComfyUI drives when a node is created.
+        const nodeType = { prototype: { onNodeCreated: function () {} } };
+        await extension.beforeRegisterNodeDef(nodeType, {
+          name: "PresetGalleryNode",
+        });
 
-  const node = fakeNode(1);
-  nodeType.prototype.onNodeCreated.apply(node);
-  await delay(120); // init() is fire-and-forget
+        const node = fakeNode(1);
+        nodeType.prototype.onNodeCreated.apply(node);
+        await delay(120); // init() is fire-and-forget
 
-  const PresetGalleryApp = (await import("/web/PresetGalleryApp.js")).default;
-  const wrap = node.domWidgets[0]?.el;
-  const gallery = PresetGalleryApp.instancesByWrap.get(wrap);
-  window.__gallery = gallery;
-  window.__pgNode = node;
+        const PresetGalleryApp = (await import("/web/PresetGalleryApp.js"))
+          .default;
+        const wrap = node.domWidgets[0]?.el;
+        const gallery = PresetGalleryApp.instancesByWrap.get(wrap);
+        window.__gallery = gallery;
+        window.__pgNode = node;
 
-  // init() fetches the library asynchronously, so the report is meaningless
-  // until the grid has actually rendered the loaded presets. Poll rather than
-  // sleeping a fixed amount: under parallel browser load the fetch can outlast
-  // any delay that looked safe locally, and every check below reads the empty
-  // state (a race seen as "initial selection rendered as chips: 0").
-  for (let i = 0; i < 60 && wrap.querySelectorAll(".j0n4t-pg-item").length === 0; i++) {
-    await delay(50);
-  }
+        // init() fetches the library asynchronously, so the report is meaningless
+        // until the grid has actually rendered the loaded presets. Poll rather than
+        // sleeping a fixed amount: under parallel browser load the fetch can outlast
+        // any delay that looked safe locally, and every check below reads the empty
+        // state (a race seen as "initial selection rendered as chips: 0").
+        for (
+          let i = 0;
+          i < 60 && wrap.querySelectorAll(".j0n4t-pg-item").length === 0;
+          i++
+        ) {
+          await delay(50);
+        }
 
-  add("gallery mounted", !!gallery);
-  add("both widgets hidden", node.widgets.every((w) => w.hidden === true));
-  add("widget added to the host", node.domWidgets[0]?.name === "preset_gallery_ui");
+        add("gallery mounted", !!gallery);
+        add(
+          "both widgets hidden",
+          node.widgets.every((w) => w.hidden === true),
+        );
+        add(
+          "widget added to the host",
+          node.domWidgets[0]?.name === "preset_gallery_ui",
+        );
 
-  const q = (sel) => wrap.querySelectorAll(sel).length;
-  add("grid rendered presets", q(".j0n4t-pg-item"), q(".j0n4t-pg-item") > 0);
-  add("search present", !!wrap.querySelector(".j0n4t-pg-search"));
-  add("basket present", !!wrap.querySelector(".j0n4t-pg-basket-container"));
-  add("editor present", !!wrap.querySelector(".j0n4t-pg-editor"));
+        const q = (sel) => wrap.querySelectorAll(sel).length;
+        add(
+          "grid rendered presets",
+          q(".j0n4t-pg-item"),
+          q(".j0n4t-pg-item") > 0,
+        );
+        add("search present", !!wrap.querySelector(".j0n4t-pg-search"));
+        add(
+          "basket present",
+          !!wrap.querySelector(".j0n4t-pg-basket-container"),
+        );
+        add("editor present", !!wrap.querySelector(".j0n4t-pg-editor"));
 
-  add("session cache loaded from the API", Object.keys(gallery.session.cache).length, Object.keys(gallery.session.cache).length > 0);
-  add("context is not the app", gallery.context !== gallery);
-  add("context.cache is the session cache", gallery.context.cache === gallery.session.cache);
+        add(
+          "session cache loaded from the API",
+          Object.keys(gallery.session.cache).length,
+          Object.keys(gallery.session.cache).length > 0,
+        );
+        add("context is not the app", gallery.context !== gallery);
+        add(
+          "context.cache is the session cache",
+          gallery.context.cache === gallery.session.cache,
+        );
 
-  // Seed a first-run selection once per browser tab. On reload, leave the
-  // restored Basket tabs alone so e2e tests can verify user state persistence.
-  if (sessionStorage.getItem("preset-gallery-harness-seeded") !== "true") {
-    const presetKey = Object.keys(gallery.session.cache)[0];
-    node.widgets[0].value = presetKey;
-    sessionStorage.setItem("preset-gallery-harness-seeded", "true");
-    await delay(50);
-  }
-  add("initial selection rendered as chips", q(".j0n4t-pg-basket-chip"), q(".j0n4t-pg-basket-chip") > 0);
+        // Seed a first-run selection once per browser tab. On reload, leave the
+        // restored Basket tabs alone so e2e tests can verify user state persistence.
+        if (
+          sessionStorage.getItem("preset-gallery-harness-seeded") !== "true"
+        ) {
+          const presetKey = Object.keys(gallery.session.cache)[0];
+          node.widgets[0].value = presetKey;
+          sessionStorage.setItem("preset-gallery-harness-seeded", "true");
+          await delay(50);
+        }
+        add(
+          "initial selection rendered as chips",
+          q(".j0n4t-pg-basket-chip"),
+          q(".j0n4t-pg-basket-chip") > 0,
+        );
 
-  // The engine's core promise, entirely frontend-side.
-  const expanded = node.widgets[1].serializeValue();
-  add("serializeValue expands to a string", typeof expanded === "string" && expanded.length > 0);
-  add("expanded value", expanded);
+        // The engine's core promise, entirely frontend-side.
+        const expanded = node.widgets[1].serializeValue();
+        add(
+          "serializeValue expands to a string",
+          typeof expanded === "string" && expanded.length > 0,
+        );
+        add("expanded value", expanded);
 
-  window.__report = { report, failed: report.filter((r) => !r.ok).length };
-} catch (error) {
-  report.push({ name: "harness threw", value: error.message, ok: false });
-  window.__report = { report, failed: 1, error: String(error.stack || error) };
-}
+        window.__report = {
+          report,
+          failed: report.filter((r) => !r.ok).length,
+        };
+      } catch (error) {
+        report.push({ name: "harness threw", value: error.message, ok: false });
+        window.__report = {
+          report,
+          failed: 1,
+          error: String(error.stack || error),
+        };
+      }
 
-// Generate panel: mirrors the queued prompt the gallery would send to
-// ComfyUI (same expansion as `serializeValue`).
-const gallery = window.__gallery;
-const btnGenerate = document.getElementById("btnGenerate");
-const outputTextarea = document.getElementById("outputTextarea");
-if (btnGenerate && outputTextarea) {
-  btnGenerate.addEventListener("click", () => {
-    const selectionValue = gallery?.widget?.value ?? "";
-    const prompt = gallery?.session?.composePrompt?.(selectionValue);
-    outputTextarea.value = prompt ?? "";
-  });
-}
+      // Generate panel: mirrors the queued prompt the gallery would send to
+      // ComfyUI (same expansion as `serializeValue`).
+      const gallery = window.__gallery;
+      const btnGenerate = document.getElementById("btnGenerate");
+      const outputTextarea = document.getElementById("outputTextarea");
+      if (btnGenerate && outputTextarea) {
+        btnGenerate.addEventListener("click", () => {
+          const selectionValue = gallery?.widget?.value ?? "";
+          const prompt = gallery?.session?.composePrompt?.(selectionValue);
+          outputTextarea.value = prompt ?? "";
+        });
+      }
 
-const failed = window.__report.failed;
-document.getElementById("report").innerHTML =
-  `<b>Preset Gallery harness</b> - ${report.length - failed}/${report.length} checks passed` +
-  report.map((r) =>
-    `<div class="${r.ok ? "pass" : "fail"}">${r.ok ? "PASS" : "FAIL"} &nbsp;${r.name}: <pre style="display:inline">${r.value}</pre></div>`
-  ).join("");
-</script>
-</body>
+      const failed = window.__report.failed;
+      document.getElementById("report").innerHTML =
+        `<b>Preset Gallery harness</b> - ${report.length - failed}/${report.length} checks passed` +
+        report
+          .map(
+            (r) =>
+              `<div class="${r.ok ? "pass" : "fail"}">${r.ok ? "PASS" : "FAIL"} &nbsp;${r.name}: <pre style="display:inline">${r.value}</pre></div>`,
+          )
+          .join("");
+    </script>
+  </body>
 </html>

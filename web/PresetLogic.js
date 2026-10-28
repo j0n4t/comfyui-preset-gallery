@@ -2,7 +2,12 @@ import RollManager from "./RollManager.js";
 import { derivedFor } from "./CacheDerived.js";
 // Bound as names, not reached through `PresetLogic`: the module-level index
 // builders below call these while the object is still being built.
-import { getPresetFolder, getPresetName, getPresetColor, toTitleCase } from "./PresetDisplay.js";
+import {
+  getPresetFolder,
+  getPresetName,
+  getPresetColor,
+  toTitleCase,
+} from "./PresetDisplay.js";
 
 const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
 
@@ -20,7 +25,11 @@ function buildCandidates(cache) {
   for (const key of keys) {
     const item = cache[key];
     if (item?.preset && item.preset.trim()) {
-      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);
+      const wrappedPreset = PresetLogic.getWrappedPreset(
+        key,
+        item.preset,
+        cache,
+      );
       if (wrappedPreset) {
         candidates.push({ matchStr: wrappedPreset, key, item });
       }
@@ -44,7 +53,7 @@ function buildCandidates(cache) {
     }
   }
   return Array.from(byMatchStr.values()).sort(
-    (a, b) => b.matchStr.length - a.matchStr.length
+    (a, b) => b.matchStr.length - a.matchStr.length,
   );
 }
 
@@ -108,7 +117,10 @@ function buildGroupIndex(cache) {
     const item = cache[key];
     if (!item?.preset) continue;
     // Config entries carry presets but are not group members.
-    if (key.startsWith("_/config/append") || key.startsWith("_/config/prepend")) {
+    if (
+      key.startsWith("_/config/append") ||
+      key.startsWith("_/config/prepend")
+    ) {
       continue;
     }
 
@@ -217,7 +229,8 @@ const PresetLogic = {
   NESTED_BRACES_PATTERN: "(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*",
 
   // 2. Centralize Regex Escaping
-  escapeRegExp: (/** @type {string} */ str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+  escapeRegExp: (/** @type {string} */ str) =>
+    str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
 
   /**
    * Splits a cache key into its optional library qualifier and its own path.
@@ -244,32 +257,49 @@ const PresetLogic = {
   parseWeight: (/** @type {string} */ str) => {
     const match = str?.match(PresetLogic.WEIGHT_REGEX);
     return match
-      ? { isWeighted: true, core: match[1], weight: parseFloat(match[2]), weightStr: match[2] }
+      ? {
+          isWeighted: true,
+          core: match[1],
+          weight: parseFloat(match[2]),
+          weightStr: match[2],
+        }
       : { isWeighted: false, core: str || "", weight: 1.0, weightStr: null };
   },
-
 
   // 4. Centralize Value Splitting (base value vs child modifiers)
   splitVariantValue: (/** @type {string} */ valStr) => {
     if (!valStr) return { baseVal: "", childVarsStr: "" };
-    const bIdx = valStr.indexOf('{');
+    const bIdx = valStr.indexOf("{");
     return bIdx !== -1
-      ? { baseVal: valStr.substring(0, bIdx).trim(), childVarsStr: valStr.substring(bIdx).trim() }
+      ? {
+          baseVal: valStr.substring(0, bIdx).trim(),
+          childVarsStr: valStr.substring(bIdx).trim(),
+        }
       : { baseVal: valStr.trim(), childVarsStr: "" };
   },
 
   // 5. Centralize Dynamic Group Regex Creation
-  createGroupRegex: (/** @type {string} */ groupName, flags = 'gi') => {
-    return new RegExp(`\\{\\s*${PresetLogic.escapeRegExp(groupName)}\\s*(?::(${PresetLogic.NESTED_BRACES_PATTERN}))?\\}`, flags);
+  createGroupRegex: (/** @type {string} */ groupName, flags = "gi") => {
+    return new RegExp(
+      `\\{\\s*${PresetLogic.escapeRegExp(groupName)}\\s*(?::(${PresetLogic.NESTED_BRACES_PATTERN}))?\\}`,
+      flags,
+    );
   },
 
   // 6. Centralize Root Group Nested Replacement
-  replaceNestedRoot: (/** @type {string} */ sourceStr, /** @type {string} */ rootGroup, /** @type {string} */ group, /** @type {string} */ replacement) => {
+  replaceNestedRoot: (
+    /** @type {string} */ sourceStr,
+    /** @type {string} */ rootGroup,
+    /** @type {string} */ group,
+    /** @type {string} */ replacement,
+  ) => {
     const rootRegex = PresetLogic.createGroupRegex(rootGroup);
     return sourceStr.replace(rootRegex, (match, rootVal) => {
       rootVal = rootVal || "";
       const childRegex = PresetLogic.createGroupRegex(group);
-      rootVal = rootVal.match(childRegex) ? rootVal.replace(childRegex, replacement) : rootVal + replacement;
+      rootVal = rootVal.match(childRegex)
+        ? rootVal.replace(childRegex, replacement)
+        : rootVal + replacement;
       return `{${rootGroup}:${rootVal}}`;
     });
   },
@@ -293,7 +323,11 @@ const PresetLogic = {
         if (seen.has(trimmed)) return trimmed;
         const newSeen = new Set(seen);
         newSeen.add(trimmed);
-        const wrappedPreset = PresetLogic.getWrappedPreset(trimmed, item.preset, cache);
+        const wrappedPreset = PresetLogic.getWrappedPreset(
+          trimmed,
+          item.preset,
+          cache,
+        );
         return PresetLogic.getUnrolledTemplate(wrappedPreset, cache, newSeen);
       }
       return trimmed;
@@ -301,7 +335,7 @@ const PresetLogic = {
 
     const keys = PresetLogic.splitPresets(val);
     const expanded = keys.map(expandToken);
-    return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, ' ');
+    return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, " ");
   },
 
   /**
@@ -340,14 +374,19 @@ const PresetLogic = {
 
     for (let i = 0; i < str.length; i++) {
       const char = str[i];
-      if (char === '(') depthParen++;
-      else if (char === ')') depthParen = Math.max(0, depthParen - 1);
-      else if (char === '<') depthAngle++;
-      else if (char === '>') depthAngle = Math.max(0, depthAngle - 1);
-      else if (char === '{') depthBrace++;
-      else if (char === '}') depthBrace = Math.max(0, depthBrace - 1);
+      if (char === "(") depthParen++;
+      else if (char === ")") depthParen = Math.max(0, depthParen - 1);
+      else if (char === "<") depthAngle++;
+      else if (char === ">") depthAngle = Math.max(0, depthAngle - 1);
+      else if (char === "{") depthBrace++;
+      else if (char === "}") depthBrace = Math.max(0, depthBrace - 1);
 
-      if (char === ',' && depthParen === 0 && depthAngle === 0 && depthBrace === 0) {
+      if (
+        char === "," &&
+        depthParen === 0 &&
+        depthAngle === 0 &&
+        depthBrace === 0
+      ) {
         tokens.push(current.trim());
         current = "";
       } else {
@@ -409,13 +448,19 @@ const PresetLogic = {
     if (!derived.variantKeyIndex) {
       derived.variantKeyIndex = buildVariantKeyIndex(cache);
     }
-    const hit = derived.variantKeyIndex.get(val.toLowerCase()) ?? (
-      split.libraryId ? derived.variantKeyIndex.get(split.key.toLowerCase()) : null
-    );
+    const hit =
+      derived.variantKeyIndex.get(val.toLowerCase()) ??
+      (split.libraryId
+        ? derived.variantKeyIndex.get(split.key.toLowerCase())
+        : null);
     return hit ?? null;
   },
 
-  getAllVariants: (/** @type {string} */ text, /** @type {PresetCache | undefined} */ cache, rootGroup = "") => {
+  getAllVariants: (
+    /** @type {string} */ text,
+    /** @type {PresetCache | undefined} */ cache,
+    rootGroup = "",
+  ) => {
     /** @type {ChipVariantData[]}  */
     let results = [];
     let m;
@@ -433,11 +478,12 @@ const PresetLogic = {
         val: baseVal,
         childVarsStr,
         rootGroup: rootGroup || groupName,
-        isSub: !!rootGroup
+        isSub: !!rootGroup,
       });
 
       if (baseVal && !PresetLogic.isVirtualNull(baseVal)) {
-        const resolvedKey = PresetLogic.resolveVariantKey(groupName, baseVal, cache) || baseVal;
+        const resolvedKey =
+          PresetLogic.resolveVariantKey(groupName, baseVal, cache) || baseVal;
         const item = cache?.[resolvedKey];
         if (item && item.preset) {
           let childTemplate = item.preset;
@@ -448,10 +494,17 @@ const PresetLogic = {
               const cName = cm[1].trim();
               const cVal = cm[2] || "";
               const replaceRegex = PresetLogic.createGroupRegex(cName);
-              childTemplate = childTemplate.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
+              childTemplate = childTemplate.replace(
+                replaceRegex,
+                `{${cName}${cVal ? ":" + cVal : ""}}`,
+              );
             }
           }
-          const childResults = PresetLogic.getAllVariants(childTemplate, cache, rootGroup || groupName);
+          const childResults = PresetLogic.getAllVariants(
+            childTemplate,
+            cache,
+            rootGroup || groupName,
+          );
           results = results.concat(childResults);
         }
       }
@@ -472,58 +525,90 @@ const PresetLogic = {
 
     const expandText = (/** @type {string} */ str) => {
       if (!str) return "";
-      return str.replace(VAR_REGEX, (/** @type {any} */ match, /** @type {string} */ gName, /** @type {string} */ sVal) => {
-        const groupName = gName.trim().toLowerCase().replace(/\s+/g, "_");
-        const selectedRaw = sVal ? sVal.trim() : "";
+      return str.replace(
+        VAR_REGEX,
+        (
+          /** @type {any} */ match,
+          /** @type {string} */ gName,
+          /** @type {string} */ sVal,
+        ) => {
+          const groupName = gName.trim().toLowerCase().replace(/\s+/g, "_");
+          const selectedRaw = sVal ? sVal.trim() : "";
 
-        if (selectedRaw) {
-          if (rollManager) {
-            rollManager.counts[groupName] = (rollManager.counts[groupName] || 0) + 1;
-          }
-
-          const { baseVal, childVarsStr } = PresetLogic.splitVariantValue(selectedRaw);
-
-          if (PresetLogic.isVirtualNull(baseVal)) {
-            return "";
-          }
-          const selectedKey = PresetLogic.resolveVariantKey(groupName, baseVal, cache) || baseVal;
-          const item = cache?.[selectedKey];
-          if (item && item.preset) {
-            if (seen.has(selectedKey)) return item.preset;
-            const newSeen = new Set(seen);
-            newSeen.add(selectedKey);
-            let wrappedPreset = PresetLogic.getWrappedPreset(selectedKey, item.preset, cache);
-
-            if (childVarsStr) {
-              const childRegex = new RegExp(VAR_REGEX.source, 'g');
-              let cm;
-              while ((cm = childRegex.exec(childVarsStr)) !== null) {
-                const cName = cm[1].trim();
-                const cVal = cm[2] || "";
-                const replaceRegex = PresetLogic.createGroupRegex(cName);
-                wrappedPreset = wrappedPreset.replace(replaceRegex, `{${cName}${cVal ? ':' + cVal : ''}}`);
-              }
+          if (selectedRaw) {
+            if (rollManager) {
+              rollManager.counts[groupName] =
+                (rollManager.counts[groupName] || 0) + 1;
             }
 
-            return PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager);
+            const { baseVal, childVarsStr } =
+              PresetLogic.splitVariantValue(selectedRaw);
+
+            if (PresetLogic.isVirtualNull(baseVal)) {
+              return "";
+            }
+            const selectedKey =
+              PresetLogic.resolveVariantKey(groupName, baseVal, cache) ||
+              baseVal;
+            const item = cache?.[selectedKey];
+            if (item && item.preset) {
+              if (seen.has(selectedKey)) return item.preset;
+              const newSeen = new Set(seen);
+              newSeen.add(selectedKey);
+              let wrappedPreset = PresetLogic.getWrappedPreset(
+                selectedKey,
+                item.preset,
+                cache,
+              );
+
+              if (childVarsStr) {
+                const childRegex = new RegExp(VAR_REGEX.source, "g");
+                let cm;
+                while ((cm = childRegex.exec(childVarsStr)) !== null) {
+                  const cName = cm[1].trim();
+                  const cVal = cm[2] || "";
+                  const replaceRegex = PresetLogic.createGroupRegex(cName);
+                  wrappedPreset = wrappedPreset.replace(
+                    replaceRegex,
+                    `{${cName}${cVal ? ":" + cVal : ""}}`,
+                  );
+                }
+              }
+
+              return PresetLogic.expandRecursively(
+                wrappedPreset,
+                cache,
+                newSeen,
+                rollManager,
+              );
+            }
+            return baseVal;
           }
-          return baseVal;
-        }
 
-        const matches = PresetLogic.getGroupMatches(groupName, cache);
-        if (matches.length > 0) {
-          const pickedKey = rollManager
-            ? rollManager.getRoll(groupName, matches)
-            : matches[Math.floor(Math.random() * matches.length)];
+          const matches = PresetLogic.getGroupMatches(groupName, cache);
+          if (matches.length > 0) {
+            const pickedKey = rollManager
+              ? rollManager.getRoll(groupName, matches)
+              : matches[Math.floor(Math.random() * matches.length)];
 
-          if (seen.has(pickedKey)) return pickedKey;
-          const newSeen = new Set(seen);
-          newSeen.add(pickedKey);
-          const wrappedPreset = PresetLogic.getWrappedPreset(pickedKey, cache[pickedKey].preset || "", cache);
-          return PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager);
-        }
-        return match;
-      });
+            if (seen.has(pickedKey)) return pickedKey;
+            const newSeen = new Set(seen);
+            newSeen.add(pickedKey);
+            const wrappedPreset = PresetLogic.getWrappedPreset(
+              pickedKey,
+              cache[pickedKey].preset || "",
+              cache,
+            );
+            return PresetLogic.expandRecursively(
+              wrappedPreset,
+              cache,
+              newSeen,
+              rollManager,
+            );
+          }
+          return match;
+        },
+      );
     };
 
     const expandToken = (/** @type {string} */ tokenStr) => {
@@ -531,13 +616,25 @@ const PresetLogic = {
       if (!trimmed) return "";
 
       const split = PresetLogic.splitQualifiedKey(trimmed);
-      const item = cache?.[trimmed] || (split.libraryId ? cache?.[split.key] : null);
+      const item =
+        cache?.[trimmed] || (split.libraryId ? cache?.[split.key] : null);
       if (item && item.preset) {
         if (seen.has(trimmed)) return trimmed;
         const newSeen = new Set(seen);
         newSeen.add(trimmed);
-        const wrappedPreset = PresetLogic.getWrappedPreset(trimmed, item.preset, cache);
-        return expandText(PresetLogic.expandRecursively(wrappedPreset, cache, newSeen, rollManager));
+        const wrappedPreset = PresetLogic.getWrappedPreset(
+          trimmed,
+          item.preset,
+          cache,
+        );
+        return expandText(
+          PresetLogic.expandRecursively(
+            wrappedPreset,
+            cache,
+            newSeen,
+            rollManager,
+          ),
+        );
       }
       // A token is usually one preset or one variant, but a user can type a bare
       // key alongside them - `({pose} prop/furn/sofa:1.15)`. Braces are handled
@@ -549,7 +646,7 @@ const PresetLogic = {
 
     const keys = PresetLogic.splitPresets(val);
     const expanded = keys.map(expandToken);
-    return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, ' ');
+    return expanded.filter(Boolean).join(", ").trim().replace(/\s+/g, " ");
   },
 
   /**
@@ -580,7 +677,8 @@ const PresetLogic = {
    * @returns {ParsedChipDetails} Parsed metadata.
    */
   parseChipDetails: (text, cache) => {
-    if (!text) return { variants: [], tag: null, presetMatch: null, trimmed: "" };
+    if (!text)
+      return { variants: [], tag: null, presetMatch: null, trimmed: "" };
     const trimmed = text.trim();
 
     const variants = Array.from(trimmed.matchAll(VAR_REGEX)).map((m) => ({
@@ -606,7 +704,12 @@ const PresetLogic = {
       }
     }
 
-    return { variants, tag, presetMatch: PresetLogic.findPresetMatch(trimmed, cache), trimmed };
+    return {
+      variants,
+      tag,
+      presetMatch: PresetLogic.findPresetMatch(trimmed, cache),
+      trimmed,
+    };
   },
 
   /**
@@ -623,7 +726,7 @@ const PresetLogic = {
     if (parsed.presetMatch && !/^\{/.test(token)) {
       return {
         title: toTitleCase(getPresetName(parsed.presetMatch.key)),
-        filename: parsed.presetMatch.item?.filename || null
+        filename: parsed.presetMatch.item?.filename || null,
       };
     }
     if (parsed.tag) {
@@ -652,30 +755,35 @@ const PresetLogic = {
             filename = cache[resolvedKey].filename;
           }
         }
-        const baseTitle = resolvedKey && cache
-          ? toTitleCase(getPresetName(resolvedKey))
-          : baseVal
-            ? toTitleCase(baseVal)
-            : toTitleCase(groupRaw);
+        const baseTitle =
+          resolvedKey && cache
+            ? toTitleCase(getPresetName(resolvedKey))
+            : baseVal
+              ? toTitleCase(baseVal)
+              : toTitleCase(groupRaw);
 
         let childTitles = [];
         if (childVarsStr) {
-          const childRegex = new RegExp(VAR_REGEX.source, 'g');
+          const childRegex = new RegExp(VAR_REGEX.source, "g");
           let cm;
           while ((cm = childRegex.exec(childVarsStr)) !== null) {
             const cName = cm[1].trim();
             const cVal = cm[2] ? cm[2].trim() : "";
             let childBaseVal = cVal;
-            const cbIdx = childBaseVal.indexOf('{');
+            const cbIdx = childBaseVal.indexOf("{");
             if (cbIdx !== -1) {
               childBaseVal = childBaseVal.substring(0, cbIdx).trim();
             }
 
             if (childBaseVal && !PresetLogic.isVirtualNull(childBaseVal)) {
-              const childResKey = PresetLogic.resolveVariantKey(cName, childBaseVal, cache) || childBaseVal;
+              const childResKey =
+                PresetLogic.resolveVariantKey(cName, childBaseVal, cache) ||
+                childBaseVal;
               childTitles.push(toTitleCase(getPresetName(childResKey)));
             } else if (!childBaseVal) {
-              const childRoll = rollManager?.getRoll(cName.toLowerCase().replace(/\s+/g, "_"));
+              const childRoll = rollManager?.getRoll(
+                cName.toLowerCase().replace(/\s+/g, "_"),
+              );
               if (childRoll) {
                 childTitles.push(toTitleCase(getPresetName(childRoll)));
               }
@@ -709,11 +817,19 @@ const PresetLogic = {
    * @param {boolean} [alwaysShow=false] - Show the value even when the header body is it; a `{group}` roll has no other place to appear.
    * @returns {string} Tooltip with the evaluated value where it adds anything.
    */
-  withEvaluatedValue: (tooltipTitle, joinedStr, chipExpanded, alwaysShow = false) => {
+  withEvaluatedValue: (
+    tooltipTitle,
+    joinedStr,
+    chipExpanded,
+    alwaysShow = false,
+  ) => {
     // A plain key or preset body that already is the value would only repeat
     // the header. Anything else - a weight, a preset that expands past its own
     // body, a roll - is the missing half and goes on top.
-    const repeatsHeader = !alwaysShow && (chipExpanded === joinedStr || tooltipTitle.endsWith(`\n${chipExpanded}`));
+    const repeatsHeader =
+      !alwaysShow &&
+      (chipExpanded === joinedStr ||
+        tooltipTitle.endsWith(`\n${chipExpanded}`));
     return repeatsHeader ? tooltipTitle : `${chipExpanded}\n\n${tooltipTitle}`;
   },
 
@@ -725,7 +841,12 @@ const PresetLogic = {
    * @param {import("./PresetSession.js").default} [session] - Session, whose `ownerOfKey` qualifies the tooltip key.
    * @returns {ProcessedChip} Evaluated chip pure data structure.
    */
-  parseBasketChip: (chipData, cache = {}, rollManager = new RollManager(), session = undefined) => {
+  parseBasketChip: (
+    chipData,
+    cache = {},
+    rollManager = new RollManager(),
+    session = undefined,
+  ) => {
     const { styleKey: rawStyleKey, item, subArray } = chipData;
     const isDisabled = PresetLogic.isTildeDisabled(rawStyleKey);
     let joinedStr = subArray.join(", ");
@@ -739,17 +860,23 @@ const PresetLogic = {
       joinedStr = PresetLogic.unwrapTilde(joinedStr);
     }
     const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
-    let { core: coreStr, weight: weightVal } = PresetLogic.parseWeight(joinedStr);
+    let { core: coreStr, weight: weightVal } =
+      PresetLogic.parseWeight(joinedStr);
 
     // A chip owned by another library shows its qualifier, the way the grid does.
     // It applies to the resolved cache key, never to a wrapped or weighted chip text.
     // `ownerOfKey` is called as a method: it reads `this.keyOwners`.
     const owner = session?.ownerOfKey(styleKey);
-    const qualify = (/** @type {string} */ key) => owner && owner !== "main" && !key.includes("#") ? `${owner}#${key}` : key;
+    const qualify = (/** @type {string} */ key) =>
+      owner && owner !== "main" && !key.includes("#") ? `${owner}#${key}` : key;
 
     if (cache && item && coreStr === styleKey) {
       const baseContent = item.preset || styleKey;
-      const wrappedContent = PresetLogic.getWrappedPreset(styleKey, baseContent, cache);
+      const wrappedContent = PresetLogic.getWrappedPreset(
+        styleKey,
+        baseContent,
+        cache,
+      );
 
       if (wrappedContent !== baseContent.trim()) {
         coreStr = wrappedContent;
@@ -758,8 +885,15 @@ const PresetLogic = {
     }
 
     const beforeCounts = rollManager.cloneCounts();
-    const chipExpandedCore = PresetLogic.expandRecursively(coreStr, cache, new Set(), rollManager);
-    const chipExpanded = wMatch ? `(${chipExpandedCore}:${wMatch[2]})` : chipExpandedCore;
+    const chipExpandedCore = PresetLogic.expandRecursively(
+      coreStr,
+      cache,
+      new Set(),
+      rollManager,
+    );
+    const chipExpanded = wMatch
+      ? `(${chipExpandedCore}:${wMatch[2]})`
+      : chipExpandedCore;
 
     const rolledInfo = [];
     for (const [group, endCount] of Object.entries(rollManager.counts)) {
@@ -767,23 +901,30 @@ const PresetLogic = {
       for (let k = start; k < endCount; k++) {
         const rolledKey = rollManager.peekRoll(group, k);
         if (rolledKey) {
-          rolledInfo.push(`🎲 ${toTitleCase(group.split("_")[0])}: ${getPresetName(rolledKey)}`);
+          rolledInfo.push(
+            `🎲 ${toTitleCase(group.split("_")[0])}: ${getPresetName(rolledKey)}`,
+          );
         }
       }
     }
-    const rolledText = rolledInfo.length > 0 ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}` : "";
+    const rolledText =
+      rolledInfo.length > 0
+        ? `\n\nRolled Variants:\n${rolledInfo.join("\n")}`
+        : "";
 
     const parsed = PresetLogic.parseChipDetails(chipExpandedCore, cache);
     let presetMatch = parsed.presetMatch;
 
     if (!presetMatch) {
-      const varMatch = coreStr.match(/^\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}$/);
+      const varMatch = coreStr.match(
+        /^\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}$/,
+      );
       if (varMatch) {
         const groupName = varMatch[1].trim().toLowerCase().replace(/\s+/g, "_");
         const val = varMatch[2] ? varMatch[2].trim() : "";
 
         let baseVal = val;
-        const bIdx = val.indexOf('{');
+        const bIdx = val.indexOf("{");
         if (bIdx !== -1) {
           baseVal = val.substring(0, bIdx).trim();
         }
@@ -800,14 +941,19 @@ const PresetLogic = {
 
     let cleanLabel, bgImage, color, tooltipTitle, evalId;
 
-    const tokens = coreStr.match(/<[^>]*>|\{[^{}:]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}|\S+/g) || [];
+    const tokens =
+      coreStr.match(
+        /<[^>]*>|\{[^{}:]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}|\S+/g,
+      ) || [];
     let segmentedLabels = null;
     let segmentImg = null;
     let segmentTitles = [];
 
-    if (tokens.length > 0 && tokens.some(t => /[{<]/.test(t))) {
+    if (tokens.length > 0 && tokens.some((t) => /[{<]/.test(t))) {
       segmentedLabels = [];
-      const tempTracer = new RollManager(rollManager.rolls).restoreCounts(beforeCounts);
+      const tempTracer = new RollManager(rollManager.rolls).restoreCounts(
+        beforeCounts,
+      );
 
       for (const token of tokens) {
         const seg = PresetLogic.resolvePresetSegment(token, cache, tempTracer);
@@ -850,7 +996,8 @@ const PresetLogic = {
       bgImage = segmentImg || item?.filename || null;
       color = getPresetColor(styleKey, cache);
       const titleHeader = `${toTitleCase(getPresetName(displayKey))} [${qualify(displayKey)}]`;
-      const presetBody = item?.preset || (cache[displayKey]?.preset ?? chipExpandedCore);
+      const presetBody =
+        item?.preset || (cache[displayKey]?.preset ?? chipExpandedCore);
       // A tilde-disabled chip (e.g. ~Scenery/Hills~) is still a real preset
       // match, so it shows the same header and resolved preset body as an
       // enabled chip. Any other chip with no cache item keeps the raw chip
@@ -868,11 +1015,18 @@ const PresetLogic = {
       // A `{group}` roll resolves through the rolled preset, so its evaluated
       // value equals that preset's body and the header cannot name the roll - it
       // is the one case where the value has to be shown even so.
-      tooltipTitle = PresetLogic.withEvaluatedValue(tooltipTitle, joinedStr, chipExpanded, rolledInfo.length > 0);
+      tooltipTitle = PresetLogic.withEvaluatedValue(
+        tooltipTitle,
+        joinedStr,
+        chipExpanded,
+        rolledInfo.length > 0,
+      );
     }
 
     const tempManager = new RollManager();
-    const basePreset = item?.preset || PresetLogic.expandRecursively(styleKey, cache, new Set(), tempManager);
+    const basePreset =
+      item?.preset ||
+      PresetLogic.expandRecursively(styleKey, cache, new Set(), tempManager);
     const hasMoreVar = /\{[^{}:]+(?::[^{}]+)?\}/.test(coreStr + basePreset);
 
     return {
@@ -888,7 +1042,7 @@ const PresetLogic = {
       weightVal,
       segmentedLabels,
       hasMoreVar,
-      tag: presetMatch ? null : parsed.tag
+      tag: presetMatch ? null : parsed.tag,
     };
   },
 
@@ -916,9 +1070,9 @@ const PresetLogic = {
     if (!derived.presetMatchIndex) {
       derived.presetMatchIndex = buildPresetMatchIndex(cache);
     }
-    const hit = derived.presetMatchIndex.get(trimmed) || (
-      split.libraryId ? derived.presetMatchIndex.get(split.key) : null
-    );
+    const hit =
+      derived.presetMatchIndex.get(trimmed) ||
+      (split.libraryId ? derived.presetMatchIndex.get(split.key) : null);
     return hit ? { key: hit.foundKey, item: hit.foundItem } : null;
   },
 
@@ -929,7 +1083,9 @@ const PresetLogic = {
    */
   parseDataURL: (dataUrl) => {
     if (!dataUrl || !dataUrl.startsWith("data:")) return null;
-    const matches = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,(.+)$/i);
+    const matches = dataUrl.match(
+      /^data:image\/(png|jpeg|jpg|webp|gif);base64,(.+)$/i,
+    );
     if (!matches) return null;
     let ext = matches[1].toLowerCase();
     if (ext === "jpeg") ext = "jpg";
@@ -954,19 +1110,22 @@ const PresetLogic = {
       const derived = derivedFor(cache);
       if (!derived.candidatesByFirstChar) {
         derived.candidatesByFirstChar = bucketCandidatesByFirstChar(
-          buildCandidates(cache)
+          buildCandidates(cache),
         );
       }
       candidatesByFirstChar = derived.candidatesByFirstChar;
     }
 
-    const isValidBoundary = (/** @type {number} */ startIdx, /** @type {number} */ endIdx) => {
+    const isValidBoundary = (
+      /** @type {number} */ startIdx,
+      /** @type {number} */ endIdx,
+    ) => {
       for (let i = startIdx - 1; i >= 0; i--) {
-        if (val[i] === ',') break;
+        if (val[i] === ",") break;
         if (!/\s/.test(val[i])) return false;
       }
       for (let i = endIdx; i < val.length; i++) {
-        if (val[i] === ',') break;
+        if (val[i] === ",") break;
         if (!/\s/.test(val[i])) return false;
       }
       return true;
@@ -981,7 +1140,11 @@ const PresetLogic = {
       if (startBucket) {
         for (const cand of startBucket) {
           if (val.startsWith(cand.matchStr, idx)) {
-            if (ignorePreset && cand.key?.endsWith(ignorePreset) || cand.matchStr === ignorePreset) continue;
+            if (
+              (ignorePreset && cand.key?.endsWith(ignorePreset)) ||
+              cand.matchStr === ignorePreset
+            )
+              continue;
             if (isValidBoundary(idx, idx + cand.matchStr.length)) {
               matched = cand;
               break;
@@ -991,7 +1154,9 @@ const PresetLogic = {
       }
 
       if (!matched) {
-        const varMatch = val.slice(idx).match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}/i);
+        const varMatch = val
+          .slice(idx)
+          .match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}/i);
         if (varMatch) {
           matched = { matchStr: varMatch[0], isVar: true };
         } else {
@@ -1009,35 +1174,49 @@ const PresetLogic = {
           text: matched.matchStr,
           key: matched.key,
           item: matched.item,
-          isTag: matched.isTag
+          isTag: matched.isTag,
         });
         idx += matched.matchStr.length;
       } else {
-        if (val[idx] === ',') {
+        if (val[idx] === ",") {
           tokens.push({
             start: idx,
             end: idx + 1,
-            text: ',',
-            isDelimiter: true
+            text: ",",
+            isDelimiter: true,
           });
           idx += 1;
         } else {
           let endPlain = idx + 1;
           while (endPlain < val.length) {
-            if (val[endPlain] === ',') break;
+            if (val[endPlain] === ",") break;
 
             let foundNextMatch = false;
-            if (val[endPlain] === '<' && /^<[^<>]+/i.test(val.slice(endPlain))) {
+            if (
+              val[endPlain] === "<" &&
+              /^<[^<>]+/i.test(val.slice(endPlain))
+            ) {
               foundNextMatch = true;
-            } else if (val[endPlain] === '{' && /^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}/.test(val.slice(endPlain))) {
+            } else if (
+              val[endPlain] === "{" &&
+              /^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}/.test(
+                val.slice(endPlain),
+              )
+            ) {
               foundNextMatch = true;
             } else {
               const plainBucket = candidatesByFirstChar?.get(val[endPlain]);
               if (plainBucket) {
                 for (const cand of plainBucket) {
                   if (val.startsWith(cand.matchStr, endPlain)) {
-                    if (cand.key === ignorePreset || cand.matchStr === ignorePreset) continue;
-                    if (isValidBoundary(endPlain, endPlain + cand.matchStr.length)) {
+                    if (
+                      cand.key === ignorePreset ||
+                      cand.matchStr === ignorePreset
+                    )
+                      continue;
+                    if (
+                      isValidBoundary(endPlain, endPlain + cand.matchStr.length)
+                    ) {
                       foundNextMatch = true;
                       break;
                     }
@@ -1055,7 +1234,7 @@ const PresetLogic = {
             start: idx,
             end: idx + plainText.length,
             text: plainText,
-            isPlainText: true
+            isPlainText: true,
           });
           idx = endPlain;
         }
@@ -1091,7 +1270,9 @@ const PresetLogic = {
    * @returns {boolean}
    */
   isTildeDisabled: (token) => {
-    return typeof token === "string" && token.startsWith("~") && token.endsWith("~");
+    return (
+      typeof token === "string" && token.startsWith("~") && token.endsWith("~")
+    );
   },
 
   /**
@@ -1101,11 +1282,12 @@ const PresetLogic = {
    * @returns {string}
    */
   unwrapTilde: (token) => {
-    return typeof token === "string" && token.startsWith("~") && token.endsWith("~")
+    return typeof token === "string" &&
+      token.startsWith("~") &&
+      token.endsWith("~")
       ? token.slice(1, -1)
       : token;
   },
-
 };
 
 export default PresetLogic;

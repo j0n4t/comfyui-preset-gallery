@@ -53,11 +53,11 @@
 
 Three things describe "what is selected", and only one of them is authoritative:
 
-| State | Owner | Lives in |
-| --- | --- | --- |
-| Ordered selection (the raw preset tokens the node runs) | the host widget | `widget.value`, comma separated |
-| Pins of the active tab | the session | `PresetSession.pinnedChips` (persisted per node as `j0n4t-pg-pins-<nodeId>`) |
-| Rolled choices of the active tab | the session | `PresetSession.rollManager.rolls` |
+| State                                                   | Owner           | Lives in                                                                     |
+| ------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------- |
+| Ordered selection (the raw preset tokens the node runs) | the host widget | `widget.value`, comma separated                                              |
+| Pins of the active tab                                  | the session     | `PresetSession.pinnedChips` (persisted per node as `j0n4t-pg-pins-<nodeId>`) |
+| Rolled choices of the active tab                        | the session     | `PresetSession.rollManager.rolls`                                            |
 
 A tab is a snapshot of exactly those three: `{ id, title, basket, pins, rolls }`,
 persisted with the active tab id under `comfy_preset_gallery_basket_tabs`.
@@ -66,7 +66,7 @@ key; `PresetBasket` draws the sidebar, the tab menu and the title, and forwards
 every tab action to it. `render()` hands the selection it just rendered to
 `PresetBasketTabs.snapshotList()` - the one place that sees the selection, the
 pins and the rolls together - so a tab's saved state always matches the last
-render. The grid selection, the chips and the evaluated prompt are *derived*
+render. The grid selection, the chips and the evaluated prompt are _derived_
 views of the widget value and are never a source of truth.
 
 ### Selection transitions
@@ -91,12 +91,12 @@ which is what tab switching used to do.
 
 ### What each part owns
 
-| Module | Owns |
-| --- | --- |
-| `PresetBasketTabs` | the tab list, the active tab, snapshots, the storage key |
-| `BasketSelectionController` | the selected chip indexes, the range anchor, Select mode, and the copy/paste payload format |
-| `BasketDragDrop` | the drop indicator and its geometry, chip drop insertion, image drops |
-| `PresetBasket` | chips and tab-sidebar rendering, keyboard wiring, the chip menu and inline-editor entry points, and one-line delegations to the three above |
+| Module                      | Owns                                                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PresetBasketTabs`          | the tab list, the active tab, snapshots, the storage key                                                                                    |
+| `BasketSelectionController` | the selected chip indexes, the range anchor, Select mode, and the copy/paste payload format                                                 |
+| `BasketDragDrop`            | the drop indicator and its geometry, chip drop insertion, image drops                                                                       |
+| `PresetBasket`              | chips and tab-sidebar rendering, keyboard wiring, the chip menu and inline-editor entry points, and one-line delegations to the three above |
 
 `PresetBasket` keeps its method names (`switchTab`, `copySelectedChips`,
 `deleteSelectedChips`, …) so the chip menu and the tests call it, not the

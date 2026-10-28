@@ -28,7 +28,8 @@ export default class RawTextAutocomplete {
         const textBeforeCursor = text.substring(0, cursor);
         const lastOpenBrace = textBeforeCursor.lastIndexOf("{");
         const lastCloseBrace = textBeforeCursor.lastIndexOf("}");
-        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
+        const isInsideBrackets =
+          lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
 
         if (isInsideBrackets) {
           const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
@@ -38,7 +39,9 @@ export default class RawTextAutocomplete {
             const groupQuery = bracketContent.trim().toLowerCase();
             const groupsSet = new Set();
             for (const k of Object.keys(this.context.cache)) {
-              const folder = PresetDisplay.getPresetFolder ? PresetDisplay.getPresetFolder(k) : k.split("/")[0];
+              const folder = PresetDisplay.getPresetFolder
+                ? PresetDisplay.getPresetFolder(k)
+                : k.split("/")[0];
               if (folder) groupsSet.add(folder);
             }
             const groups = Array.from(groupsSet);
@@ -51,37 +54,56 @@ export default class RawTextAutocomplete {
               groups,
               groupQuery,
               (g) => g,
-              dummyCache
+              dummyCache,
             );
           } else {
-            const groupName = bracketContent.substring(0, colonIndex).trim().toLowerCase();
-            const presetQuery = bracketContent.substring(colonIndex + 1).trim().toLowerCase();
+            const groupName = bracketContent
+              .substring(0, colonIndex)
+              .trim()
+              .toLowerCase();
+            const presetQuery = bracketContent
+              .substring(colonIndex + 1)
+              .trim()
+              .toLowerCase();
 
-            const presetMatches = Object.keys(this.context.cache).filter((k) => {
-              if (!this.context.cache[k]?.preset) return false;
-              const folder = PresetDisplay.getPresetFolder ? PresetDisplay.getPresetFolder(k) : k.split("/")[0];
-              return (
-                folder.toLowerCase() === groupName ||
-                folder.toLowerCase().startsWith(groupName + "/") ||
-                folder.toLowerCase().endsWith("/" + groupName)
-              );
-            });
+            const presetMatches = Object.keys(this.context.cache).filter(
+              (k) => {
+                if (!this.context.cache[k]?.preset) return false;
+                const folder = PresetDisplay.getPresetFolder
+                  ? PresetDisplay.getPresetFolder(k)
+                  : k.split("/")[0];
+                return (
+                  folder.toLowerCase() === groupName ||
+                  folder.toLowerCase().startsWith(groupName + "/") ||
+                  folder.toLowerCase().endsWith("/" + groupName)
+                );
+              },
+            );
 
             const virtualNulls = ["none", "null"].filter(
-              (opt) => !presetMatches.some((k) => PresetDisplay.getPresetName(k).toLowerCase() === opt)
+              (opt) =>
+                !presetMatches.some(
+                  (k) => PresetDisplay.getPresetName(k).toLowerCase() === opt,
+                ),
             );
             const candidateKeys = [...virtualNulls, ...presetMatches];
 
             return PresetDisplay.getTopMatches(
               candidateKeys,
               presetQuery,
-              (k) => (PresetLogic.isVirtualNull(k) ? k : PresetDisplay.getSearchBlob(k, this.context.cache[k])),
-              this.context.cache
+              (k) =>
+                PresetLogic.isVirtualNull(k)
+                  ? k
+                  : PresetDisplay.getSearchBlob(k, this.context.cache[k]),
+              this.context.cache,
             );
           }
         } else {
           const lastCommaIndex = text.slice(0, cursor).lastIndexOf(",");
-          const currentToken = lastCommaIndex === -1 ? text.slice(0, cursor) : text.slice(lastCommaIndex + 1, cursor);
+          const currentToken =
+            lastCommaIndex === -1
+              ? text.slice(0, cursor)
+              : text.slice(lastCommaIndex + 1, cursor);
           if (!currentToken) return [];
 
           return PresetDisplay.getTopMatches(
@@ -89,7 +111,7 @@ export default class RawTextAutocomplete {
             currentToken,
             (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]),
             this.context.cache,
-            this.ignorePreset
+            this.ignorePreset,
           );
         }
       },
@@ -101,11 +123,17 @@ export default class RawTextAutocomplete {
         const textBeforeCursor = query.substring(0, cursor);
         const lastOpenBrace = textBeforeCursor.lastIndexOf("{");
         const lastCloseBrace = textBeforeCursor.lastIndexOf("}");
-        const isInsideBrackets = lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
+        const isInsideBrackets =
+          lastOpenBrace !== -1 && lastOpenBrace > lastCloseBrace;
         const leftText = this.textarea.value.slice(0, cursor);
         const prefix =
-          leftText.lastIndexOf(",") === -1 ? "" : leftText.slice(0, leftText.lastIndexOf(",") + 1) + " ";
-        const insertedText = PresetLogic.expandRecursively(match, this.context.cache);
+          leftText.lastIndexOf(",") === -1
+            ? ""
+            : leftText.slice(0, leftText.lastIndexOf(",") + 1) + " ";
+        const insertedText = PresetLogic.expandRecursively(
+          match,
+          this.context.cache,
+        );
         if (isInsideBrackets) {
           const bracketContent = textBeforeCursor.substring(lastOpenBrace + 1);
           const colonIndex = bracketContent.indexOf(":");
@@ -133,7 +161,8 @@ export default class RawTextAutocomplete {
             return false;
           }
         } else {
-          this.textarea.value = prefix + insertedText + ", " + this.textarea.value.slice(cursor);
+          this.textarea.value =
+            prefix + insertedText + ", " + this.textarea.value.slice(cursor);
 
           if (this.onSync) this.onSync(this.textarea.value);
           this.manager.updateHighlights(this.ignorePreset);
@@ -143,7 +172,11 @@ export default class RawTextAutocomplete {
         }
       },
       onKeyDown: (e, { activeMatch }) => {
-        if (e.key === "ArrowRight" && this.textarea.selectionStart === this.textarea.value.length && activeMatch) {
+        if (
+          e.key === "ArrowRight" &&
+          this.textarea.selectionStart === this.textarea.value.length &&
+          activeMatch
+        ) {
           return false;
         }
       },

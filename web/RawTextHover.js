@@ -69,10 +69,21 @@ export default class RawTextHover {
     const xPos = x - paddingLeft - borderLeft;
     const yPos = y - paddingTop - parseFloat(style.borderTopWidth);
 
-    const innerWidth = this.textarea.clientWidth - paddingLeft - paddingRight - borderLeft - parseFloat(style.borderRightWidth);
-    const innerHeight = this.textarea.clientHeight - paddingTop - paddingBottom - parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth);
+    const innerWidth =
+      this.textarea.clientWidth -
+      paddingLeft -
+      paddingRight -
+      borderLeft -
+      parseFloat(style.borderRightWidth);
+    const innerHeight =
+      this.textarea.clientHeight -
+      paddingTop -
+      paddingBottom -
+      parseFloat(style.borderTopWidth) -
+      parseFloat(style.borderBottomWidth);
 
-    if (xPos < 0 || yPos < 0 || xPos > innerWidth || yPos > innerHeight) return -1;
+    if (xPos < 0 || yPos < 0 || xPos > innerWidth || yPos > innerHeight)
+      return -1;
 
     const fontSize = parseFloat(style.fontSize);
     const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.2;
@@ -108,7 +119,10 @@ export default class RawTextHover {
       left--;
     }
     let right = pos + 1;
-    while (right < value.length && (value[right] === "," || /\s/.test(value[right]))) {
+    while (
+      right < value.length &&
+      (value[right] === "," || /\s/.test(value[right]))
+    ) {
       right++;
     }
 
@@ -122,7 +136,11 @@ export default class RawTextHover {
     const value = this.textarea.value;
     if (!value || pos < 0 || pos > value.length) return null;
 
-    const tokens = PresetLogic.parseTokens(value, this.context.cache, this.ignorePreset);
+    const tokens = PresetLogic.parseTokens(
+      value,
+      this.context.cache,
+      this.ignorePreset,
+    );
     for (const token of tokens) {
       if (token.isDelimiter) continue;
       if (pos >= token.start && pos <= token.end) {
@@ -131,7 +149,7 @@ export default class RawTextHover {
           item: token.item || null,
           isPlainText: token.isPlainText,
           start: token.start,
-          end: token.end
+          end: token.end,
         };
       }
     }

@@ -27,7 +27,11 @@ export default class PresetSession {
   /**
    * @param {{ storage?: Storage | null, rng?: () => number, nodeId?: string | number | undefined }} [options]
    */
-  constructor({ storage = defaultStorage(), rng = Math.random, nodeId = "global" } = {}) {
+  constructor({
+    storage = defaultStorage(),
+    rng = Math.random,
+    nodeId = "global",
+  } = {}) {
     /** @type {Storage | null} */
     this.storage = storage;
     /** @type {() => number} */
@@ -87,7 +91,7 @@ export default class PresetSession {
       active.join(", "),
       this.cache,
       new Set(),
-      this.rollManager
+      this.rollManager,
     );
   }
 
@@ -104,7 +108,7 @@ export default class PresetSession {
   setLibraries(libraries, cachesById = {}) {
     this.libraries = (libraries || []).filter((lib) => lib && lib.id);
     this.libraryCaches = new Map(
-      this.libraries.map((lib) => [lib.id, cachesById?.[lib.id] || {}])
+      this.libraries.map((lib) => [lib.id, cachesById?.[lib.id] || {}]),
     );
     this.rebuildCache();
   }
@@ -127,7 +131,9 @@ export default class PresetSession {
     const duplicates = new Set();
 
     for (const lib of this.libraries) {
-      for (const [key, item] of Object.entries(this.libraryCaches.get(lib.id) || {})) {
+      for (const [key, item] of Object.entries(
+        this.libraryCaches.get(lib.id) || {},
+      )) {
         const winner = owners.get(key);
         if (winner === undefined) {
           owners.set(key, lib.id);
@@ -197,7 +203,10 @@ export default class PresetSession {
 
   savePins() {
     try {
-      this.storage?.setItem(this.pinKey, JSON.stringify(Array.from(this.pinnedChips)));
+      this.storage?.setItem(
+        this.pinKey,
+        JSON.stringify(Array.from(this.pinnedChips)),
+      );
     } catch (e) {
       console.warn("Could not save pinned chips", e);
     }
@@ -229,7 +238,9 @@ export default class PresetSession {
       const pinnedItems = PresetLogic.splitPresets(val);
       const isStillSelected =
         pinnedItems.length > 0 &&
-        arr.some((_, start) => pinnedItems.every((item, offset) => arr[start + offset] === item));
+        arr.some((_, start) =>
+          pinnedItems.every((item, offset) => arr[start + offset] === item),
+        );
       if (!isStillSelected) {
         this.pinnedChips.delete(val);
         pinsChanged = true;
@@ -256,7 +267,10 @@ export default class PresetSession {
 
   /** @param {string[]} list */
   setExcludedRollFolders(list) {
-    this.storage?.setItem(STORAGE_KEYS.excludedRollFolders, JSON.stringify(list));
+    this.storage?.setItem(
+      STORAGE_KEYS.excludedRollFolders,
+      JSON.stringify(list),
+    );
   }
 
   /**
@@ -273,7 +287,13 @@ export default class PresetSession {
    * }} options
    * @returns {string[] | null} the new selection, or null when no group is eligible
    */
-  buildRollSelection({ cache, excludedFolders = [], min = 10, max = 20, selected = [] }) {
+  buildRollSelection({
+    cache,
+    excludedFolders = [],
+    min = 10,
+    max = 20,
+    selected = [],
+  }) {
     const groupsMap = new Map();
     for (const [key, item] of Object.entries(cache)) {
       if (item?.preset) {
@@ -286,7 +306,7 @@ export default class PresetSession {
     }
 
     const availableGroups = Array.from(groupsMap.keys()).filter(
-      (key) => !key.startsWith("_") && !excludedFolders.includes(key)
+      (key) => !key.startsWith("_") && !excludedFolders.includes(key),
     );
     if (availableGroups.length === 0) return null;
 
@@ -294,7 +314,7 @@ export default class PresetSession {
     const addedSet = new Set(newSelections);
     const targetTotal = Math.max(
       Math.floor(this.rng() * (max - min + 1)) + min,
-      newSelections.length + 1
+      newSelections.length + 1,
     );
 
     while (newSelections.length < targetTotal) {
@@ -306,7 +326,8 @@ export default class PresetSession {
 
         const numChips = Math.floor(this.rng() * 2) + 1;
         for (let i = 0; i < numChips; i++) {
-          const randomPreset = groupPresets[Math.floor(this.rng() * groupPresets.length)];
+          const randomPreset =
+            groupPresets[Math.floor(this.rng() * groupPresets.length)];
           if (!addedSet.has(randomPreset)) {
             addedSet.add(randomPreset);
             newSelections.push(randomPreset);
@@ -319,7 +340,7 @@ export default class PresetSession {
 
       const totalAvailablePresets = availableGroups.reduce(
         (acc, g) => acc + (groupsMap.get(g)?.length || 0),
-        0
+        0,
       );
       if (!addedInIteration || addedSet.size >= totalAvailablePresets) break;
     }
@@ -346,10 +367,18 @@ export default class PresetSession {
       for (const node of list || []) {
         if (node.widgets) {
           for (const w of node.widgets) {
-            if (w.name && (w.name.toLowerCase().includes("seed") || w.name.toLowerCase().includes("noise"))) {
+            if (
+              w.name &&
+              (w.name.toLowerCase().includes("seed") ||
+                w.name.toLowerCase().includes("noise"))
+            ) {
               const key = `${node.id}-${w.name}`;
               currentSeeds[key] = w.value;
-              if (this.lastSeeds && this.lastSeeds[key] !== undefined && this.lastSeeds[key] !== w.value) {
+              if (
+                this.lastSeeds &&
+                this.lastSeeds[key] !== undefined &&
+                this.lastSeeds[key] !== w.value
+              ) {
                 seedChanged = true;
               }
             }

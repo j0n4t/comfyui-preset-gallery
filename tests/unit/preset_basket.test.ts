@@ -17,12 +17,18 @@ const CACHE: PresetCache = {
   "scenery/hills": { preset: "hills" },
 };
 
-function fakeStorage(initial: Record<string, string> = {}): Map<string, string> {
+function fakeStorage(
+  initial: Record<string, string> = {},
+): Map<string, string> {
   const map = new Map<string, string>(Object.entries(initial));
   globalThis.localStorage = {
     getItem: (k: string) => map.get(k) ?? null,
-    setItem: (k: string, v: string) => { map.set(k, v); },
-    removeItem: (k: string) => { map.delete(k); },
+    setItem: (k: string, v: string) => {
+      map.set(k, v);
+    },
+    removeItem: (k: string) => {
+      map.delete(k);
+    },
     clear: () => map.clear(),
   } as unknown as Storage;
   return map;
@@ -50,15 +56,29 @@ function makeBasketEnv() {
   const chkBasketRaw = document.createElement("input");
   chkBasketRaw.type = "checkbox";
   document.body.append(
-    container, basketEl, titleParent, editorEl, gridEl, searchEl,
-    btnBasketMultiSelect, btnCopyBasket, btnBasketPaste, btnBasketPin, btnBasketDelete, chkBasketRaw
+    container,
+    basketEl,
+    titleParent,
+    editorEl,
+    gridEl,
+    searchEl,
+    btnBasketMultiSelect,
+    btnCopyBasket,
+    btnBasketPaste,
+    btnBasketPin,
+    btnBasketDelete,
+    chkBasketRaw,
   );
 
   let widgetValue = "";
   const pinned = new Set<string>();
   const calls = {
     updateWidgetValue: [] as string[][],
-    restoreTabSelection: [] as { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }[],
+    restoreTabSelection: [] as {
+      basket?: string[];
+      pins?: string[];
+      rolls?: Record<string, string>;
+    }[],
     transferPin: [] as [string, string][],
     savePins: 0,
     syncUI: [] as string[],
@@ -87,14 +107,28 @@ function makeBasketEnv() {
       basketContainer: container,
     },
     widget: { value: "", callback: () => {} },
-    editor: { isSaved: true, classList: editorEl.classList, clearFields: () => {}, dom: {}, rawPresetManager: null },
-    getSelectedArray: () => widgetValue.split(",").map((s) => s.trim()).filter(Boolean),
+    editor: {
+      isSaved: true,
+      classList: editorEl.classList,
+      clearFields: () => {},
+      dom: {},
+      rawPresetManager: null,
+    },
+    getSelectedArray: () =>
+      widgetValue
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     updateWidgetValue: (arr: string[]) => {
       calls.updateWidgetValue.push(arr);
       widgetValue = arr.join(", ");
       context.widget.value = widgetValue; // the real context keeps the widget in sync
     },
-    restoreTabSelection: (tab: { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }) => {
+    restoreTabSelection: (tab: {
+      basket?: string[];
+      pins?: string[];
+      rolls?: Record<string, string>;
+    }) => {
       calls.restoreTabSelection.push(tab);
       pinned.clear();
       for (const pin of tab.pins ?? []) pinned.add(pin);
@@ -113,9 +147,15 @@ function makeBasketEnv() {
         pinned.add(newVal);
       }
     },
-    savePins: () => { calls.savePins++; },
-    syncUI: (val: string) => { calls.syncUI.push(val); },
-    openEditorForPreset: (key: string, focus?: boolean) => { calls.openEditorForPreset.push([key, focus]); },
+    savePins: () => {
+      calls.savePins++;
+    },
+    syncUI: (val: string) => {
+      calls.syncUI.push(val);
+    },
+    openEditorForPreset: (key: string, focus?: boolean) => {
+      calls.openEditorForPreset.push([key, focus]);
+    },
     setPanelCollapseState: () => {},
     grid: { syncSelection: () => {} },
   };
@@ -148,7 +188,12 @@ function makeBasketEnv() {
 function makeBasket() {
   const env = makeBasketEnv();
   const { basket: basketEl, ...rest } = env;
-  const basket = new PresetBasket(rest.container, basketEl, rest.textarea, rest.context);
+  const basket = new PresetBasket(
+    rest.container,
+    basketEl,
+    rest.textarea,
+    rest.context,
+  );
   return { basket, ...rest };
 }
 
@@ -163,7 +208,12 @@ function makeBasket() {
 function makeRenderingBasket() {
   const env = makeBasketEnv();
   const { basket: basketEl, ...rest } = env;
-  const basket = new PresetBasket(rest.container, basketEl, rest.textarea, rest.context);
+  const basket = new PresetBasket(
+    rest.container,
+    basketEl,
+    rest.textarea,
+    rest.context,
+  );
   const render = () => basket.render(rest.context.getSelectedArray());
 
   const recordUpdate = rest.context.updateWidgetValue;
@@ -196,11 +246,15 @@ function countRenders(basket: PresetBasket, fn: () => void): number {
 }
 
 function chips(basket: PresetBasket): HTMLElement[] {
-  return Array.from(basket.basket.querySelectorAll<HTMLElement>(".j0n4t-pg-basket-chip"));
+  return Array.from(
+    basket.basket.querySelectorAll<HTMLElement>(".j0n4t-pg-basket-chip"),
+  );
 }
 
 function tabItems(basket: PresetBasket): HTMLElement[] {
-  return Array.from(basket.container.querySelectorAll<HTMLElement>(".j0n4t-pg-basket-tab-item"));
+  return Array.from(
+    basket.container.querySelectorAll<HTMLElement>(".j0n4t-pg-basket-tab-item"),
+  );
 }
 
 function click(el: HTMLElement, init: MouseEventInit = {}): void {
@@ -215,7 +269,10 @@ beforeEach(() => {
 
 test("the constructor builds the sidebar and a default tab", () => {
   const { basket } = makeBasket();
-  assert.ok(basket.container.querySelector(".j0n4t-pg-basket-tabs-sidebar"), "sidebar is added");
+  assert.ok(
+    basket.container.querySelector(".j0n4t-pg-basket-tabs-sidebar"),
+    "sidebar is added",
+  );
   assert.equal(basket.tabState.tabs.length, 1);
   assert.equal(basket.tabState.tabs[0].title, "Basket");
   assert.equal(basket.tabState.activeTabId, basket.tabState.tabs[0].id);
@@ -226,18 +283,33 @@ test("initTabs restores saved tabs and their widget/pin state", () => {
   fakeStorage({
     comfy_preset_gallery_basket_tabs: JSON.stringify({
       tabs: [
-        { id: "t1", title: "One", basket: ["faces/portrait"], pins: ["faces/portrait"], rolls: {} },
+        {
+          id: "t1",
+          title: "One",
+          basket: ["faces/portrait"],
+          pins: ["faces/portrait"],
+          rolls: {},
+        },
         { id: "t2", title: "Two", basket: [], pins: [], rolls: {} },
       ],
       activeTabId: "t2",
     }),
   });
   const env = makeBasketEnv();
-  const basket = new PresetBasket(env.container, env.basket, env.textarea, env.context);
+  const basket = new PresetBasket(
+    env.container,
+    env.basket,
+    env.textarea,
+    env.context,
+  );
 
   assert.equal(basket.tabState.tabs.length, 2);
   assert.equal(basket.tabState.activeTabId, "t2");
-  assert.equal(env.widgetValue(), "", "the active tab's basket is loaded into the widget");
+  assert.equal(
+    env.widgetValue(),
+    "",
+    "the active tab's basket is loaded into the widget",
+  );
   assert.deepEqual([...env.pinned], [], "pins come from the active tab");
   assert.equal(basket.tabState.tabs[0].title, "One");
 });
@@ -253,7 +325,11 @@ test("persistTabs writes the active tab id", () => {
     tabs: unknown[];
     activeTabId: string;
   };
-  assert.equal(saved.activeTabId, basket.tabState.activeTabId, "the persisted payload carries the active tab");
+  assert.equal(
+    saved.activeTabId,
+    basket.tabState.activeTabId,
+    "the persisted payload carries the active tab",
+  );
   assert.equal(saved.tabs.length, 1);
 });
 
@@ -261,7 +337,13 @@ test("switchTab moves to another tab and renders its basket", () => {
   fakeStorage({
     comfy_preset_gallery_basket_tabs: JSON.stringify({
       tabs: [
-        { id: "t1", title: "One", basket: ["faces/portrait"], pins: [], rolls: {} },
+        {
+          id: "t1",
+          title: "One",
+          basket: ["faces/portrait"],
+          pins: [],
+          rolls: {},
+        },
         { id: "t2", title: "Two", basket: [], pins: [], rolls: {} },
       ],
       activeTabId: "t1",
@@ -282,8 +364,20 @@ test("switchTab renders the restored tab once", () => {
   fakeStorage({
     comfy_preset_gallery_basket_tabs: JSON.stringify({
       tabs: [
-        { id: "t1", title: "One", basket: ["faces/portrait"], pins: [], rolls: {} },
-        { id: "t2", title: "Two", basket: ["faces/macro"], pins: [], rolls: {} },
+        {
+          id: "t1",
+          title: "One",
+          basket: ["faces/portrait"],
+          pins: [],
+          rolls: {},
+        },
+        {
+          id: "t2",
+          title: "Two",
+          basket: ["faces/macro"],
+          pins: [],
+          rolls: {},
+        },
       ],
       activeTabId: "t1",
     }),
@@ -291,7 +385,10 @@ test("switchTab renders the restored tab once", () => {
   const { basket } = makeRenderingBasket();
   const targetId = basket.tabState.tabs[1].id;
 
-  assert.equal(countRenders(basket, () => basket.switchTab(targetId)), 1);
+  assert.equal(
+    countRenders(basket, () => basket.switchTab(targetId)),
+    1,
+  );
   assert.equal(chips(basket).length, 1);
 });
 
@@ -302,7 +399,11 @@ test("createNewTab empties the basket and the widget", () => {
   click(basket.container.querySelector(".j0n4t-pg-basket-tab-add-btn")!);
 
   assert.equal(basket.tabState.tabs.length, 2);
-  assert.deepEqual(calls.restoreTabSelection.at(-1)?.basket, [], "the new tab starts empty");
+  assert.deepEqual(
+    calls.restoreTabSelection.at(-1)?.basket,
+    [],
+    "the new tab starts empty",
+  );
   assert.equal(widgetValue(), "", "the widget follows the new tab");
   assert.equal(basket.tabState.tabs[1].title, "Basket 2");
 });
@@ -310,12 +411,17 @@ test("createNewTab empties the basket and the widget", () => {
 test("addChipsToNewTab via the documented custom event", () => {
   const { container, basket } = makeBasket();
 
-  container.dispatchEvent(new CustomEvent("preset-gallery:add-chips-to-new-tab", {
-    detail: { chips: ["faces/portrait", "faces/macro"] },
-  }));
+  container.dispatchEvent(
+    new CustomEvent("preset-gallery:add-chips-to-new-tab", {
+      detail: { chips: ["faces/portrait", "faces/macro"] },
+    }),
+  );
 
   assert.equal(basket.tabState.tabs.length, 2);
-  assert.equal(basket.tabState.tabs[1].basket.join(", "), "faces/portrait, faces/macro");
+  assert.equal(
+    basket.tabState.tabs[1].basket.join(", "),
+    "faces/portrait, faces/macro",
+  );
   assert.equal(basket.context.widget.value, "faces/portrait, faces/macro");
 });
 
@@ -338,7 +444,7 @@ test("dragging a basket chip to the tab bar creates a tab with its spread conten
   chips(basket)[0].dispatchEvent(dragStart);
 
   const sidebar = basket.container.querySelector<HTMLElement>(
-    ".j0n4t-pg-basket-tabs-sidebar"
+    ".j0n4t-pg-basket-tabs-sidebar",
   )!;
   const drop = new Event("drop", { bubbles: true, cancelable: true });
   Object.defineProperty(drop, "dataTransfer", { value: dataTransfer });
@@ -373,13 +479,19 @@ test("duplicateTab copies a tab with a Copy title", () => {
 
 test("createNewTab renders the basket once", () => {
   const { basket } = makeRenderingBasket();
-  assert.equal(countRenders(basket, () => basket.createNewTab()), 1);
+  assert.equal(
+    countRenders(basket, () => basket.createNewTab()),
+    1,
+  );
 });
 
 test("duplicateTab renders the basket once", () => {
   const { basket } = makeRenderingBasket();
   basket.render(["faces/portrait"]);
-  assert.equal(countRenders(basket, () => basket.duplicateTab(basket.tabState.tabs[0].id)), 1);
+  assert.equal(
+    countRenders(basket, () => basket.duplicateTab(basket.tabState.tabs[0].id)),
+    1,
+  );
 });
 
 test("createNewTab leaves the new tab empty and the previous tab intact", () => {
@@ -392,10 +504,26 @@ test("createNewTab leaves the new tab empty and the previous tab intact", () => 
 
   basket.createNewTab();
 
-  assert.deepEqual(basket.tabState.tabs[0].basket, ["faces/portrait"], "the old tab keeps its basket");
-  assert.deepEqual(basket.tabState.tabs[0].pins, ["faces/portrait"], "the old tab keeps its pins");
-  assert.deepEqual(basket.tabState.tabs[1].basket, [], "the new tab starts empty");
-  assert.deepEqual(basket.tabState.tabs[1].pins, [], "the new tab does not inherit the old pins");
+  assert.deepEqual(
+    basket.tabState.tabs[0].basket,
+    ["faces/portrait"],
+    "the old tab keeps its basket",
+  );
+  assert.deepEqual(
+    basket.tabState.tabs[0].pins,
+    ["faces/portrait"],
+    "the old tab keeps its pins",
+  );
+  assert.deepEqual(
+    basket.tabState.tabs[1].basket,
+    [],
+    "the new tab starts empty",
+  );
+  assert.deepEqual(
+    basket.tabState.tabs[1].pins,
+    [],
+    "the new tab does not inherit the old pins",
+  );
 });
 
 test("duplicateTab snapshots the duplicate's own pins, not the source's", () => {
@@ -406,7 +534,11 @@ test("duplicateTab snapshots the duplicate's own pins, not the source's", () => 
   basket.duplicateTab(basket.tabState.tabs[0].id);
 
   assert.deepEqual(basket.tabState.tabs[1].basket, ["faces/portrait"]);
-  assert.deepEqual(basket.tabState.tabs[1].pins, ["faces/portrait"], "the copy carries the duplicated pins");
+  assert.deepEqual(
+    basket.tabState.tabs[1].pins,
+    ["faces/portrait"],
+    "the copy carries the duplicated pins",
+  );
 });
 
 test("deleteTab removes the tab and falls back to a neighbour", () => {
@@ -432,8 +564,17 @@ test("render builds chips with labels and data attributes, and expands the texta
   assert.equal(chipEls[0].dataset.start, "0");
   assert.equal(chipEls[0].dataset.end, "1");
   assert.equal(chipEls[0].dataset.id, "faces/portrait");
-  assert.equal(chipEls[0].querySelector(".j0n4t-pg-basket-chip-label")?.textContent?.trim(), "Portrait");
-  assert.equal(textarea.value, "portrait, solo", "the textarea holds the expanded preset");
+  assert.equal(
+    chipEls[0]
+      .querySelector(".j0n4t-pg-basket-chip-label")
+      ?.textContent?.trim(),
+    "Portrait",
+  );
+  assert.equal(
+    textarea.value,
+    "portrait, solo",
+    "the textarea holds the expanded preset",
+  );
 });
 
 test("render marks pinned chips", () => {
@@ -451,13 +592,20 @@ test("render leaves the textarea alone while _updatingTextarea is set", () => {
 
   basket._updatingTextarea = true;
   basket.render(["faces/macro"]);
-  assert.equal(textarea.value, "manual edit", "an external edit is not overwritten mid-update");
+  assert.equal(
+    textarea.value,
+    "manual edit",
+    "an external edit is not overwritten mid-update",
+  );
   basket._updatingTextarea = false;
 });
 
 test("spreadPresetToChips splits a preset into its comma tokens", () => {
   const { basket } = makeBasket();
-  assert.deepEqual(basket.spreadPresetToChips("faces/portrait"), ["portrait", "solo"]);
+  assert.deepEqual(basket.spreadPresetToChips("faces/portrait"), [
+    "portrait",
+    "solo",
+  ]);
   assert.deepEqual(basket.spreadPresetToChips("unknown"), ["unknown"]);
   assert.deepEqual(basket.spreadPresetToChips(""), []);
 });
@@ -513,7 +661,11 @@ test("deleteSelectedChips removes the selected chip range", () => {
 
   basket.deleteSelectedChips();
 
-  assert.deepEqual(calls.updateWidgetValue.at(-1), ["solo"], "only the selected chip is removed");
+  assert.deepEqual(
+    calls.updateWidgetValue.at(-1),
+    ["solo"],
+    "only the selected chip is removed",
+  );
   assert.equal(basket.selection.selected.size, 0);
 });
 
@@ -561,10 +713,14 @@ test("the + key adjusts the chip weight", () => {
   basket.render(["faces/portrait"]);
   context.updateWidgetValue(["faces/portrait"]);
 
-  chips(basket)[0].dispatchEvent(new KeyboardEvent("keydown", { key: "+", bubbles: true }));
+  chips(basket)[0].dispatchEvent(
+    new KeyboardEvent("keydown", { key: "+", bubbles: true }),
+  );
 
   assert.deepEqual(calls.updateWidgetValue.at(-1), ["(faces/portrait:1.05)"]);
-  assert.deepEqual(calls.transferPin, [["faces/portrait", "(faces/portrait:1.05)"]]);
+  assert.deepEqual(calls.transferPin, [
+    ["faces/portrait", "(faces/portrait:1.05)"],
+  ]);
   // the chip DOM is not re-rendered here; the selection is what changed
 });
 
@@ -573,7 +729,9 @@ test("the Delete key removes the focused chip", () => {
   basket.render(["faces/portrait", "scenery/hills"]);
   context.updateWidgetValue(["faces/portrait", "scenery/hills"]);
 
-  chips(basket)[0].dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+  chips(basket)[0].dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Delete", bubbles: true }),
+  );
 
   assert.deepEqual(calls.updateWidgetValue.at(-1), ["scenery/hills"]);
 });
@@ -583,7 +741,9 @@ test("the p key toggles the pin", () => {
   basket.render(["faces/portrait"]);
   context.updateWidgetValue(["faces/portrait"]);
 
-  chips(basket)[0].dispatchEvent(new KeyboardEvent("keydown", { key: "p", bubbles: true }));
+  chips(basket)[0].dispatchEvent(
+    new KeyboardEvent("keydown", { key: "p", bubbles: true }),
+  );
 
   assert.ok(pinned.has("faces/portrait"));
   assert.ok(chips(basket)[0].classList.contains("pinned"));
@@ -599,17 +759,25 @@ test("focusChip focuses the chip at the start index", async () => {
   for (let i = 0; i < 10 && document.activeElement !== chips(basket)[1]; i++) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  assert.equal(document.activeElement, chips(basket)[1], "focus lands after the 50ms delay");
+  assert.equal(
+    document.activeElement,
+    chips(basket)[1],
+    "focus lands after the 50ms delay",
+  );
 });
 
 test("renameActiveTab commits the new title on Enter", () => {
   const { basket, basketTitle } = makeBasket();
   basket.renameActiveTab();
 
-  const input = basketTitle.parentElement!.querySelector<HTMLInputElement>(".j0n4t-pg-inline-edit");
+  const input = basketTitle.parentElement!.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-inline-edit",
+  );
   assert.ok(input, "an inline input replaces the title");
   input!.value = "My Presets";
-  input!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  input!.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+  );
 
   assert.equal(basket.tabState.tabs[0].title, "My Presets");
   assert.equal(basketTitle.style.display, "", "the title is restored");
@@ -619,11 +787,16 @@ test("renameActiveTab commits the new title on Enter", () => {
 
 test("copySelectedChips round-trips through readBasketClipboard via a clipboard stub", async () => {
   let written = "";
-  const originalClipboard = Object.getOwnPropertyDescriptor(globalThis.navigator, "clipboard");
+  const originalClipboard = Object.getOwnPropertyDescriptor(
+    globalThis.navigator,
+    "clipboard",
+  );
   Object.defineProperty(globalThis.navigator, "clipboard", {
     configurable: true,
     value: {
-      writeText: (async (text: string) => { written = text; }) as unknown as () => Promise<void>,
+      writeText: (async (text: string) => {
+        written = text;
+      }) as unknown as () => Promise<void>,
       readText: (async () => written) as unknown as () => Promise<string>,
     },
   });
@@ -643,7 +816,11 @@ test("copySelectedChips round-trips through readBasketClipboard via a clipboard 
     assert.equal(payload?.chips[0].pinned, false);
   } finally {
     if (originalClipboard) {
-      Object.defineProperty(globalThis.navigator, "clipboard", originalClipboard);
+      Object.defineProperty(
+        globalThis.navigator,
+        "clipboard",
+        originalClipboard,
+      );
     }
   }
 });
@@ -653,17 +830,43 @@ test("isBasketClipboardPayload accepts a valid payload and rejects malformed one
   const valid = {
     type: "comfyui-preset-gallery-basket",
     version: 1,
-    chips: [{ items: ["a"], styleKey: "a", pinned: true, rolls: { g: [{ offset: 0, value: "b" }] } }],
+    chips: [
+      {
+        items: ["a"],
+        styleKey: "a",
+        pinned: true,
+        rolls: { g: [{ offset: 0, value: "b" }] },
+      },
+    ],
   };
   assert.equal(basket.isBasketClipboardPayload(valid), true);
   assert.equal(basket.isBasketClipboardPayload(null), false);
-  assert.equal(basket.isBasketClipboardPayload({ type: "other", version: 1, chips: [] }), false);
-  assert.equal(basket.isBasketClipboardPayload({ ...valid, chips: [{ items: [], styleKey: "a", pinned: true, rolls: {} }] }),
-    false, "a chip needs at least one item");
   assert.equal(
-    basket.isBasketClipboardPayload({ ...valid, chips: [{ items: ["a"], styleKey: "a", pinned: true, rolls: { g: [{ offset: "0", value: "b" }] } }] }),
+    basket.isBasketClipboardPayload({ type: "other", version: 1, chips: [] }),
     false,
-    "roll offsets must be numbers"
+  );
+  assert.equal(
+    basket.isBasketClipboardPayload({
+      ...valid,
+      chips: [{ items: [], styleKey: "a", pinned: true, rolls: {} }],
+    }),
+    false,
+    "a chip needs at least one item",
+  );
+  assert.equal(
+    basket.isBasketClipboardPayload({
+      ...valid,
+      chips: [
+        {
+          items: ["a"],
+          styleKey: "a",
+          pinned: true,
+          rolls: { g: [{ offset: "0", value: "b" }] },
+        },
+      ],
+    }),
+    false,
+    "roll offsets must be numbers",
   );
 });
 
@@ -674,7 +877,10 @@ test("rendered chip uses the grid item tooltip without placing it on its label",
   const labelEl = chipEl.querySelector(".j0n4t-pg-basket-chip-label");
   assert.ok(labelEl, "chip label exists");
   assert.equal(labelEl.getAttribute("title"), null);
-  assert.equal(chipEl.getAttribute("title"), "Portrait [faces/portrait]\nportrait, solo");
+  assert.equal(
+    chipEl.getAttribute("title"),
+    "Portrait [faces/portrait]\nportrait, solo",
+  );
 });
 
 test("rendered chip tooltip shows the evaluated value of a plain tag", () => {
@@ -690,25 +896,37 @@ test("rendered chip tooltip shows the evaluated value when it differs from the p
   };
   const env = makeBasketEnv();
   env.context.cache = cacheWithMacro;
-  const basket = new PresetBasket(env.container, env.basket, env.textarea, env.context);
+  const basket = new PresetBasket(
+    env.container,
+    env.basket,
+    env.textarea,
+    env.context,
+  );
   basket.render(["look/combo"]);
-  const chipEl = Array.from(env.basket.querySelectorAll(".j0n4t-pg-basket-chip"))[0];
+  const chipEl = Array.from(
+    env.basket.querySelectorAll(".j0n4t-pg-basket-chip"),
+  )[0];
   assert.equal(
     chipEl.getAttribute("title"),
-    "simple look, extra\n\nCombo [look/combo]\nlook/simple, extra"
+    "simple look, extra\n\nCombo [look/combo]\nlook/simple, extra",
   );
 });
 
 test("rendered chip keeps the library qualifier in its tooltip", () => {
   const { basket, context } = makeBasket();
   context.session = {
-    ownerOfKey(key: string) { return key === "scenery/hills" ? "socks" : "main"; },
+    ownerOfKey(key: string) {
+      return key === "scenery/hills" ? "socks" : "main";
+    },
     isDuplicateKey: () => false,
     libraryName: (id: string) => id,
   } as unknown as GalleryContext["session"];
 
   basket.render(["scenery/hills"]);
-  assert.equal(chips(basket)[0].getAttribute("title"), "Hills [socks#scenery/hills]\nhills");
+  assert.equal(
+    chips(basket)[0].getAttribute("title"),
+    "Hills [socks#scenery/hills]\nhills",
+  );
 });
 
 test("rendered chip survives a session whose ownerOfKey reads its own state", () => {
@@ -720,21 +938,29 @@ test("rendered chip survives a session whose ownerOfKey reads its own state", ()
     ownerOfKey(key: string) {
       return this.owners.get(key) ?? "main";
     }
-    isDuplicateKey() { return false; }
-    libraryName(id: string) { return id; }
+    isDuplicateKey() {
+      return false;
+    }
+    libraryName(id: string) {
+      return id;
+    }
   }
   const { basket, context } = makeBasket();
   context.session = new FakeSession() as unknown as GalleryContext["session"];
 
   basket.render(["scenery/hills"]);
   assert.equal(chips(basket).length, 1, "the chip still renders");
-  assert.equal(chips(basket)[0].getAttribute("title"), "Hills [socks#scenery/hills]\nhills");
+  assert.equal(
+    chips(basket)[0].getAttribute("title"),
+    "Hills [socks#scenery/hills]\nhills",
+  );
 });
 
 test("rendered chip displays library badge for qualified or non-main presets", () => {
   const { basket, context } = makeBasket();
   context.session = {
-    ownerOfKey: (k: string) => (k.startsWith("socks#") || k === "socks/wool" ? "socks" : "main"),
+    ownerOfKey: (k: string) =>
+      k.startsWith("socks#") || k === "socks/wool" ? "socks" : "main",
     isDuplicateKey: () => false,
     libraryName: (id: string) => (id === "socks" ? "Socks" : "Main"),
   } as unknown as GalleryContext["session"];
@@ -760,11 +986,13 @@ test("rendered chip displays library badge for qualified or non-main presets", (
 test("rendered chip can hide library badges while keeping them enabled by default", () => {
   const { basket, context } = makeBasket();
   context.session = {
-    ownerOfKey: (key: string) => key === "socks/wool" ? "socks" : "main",
+    ownerOfKey: (key: string) => (key === "socks/wool" ? "socks" : "main"),
     isDuplicateKey: () => false,
     libraryName: () => "Socks",
   } as unknown as GalleryContext["session"];
-  context.settings = { showChipLibraryBadges: false } as GalleryContext["settings"];
+  context.settings = {
+    showChipLibraryBadges: false,
+  } as GalleryContext["settings"];
 
   basket.render(["socks/wool"]);
   assert.equal(chips(basket)[0].querySelector(".j0n4t-pg-lib-badge"), null);
@@ -783,7 +1011,9 @@ test("a disabled chip keeps its pinned state", () => {
   // The pin must follow the renamed key.
   assert.equal(env.context.pinnedChips.has("~faces/portrait~"), true);
   assert.equal(env.context.pinnedChips.has("faces/portrait"), false);
-  assert.deepEqual(env.calls.transferPin, [["faces/portrait", "~faces/portrait~"]]);
+  assert.deepEqual(env.calls.transferPin, [
+    ["faces/portrait", "~faces/portrait~"],
+  ]);
 });
 
 test("an enabled chip keeps its pinned state", () => {
@@ -799,7 +1029,9 @@ test("an enabled chip keeps its pinned state", () => {
   // The pin must follow the renamed key.
   assert.equal(env.context.pinnedChips.has("faces/portrait"), true);
   assert.equal(env.context.pinnedChips.has("~faces/portrait~"), false);
-  assert.deepEqual(env.calls.transferPin, [["~faces/portrait~", "faces/portrait"]]);
+  assert.deepEqual(env.calls.transferPin, [
+    ["~faces/portrait~", "faces/portrait"],
+  ]);
 });
 
 test("a batch disable keeps all pinned chips", () => {
@@ -812,7 +1044,10 @@ test("a batch disable keeps all pinned chips", () => {
   env.basket.selection.selected = new Set([0, 1]);
   env.basket.toggleDisabledSelected();
 
-  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["~faces/portrait~", "~scenery/hills~"]);
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), [
+    "~faces/portrait~",
+    "~scenery/hills~",
+  ]);
   assert.equal(env.context.pinnedChips.has("~faces/portrait~"), true);
   assert.equal(env.context.pinnedChips.has("~scenery/hills~"), true);
   assert.equal(env.context.pinnedChips.has("faces/portrait"), false);

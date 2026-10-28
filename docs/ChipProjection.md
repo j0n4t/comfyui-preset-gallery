@@ -19,12 +19,12 @@ and vice versa.
 Maps a sequential list of selection tokens to `ChipGroupInput[]`, one entry per
 chip, each carrying:
 
-| Field | Meaning |
-| --- | --- |
-| `styleKey` | the cache key the chip is keyed on, or the token as written when it names no entry |
-| `item` | the cache item behind `styleKey`, or `undefined` |
-| `startIndex` / `endIndex` | the token range the chip covers |
-| `subArray` | the tokens themselves |
+| Field                     | Meaning                                                                            |
+| ------------------------- | ---------------------------------------------------------------------------------- |
+| `styleKey`                | the cache key the chip is keyed on, or the token as written when it names no entry |
+| `item`                    | the cache item behind `styleKey`, or `undefined`                                   |
+| `startIndex` / `endIndex` | the token range the chip covers                                                    |
+| `subArray`                | the tokens themselves                                                              |
 
 Behaviour worth knowing, all pinned by `tests/unit/chip_projection.test.ts`:
 

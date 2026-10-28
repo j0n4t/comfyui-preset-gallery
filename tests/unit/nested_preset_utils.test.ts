@@ -23,7 +23,9 @@ test("flatToNested keeps the preset text at the leaf by default (presetOnly)", (
 });
 
 test("flatToNested turns string items into their preset value", () => {
-  const nested = NestedPresetUtils.flatToNested({ Faces: "portrait" } as unknown as PresetCache);
+  const nested = NestedPresetUtils.flatToNested({
+    Faces: "portrait",
+  } as unknown as PresetCache);
   assert.equal(nested.Faces, "portrait");
 });
 
@@ -38,9 +40,12 @@ test("flatToNested stores __color__ on folder nodes by default", () => {
 
 test("flatToNested drops color-only entries when includeColors is false", () => {
   const nested = NestedPresetUtils.flatToNested(
-    { Faces: { __color__: "#ff0000" }, "Faces/Portrait": { preset: "portrait" } },
+    {
+      Faces: { __color__: "#ff0000" },
+      "Faces/Portrait": { preset: "portrait" },
+    },
     true,
-    false
+    false,
   );
   assert.deepEqual(nested, { Faces: { Portrait: "portrait" } });
 });
@@ -48,16 +53,19 @@ test("flatToNested drops color-only entries when includeColors is false", () => 
 test("flatToNested with presetOnly=false keeps the whole item at the leaf", () => {
   const nested = NestedPresetUtils.flatToNested(
     { "Faces/Portrait": { preset: "portrait", filename: "p.png" } },
-    false
+    false,
   );
-  assert.deepEqual(nested.Faces.Portrait, { preset: "portrait", filename: "p.png" });
+  assert.deepEqual(nested.Faces.Portrait, {
+    preset: "portrait",
+    filename: "p.png",
+  });
 });
 
 test("flatToNested with presetOnly=false and includeColors=false strips __color__", () => {
   const nested = NestedPresetUtils.flatToNested(
     { Faces: { __color__: "#ff0000" } },
     false,
-    false
+    false,
   );
   assert.deepEqual(nested, {});
 });
@@ -88,13 +96,17 @@ test("nestedToFlat rebuilds slash-separated keys from a nested tree", () => {
 });
 
 test("nestedToFlat maps string leaves to { preset } items", () => {
-  const flat = NestedPresetUtils.nestedToFlat({ Faces: { Portrait: "portrait" } });
+  const flat = NestedPresetUtils.nestedToFlat({
+    Faces: { Portrait: "portrait" },
+  });
   assert.deepEqual(flat["Faces/Portrait"], { preset: "portrait" });
 });
 
 test("nestedToFlat preserves filename and __color__ on object leaves", () => {
   const flat = NestedPresetUtils.nestedToFlat({
-    Faces: { Portrait: { preset: "portrait", filename: "p.png", __color__: "#fff" } },
+    Faces: {
+      Portrait: { preset: "portrait", filename: "p.png", __color__: "#fff" },
+    },
   });
   assert.deepEqual(flat["Faces/Portrait"], {
     preset: "portrait",
@@ -125,7 +137,7 @@ test("roundtrip flat -> nested -> flat preserves every field", () => {
     Scenery: { __color__: "#00ff00" },
   };
   const flat = NestedPresetUtils.nestedToFlat(
-    NestedPresetUtils.flatToNested(library, false, true)
+    NestedPresetUtils.flatToNested(library, false, true),
   );
   assert.equal(flat["Faces/Portrait"].preset, "portrait, solo");
   assert.equal(flat["Faces/Portrait"].filename, "portrait.png");
@@ -135,7 +147,10 @@ test("roundtrip flat -> nested -> flat preserves every field", () => {
 
 test("roundtrip nested -> flat -> nested preserves colors and item fields", () => {
   const nested = {
-    Faces: { __color__: "#ff0000", Portrait: { preset: "portrait", filename: "p.png" } },
+    Faces: {
+      __color__: "#ff0000",
+      Portrait: { preset: "portrait", filename: "p.png" },
+    },
     Scenery: { Hills: "hills" },
   };
   const flat = NestedPresetUtils.nestedToFlat(nested);

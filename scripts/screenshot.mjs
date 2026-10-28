@@ -66,12 +66,14 @@ async function waitFor(page, expression, label, timeoutMs = 45000) {
     if (last) return last;
     await delay(150);
   }
-  throw new Error(`timed out waiting for ${label} (last: ${JSON.stringify(last)})`);
+  throw new Error(
+    `timed out waiting for ${label} (last: ${JSON.stringify(last)})`,
+  );
 }
 
 async function main() {
   const sample = NestedPresetUtils.nestedToFlat(
-    YAMLUtils.parse(readFileSync(SAMPLE, "utf8"))
+    YAMLUtils.parse(readFileSync(SAMPLE, "utf8")),
   );
   const workflow = JSON.parse(readFileSync(WORKFLOW, "utf8"));
 
@@ -103,10 +105,11 @@ async function shoot(browser, { sample, workflow }) {
     const served = await response.json();
     const kept = served.filter(
       (path) =>
-        path.includes("extensions/core") || path.includes(`/${EXTENSION_NAME}/`)
+        path.includes("extensions/core") ||
+        path.includes(`/${EXTENSION_NAME}/`),
     );
     console.log(
-      `extensions: ${served.length} served, ${kept.length} kept (${served.length - kept.length} dropped)`
+      `extensions: ${served.length} served, ${kept.length} kept (${served.length - kept.length} dropped)`,
     );
     await route.fulfill({
       status: 200,
@@ -137,7 +140,7 @@ async function shoot(browser, { sample, workflow }) {
   await waitFor(
     page,
     "typeof window.app === 'object' && !!window.app && !!window.app.graph",
-    "the ComfyUI app"
+    "the ComfyUI app",
   );
   console.log(`comfyui: ${COMFY_URL}`);
 
@@ -147,7 +150,7 @@ async function shoot(browser, { sample, workflow }) {
   await waitFor(
     page,
     "document.querySelectorAll('.j0n4t-pg-item').length > 0",
-    "the sample presets to render"
+    "the sample presets to render",
   );
   console.log(`sample:   ${Object.keys(sample).length} presets from ${SAMPLE}`);
 
@@ -155,41 +158,44 @@ async function shoot(browser, { sample, workflow }) {
   // below the control bar are draggable and the view is a stored preference, so
   // the node height this shot ends up with would otherwise depend on the
   // previous session.
-  await page.evaluate(({ view }) => {
-    const wrap = document.querySelector(".j0n4t-pg-wrap");
+  await page.evaluate(
+    ({ view }) => {
+      const wrap = document.querySelector(".j0n4t-pg-wrap");
 
-    // The basket's height is a user preference when "remember panel sizes" is
-    // on, so drop any inline height the last session left and let the stylesheet
-    // decide. Its `min-height` beats an inline `height`, so capping it that way
-    // silently does nothing.
-    const basket = wrap.querySelector(".j0n4t-pg-basket-container");
-    if (basket) {
-      basket.style.height = "";
-      basket.style.minHeight = "";
-    }
-
-    // The management panel is what makes the shot informative, and it starts
-    // collapsed. Open it, then size it to its own content: a fixed height
-    // either clips the preview row or leaves the content overflowing into the
-    // grid, because the editor's `overflow` is `visible` and the grid paints
-    // over whatever spills.
-    const editor = wrap.querySelector(".j0n4t-pg-editor");
-    if (editor) {
-      if (editor.classList.contains("collapsed")) {
-        wrap.querySelector("#j0n4t-pg-toggle")?.click();
+      // The basket's height is a user preference when "remember panel sizes" is
+      // on, so drop any inline height the last session left and let the stylesheet
+      // decide. Its `min-height` beats an inline `height`, so capping it that way
+      // silently does nothing.
+      const basket = wrap.querySelector(".j0n4t-pg-basket-container");
+      if (basket) {
+        basket.style.height = "";
+        basket.style.minHeight = "";
       }
-      // A remembered editor size stretches the keyword box, so clear it before
-      // measuring - otherwise the editor grows past what the shot has room for.
-      const keywords = wrap.querySelector("#j0n4t-pg-preset");
-      if (keywords) keywords.style.height = "";
-      editor.style.height = "auto";
-      editor.style.height = `${editor.offsetHeight}px`;
-    }
 
-    // Small view: the same library in a fraction of the node height. Done last
-    // so it is the grid's own layout that is measured, not the default one.
-    wrap.querySelector(`.j0n4t-pg-view-btn[data-view="${view}"]`)?.click();
-  }, { view: SHOT_VIEW });
+      // The management panel is what makes the shot informative, and it starts
+      // collapsed. Open it, then size it to its own content: a fixed height
+      // either clips the preview row or leaves the content overflowing into the
+      // grid, because the editor's `overflow` is `visible` and the grid paints
+      // over whatever spills.
+      const editor = wrap.querySelector(".j0n4t-pg-editor");
+      if (editor) {
+        if (editor.classList.contains("collapsed")) {
+          wrap.querySelector("#j0n4t-pg-toggle")?.click();
+        }
+        // A remembered editor size stretches the keyword box, so clear it before
+        // measuring - otherwise the editor grows past what the shot has room for.
+        const keywords = wrap.querySelector("#j0n4t-pg-preset");
+        if (keywords) keywords.style.height = "";
+        editor.style.height = "auto";
+        editor.style.height = `${editor.offsetHeight}px`;
+      }
+
+      // Small view: the same library in a fraction of the node height. Done last
+      // so it is the grid's own layout that is measured, not the default one.
+      wrap.querySelector(`.j0n4t-pg-view-btn[data-view="${view}"]`)?.click();
+    },
+    { view: SHOT_VIEW },
+  );
 
   // Two presets into the basket: enough to show the chips and to give the
   // preview node something to compose, and the last one clicked is the one the
@@ -220,7 +226,7 @@ async function shoot(browser, { sample, workflow }) {
       const wrap = document.querySelector(".j0n4t-pg-wrap");
       const grid = wrap.querySelector(".j0n4t-pg-grid");
       const node = window.app.graph._nodes.find(
-        (n) => n.type === "PresetGalleryNode"
+        (n) => n.type === "PresetGalleryNode",
       );
       const top = grid.getBoundingClientRect().top;
       const rows = new Map();
@@ -241,7 +247,7 @@ async function shoot(browser, { sample, workflow }) {
   const setNodeHeight = (height) =>
     page.evaluate((h) => {
       const node = window.app.graph._nodes.find(
-        (n) => n.type === "PresetGalleryNode"
+        (n) => n.type === "PresetGalleryNode",
       );
       node.size[1] = Math.max(120, Math.round(h));
       node.setSize([node.size[0], node.size[1]]);
@@ -278,7 +284,7 @@ async function shoot(browser, { sample, workflow }) {
     const grid = wrap?.querySelector(".j0n4t-pg-grid");
     const item = grid?.querySelector(".j0n4t-pg-item");
     const node = window.app.graph._nodes.find(
-      (n) => n.type === "PresetGalleryNode"
+      (n) => n.type === "PresetGalleryNode",
     );
     if (!wrap || !grid || !item) return null;
     const style = getComputedStyle(grid);
@@ -317,31 +323,31 @@ async function shoot(browser, { sample, workflow }) {
       const node = window.app.graph._nodes.find((n) => n.type === "PreviewAny");
       return node?.widgets?.find((w) => w.name === "preview_text")?.value?.length > 0;
     })()`,
-    "the preview node to hold the composed preset"
+    "the preview node to hold the composed preset",
   );
 
   const preview = await page.evaluate(() => {
     const node = window.app.graph._nodes.find((n) => n.type === "PreviewAny");
-    return (
-      node?.widgets?.find((w) => w.name === "preview_text")?.value ?? ""
-    );
+    return node?.widgets?.find((w) => w.name === "preview_text")?.value ?? "";
   });
   console.log(`basket:   ${chips} chips`);
-  console.log(`preview:  ${preview.split("\n")[0].slice(0, 70).replace(/\s+/g, " ")}`);
+  console.log(
+    `preview:  ${preview.split("\n")[0].slice(0, 70).replace(/\s+/g, " ")}`,
+  );
 
   // The shot is only meaningful if the canvas is actually showing that text,
   // so confirm the rendered widget agrees with the node's value.
   const rendered = await page.evaluate(
-    () => document.querySelector(".widget-text-preview textarea")?.value ?? ""
+    () => document.querySelector(".widget-text-preview textarea")?.value ?? "",
   );
   if (chips < 2 || !preview) {
     throw new Error(
-      "the shot needs a selection in the basket and text in the preview node"
+      "the shot needs a selection in the basket and text in the preview node",
     );
   }
   if (rendered !== preview) {
     throw new Error(
-      "the preview node holds the text but the canvas is not showing it"
+      "the preview node holds the text but the canvas is not showing it",
     );
   }
 
@@ -353,23 +359,26 @@ async function shoot(browser, { sample, workflow }) {
     page,
     "document.querySelector('[data-testid=\"toast\"]') === null",
     "the queue toast to clear",
-    20000
+    20000,
   );
 
   // Fit the whole canvas: nothing selected, so the fit covers every node. The
   // nodes are centred in the viewport, so a padding equal on all sides is what
   // keeps the whole graph inside the crop - `FIT_ZOOM` alone scales a viewport
   // that is far larger than the graph and leaves the nodes small in the middle.
-  await page.evaluate(({ zoom, padding }) => {
-    const canvas = window.app.canvas;
-    canvas.selectedItems?.clear();
-    const [width, height] = canvas.ds.getViewportSize();
-    canvas.fitViewToSelectionAnimated({
-      viewport: [0, 0, width, height],
-      zoom,
-      padding,
-    });
-  }, { zoom: FIT_ZOOM, padding: FIT_PADDING });
+  await page.evaluate(
+    ({ zoom, padding }) => {
+      const canvas = window.app.canvas;
+      canvas.selectedItems?.clear();
+      const [width, height] = canvas.ds.getViewportSize();
+      canvas.fitViewToSelectionAnimated({
+        viewport: [0, 0, width, height],
+        zoom,
+        padding,
+      });
+    },
+    { zoom: FIT_ZOOM, padding: FIT_PADDING },
+  );
   await delay(700); // let the fit animation finish
 
   const view = await page.evaluate(() => ({
@@ -378,8 +387,8 @@ async function shoot(browser, { sample, workflow }) {
   }));
   console.log(
     `view:     scale ${view.scale.toFixed(2)} offset [${Math.round(
-      view.offset[0]
-    )}, ${Math.round(view.offset[1])}]`
+      view.offset[0],
+    )}, ${Math.round(view.offset[1])}]`,
   );
 
   const bounds = await page.evaluate(() =>
@@ -390,20 +399,21 @@ async function shoot(browser, { sample, workflow }) {
         maxX: Math.max(box.maxX, node.pos[0] + node.size[0]),
         maxY: Math.max(box.maxY, node.pos[1] + node.size[1]),
       }),
-      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
-    )
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+    ),
   );
   console.log(
     `bounds:   ${Math.round(bounds.maxX - bounds.minX)}x${Math.round(
-      bounds.maxY - bounds.minY
-    )} graph units`
+      bounds.maxY - bounds.minY,
+    )} graph units`,
   );
 
   // Crop to the canvas itself: the shot documents the graph, not the window
   // chrome around it.
   const canvas = page.locator(".graph-canvas-container");
   const rect = await canvas.boundingBox();
-  if (!rect) throw new Error("the canvas has no box - is the graph area visible?");
+  if (!rect)
+    throw new Error("the canvas has no box - is the graph area visible?");
 
   // Prove the two things the shot is meant to show, rather than eyeball them:
   // no toast left on screen, and no grid row cut at the node's bottom edge.
@@ -418,7 +428,7 @@ async function shoot(browser, { sample, workflow }) {
         const overlaps = r.bottom > view.top && r.top < view.bottom;
         const contained = r.top >= view.top - 1 && r.bottom <= view.bottom + 1;
         return overlaps && !contained;
-      }
+      },
     ).length;
     return {
       toast: document.querySelector('[data-testid="toast"]') !== null,
@@ -432,7 +442,9 @@ async function shoot(browser, { sample, workflow }) {
   }
 
   await page.screenshot({ path: OUT, clip: rect });
-  console.log(`wrote:    ${OUT} (${Math.round(rect.width * SCALE)}x${Math.round(rect.height * SCALE)} px)`);
+  console.log(
+    `wrote:    ${OUT} (${Math.round(rect.width * SCALE)}x${Math.round(rect.height * SCALE)} px)`,
+  );
 }
 
 main().catch((error) => {

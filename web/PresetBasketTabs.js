@@ -7,7 +7,12 @@
  * the pins and rolled choices that went with it - and installing one is the
  * app's `restoreTabSelection`, the same transition a user edit goes through.
  */
-import { STORAGE_KEYS, defaultStorage, readJson, writeJson } from "./GalleryStorage.js";
+import {
+  STORAGE_KEYS,
+  defaultStorage,
+  readJson,
+  writeJson,
+} from "./GalleryStorage.js";
 
 export default class PresetBasketTabs {
   /**
@@ -45,7 +50,9 @@ export default class PresetBasketTabs {
     const tab = this.newTab({
       title: "Basket",
       basket: this.context.getSelectedArray(),
-      pins: this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [],
+      pins: this.context.pinnedChips
+        ? Array.from(this.context.pinnedChips)
+        : [],
       rolls: this.context.rollManager?.rolls,
     });
     this.tabs = [tab];
@@ -62,14 +69,21 @@ export default class PresetBasketTabs {
     return {
       tabs: parsed.tabs,
       activeTabId:
-        parsed.activeTabId && parsed.tabs.some((/** @type {BasketTab} */ t) => t.id === parsed.activeTabId)
+        parsed.activeTabId &&
+        parsed.tabs.some(
+          (/** @type {BasketTab} */ t) => t.id === parsed.activeTabId,
+        )
           ? parsed.activeTabId
           : parsed.tabs[0].id,
     };
   }
 
   persist() {
-    writeJson(STORAGE_KEYS.basketTabs, { tabs: this.tabs, activeTabId: this.activeTabId }, this.storage);
+    writeJson(
+      STORAGE_KEYS.basketTabs,
+      { tabs: this.tabs, activeTabId: this.activeTabId },
+      this.storage,
+    );
   }
 
   /** @returns {BasketTab | null} */
@@ -95,7 +109,9 @@ export default class PresetBasketTabs {
    */
   fill(tab, basket = this.context.getSelectedArray()) {
     tab.basket = [...basket];
-    tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];
+    tab.pins = this.context.pinnedChips
+      ? Array.from(this.context.pinnedChips)
+      : [];
     tab.rolls = this.context.rollManager?.rolls
       ? JSON.parse(JSON.stringify(this.context.rollManager.rolls))
       : {};
@@ -188,7 +204,10 @@ export default class PresetBasketTabs {
    */
   create(fields = {}) {
     this.snapshot();
-    const tab = this.newTab({ title: fields.title, basket: fields.chips || [] });
+    const tab = this.newTab({
+      title: fields.title,
+      basket: fields.chips || [],
+    });
     this.tabs.push(tab);
     this.activeTabId = tab.id;
     this.restore(tab);
@@ -278,8 +297,18 @@ export default class PresetBasketTabs {
   insertMany(incoming) {
     if (!Array.isArray(incoming) || incoming.length === 0) return 0;
     const asList = (/** @type {string[] | string | undefined} */ value) => {
-      if (Array.isArray(value)) return value.join(", ").split(",").map((s) => s.trim()).filter(Boolean);
-      return value ? value.split(",").map((s) => s.trim()).filter(Boolean) : [];
+      if (Array.isArray(value))
+        return value
+          .join(", ")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      return value
+        ? value
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
     };
 
     for (const tab of incoming) {

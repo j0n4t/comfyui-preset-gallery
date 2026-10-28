@@ -9,7 +9,10 @@
 // @ts-expect-error ComfyUI resolves this host-provided module at runtime.
 import { app } from "../../../scripts/app.js";
 
-import PresetGalleryApp, { MIN_NODE_WIDTH, MIN_NODE_HEIGHT } from "./PresetGalleryApp.js";
+import PresetGalleryApp, {
+  MIN_NODE_WIDTH,
+  MIN_NODE_HEIGHT,
+} from "./PresetGalleryApp.js";
 
 /**
  * Focuses the search box of the most relevant gallery instance: the one that
@@ -28,9 +31,10 @@ function focusActiveSearch() {
   const visibleInstances = [...document.querySelectorAll(".j0n4t-pg-wrap")]
     .map((wrap) => PresetGalleryApp.instancesByWrap.get(wrap))
     .filter(Boolean);
-  const target = activeInstance
-    ?? (selectedInstances.length === 1 ? selectedInstances[0] : null)
-    ?? (visibleInstances.length === 1 ? visibleInstances[0] : null);
+  const target =
+    activeInstance ??
+    (selectedInstances.length === 1 ? selectedInstances[0] : null) ??
+    (visibleInstances.length === 1 ? visibleInstances[0] : null);
 
   target?.focusSearch();
 }
@@ -70,8 +74,12 @@ app.registerExtension({
     nodeType.prototype.onNodeCreated = function () {
       // @ts-expect-error The host node callback uses a dynamic `this` context.
       onNodeCreated?.apply(this, arguments);
-      const widget = this.widgets?.find((/** @type {{ name: string; }} */ w) => w.name === "preset_selection");
-      const evaluatedWidget = this.widgets?.find((/** @type {{ name: string; }} */ w) => w.name === "evaluated_preset");
+      const widget = this.widgets?.find(
+        (/** @type {{ name: string; }} */ w) => w.name === "preset_selection",
+      );
+      const evaluatedWidget = this.widgets?.find(
+        (/** @type {{ name: string; }} */ w) => w.name === "evaluated_preset",
+      );
       if (!widget || !evaluatedWidget) return;
       widget.hidden = true;
       evaluatedWidget.hidden = true;

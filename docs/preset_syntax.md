@@ -9,14 +9,15 @@ This document provides a comprehensive technical guide to the **Preset Syntax** 
 `PresetLogic.js` is a prompt template parsing and expansion engine designed for visual generation tools (such as Stable Diffusion prompt builders). It allows users to write compact, modular prompt expressions containing variables, randomized rolls, weighted tags, and nested preset references, and expands them deterministically or probabilistically into clean target text.
 
 ### Key Features
-* **Nested Preset Expansion:** Recursively unrolls referenced preset templates from a cache dictionary.
-* **Variable & Variant Selection:** Dynamic replacements using `{group}` or `{group:variant}` syntax.
-* **Child Variable Injection:** Passing inline parameters into child preset templates (e.g., `{character:warrior{weapon:sword}}`).
-* **Deterministic Roll State Management:** Tracked randomized choices via `RollManager` for reproducible prompt generation.
-* **Smart Structure-Aware Tokenization:** Splitting multi-token strings on commas while preserving nested parentheses `()`, angle brackets `<>`, and braces `{}`.
-* **Virtual Null Value Support:** Omission of variants using reserved keywords (`none`, `null`).
-* **Folder Prepend / Append Wrapping:** Global folder-level prefixing and suffixing via configuration keys (`_/config/prepend/...`, `_/config/append/...`).
-* **UI Segment & Chip Metadata Resolution:** Evaluation of UI tokens into clean titles, background images, color codes, and tooltips.
+
+- **Nested Preset Expansion:** Recursively unrolls referenced preset templates from a cache dictionary.
+- **Variable & Variant Selection:** Dynamic replacements using `{group}` or `{group:variant}` syntax.
+- **Child Variable Injection:** Passing inline parameters into child preset templates (e.g., `{character:warrior{weapon:sword}}`).
+- **Deterministic Roll State Management:** Tracked randomized choices via `RollManager` for reproducible prompt generation.
+- **Smart Structure-Aware Tokenization:** Splitting multi-token strings on commas while preserving nested parentheses `()`, angle brackets `<>`, and braces `{}`.
+- **Virtual Null Value Support:** Omission of variants using reserved keywords (`none`, `null`).
+- **Folder Prepend / Append Wrapping:** Global folder-level prefixing and suffixing via configuration keys (`_/config/prepend/...`, `_/config/append/...`).
+- **UI Segment & Chip Metadata Resolution:** Evaluation of UI tokens into clean titles, background images, color codes, and tooltips.
 
 ---
 
@@ -24,15 +25,15 @@ This document provides a comprehensive technical guide to the **Preset Syntax** 
 
 ### 2.1 Overview of Syntax Elements
 
-| Syntax Pattern | Type | Example | Description |
-| :--- | :--- | :--- | :--- |
-| `preset_key` | **Direct Preset Match** | `styles/anime` | Matches an exact key in the preset cache and replaces it with the preset template. |
-| `{group}` | **Random Group Variant Roll** | `{hair_color}` | Randomly selects one preset key belonging to the `hair_color` folder group. |
-| `{group:value}` | **Explicit Variant Selection** | `{hair_color:blonde}` | Selects a specific preset/variant within the `hair_color` group. |
-| `{group:value{child:val}}` | **Nested Variable Parameter** | `{outfit:armor{material:gold}}` | Selects a variant and injects/overrides child variable placeholders inside the variant's preset. |
-| `{group:none}` / `{group:null}` | **Virtual Null (Omission)** | `{hat:none}` | Explicitly evaluates to an empty string, omitting the element. |
-| `(prompt:weight)` | **Weighted Prompt Tag** | `(masterpiece:1.2)` | Standard attention weighting construct preserved during expansion. |
-| `<tag_type:name:value>` | **LoRA / Special Tag** | `<lora:anime_style:0.8>` | External model or hypernetwork modifier syntax. |
+| Syntax Pattern                  | Type                           | Example                         | Description                                                                                      |
+| :------------------------------ | :----------------------------- | :------------------------------ | :----------------------------------------------------------------------------------------------- |
+| `preset_key`                    | **Direct Preset Match**        | `styles/anime`                  | Matches an exact key in the preset cache and replaces it with the preset template.               |
+| `{group}`                       | **Random Group Variant Roll**  | `{hair_color}`                  | Randomly selects one preset key belonging to the `hair_color` folder group.                      |
+| `{group:value}`                 | **Explicit Variant Selection** | `{hair_color:blonde}`           | Selects a specific preset/variant within the `hair_color` group.                                 |
+| `{group:value{child:val}}`      | **Nested Variable Parameter**  | `{outfit:armor{material:gold}}` | Selects a variant and injects/overrides child variable placeholders inside the variant's preset. |
+| `{group:none}` / `{group:null}` | **Virtual Null (Omission)**    | `{hat:none}`                    | Explicitly evaluates to an empty string, omitting the element.                                   |
+| `(prompt:weight)`               | **Weighted Prompt Tag**        | `(masterpiece:1.2)`             | Standard attention weighting construct preserved during expansion.                               |
+| `<tag_type:name:value>`         | **LoRA / Special Tag**         | `<lora:anime_style:0.8>`        | External model or hypernetwork modifier syntax.                                                  |
 
 ---
 
@@ -45,28 +46,32 @@ const VAR_REGEX = /\{([^{}:]+)(?::((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*))?\}/g;
 ```
 
 #### Syntax Rules:
+
 1. **Group Name Extraction:** The group name is extracted before the colon `:` (or the entire content if no colon exists). Group names are normalized: whitespace is trimmed, converted to lowercase, and internal spaces are replaced with underscores `_`.
 2. **Variant Expression:** The variant expression comes after the colon `:`. It supports up to two levels of nested braces (allowing child variable syntax).
 
 #### A. Unspecified Variant (Random Roll)
-* **Syntax:** `{group_name}`
-* **Behavior:** Searches the cache for all preset keys matching `group_name` using `getGroupMatches()`.
+
+- **Syntax:** `{group_name}`
+- **Behavior:** Searches the cache for all preset keys matching `group_name` using `getGroupMatches()`.
   - A key matches if its folder path equals `group_name`, starts with `group_name/`, or ends with `/group_name`.
   - If a `RollManager` is active, the choice is retrieved from or recorded into `RollManager`.
   - If no `RollManager` is provided, a match is chosen at random (`Math.random()`).
   - If no matches exist in the cache, the raw `{group_name}` string is left intact.
 
 #### B. Explicit Variant Selection
-* **Syntax:** `{group_name:variant_value}`
-* **Behavior:** 
+
+- **Syntax:** `{group_name:variant_value}`
+- **Behavior:**
   1. Resolves `variant_value` against the cache using `resolveVariantKey()`.
   2. If resolved to a cached preset key, the preset's text is loaded.
   3. If `variant_value` is `none` or `null` (case-insensitive), it is treated as a **Virtual Null** and evaluates to an empty string `""`.
   4. If `variant_value` is plain text not in the cache, the literal text is returned.
 
 #### C. Child Variable Parameter Injection
-* **Syntax:** `{group:base_value{child_group:child_value}}`
-* **Behavior:** 
+
+- **Syntax:** `{group:base_value{child_group:child_value}}`
+- **Behavior:**
   When a parent preset contains placeholders (e.g., preset `outfit/armor` has content `plate armor made of {material}`), passing `{outfit:armor{material:gold}}` will locate any occurrences of `{material}` within the loaded preset and replace/override them with `{material:gold}` before recursive expansion.
 
 ---
@@ -80,23 +85,26 @@ isVirtualNull: (val) => {
   if (!val) return false;
   const lower = val.trim().toLowerCase();
   return lower === "none" || lower === "null";
-}
+};
 ```
 
-* **Effect:** When a variant resolves to `none` or `null`, the expansion removes the token entirely without inserting extra commas or dangling whitespace.
+- **Effect:** When a variant resolves to `none` or `null`, the expansion removes the token entirely without inserting extra commas or dangling whitespace.
 
 ---
 
 ### 2.4 Prepend and Append Configuration Wrapping
 
 The engine supports automated folder-level wrappers. If configuration presets exist at specific internal cache keys:
-* Prepend Key: `_/config/prepend/<folder_path>`
-* Append Key: `_/config/append/<folder_path>`
+
+- Prepend Key: `_/config/prepend/<folder_path>`
+- Append Key: `_/config/append/<folder_path>`
 
 When expanding a preset key located inside `<folder_path>`, the engine checks for these wrapper keys. If present:
+
 ```text
 Wrapped String = `${prepend_text} ${preset_text} ${append_text}`
 ```
+
 This enables applying standard modifier tags to all presets under a specific directory.
 
 ---
@@ -109,14 +117,14 @@ To prevent breaking nested structures, `splitPresets` parses comma-separated lis
 
 ```javascript
 // Simplified depth tracking loop
-if (char === '(') depthParen++;
-else if (char === ')') depthParen = Math.max(0, depthParen - 1);
-else if (char === '<') depthAngle++;
-else if (char === '>') depthAngle = Math.max(0, depthAngle - 1);
-else if (char === '{') depthBrace++;
-else if (char === '}') depthBrace = Math.max(0, depthBrace - 1);
+if (char === "(") depthParen++;
+else if (char === ")") depthParen = Math.max(0, depthParen - 1);
+else if (char === "<") depthAngle++;
+else if (char === ">") depthAngle = Math.max(0, depthAngle - 1);
+else if (char === "{") depthBrace++;
+else if (char === "}") depthBrace = Math.max(0, depthBrace - 1);
 
-if (char === ',' && depthParen === 0 && depthAngle === 0 && depthBrace === 0) {
+if (char === "," && depthParen === 0 && depthAngle === 0 && depthBrace === 0) {
   // Split token boundary
 }
 ```
@@ -158,6 +166,7 @@ This guarantees that tokens such as `(masterpiece, top quality:1.2)` or `{hair:b
 ```
 
 #### Step-by-Step Expansion Algorithm:
+
 1. **Token Decomposition:** Calls `splitPresets(val)` to break the prompt into individual primary tokens.
 2. **Cache Key Unrolling:** Checks if a token matches a preset key in `cache`. If so, retrieves its template string (applying any folder prepends/appends).
 3. **Variable Regex Matching:** Replaces all `{group}` and `{group:value}` tokens using `VAR_REGEX`.
@@ -176,9 +185,9 @@ This guarantees that tokens such as `(masterpiece, top quality:1.2)` or `{hair:b
 class RollManager {
   constructor(initialRolls = {}) {
     this.rolls = { ...initialRolls }; // Key: `${group}_${index}` -> Value: selected key
-    this.counts = {};                  // Key: group -> Value: invocation index
+    this.counts = {}; // Key: group -> Value: invocation index
   }
-  
+
   getRoll(group, matches = null) {
     const idx = this.getCount(group);
     this.counts[group] = idx + 1;
@@ -194,8 +203,8 @@ class RollManager {
 }
 ```
 
-* **Indexed Roll Keys:** Each group invocation gets a unique key based on its sequence count (`hair_color_0`, `hair_color_1`).
-* **State Persistence:** Preserves roll selections across evaluation passes so that UI render calls (`parseBasketChip`) match the text expansion pass.
+- **Indexed Roll Keys:** Each group invocation gets a unique key based on its sequence count (`hair_color_0`, `hair_color_1`).
+- **State Persistence:** Preserves roll selections across evaluation passes so that UI render calls (`parseBasketChip`) match the text expansion pass.
 
 ---
 
@@ -221,14 +230,14 @@ class RollManager {
 
 ## 4. Helper Utilities Reference
 
-| Method | Parameters | Return Type | Purpose |
-| :--- | :--- | :--- | :--- |
-| `toTitleCase(str)` | `str: string` | `string` | Converts `snake_case` or `kebab-case` strings into Title Case phrases. |
-| `getHashColor(str)` | `str: string` | `string` | Generates a deterministic HSL color string based on a 32-bit integer hash of `str`. |
-| `getGroupMatches(group, cache)` | `group: string, cache: object` | `string[]` | Finds all cache keys whose folder matches the group name. |
-| `resolveVariantKey(group, val, cache)` | `group: string, val: string, cache: object` | `string \| null` | Resolves short variant strings or preset names to full cache keys. |
-| `getTopMatches(list, query, ...)` | `list: string[], query: string, ...` | `SearchResult[]` | Performs prefix and fuzzy search filtering over preset keys and titles. |
-| `parseDataURL(dataUrl)` | `dataUrl: string` | `object \| null` | Extracts file extension (`png`, `jpg`, `webp`, `gif`) and base64 payload from data URLs. |
+| Method                                 | Parameters                                  | Return Type      | Purpose                                                                                  |
+| :------------------------------------- | :------------------------------------------ | :--------------- | :--------------------------------------------------------------------------------------- |
+| `toTitleCase(str)`                     | `str: string`                               | `string`         | Converts `snake_case` or `kebab-case` strings into Title Case phrases.                   |
+| `getHashColor(str)`                    | `str: string`                               | `string`         | Generates a deterministic HSL color string based on a 32-bit integer hash of `str`.      |
+| `getGroupMatches(group, cache)`        | `group: string, cache: object`              | `string[]`       | Finds all cache keys whose folder matches the group name.                                |
+| `resolveVariantKey(group, val, cache)` | `group: string, val: string, cache: object` | `string \| null` | Resolves short variant strings or preset names to full cache keys.                       |
+| `getTopMatches(list, query, ...)`      | `list: string[], query: string, ...`        | `SearchResult[]` | Performs prefix and fuzzy search filtering over preset keys and titles.                  |
+| `parseDataURL(dataUrl)`                | `dataUrl: string`                           | `object \| null` | Extracts file extension (`png`, `jpg`, `webp`, `gif`) and base64 payload from data URLs. |
 
 ---
 
@@ -237,6 +246,7 @@ class RollManager {
 ### Example Setup
 
 #### Cache Content:
+
 ```json
 {
   "_/config/prepend/styles": "masterpiece, best quality,",
@@ -261,6 +271,7 @@ class RollManager {
 ```
 
 ### Prompt Input:
+
 ```text
 styles/anime, {character:warrior{gender:female}}, <lora:detail_enhancer:0.5>
 ```
@@ -305,7 +316,8 @@ styles/anime, {character:warrior{gender:female}}, <lora:detail_enhancer:0.5>
 ## 6. Summary for Developers
 
 When modifying or building upon `PresetLogic.js`:
-* **Compose prompt text through `PresetSession.composePrompt(rawValue)`**, not by calling `expandRecursively` directly. It resets the roll counters first, which is what makes the displayed evaluated widget and the queued prompt the same expansion of the same selection.
-* **Always maintain depth tracking** when introducing new delimiter patterns or bracket types to prevent breaking `splitPresets()`.
-* **Ensure `RollManager` instances are passed** through recursive calls (`expandRecursively`) to guarantee consistent choices across expansion passes and UI state evaluations.
-* **Keep `VAR_REGEX` balanced** if adjusting regex capturing groups, as both `expandRecursively` and `parseChipDetails` rely on identical group index structures (`gName` = group 1, `sVal` = group 2).
+
+- **Compose prompt text through `PresetSession.composePrompt(rawValue)`**, not by calling `expandRecursively` directly. It resets the roll counters first, which is what makes the displayed evaluated widget and the queued prompt the same expansion of the same selection.
+- **Always maintain depth tracking** when introducing new delimiter patterns or bracket types to prevent breaking `splitPresets()`.
+- **Ensure `RollManager` instances are passed** through recursive calls (`expandRecursively`) to guarantee consistent choices across expansion passes and UI state evaluations.
+- **Keep `VAR_REGEX` balanced** if adjusting regex capturing groups, as both `expandRecursively` and `parseChipDetails` rely on identical group index structures (`gName` = group 1, `sVal` = group 2).

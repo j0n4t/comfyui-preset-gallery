@@ -9,11 +9,17 @@ import RawTextareaManager from "../../web/RawTextareaManager.js";
 // extractGroupName is the real static on RawTextareaManager, not an inlined copy.
 
 test("extractGroupName: simple group with preset", () => {
-  assert.equal(RawTextareaManager.extractGroupName("{Faces:Portrait}"), "Faces");
+  assert.equal(
+    RawTextareaManager.extractGroupName("{Faces:Portrait}"),
+    "Faces",
+  );
 });
 
 test("extractGroupName: nested group path", () => {
-  assert.equal(RawTextareaManager.extractGroupName("{Faces/Portrait:pro}"), "Faces/Portrait");
+  assert.equal(
+    RawTextareaManager.extractGroupName("{Faces/Portrait:pro}"),
+    "Faces/Portrait",
+  );
 });
 
 test("extractGroupName: no colon (bare group)", () => {
@@ -21,7 +27,10 @@ test("extractGroupName: no colon (bare group)", () => {
 });
 
 test("extractGroupName: multiple groups uses first", () => {
-  assert.equal(RawTextareaManager.extractGroupName("{Faces:Portrait,Scenery:Landscape}"), "Faces");
+  assert.equal(
+    RawTextareaManager.extractGroupName("{Faces:Portrait,Scenery:Landscape}"),
+    "Faces",
+  );
 });
 
 test("extractGroupName: empty braces", () => {
@@ -30,22 +39,25 @@ test("extractGroupName: empty braces", () => {
 
 test("getPresetColor: returns custom color when set on folder", () => {
   const cache = {
-    "Faces": { __color__: "#ff0000", preset: "" },
+    Faces: { __color__: "#ff0000", preset: "" },
     "Faces/Portrait": { preset: "pro" },
   };
-  assert.equal(PresetDisplay.getPresetColor("Faces/Portrait", cache), "#ff0000");
+  assert.equal(
+    PresetDisplay.getPresetColor("Faces/Portrait", cache),
+    "#ff0000",
+  );
 });
 
 test("getPresetColor: returns custom color for exact folder match", () => {
   const cache = {
-    "Faces": { __color__: "#00ff00", preset: "" },
+    Faces: { __color__: "#00ff00", preset: "" },
   };
   assert.equal(PresetDisplay.getPresetColor("Faces", cache), "#00ff00");
 });
 
 test("getPresetColor: falls back to hash color when no custom color", () => {
   const cache = {
-    "Faces": { preset: "" },
+    Faces: { preset: "" },
   };
   const color = PresetDisplay.getPresetColor("Faces", cache);
   assert.ok(color.startsWith("hsl("), `Expected HSL fallback, got: ${color}`);
@@ -53,7 +65,7 @@ test("getPresetColor: falls back to hash color when no custom color", () => {
 
 test("getPresetColor: variant token group name gets matching color", () => {
   const cache = {
-    "Faces": { __color__: "#123456", preset: "" },
+    Faces: { __color__: "#123456", preset: "" },
     "Faces/Portrait": { preset: "pro" },
   };
   const tokenText = "{Faces:Portrait}";
@@ -64,11 +76,17 @@ test("getPresetColor: variant token group name gets matching color", () => {
 
 test("getPresetColor: different groups get different colors", () => {
   const cache = {
-    "Faces": { __color__: "#aaaaaa", preset: "" },
-    "Scenery": { __color__: "#bbbbbb", preset: "" },
+    Faces: { __color__: "#aaaaaa", preset: "" },
+    Scenery: { __color__: "#bbbbbb", preset: "" },
   };
-  const facesColor = PresetDisplay.getPresetColor(RawTextareaManager.extractGroupName("{Faces:Portrait}"), cache);
-  const sceneryColor = PresetDisplay.getPresetColor(RawTextareaManager.extractGroupName("{Scenery:Landscape}"), cache);
+  const facesColor = PresetDisplay.getPresetColor(
+    RawTextareaManager.extractGroupName("{Faces:Portrait}"),
+    cache,
+  );
+  const sceneryColor = PresetDisplay.getPresetColor(
+    RawTextareaManager.extractGroupName("{Scenery:Landscape}"),
+    cache,
+  );
   assert.equal(facesColor, "#aaaaaa");
   assert.equal(sceneryColor, "#bbbbbb");
   assert.notEqual(facesColor, sceneryColor);

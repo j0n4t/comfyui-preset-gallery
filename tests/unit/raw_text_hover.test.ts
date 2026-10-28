@@ -20,7 +20,11 @@ test("_normalizeTokenPosition clamps out-of-range positions", () => {
   const h = makeHover();
   const textarea = h.textarea;
   textarea.value = "aa, bb";
-  assert.equal(h._normalizeTokenPosition(10), 6, "past the end clamps to the length");
+  assert.equal(
+    h._normalizeTokenPosition(10),
+    6,
+    "past the end clamps to the length",
+  );
   assert.equal(h._normalizeTokenPosition(-1), 0, "negative clamps to 0");
 });
 
@@ -29,8 +33,16 @@ test("_normalizeTokenPosition resolves a separator to the nearest token", () => 
   const textarea = h.textarea;
   textarea.value = "aa, bb";
   assert.equal(h._normalizeTokenPosition(2), 2, "comma resolves to itself");
-  assert.equal(h._normalizeTokenPosition(3), 2, "following space resolves to the comma");
-  assert.equal(h._normalizeTokenPosition(4), 4, "mid-token positions are unchanged");
+  assert.equal(
+    h._normalizeTokenPosition(3),
+    2,
+    "following space resolves to the comma",
+  );
+  assert.equal(
+    h._normalizeTokenPosition(4),
+    4,
+    "mid-token positions are unchanged",
+  );
 });
 
 test("getTokenAtPosition finds the token under the position", () => {

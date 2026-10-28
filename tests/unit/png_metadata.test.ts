@@ -24,7 +24,12 @@ function concatBytes(parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
 function chunk(type: string, data: Uint8Array): Uint8Array<ArrayBuffer> {
   const length = new Uint8Array(4);
   new DataView(length.buffer).setUint32(0, data.length);
-  return concatBytes([length, new TextEncoder().encode(type), data, new Uint8Array(4)]);
+  return concatBytes([
+    length,
+    new TextEncoder().encode(type),
+    data,
+    new Uint8Array(4),
+  ]);
 }
 
 function makePng(...chunks: Uint8Array[]): Uint8Array<ArrayBuffer> {
@@ -38,7 +43,10 @@ function latin1Bytes(text: string): Uint8Array {
 }
 
 function textChunk(keyword: string, text: string): Uint8Array {
-  return chunk("tEXt", concatBytes([latin1Bytes(keyword), new Uint8Array([0]), latin1Bytes(text)]));
+  return chunk(
+    "tEXt",
+    concatBytes([latin1Bytes(keyword), new Uint8Array([0]), latin1Bytes(text)]),
+  );
 }
 
 // --- isPng ---
@@ -58,7 +66,10 @@ test("isPng rejects short arrays and wrong signatures", () => {
 // --- parseTextChunks ---
 
 test("parseTextChunks returns an empty array for a non-PNG", () => {
-  const notPng = concatBytes([new Uint8Array([1, 2, 3]), textChunk("prompt", "x")]);
+  const notPng = concatBytes([
+    new Uint8Array([1, 2, 3]),
+    textChunk("prompt", "x"),
+  ]);
   return PngMetadata.parseTextChunks(notPng).then((chunks) => {
     assert.deepEqual(chunks, []);
   });
@@ -85,7 +96,9 @@ test("parseTextChunks inflates a zTXt chunk", async () => {
   ]);
   const png = makePng(chunk("zTXt", data));
   const chunks = await PngMetadata.parseTextChunks(png);
-  assert.deepEqual(chunks, [{ keyword: "prompt", text: "compressed prompt text" }]);
+  assert.deepEqual(chunks, [
+    { keyword: "prompt", text: "compressed prompt text" },
+  ]);
 });
 
 test("parseTextChunks reads an uncompressed iTXt chunk as UTF-8", async () => {
@@ -96,7 +109,9 @@ test("parseTextChunks reads an uncompressed iTXt chunk as UTF-8", async () => {
   ]);
   const png = makePng(chunk("iTXt", data));
   const chunks = await PngMetadata.parseTextChunks(png);
-  assert.deepEqual(chunks, [{ keyword: "prompt", text: "unicode \u00e9\u00e8 prompt" }]);
+  assert.deepEqual(chunks, [
+    { keyword: "prompt", text: "unicode \u00e9\u00e8 prompt" },
+  ]);
 });
 
 test("parseTextChunks inflates a compressed iTXt chunk", async () => {
@@ -129,7 +144,11 @@ test("parseTextChunks stops at a truncated chunk instead of reading garbage", as
 });
 
 test("parseTextChunks skips a zTXt chunk whose payload is not valid deflate", async () => {
-  const data = concatBytes([latin1Bytes("prompt"), new Uint8Array([0, 0]), new Uint8Array([1, 2, 3, 4, 5])]);
+  const data = concatBytes([
+    latin1Bytes("prompt"),
+    new Uint8Array([0, 0]),
+    new Uint8Array([1, 2, 3, 4, 5]),
+  ]);
   const png = makePng(chunk("zTXt", data), textChunk("other", "survives"));
   const chunks = await PngMetadata.parseTextChunks(png);
   assert.deepEqual(chunks, [{ keyword: "other", text: "survives" }]);
@@ -145,15 +164,22 @@ test("parseTextChunks skips a tEXt chunk with no null separator", async () => {
 
 test("extract parses the prompt and workflow JSON from text chunks", async () => {
   const png = makePng(
-    textChunk("prompt", '{"1": {"class_type": "CLIPTextEncode", "inputs": {"text": "cat"}}}'),
-    textChunk("workflow", '{"nodes": []}')
+    textChunk(
+      "prompt",
+      '{"1": {"class_type": "CLIPTextEncode", "inputs": {"text": "cat"}}}',
+    ),
+    textChunk("workflow", '{"nodes": []}'),
   );
   const metadata = await PngMetadata.extract(png);
   assert.deepEqual(metadata.textChunks, {
-    prompt: '{"1": {"class_type": "CLIPTextEncode", "inputs": {"text": "cat"}}}',
+    prompt:
+      '{"1": {"class_type": "CLIPTextEncode", "inputs": {"text": "cat"}}}',
     workflow: '{"nodes": []}',
   });
-  assert.equal(metadata.promptRaw, '{"1": {"class_type": "CLIPTextEncode", "inputs": {"text": "cat"}}}');
+  assert.equal(
+    metadata.promptRaw,
+    '{"1": {"class_type": "CLIPTextEncode", "inputs": {"text": "cat"}}}',
+  );
   assert.deepEqual(metadata.promptJson, {
     "1": { class_type: "CLIPTextEncode", inputs: { text: "cat" } },
   });
@@ -176,7 +202,12 @@ test("extract keeps non-JSON prompt text without a parsed object", async () => {
 test("extract returns nulls and an empty record when the PNG has no text chunks", async () => {
   const png = makePng(chunk("IHDR", new Uint8Array(13)));
   const metadata = await PngMetadata.extract(png);
-  assert.deepEqual(metadata, { textChunks: {}, promptRaw: null, promptJson: null, workflowJson: null });
+  assert.deepEqual(metadata, {
+    textChunks: {},
+    promptRaw: null,
+    promptJson: null,
+    workflowJson: null,
+  });
 });
 
 test("extractFromFile reads a Blob the same way as extract", async () => {
@@ -214,20 +245,34 @@ test("getPresetGalleryWidgets returns null when the node is absent", () => {
     workflowJson: null,
   };
   assert.equal(PngMetadata.getPresetGalleryWidgets(metadata), null);
-  assert.equal(PngMetadata.getPresetGalleryWidgets({ textChunks: {}, promptRaw: null, promptJson: null, workflowJson: null }), null);
+  assert.equal(
+    PngMetadata.getPresetGalleryWidgets({
+      textChunks: {},
+      promptRaw: null,
+      promptJson: null,
+      workflowJson: null,
+    }),
+    null,
+  );
 });
 
 // --- getPromptText ---
 
 test("getPromptText returns plain prompt text as-is", () => {
-  const metadata = { textChunks: {}, promptRaw: "hello world", promptJson: null, workflowJson: null };
+  const metadata = {
+    textChunks: {},
+    promptRaw: "hello world",
+    promptJson: null,
+    workflowJson: null,
+  };
   assert.equal(PngMetadata.getPromptText(metadata), "hello world");
 });
 
 test("getPromptText joins the prompt inputs of the parsed JSON nodes", () => {
   const metadata = {
     textChunks: {},
-    promptRaw: '{"0": {"inputs": {"prompt": "cat"}}, "1": {"inputs": {"text": "dog"}}}',
+    promptRaw:
+      '{"0": {"inputs": {"prompt": "cat"}}, "1": {"inputs": {"text": "dog"}}}',
     promptJson: {
       "0": { inputs: { prompt: "cat" } },
       "1": { inputs: { text: "dog" } },
@@ -244,7 +289,10 @@ test("getPromptText falls back to long string inputs when no prompt key exists",
     promptJson: { "0": { inputs: { cfg: "a very long descriptive string" } } },
     workflowJson: null,
   };
-  assert.equal(PngMetadata.getPromptText(metadata), "a very long descriptive string");
+  assert.equal(
+    PngMetadata.getPromptText(metadata),
+    "a very long descriptive string",
+  );
 });
 
 test("getPromptText returns the raw prompt when nothing extractable is found", () => {

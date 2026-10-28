@@ -35,7 +35,10 @@ test("getRoll returns the stored pick for a slot that was already rolled", () =>
   assert.equal(manager.getCount("faces"), 1);
   // rewinding to slot 0 returns the stored pick without re-rolling
   manager.resetCounts();
-  assert.equal(manager.getRoll("faces", ["Faces/Portrait", "Faces/Macro"]), first);
+  assert.equal(
+    manager.getRoll("faces", ["Faces/Portrait", "Faces/Macro"]),
+    first,
+  );
   assert.equal(manager.getCount("faces"), 1);
 });
 
@@ -46,7 +49,10 @@ test("getRoll re-picks when the stored roll is no longer in the matches", () => 
 });
 
 test("peekRoll reads a stored slot without advancing the count", () => {
-  const manager = new RollManager({ faces_0: "Faces/Portrait", faces_1: "Faces/Macro" });
+  const manager = new RollManager({
+    faces_0: "Faces/Portrait",
+    faces_1: "Faces/Macro",
+  });
   assert.equal(manager.peekRoll("faces", 0), "Faces/Portrait");
   assert.equal(manager.peekRoll("faces", 1), "Faces/Macro");
   assert.equal(manager.getCount("faces"), 0);

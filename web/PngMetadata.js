@@ -51,7 +51,7 @@ const PngMetadata = {
         bytes[offset + 4],
         bytes[offset + 5],
         bytes[offset + 6],
-        bytes[offset + 7]
+        bytes[offset + 7],
       );
 
       if (type === "tEXt") {
@@ -60,11 +60,18 @@ const PngMetadata = {
         const dataEnd = dataStart + length;
         let nullIdx = -1;
         for (let i = dataStart; i < dataEnd; i++) {
-          if (bytes[i] === 0) { nullIdx = i; break; }
+          if (bytes[i] === 0) {
+            nullIdx = i;
+            break;
+          }
         }
         if (nullIdx > dataStart) {
-          const keyword = PngMetadata._latin1Decode(bytes.subarray(dataStart, nullIdx));
-          const text = PngMetadata._latin1Decode(bytes.subarray(nullIdx + 1, dataEnd));
+          const keyword = PngMetadata._latin1Decode(
+            bytes.subarray(dataStart, nullIdx),
+          );
+          const text = PngMetadata._latin1Decode(
+            bytes.subarray(nullIdx + 1, dataEnd),
+          );
           chunks.push({ keyword, text });
         }
       } else if (type === "zTXt") {
@@ -73,10 +80,15 @@ const PngMetadata = {
         const dataEnd = dataStart + length;
         let nullIdx = -1;
         for (let i = dataStart; i < dataEnd; i++) {
-          if (bytes[i] === 0) { nullIdx = i; break; }
+          if (bytes[i] === 0) {
+            nullIdx = i;
+            break;
+          }
         }
         if (nullIdx > dataStart && nullIdx + 1 < dataEnd) {
-          const keyword = PngMetadata._latin1Decode(bytes.subarray(dataStart, nullIdx));
+          const keyword = PngMetadata._latin1Decode(
+            bytes.subarray(dataStart, nullIdx),
+          );
           const compressionMethod = bytes[nullIdx + 1];
           if (compressionMethod === 0) {
             try {
@@ -94,10 +106,15 @@ const PngMetadata = {
         const dataEnd = dataStart + length;
         let nullIdx = -1;
         for (let i = dataStart; i < dataEnd; i++) {
-          if (bytes[i] === 0) { nullIdx = i; break; }
+          if (bytes[i] === 0) {
+            nullIdx = i;
+            break;
+          }
         }
         if (nullIdx > dataStart) {
-          const keyword = PngMetadata._utf8Decode(bytes.subarray(dataStart, nullIdx));
+          const keyword = PngMetadata._utf8Decode(
+            bytes.subarray(dataStart, nullIdx),
+          );
           let pos = nullIdx + 1;
           if (pos + 1 < dataEnd) {
             const compressionFlag = bytes[pos];
@@ -167,12 +184,16 @@ const PngMetadata = {
   async _zlibInflate(data) {
     try {
       const ds = new DecompressionStream("deflate");
-      const stream = new Blob([/** @type {Uint8Array<ArrayBuffer>} */ (data)]).stream().pipeThrough(ds);
+      const stream = new Blob([/** @type {Uint8Array<ArrayBuffer>} */ (data)])
+        .stream()
+        .pipeThrough(ds);
       return await new Response(stream).text();
     } catch {
       // Fallback: try raw deflate
       const ds = new DecompressionStream("deflate-raw");
-      const stream = new Blob([/** @type {Uint8Array<ArrayBuffer>} */ (data)]).stream().pipeThrough(ds);
+      const stream = new Blob([/** @type {Uint8Array<ArrayBuffer>} */ (data)])
+        .stream()
+        .pipeThrough(ds);
       return await new Response(stream).text();
     }
   },
@@ -248,7 +269,11 @@ const PngMetadata = {
         const widgetInputs = {};
         for (const [key, val] of Object.entries(inputs)) {
           if (Array.isArray(val)) continue;
-          if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+          if (
+            typeof val === "string" ||
+            typeof val === "number" ||
+            typeof val === "boolean"
+          ) {
             widgetInputs[key] = val;
           }
         }
@@ -306,7 +331,12 @@ const PngMetadata = {
       const inputs = node.inputs;
       if (!inputs || typeof inputs !== "object") continue;
       for (const [, val] of Object.entries(inputs)) {
-        if (typeof val === "string" && val.length > 10 && !val.startsWith("{") && !val.startsWith("[")) {
+        if (
+          typeof val === "string" &&
+          val.length > 10 &&
+          !val.startsWith("{") &&
+          !val.startsWith("[")
+        ) {
           texts.push(val.trim());
         }
       }

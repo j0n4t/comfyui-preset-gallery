@@ -35,7 +35,8 @@ function toTitleCase(str) {
  */
 function getHashColor(str) {
   let hash = 0;
-  for (let i = 0; i < 6; i++) hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
+  for (let i = 0; i < 6; i++)
+    hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);
   hash = (hash ^ (hash >>> 16)) * 0x85ebca6b;
   hash = (hash ^ (hash >>> 13)) * 0xc2b2ae35;
   const hue = Math.abs((hash ^ (hash >>> 15)) % 360);
@@ -48,9 +49,9 @@ function getHashColor(str) {
  * @returns {string[]} List of unique folder path strings.
  */
 function getAllPresetFolders(cache) {
-  return Array.from(new Set(
-    Object.keys(cache).map((key) => getPresetFolder(key))
-  ));
+  return Array.from(
+    new Set(Object.keys(cache).map((key) => getPresetFolder(key))),
+  );
 }
 
 /**
@@ -103,7 +104,12 @@ function getPresetTitle(key, cache, rollManager = new RollManager()) {
   const name = toTitleCase(getPresetName(key));
   const preset = cache[key]?.preset || key;
   const title = `${name} [${key}]\n${preset}`;
-  const expanded = PresetLogic.expandRecursively(key, cache, new Set(), rollManager);
+  const expanded = PresetLogic.expandRecursively(
+    key,
+    cache,
+    new Set(),
+    rollManager,
+  );
   if (expanded !== preset) return `${expanded}\n\n${title}`;
   return title;
 }
@@ -129,7 +135,10 @@ function getPresetInitials(key) {
  * @returns {string} Folder path string.
  */
 function getPresetFolder(key) {
-  return PresetLogic.splitQualifiedKey(key).key.split("/").slice(0, -1).join("/");
+  return PresetLogic.splitQualifiedKey(key)
+    .key.split("/")
+    .slice(0, -1)
+    .join("/");
 }
 
 /**
@@ -167,31 +176,44 @@ function getTopMatches(
   /** @type {string} */ query,
   /** @type {(item: string) => string} */ blobFn,
   /** @type {PresetCache|null} */ cache = null,
-  /** @type {string|null} */ ignorePreset = null
+  /** @type {string|null} */ ignorePreset = null,
 ) {
-  const resolveBlob = blobFn || ((/** @type {string} */ i) => getSearchBlob(i, cache?.[i] || {}));
+  const resolveBlob =
+    blobFn || ((/** @type {string} */ i) => getSearchBlob(i, cache?.[i] || {}));
   const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
   if (!queryWords.length) return [];
   const buckets = list.reduce(
-    (/** @type {{startsWith: SearchResult[], fuzzy: SearchResult[]}} */ acc, item) => {
-      if ((cache && !cache[item]?.preset && !PresetLogic.isVirtualNull(item)) || item === ignorePreset) return acc;
+    (
+      /** @type {{startsWith: SearchResult[], fuzzy: SearchResult[]}} */ acc,
+      item,
+    ) => {
+      if (
+        (cache && !cache[item]?.preset && !PresetLogic.isVirtualNull(item)) ||
+        item === ignorePreset
+      )
+        return acc;
       const blob = resolveBlob(item).toLowerCase();
       if (!queryWords.every((word) => blob.includes(word))) return acc;
       const title = cache ? getPresetTitle(item, cache) : "";
       let idx = blob.indexOf(queryWords.join(" "));
       if (idx === -1) idx = blob.indexOf(queryWords[0]);
       if (idx === 0) {
-        if (acc.startsWith.length < 3) acc.startsWith.push({ item, idx, title });
+        if (acc.startsWith.length < 3)
+          acc.startsWith.push({ item, idx, title });
       } else {
         if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx, title });
       }
       return acc;
     },
-    { startsWith: [], fuzzy: [] }
+    { startsWith: [], fuzzy: [] },
   );
   const sortBucket = (/** @type {SearchResult[]} */ arr) =>
-    arr.sort((a, b) => (a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item)));
-  return Array.from(new Set([...sortBucket(buckets.startsWith), ...sortBucket(buckets.fuzzy)]));
+    arr.sort((a, b) =>
+      a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item),
+    );
+  return Array.from(
+    new Set([...sortBucket(buckets.startsWith), ...sortBucket(buckets.fuzzy)]),
+  );
 }
 
 const PresetDisplay = {
