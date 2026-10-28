@@ -82,6 +82,7 @@ function makeBasketEnv() {
       btnBasketPaste,
       btnBasketPin,
       btnBasketDelete,
+      btnBasketDisable: document.createElement("button"),
       chkBasketRaw,
       basketContainer: container,
     },
@@ -103,7 +104,15 @@ function makeBasketEnv() {
       widgetValue = arr.join(", ");
       context.widget.value = widgetValue;
     },
-    transferPin: (oldVal: string, newVal: string) => { calls.transferPin.push([oldVal, newVal]); },
+    transferPin: (oldVal: string, newVal: string) => {
+      calls.transferPin.push([oldVal, newVal]);
+      // The real context moves the pin into the new key; the suite relies on
+      // that to prove the pin survives a key rename.
+      if (pinned.has(oldVal)) {
+        pinned.delete(oldVal);
+        pinned.add(newVal);
+      }
+    },
     savePins: () => { calls.savePins++; },
     syncUI: (val: string) => { calls.syncUI.push(val); },
     openEditorForPreset: (key: string, focus?: boolean) => { calls.openEditorForPreset.push([key, focus]); },
@@ -759,4 +768,57 @@ test("rendered chip can hide library badges while keeping them enabled by defaul
 
   basket.render(["socks/wool"]);
   assert.equal(chips(basket)[0].querySelector(".j0n4t-pg-lib-badge"), null);
+});
+
+test("a disabled chip keeps its pinned state", () => {
+  const env = makeBasket();
+  env.context.pinnedChips.add("faces/portrait");
+  env.context.updateWidgetValue(["faces/portrait"]);
+  env.basket.render(["faces/portrait"]);
+
+  // Disable the chip.
+  env.basket.toggleChipDisabled(0);
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["~faces/portrait~"]);
+
+  // The pin must follow the renamed key.
+  assert.equal(env.context.pinnedChips.has("~faces/portrait~"), true);
+  assert.equal(env.context.pinnedChips.has("faces/portrait"), false);
+  assert.deepEqual(env.calls.transferPin, [["faces/portrait", "~faces/portrait~"]]);
+});
+
+test("an enabled chip keeps its pinned state", () => {
+  const env = makeBasket();
+  env.context.pinnedChips.add("~faces/portrait~");
+  env.context.updateWidgetValue(["~faces/portrait~"]);
+  env.basket.render(["~faces/portrait~"]);
+
+  // Enable the chip.
+  env.basket.toggleChipDisabled(0);
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["faces/portrait"]);
+
+  // The pin must follow the renamed key.
+  assert.equal(env.context.pinnedChips.has("faces/portrait"), true);
+  assert.equal(env.context.pinnedChips.has("~faces/portrait~"), false);
+  assert.deepEqual(env.calls.transferPin, [["~faces/portrait~", "faces/portrait"]]);
+});
+
+test("a batch disable keeps all pinned chips", () => {
+  const env = makeBasket();
+  env.context.pinnedChips.add("faces/portrait");
+  env.context.pinnedChips.add("scenery/hills");
+  env.context.updateWidgetValue(["faces/portrait", "scenery/hills"]);
+  env.basket.render(["faces/portrait", "scenery/hills"]);
+
+  env.basket.selection.selected = new Set([0, 1]);
+  env.basket.toggleDisabledSelected();
+
+  assert.deepEqual(env.calls.updateWidgetValue.at(-1), ["~faces/portrait~", "~scenery/hills~"]);
+  assert.equal(env.context.pinnedChips.has("~faces/portrait~"), true);
+  assert.equal(env.context.pinnedChips.has("~scenery/hills~"), true);
+  assert.equal(env.context.pinnedChips.has("faces/portrait"), false);
+  assert.equal(env.context.pinnedChips.has("scenery/hills"), false);
+  assert.deepEqual(env.calls.transferPin, [
+    ["faces/portrait", "~faces/portrait~"],
+    ["scenery/hills", "~scenery/hills~"],
+  ]);
 });

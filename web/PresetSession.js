@@ -81,7 +81,14 @@ export default class PresetSession {
    */
   composePrompt(rawValue) {
     this.rollManager.resetCounts();
-    return PresetLogic.expandRecursively(rawValue || "", this.cache, new Set(), this.rollManager);
+    const tokens = PresetLogic.splitPresets(rawValue || "");
+    const active = tokens.filter((t) => !PresetLogic.isTildeDisabled(t));
+    return PresetLogic.expandRecursively(
+      active.join(", "),
+      this.cache,
+      new Set(),
+      this.rollManager
+    );
   }
 
   /**

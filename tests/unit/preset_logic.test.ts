@@ -60,6 +60,76 @@ test("splitPresets clamps unbalanced closers without throwing", () => {
   assert.deepEqual(PresetLogic.splitPresets("a, b)"), ["a", "b)"]);
 });
 
+// --- tilde-disabled: chips wrapped in tildes stay in the selection but are
+// ignored on final output ---
+test("isTildeDisabled detects a tilde-wrapped token", () => {
+  assert.equal(PresetLogic.isTildeDisabled("~Faces/Portrait~"), true);
+  assert.equal(PresetLogic.isTildeDisabled("Faces/Portrait"), false);
+  assert.equal(PresetLogic.isTildeDisabled("~Faces/Portrait"), false);
+  assert.equal(PresetLogic.isTildeDisabled("Faces/Portrait~"), false);
+  assert.equal(PresetLogic.isTildeDisabled(""), false);
+});
+
+test("unwrapTilde strips surrounding tildes", () => {
+  assert.equal(PresetLogic.unwrapTilde("~Faces/Portrait~"), "Faces/Portrait");
+  assert.equal(PresetLogic.unwrapTilde("Faces/Portrait"), "Faces/Portrait");
+});
+
+// --- chip display text: tilde-disabled chips must show the same text as
+// enabled chips (never the raw tilde-wrapped selection value) ---
+test("parseBasketChip: tilde-disabled chip shows the preset's display name", () => {
+  const result = PresetLogic.parseBasketChip(
+    { styleKey: "~Scenery/Hills~", item: null, subArray: ["~Scenery/Hills~"], startIndex: 0, endIndex: 1 },
+    CACHE,
+    new RollManager()
+  );
+  // The disabled chip must display the preset's display text, not the raw
+  // tilde-wrapped selection token.
+  assert.equal(result.cleanLabel, "Hills");
+  assert.equal(result.tooltipTitle, "Hills [Scenery/Hills]\nrolling hills");
+});
+
+test("parseBasketChip: enabled and tilde-disabled chips share the same display text", () => {
+  const enabled = PresetLogic.parseBasketChip(
+    { styleKey: "Scenery/Hills", item: CACHE["Scenery/Hills"], subArray: ["Scenery/Hills"], startIndex: 0, endIndex: 1 },
+    CACHE,
+    new RollManager()
+  );
+  const disabled = PresetLogic.parseBasketChip(
+    { styleKey: "~Scenery/Hills~", item: null, subArray: ["~Scenery/Hills~"], startIndex: 0, endIndex: 1 },
+    CACHE,
+    new RollManager()
+  );
+  // Both classes of chip render the same display text.
+  assert.equal(enabled.cleanLabel, disabled.cleanLabel);
+});
+
+test("parseBasketChip: tilde-disabled chips with variants, tags and weights render the same text as enabled", () => {
+  const cases = [
+    { label: "plain", disabled: "~Scenery/Hills~", enabled: "Scenery/Hills", item: CACHE["Scenery/Hills"] },
+    { label: "variant", disabled: "~{Scenery:Scenery/Sky}~", enabled: "{Scenery:Scenery/Sky}", item: null },
+    { label: "tag", disabled: "~<lora:test:0.5>~", enabled: "<lora:test:0.5>", item: null },
+    { label: "weighted", disabled: "~(Faces/Portrait:1.2)~", enabled: "(Faces/Portrait:1.2)", item: CACHE["Faces/Portrait"] },
+  ];
+
+  for (const { label, disabled, enabled, item } of cases) {
+    const disabledChip = PresetLogic.parseBasketChip(
+      { styleKey: disabled, item: null, subArray: [disabled], startIndex: 0, endIndex: 1 },
+      CACHE,
+      new RollManager()
+    );
+    const enabledChip = PresetLogic.parseBasketChip(
+      { styleKey: enabled, item, subArray: [enabled], startIndex: 0, endIndex: 1 },
+      CACHE,
+      new RollManager()
+    );
+
+    // The bare chip text must match the preset's display name, never the tilde-wrapped token.
+    assert.equal(disabledChip.cleanLabel, enabledChip.cleanLabel, `${label} display name`);
+    assert.equal(disabledChip.tooltipTitle, enabledChip.tooltipTitle, `${label} tooltip body`);
+  }
+});
+
 // --- parseWeight ---
 
 test("parseWeight extracts the core and weight from a (core:w) string", () => {

@@ -128,6 +128,25 @@ test("composePrompt of an empty selection is empty", () => {
   assert.equal(promptSession().composePrompt(""), "");
 });
 
+// --- tilde-disabled chips ---
+test("composePrompt omits tilde-wrapped (disabled) chips", () => {
+  const session = promptSession();
+  assert.equal(session.composePrompt("Faces/Portrait, ~Faces/Macro~"), "portrait, studio lighting");
+});
+
+test("composePrompt handles mixed enabled and disabled chips in order", () => {
+  const session = promptSession();
+  assert.equal(
+    session.composePrompt("~Faces/Variants~, Scenery/Hills"),
+    "rolling hills"
+  );
+});
+
+test("composePrompt ignores a lone tilde token", () => {
+  const session = promptSession();
+  assert.equal(session.composePrompt("~Faces/Empty~"), "");
+});
+
 // --- prunePins ---
 
 test("prunePins: keeps a pin whose tokens are still contiguous", () => {

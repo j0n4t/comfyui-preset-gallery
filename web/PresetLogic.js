@@ -248,6 +248,7 @@ const PresetLogic = {
       : { isWeighted: false, core: str || "", weight: 1.0, weightStr: null };
   },
 
+
   // 4. Centralize Value Splitting (base value vs child modifiers)
   splitVariantValue: (/** @type {string} */ valStr) => {
     if (!valStr) return { baseVal: "", childVarsStr: "" };
@@ -725,8 +726,18 @@ const PresetLogic = {
    * @returns {ProcessedChip} Evaluated chip pure data structure.
    */
   parseBasketChip: (chipData, cache = {}, rollManager = new RollManager(), session = undefined) => {
-    const { styleKey, item, subArray } = chipData;
+    const { styleKey: rawStyleKey, item, subArray } = chipData;
+    const isDisabled = PresetLogic.isTildeDisabled(rawStyleKey);
     let joinedStr = subArray.join(", ");
+    let styleKey = rawStyleKey;
+    if (isDisabled) {
+      // A tilde-disabled chip has tildes on both ends: unwrap them here so the
+      // rest of parseBasketChip runs against the plain token. This must happen
+      // before weight parsing and before any variant/tag resolution, which
+      // cannot see past the surrounding tildes.
+      styleKey = PresetLogic.unwrapTilde(styleKey);
+      joinedStr = PresetLogic.unwrapTilde(joinedStr);
+    }
     const wMatch = joinedStr.match(/^\((.+?):([-+]?[0-9]*\.?[0-9]+)\)$/);
     let { core: coreStr, weight: weightVal } = PresetLogic.parseWeight(joinedStr);
 
@@ -826,6 +837,8 @@ const PresetLogic = {
     } else {
       evalId = chipExpandedCore;
 
+      const displayKey = PresetLogic.unwrapTilde(coreStr);
+
       if (segmentTitles.length > 0) {
         cleanLabel = segmentTitles.join(" ");
       } else {
@@ -836,12 +849,14 @@ const PresetLogic = {
 
       bgImage = segmentImg || item?.filename || null;
       color = getPresetColor(styleKey, cache);
-      const titleHeader = `${toTitleCase(getPresetName(styleKey))} [${qualify(styleKey)}]`;
-      const presetBody = item?.preset || styleKey;
-      // A tag, or any chip that matched no cache item, has no preset body to
-      // name: the raw chip is the only thing the tooltip can carry. The
-      // evaluated value is still prepended below when it differs from it.
-      tooltipTitle = item ? `${titleHeader}\n${presetBody}` : joinedStr;
+      const titleHeader = `${toTitleCase(getPresetName(displayKey))} [${qualify(displayKey)}]`;
+      const presetBody = item?.preset || (cache[displayKey]?.preset ?? chipExpandedCore);
+      // A tilde-disabled chip (e.g. ~Scenery/Hills~) is still a real preset
+      // match, so it shows the same header and resolved preset body as an
+      // enabled chip. Any other chip with no cache item keeps the raw chip
+      // text as its tooltip.
+      const hasItem = item != null || PresetLogic.isTildeDisabled(styleKey);
+      tooltipTitle = hasItem ? `${titleHeader}\n${presetBody}` : joinedStr;
     }
 
     tooltipTitle = `${tooltipTitle}${rolledText}`;
@@ -1067,6 +1082,30 @@ const PresetLogic = {
     if (e === "gif") return "image/gif";
     return "image/png";
   },
+
+  /**
+   * Returns true if the token is a tilde-disabled wildcard, i.e. it is wrapped
+   * on both sides by a `~`. Disabled chips are stored as `~key~` in the raw
+   * selection and are omitted from the final prompt.
+   * @param {string} token - A raw token from the selection array.
+   * @returns {boolean}
+   */
+  isTildeDisabled: (token) => {
+    return typeof token === "string" && token.startsWith("~") && token.endsWith("~");
+  },
+
+  /**
+   * Strips one layer of surrounding tildes from a tilde-wrapped token. A token
+   * that is not wrapped is returned unchanged.
+   * @param {string} token - A raw token from the selection array.
+   * @returns {string}
+   */
+  unwrapTilde: (token) => {
+    return typeof token === "string" && token.startsWith("~") && token.endsWith("~")
+      ? token.slice(1, -1)
+      : token;
+  },
+
 };
 
 export default PresetLogic;

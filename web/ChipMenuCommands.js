@@ -53,7 +53,7 @@ export default class ChipMenuCommands {
       return;
     }
     if (target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") {
-      const keyMap = { p: "pin", s: "swap", e: "edit", l: "locate", c: "create", w: "toggle-weight" };
+      const keyMap = { p: "pin", s: "swap", e: "edit", l: "locate", c: "create", w: "toggle-weight", d: "disable" };
       const action = keyMap[/** @type {keyof typeof keyMap} */ (e.key.toLowerCase())];
       if (action) {
         e.stopPropagation();
@@ -133,6 +133,17 @@ export default class ChipMenuCommands {
     } else if (action === "del") {
       this._deleteSelection(startIndex, endIndex);
       return true;
+    } else if (action === "disable") {
+      const current = this.context.getSelectedArray();
+      const next = [...current];
+      for (let i = startIndex; i < endIndex; i++) {
+        const token = next[i];
+        next[i] = PresetLogic.isTildeDisabled(token)
+          ? PresetLogic.unwrapTilde(token)
+          : `~${token}~`;
+      }
+      this.context.updateWidgetValue(next);
+      return false;
     }
     return true;
   }

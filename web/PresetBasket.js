@@ -63,7 +63,11 @@ export default class PresetBasket {
     .j0n4t-pg-basket-chip-weight:hover { background: #007acc; }
     .j0n4t-pg-basket-chip.pinned { border-color: #ff6002bd; }
     .j0n4t-pg-basket-chip.pinned::after { content: '📌'; position: absolute; right: -1px; top: -2px; font-size: 9px; cursor: pointer; z-index: 2; }
-    .j0n4t-pg-chip-popup-item.active-pin { color: #ff6002bd; }
+    .j0n4t-pg-basket-chip.disabled { opacity: 0.5; filter: grayscale(0.7); }
+.j0n4t-pg-basket-chip.disabled::before, .j0n4t-pg-basket-chip.disabled:active { cursor: not-allowed; }
+.j0n4t-pg-basket-chip.disabled .j0n4t-pg-basket-chip-label { opacity: 0.75; }
+
+.j0n4t-pg-chip-popup-item.active-pin { color: #ff6002bd; }
 
     .j0n4t-pg-basket-chip-label { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; position: relative; text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8); font-weight: 600; display: inline-flex; align-items: center; }
     .j0n4t-pg-basket-chip .j0n4t-pg-lib-badge { color: #fff; background: rgba(0,0,0,0.45); padding: 1px 3px; border-radius: 2px; font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; margin-left: 3px; }
@@ -771,6 +775,7 @@ export default class PresetBasket {
     });
     dom.btnBasketPin.addEventListener("click", () => this.selection.togglePins());
     dom.btnBasketDelete.addEventListener("click", () => this.selection.deleteSelected());
+    dom.btnBasketDisable.addEventListener("click", () => this.toggleDisabledSelected());
     this.selection.updateActionButtons();
 
     dom.chkBasketRaw.checked = readBool(STORAGE_KEYS.rawBasket, false, defaultStorage());
@@ -927,6 +932,27 @@ export default class PresetBasket {
           : Number(/** @type {HTMLElement | undefined} */(chips[0])?.dataset.index);
         this.selection.anchor = chips.length ? anchorIndex : null;
         this.selection.apply(chips.length ? anchorIndex : undefined);
+        return;
+      }
+
+      if (!target.closest("input") && focusedChip && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        e.stopPropagation();
+        const current = this.context.getSelectedArray();
+        const index = Number(focusedChip.dataset.index);
+        if (index >= 0 && index < current.length) {
+          const token = current[index];
+          const disabled = PresetLogic.isTildeDisabled(token);
+          current[index] = disabled ? PresetLogic.unwrapTilde(token) : `~${token}~`;
+          this.context.updateWidgetValue([...current]);
+          // The basket re-rendered and detached the old node; immediately
+          // re-focus the chip (via its index) so pressing "d" again toggles
+          // without a separate click.
+          const next = /** @type {HTMLElement} */ (document.querySelector(
+            `.j0n4t-pg-basket-chip[data-index="${index}"]`
+          ));
+          if (next) next.focus();
+        }
         return;
       }
 
@@ -1393,7 +1419,7 @@ export default class PresetBasket {
       const tooltipTitle = chip.processed.tooltipTitle;
 
       htmlBuffer += `
-        <div class="j0n4t-pg-basket-chip ${isPinned ? 'pinned' : ''} ${this.selection.selected.has(index) ? 'selected' : ''}" tabindex="0" role="option" aria-selected="${this.selection.selected.has(index)}"
+        <div class="j0n4t-pg-basket-chip ${isPinned ? 'pinned' : ''} ${this.selection.selected.has(index) ? 'selected' : ''} ${chip.disabled ? 'disabled' : ''}" tabindex="0" role="option" aria-selected="${this.selection.selected.has(index)}"
              draggable="true" 
              title="${PresetDOM.escapeHTML(tooltipTitle)}"
              data-id="${PresetDOM.escapeHTML(chip.processed.joinedStr)}"
@@ -1432,6 +1458,46 @@ export default class PresetBasket {
     selections.splice(startIndex, endIndex - startIndex, newStyleKey);
     this.context.updateWidgetValue(selections);
     return true;
+  }
+
+  /**
+   * Toggle the disabled state of the chip at `index` in the selection.
+   * @param {number} index
+   */
+  toggleChipDisabled(index) {
+    const current = this.context.getSelectedArray();
+    if (index < 0 || index >= current.length) return;
+    const token = current[index];
+    const disabled = PresetLogic.isTildeDisabled(token);
+    const next = disabled ? PresetLogic.unwrapTilde(token) : `~${token}~`;
+    // A tilde toggle renames the chip's key, so move any pin with it. If the
+    // pin stayed on the old key it would be lost the moment the token changed.
+    this.context.transferPin(token, next);
+    current[index] = next;
+    this.context.updateWidgetValue([...current]);
+  }
+
+  /**
+   * Toggle the disabled state of every currently selected chip.
+   */
+  toggleDisabledSelected() {
+    const current = this.context.getSelectedArray();
+    const { selected } = this.selection;
+    const next = current.map((t, i) =>
+      selected.has(i)
+        ? PresetLogic.isTildeDisabled(t)
+          ? PresetLogic.unwrapTilde(t)
+          : `~${t}~`
+        : t
+    );
+    // A tilde toggle renames the chip's key, so move any pin with it. If the
+    // pin stayed on the old key it would be lost the moment any chip changed.
+    for (let i = 0; i < next.length; i++) {
+      if (next[i] !== current[i]) {
+        this.context.transferPin(current[i], next[i]);
+      }
+    }
+    this.context.updateWidgetValue(next);
   }
 
   /** @param {string} styleKey */

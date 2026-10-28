@@ -11,11 +11,11 @@ type HarnessReport = { report: HarnessCheck[]; failed: number };
 type Library = Record<string, { preset?: string }>;
 
 const FIXTURE: Library = {
-  'Faces/Portrait': { preset: 'portrait, studio lighting' },
-  'Faces/Macro': { preset: 'macro, close-up' },
+  'Faces/Portrait': { preset: 'portrait, studio lighting, dramatic shadows' },
+  'Faces/Macro': { preset: 'macro, close-up, tight framing' },
   'Faces/Variants': { preset: '{Scenery}' },
-  'Scenery/Hills': { preset: 'rolling hills' },
-  'Scenery/Sky': { preset: 'dramatic sky' },
+  'Scenery/Hills': { preset: 'rolling hills, grass, a few trees' },
+  'Scenery/Sky': { preset: 'dramatic sky, blue sky, clear sky' },
   '_/combo/_default': { preset: 'masterpiece' },
 };
 
@@ -253,6 +253,47 @@ test.describe('search', () => {
     await page.locator('.j0n4t-pg-item').first().focus();
     await page.keyboard.press('Control+f');
     await expect(search).toBeFocused();
+  });
+});
+
+test.describe('chip disable toggle', () => {
+  test('pressing "d" on a focused chip disables it', async ({ page }) => {
+    // Seed the selection with a chip we can target, then let the gallery render.
+    await page.evaluate(() => {
+      const node = (window as unknown as {
+        __pgNode: { widgets: Array<{ name: string; value: string; callback: (v: string) => void }> };
+      }).__pgNode;
+      node.widgets[0].value = 'Scenery/Hills';
+    });
+    await expect.poll(() => page.locator('.j0n4t-pg-basket-chip').count()).toBe(1);
+    await page.locator('.j0n4t-pg-basket-chip').first().focus();
+    await page.keyboard.press('d');
+
+    // The chip should be rendered as disabled (muted) and the raw value should
+    // wrap it in tildes so the final prompt omits it.
+    await expect(page.locator('.j0n4t-pg-basket-chip').first()).toHaveClass(/disabled/);
+    await expect.poll(() => widgetValue(page)).toBe('~Scenery/Hills~');
+    await expect.poll(() => serializedPrompt(page)).toBe('');
+  });
+
+  test('pressing "d" again re-enables the chip', async ({ page }) => {
+    await page.evaluate(() => {
+      const node = (window as unknown as {
+        __pgNode: { widgets: Array<{ name: string; value: string; callback: (v: string) => void }> };
+      }).__pgNode;
+      node.widgets[0].value = 'Scenery/Hills';
+    });
+    await expect.poll(() => page.locator('.j0n4t-pg-basket-chip').count()).toBe(1);
+    const chip = page.locator('.j0n4t-pg-basket-chip').first();
+    await chip.focus();
+    await page.keyboard.press('d');
+    await expect.poll(() => widgetValue(page)).toBe('~Scenery/Hills~');
+
+    // Re-press "d" to re-enable.
+    await page.keyboard.press('d');
+    await expect(chip).not.toHaveClass(/disabled/);
+    await expect.poll(() => widgetValue(page)).toBe('Scenery/Hills');
+    await expect.poll(() => serializedPrompt(page)).toBe('rolling hills, grass, a few trees');
   });
 });
 

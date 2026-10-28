@@ -195,6 +195,7 @@ export default class PresetGalleryApp {
                   <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-paste-btn" title="Paste chips from clipboard" aria-label="Paste chips">${PresetDOM.icons.paste} <span>Paste</span></button>
                   <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-pin-btn" title="Pin selected chips" aria-label="Pin selected chips" disabled>${PresetDOM.icons.pin} <span>Pin</span></button>
                   <button type="button" class="j0n4t-pg-basket-action-btn danger j0n4t-pg-basket-delete-btn" title="Delete selected chips" aria-label="Delete selected chips" disabled>${PresetDOM.icons.trash} <span>Delete</span></button>
+                  <button type="button" class="j0n4t-pg-basket-action-btn j0n4t-pg-basket-disable-btn" title="Disable selected chips" aria-label="Disable selected chips"><svg viewBox="0 0 24 24" width="13" height="13" style="display:block; margin-right:3px;"><path fill="none" stroke="currentColor" stroke-width="2.5" d="M6 18l6-6l6 6"/></svg><span>Disable</span></button>
                   <button type="button" class="j0n4t-pg-basket-reroll-btn" title="Feeling lucky?" aria-label="Feeling lucky?">${PresetDOM.icons.dice}</button>
                   <label class="j0n4t-pg-checkbox-wrap" style="height:auto; padding:0; margin-right:4px;"><input type="checkbox" id="j0n4t-pg-basket-raw-toggle" />Raw</label>
           </div>
@@ -286,6 +287,7 @@ export default class PresetGalleryApp {
       btnBasketPaste: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-paste-btn")),
       btnBasketPin: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-pin-btn")),
       btnBasketDelete: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-delete-btn")),
+      btnBasketDisable: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-disable-btn")),
       btnRerollBasket: /** @type {HTMLButtonElement} */ (wrap.querySelector(".j0n4t-pg-basket-reroll-btn")),
       chkBasketRaw: /** @type {HTMLInputElement} */ (wrap.querySelector("#j0n4t-pg-basket-raw-toggle")),
       basketContainer: /** @type {HTMLDivElement} */ (wrap.querySelector(".j0n4t-pg-basket-container")),

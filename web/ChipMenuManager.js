@@ -156,6 +156,7 @@ export default class ChipMenuManager {
         : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip" tabindex="0" role="menuitem">${PresetDOM.icons.add}</div>`
       }
           <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove" tabindex="0" role="menuitem">${PresetDOM.icons.trash}</div>
+          <div class="j0n4t-pg-chip-popup-item" data-action="disable" title="Disable" tabindex="0" role="menuitem"><svg viewBox="0 0 24 24" width="11" height="11"><path fill="none" stroke="currentColor" stroke-width="2.5" d="M6 18l6-6l6 6"/></svg></div>
         </div>
       </div>
     `;

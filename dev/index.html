@@ -10,12 +10,24 @@
     #report .fail { color: #f77; }
     #report .pass { color: #7c7; }
     #mount { padding: 8px; }
+
+    #output-panel { margin-top: 10px; padding: 8px 12px; font-family: sans-serif; display: flex; flex-direction: column; gap: 6px; background: #1a1a1a; border: 1px solid #444; border-radius: 4px; }
+    #output-header { display: flex; justify-content: flex-start; }
+    #output-textarea { width: 100%; min-height: 140px; padding: 8px 10px; background: #111; color: #eec; border: 1px solid #444; border-radius: 3px; font-size: 12px; line-height: 1.6; box-sizing: border-box;resize: vertical; font-family: monospace; }
+    #output-textarea:focus { outline: 1px solid #007acc; }
     pre { margin: 0; white-space: pre-wrap; }
   </style>
 </head>
 <body>
 <div id="report">loading harness...</div>
 <div id="mount"></div>
+
+<div id="output-panel">
+  <div id="output-header">
+    <button id="btnGenerate" class="output-btn" type="button">Generate prompt</button>
+  </div>
+  <textarea id="outputTextarea" class="output-textarea" placeholder="Prompt will appear here (same expansion as the queued chat prompt)" readonly></textarea>
+</div>
 
 <script type="module">
 // UI harness: runs the real web/ modules against a stubbed ComfyUI host, with
@@ -133,6 +145,19 @@ try {
 } catch (error) {
   report.push({ name: "harness threw", value: error.message, ok: false });
   window.__report = { report, failed: 1, error: String(error.stack || error) };
+}
+
+// Generate panel: mirrors the queued prompt the gallery would send to
+// ComfyUI (same expansion as `serializeValue`).
+const gallery = window.__gallery;
+const btnGenerate = document.getElementById("btnGenerate");
+const outputTextarea = document.getElementById("outputTextarea");
+if (btnGenerate && outputTextarea) {
+  btnGenerate.addEventListener("click", () => {
+    const selectionValue = gallery?.widget?.value ?? "";
+    const prompt = gallery?.session?.composePrompt?.(selectionValue);
+    outputTextarea.value = prompt ?? "";
+  });
 }
 
 const failed = window.__report.failed;

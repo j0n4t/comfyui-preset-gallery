@@ -92,6 +92,7 @@ type RenderedChip = {
   inputHtml: string;
   weightIconHtml: string;
   bgStyle: string;
+  disabled: boolean;
 };
 
 /** Parsed text token details. */

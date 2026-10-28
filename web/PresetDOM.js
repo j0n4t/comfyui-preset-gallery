@@ -143,6 +143,7 @@ const PresetDOM = {
             inputHtml,
             weightIconHtml,
             bgStyle,
+            disabled: PresetLogic.isTildeDisabled(chipData.styleKey),
         };
     }
 };
