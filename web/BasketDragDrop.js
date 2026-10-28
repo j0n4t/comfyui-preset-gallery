@@ -25,6 +25,14 @@ export default class BasketDragDrop {
     this.basket = basket;
     /** @type {HTMLElement | null} */
     this.dropIndicator = null;
+    /** @type {NodeListOf<Element> | null} */
+    this._cachedChips = null;
+    /** @type {{ x: number, y: number } | null} */
+    this._lastClient = null;
+    /** @type {{ element: HTMLElement | null; box: DOMRect | null } | null} */
+    this._lastClosest = null;
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    this._throttleTimer = null;
   }
 
   /**
@@ -64,18 +72,16 @@ export default class BasketDragDrop {
         this.dropIndicator = /** @type {HTMLElement} */ (pool.lastElementChild);
       }
 
-      const closest = this.getClosestChip(e.clientX, e.clientY);
-      if (closest.element && closest.box && this.dropIndicator) {
-        this.dropIndicator.style.height = `${closest.box.height}px`;
-        if (e.clientX > closest.box.left + closest.box.width / 2) {
-          closest.element.after(this.dropIndicator);
-        } else {
-          closest.element.before(this.dropIndicator);
-        }
-      } else {
-        pool.appendChild(this.dropIndicator);
-        this.dropIndicator.style.height = "12px";
-      }
+      // Throttle dragover to ~60fps so getClosestChip is not called on every
+      // mousemove tick. getClosestChip runs getBoundingClientRect() on every
+      // chip, and dragover fires many times per second, which is the source
+      // of the sluggish drag experience.
+      const client = { x: e.clientX, y: e.clientY };
+      if (this._throttleTimer !== null) return;
+      this._throttleTimer = setTimeout(() => {
+        this._throttleTimer = null;
+        this._updateDropIndicator(pool, client);
+      }, 16);
     });
     pool.addEventListener("drop", (e) => {
       if (container.classList.contains("raw-mode")) return;
@@ -197,32 +203,92 @@ export default class BasketDragDrop {
   removeDropIndicator() {
     this.dropIndicator?.remove();
     this.dropIndicator = null;
+    this._lastClosest = null;
+    this._cachedChips = null;
+  }
+
+  /**
+   * Update the drop indicator position. Throttled via dragover listener.
+   * @param {HTMLElement} pool
+   * @param {{ x: number, y: number }} client
+   */
+  _updateDropIndicator(pool, client) {
+    // Only recompute if the mouse has actually moved. A dragover that repeats
+    // the same point many times should not trigger layout thrashing.
+    if (this._lastClient && this._lastClient.x === client.x && this._lastClient.y === client.y) {
+      return;
+    }
+    this._lastClient = client;
+
+    // Get the closest chip. The querySelectorAll and getBoundingClientRect()
+    // here are the expensive parts, so we cache the chip list between
+    // dragover events and only re-derive the nearest chip when the mouse
+    // has actually crossed into a new chip region.
+    const closest = this.getClosestChip(client.x, client.y);
+    if (closest.element && closest.box && this.dropIndicator) {
+      // Only move the indicator when the closest chip actually changed.
+      // If the closest chip is the same as before, the indicator is already
+      // in the correct position and we skip the DOM moves.
+      if (closest.element === this._lastClosest?.element) {
+        // Same chip as last time: only update height if it changed.
+        const lastBox = this._lastClosest?.box;
+        if (closest.box.height !== (lastBox?.height || 0)) {
+          this.dropIndicator.style.height = `${closest.box.height}px`;
+        }
+        return;
+      }
+      // New closest chip: move the indicator to the new chip.
+      this.dropIndicator.style.height = `${closest.box.height}px`;
+      if (client.x > closest.box.left + closest.box.width / 2) {
+        closest.element.after(this.dropIndicator);
+      } else {
+        closest.element.before(this.dropIndicator);
+      }
+      this._lastClosest = closest;
+      // Reset the closest cache when we move to a new chip region.
+      this._lastClosest = closest;
+    } else {
+      if (!this.dropIndicator) {
+        pool.insertAdjacentHTML(
+          "beforeend",
+          '<div class="j0n4t-pg-basket-drop-indicator"></div>',
+        );
+        this.dropIndicator = /** @type {HTMLElement} */ (pool.lastElementChild);
+      }
+      pool.appendChild(this.dropIndicator);
+      this.dropIndicator.style.height = "12px";
+      this._lastClosest = null;
+    }
   }
 
   /**
    * The chip nearest a point, ignoring the chip being dragged.
    * @param {number} clientX
    * @param {number} clientY
+   * @returns {any}
    */
   getClosestChip(clientX, clientY) {
-    /** @type {{ distance: number, element: HTMLElement | null; box: DOMRect | null }} */
-    const initialResult = { distance: Infinity, element: null, box: null };
-    const chips = [
-      ...this.basket.basket.querySelectorAll(
+    // Cache the chip list to avoid querySelectorAll on every dragover.
+    if (!this._cachedChips) {
+      this._cachedChips = this.basket.basket.querySelectorAll(
         ".j0n4t-pg-basket-chip:not(.dragging)",
-      ),
-    ];
-    const result = chips.reduce((closest, el) => {
-      const box = el.getBoundingClientRect();
-      const dist = Math.hypot(
-        clientX - (box.left + box.width / 2),
-        clientY - (box.top + box.height / 2),
       );
-      return dist < closest.distance
-        ? { distance: dist, element: /** @type {HTMLElement} */ (el), box }
-        : closest;
-    }, initialResult);
-    return result;
+    }
+    /** @type {{ distance: number, element: HTMLElement | null, box: DOMRect | null }} */
+    let closest = { distance: Infinity, element: null, box: null };
+    const chipList = this._cachedChips || [];
+    for (let i = 0; i < chipList.length; i++) {
+      const el = chipList[i] || null;
+      const box = el?.getBoundingClientRect();
+      const dist = Math.hypot(
+        clientX - (box?.left + box?.width / 2),
+        clientY - (box?.top + box?.height / 2),
+      );
+      if (dist < closest.distance) {
+        closest = { distance: dist, element: /** @type {HTMLElement} */ (el), box };
+      }
+    }
+    return closest;
   }
 
   /**
