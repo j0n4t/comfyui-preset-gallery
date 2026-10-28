@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import "./dom-harness.ts";
 import ChipMenuManager from "../../web/ChipMenuManager.js";
+import RollManager from "../../web/RollManager.js";
 import type PresetBasket from "../../web/PresetBasket.js";
 
 // ChipMenuManager builds the right-click popup on a basket chip: pin, weight,
@@ -14,6 +15,7 @@ const CACHE: PresetCache = {
   "Scenery/Hills": { preset: "hills" },
   "Scenery/Sky": { preset: "sky" },
 };
+
 
 function makeBasketDelegate(basketEl: HTMLElement) {
   const calls = {
@@ -650,5 +652,84 @@ test("clicking outside closes the popup without focus restore", async () => {
     basketCalls.focusChip,
     [],
     "no focus restore on an outside click",
+  );
+});
+
+// --- rolled {group} chips: root variant + children ---
+
+test("a rolled {wear} chip shows the root variant plus the prepend/append children", () => {
+  const CACHE: PresetCache = {
+    // the preset the {wear} roll lands on
+    "prop/wear/shirt": { preset: "shirt material" },
+    "prop/wear/pants": { preset: "pants material" },
+    "prop/color/blue": { preset: "blue" },
+    "prop/color/green": { preset: "green" },
+    "prop/size/m": { preset: "medium" },
+    "prop/size/l": { preset: "large" },
+    // folder-level append config: {color} {size}
+    "_/config/append/prop/wear": { preset: "{color} {size}" },
+  };
+
+  // roll {wear} once to prop/wear/shirt
+  const rollManager = new RollManager();
+  rollManager.counts.wear = 1;
+  rollManager.rolls.wear_0 = "prop/wear/shirt";
+
+  const selection = ["{wear}"];
+  const basketEl = document.createElement("div");
+  basketEl.className = "j0n4t-pg-basket";
+  document.body.appendChild(basketEl);
+  const { delegate } = makeBasketDelegate(basketEl);
+
+  const pinned = new Set<string>();
+  const context = {
+    cache: CACHE,
+    pinnedChips: pinned,
+    dom: { basketPool: document.createElement("div") },
+    getSelectedArray: () => selection,
+    savePins: () => {},
+    openEditorForPreset: () => {},
+    setPanelCollapseState: () => {},
+    editor: {
+      clearFields: () => {},
+      dom: { inpPreset: document.createElement("input"), inpName: document.createElement("input") },
+      rawPresetManager: { updateHighlights: () => {} },
+    },
+    rollManager,
+    transferPin: (oldVal: string, newVal: string) => {
+      if (pinned.has(oldVal)) {
+        pinned.delete(oldVal);
+        pinned.add(newVal);
+      }
+    },
+  } as unknown as GalleryContext;
+
+  const manager = new ChipMenuManager(context, delegate);
+  const chip = makeChip(basketEl, {
+    id: "{wear}",
+    index: "0",
+    start: "0",
+    end: "1",
+  });
+
+  manager.show(chip);
+
+  // the variants list should show wear (root), color and size (children)
+  const varInputEls = manager.popupEl?.querySelectorAll<HTMLInputElement>(
+    ".j0n4t-pg-var-input",
+  );
+  const varInputs = varInputEls ? Array.from(varInputEls) : [];
+  assert.equal(varInputs.length, 3, "should show wear, color and size");
+  assert.ok(
+    varInputs.some((i) => i.dataset.group === "wear"),
+    "should have a wear input",
+  );
+  assert.ok(
+    varInputs.some((i) => i.dataset.group === "color"),
+    "should have a color input",
+  );
+  assert.ok(
+    varInputs.some((i) => i.dataset.group === "size"),
+    "should have a size input",
   );
 });

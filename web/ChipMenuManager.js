@@ -80,8 +80,54 @@ export default class ChipMenuManager {
     chipElement.classList.add("active-menu");
     this.activeChipMenuEl = chipElement;
 
-    const source = PresetLogic.getUnrolledTemplate(coreKey, this.context.cache);
-    const allVariants = PresetLogic.getAllVariants(source, this.context.cache);
+    // A bare {group} token names no folder of its own, so its unrolled template
+    // is just the token and `getAllVariants` never descends into the wrapped
+    // preset. Roll that token through the roll state, expand the preset this
+    // roll landed on, apply its folder's prepend/append wrap, and walk that.
+    // That is what makes a rolled variant's own prepended/appended variants
+    // appear on the chip menu variants list (e.g. a {wear} roll that hits
+    // prop/wear/shirt with _/config/append/prop/wear = {color} {size} now shows
+    // wear, color and size instead of only wear).
+    let source = PresetLogic.getUnrolledTemplate(coreKey, this.context.cache);
+    if (/^\{[^{}]+\}$/.test(coreKey)) {
+      const groupName =
+        coreKey.replace(/^\{([^}]+)\}$/, "$1").trim().toLowerCase().replace(/\s+/g, "_");
+      const rolledKey = this._rolledKeyForVariant(groupName);
+      if (rolledKey) {
+        const rolledItem = this.context.cache[rolledKey];
+        if (rolledItem && rolledItem.preset) {
+          source = PresetLogic.getWrappedPreset(
+            rolledKey,
+            rolledItem.preset,
+            this.context.cache,
+          );
+        }
+      }
+    }
+    let allVariants = PresetLogic.getAllVariants(source, this.context.cache);
+
+    // Add the root variant (the {group} token itself) so it shows up alongside
+    // the children. Without this, getAllVariants walks only the wrapped preset
+    // text, which never contains the original {group} token, so a rolled
+    // variant's own group would be missing from the chip menu variants list.
+    if (/^\{[^{}]+\}$/.test(coreKey)) {
+      const groupName =
+        coreKey.replace(/^\{([^}]+)\}$/, "$1").trim().toLowerCase().replace(/\s+/g, "_");
+      const rootVariant = {
+        groupRaw: groupName,
+        groupName,
+        val: "",
+        childVarsStr: "",
+        rootGroup: groupName,
+        isSub: false,
+      };
+      const alreadyPresent = allVariants.some(
+        (v) => v.groupName === groupName && v.isSub === false,
+      );
+      if (!alreadyPresent) {
+        allVariants = [rootVariant, ...allVariants];
+      }
+    }
 
     let varRowsHtml = "";
     /** @type {Record<string, number>} */
@@ -123,8 +169,8 @@ export default class ChipMenuManager {
               : isNullSelected
                 ? "🚫 None (Omit)"
                 : PresetDisplay.toTitleCase(
-                    PresetDisplay.getPresetName(currentSelectedVal) || "",
-                  );
+                  PresetDisplay.getPresetName(currentSelectedVal) || "",
+                );
             const dataKey = !currentSelectedVal
               ? ""
               : isNullSelected
@@ -186,11 +232,10 @@ export default class ChipMenuManager {
           ${pinBtn}
           ${weightToggleBtn}
           <div class="j0n4t-pg-chip-popup-item" data-action="edit" title="Edit" tabindex="0" role="menuitem">${PresetDOM.icons.edit}</div>
-          ${
-            item
-              ? `<div class="j0n4t-pg-chip-popup-item" data-action="locate" title="Locate in Gallery" tabindex="0" role="menuitem">${PresetDOM.icons.eye}</div>`
-              : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip" tabindex="0" role="menuitem">${PresetDOM.icons.add}</div>`
-          }
+          ${item
+        ? `<div class="j0n4t-pg-chip-popup-item" data-action="locate" title="Locate in Gallery" tabindex="0" role="menuitem">${PresetDOM.icons.eye}</div>`
+        : `<div class="j0n4t-pg-chip-popup-item" data-action="create" title="Create Preset from Chip" tabindex="0" role="menuitem">${PresetDOM.icons.add}</div>`
+      }
           <div class="j0n4t-pg-chip-popup-item" data-action="disable" title="Disable" tabindex="0" role="menuitem">${PresetDOM.icons.disable}</div>
           <div class="j0n4t-pg-chip-popup-item danger" data-action="del" title="Remove" tabindex="0" role="menuitem">${PresetDOM.icons.trash}</div>
         </div>
@@ -279,8 +324,8 @@ export default class ChipMenuManager {
     popup.addEventListener("click", (e) => {
       /** @type {HTMLElement |null} */ const rerollBtn =
         /** @type {HTMLElement} */ (e.target).closest(
-          ".j0n4t-pg-var-reroll-btn",
-        );
+      ".j0n4t-pg-var-reroll-btn",
+    );
       if (rerollBtn) {
         e.stopPropagation();
         if (
@@ -288,8 +333,8 @@ export default class ChipMenuManager {
             chipElement,
             rerollBtn,
             Number(chipElement.dataset.index),
-            /** @type {string} */ (rerollBtn.dataset.group),
-            /** @type {string} */ (rerollBtn.dataset.gindex),
+            /** @type {string} */(rerollBtn.dataset.group),
+            /** @type {string} */(rerollBtn.dataset.gindex),
           )
         ) {
           this.close(true);
@@ -340,8 +385,8 @@ export default class ChipMenuManager {
 
       /** @type {HTMLInputElement | null} */ const inputEl =
         /** @type {HTMLElement} */ (e.target).closest(
-          "input.j0n4t-pg-var-input",
-        );
+        "input.j0n4t-pg-var-input",
+      );
       if (!inputEl) return;
 
       const result = this.commands.onVariantChange(inputEl, chipElement);
@@ -366,8 +411,8 @@ export default class ChipMenuManager {
       );
       const currentIndex = document.activeElement
         ? items.indexOf(
-            /** @type {HTMLInputElement} */ (document.activeElement),
-          )
+            /** @type {HTMLInputElement} */(document.activeElement),
+        )
         : 0;
       const target = /** @type {HTMLElement} */ (e.target);
 
@@ -441,7 +486,7 @@ export default class ChipMenuManager {
 
     const closeHandler = (/** @type {Event} */ e) => {
       if (
-        !popup.contains(/** @type {HTMLElement} */ (e.target)) &&
+        !popup.contains(/** @type {HTMLElement} */(e.target)) &&
         e.target !== chipElement
       ) {
         this.close(false);
@@ -500,5 +545,18 @@ export default class ChipMenuManager {
       (opt) => opt.display === rawVal || opt.key === rawVal,
     );
     return matchingOpt ? matchingOpt.key : rawVal;
+  }
+
+  /**
+  * @param {string} groupName
+  * @returns {string|null} the first rolled preset key for this group, or null
+  */
+  _rolledKeyForVariant(groupName) {
+    const rollManager = this.context.rollManager;
+    if (!rollManager) return null;
+    const counts = rollManager.counts;
+    const count = counts[groupName] || 0;
+    if (count === 0) return null;
+    return rollManager.peekRoll(groupName, 0) ?? null;
   }
 }
