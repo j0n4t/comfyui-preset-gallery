@@ -531,6 +531,53 @@ test("changing a variant input replaces the variant inside the unrolled preset",
   assert.ok(manager.popupEl, "a non-core replacement keeps the popup open");
 });
 
+test("clearing a variant input resets the variant to random", () => {
+  const { manager, basketEl, basketCalls } = makeManager(["Faces/Portrait"]);
+  const chip = makeChip(basketEl, {
+    id: "Faces/Portrait",
+    index: "0",
+    start: "0",
+    end: "1",
+    preset: "{Scenery:hills} look",
+  });
+  manager.show(chip);
+
+  const input = manager.popupEl!.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-var-input",
+  )!;
+  const clearButton = manager.popupEl!.querySelector<HTMLButtonElement>(
+    ".j0n4t-pg-var-clear-btn",
+  )!;
+  clearButton.click();
+
+  assert.equal(input.value, "");
+  assert.equal(input.dataset.key, "");
+  assert.equal(chip.dataset.id, "{Scenery} look");
+  assert.equal(basketCalls.updateChipSelection, 1);
+  assert.ok(
+    document.querySelector(".j0n4t-pg-filter-autocomplete-popup"),
+    "clearing opens the autocomplete suggestions",
+  );
+});
+
+test("clicking a variant input opens its autocomplete suggestions", () => {
+  const { manager, basketEl } = makeManager(["Faces/Portrait"]);
+  const chip = makeChip(basketEl, {
+    id: "Faces/Portrait",
+    index: "0",
+    start: "0",
+    end: "1",
+    preset: "{Scenery:hills} look",
+  });
+  manager.show(chip);
+
+  manager.popupEl!
+    .querySelector<HTMLInputElement>(".j0n4t-pg-var-input")!
+    .click();
+
+  assert.ok(document.querySelector(".j0n4t-pg-filter-autocomplete-popup"));
+});
+
 test("the reroll button delegates to the basket and closes the popup", () => {
   const { manager, basketEl, basketCalls } = makeManager(["Faces/Portrait"]);
   const chip = makeChip(basketEl, {

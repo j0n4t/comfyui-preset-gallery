@@ -103,8 +103,12 @@ export default class PresetBasket {
     .j0n4t-pg-var-popup-container {display: flex; flex-direction: column; max-height: 50vh; max-width: 80vw; overflow: scroll; }
     .j0n4t-pg-var-popup-row { display: flex; align-items: center; padding: 2px 4px; }
     .j0n4t-pg-var-popup-row label { font-size: 10px; color: #d1a119; font-weight: 600; min-width: 40px; text-transform: capitalize; }
-    .j0n4t-pg-var-input { flex: 1; background: transparent; border: 1px solid #3d3d3d; border-radius: 3px; color: #fff; font-size: 11px; outline: none; padding: 2px 4px; margin: 0 4px; cursor: text; box-sizing: border-box; }
+    .j0n4t-pg-var-input-wrap { flex: 1; min-width: 0; position: relative; margin: 0 4px; }
+    .j0n4t-pg-var-input { width: 100%; background: transparent; border: 1px solid #3d3d3d; border-radius: 3px; color: #fff; font-size: 11px; outline: none; padding: 2px 20px 2px 4px; margin: 0; cursor: text; box-sizing: border-box; }
     .j0n4t-pg-var-input:focus { border-color: #d1a119; }
+    .j0n4t-pg-var-clear-btn { position: absolute; top: 50%; right: 3px; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: #999; cursor: pointer; padding: 2px; outline: none; }
+    .j0n4t-pg-var-clear-btn svg { width: 12px; height: 12px; fill: currentColor; }
+    .j0n4t-pg-var-clear-btn:hover, .j0n4t-pg-var-clear-btn:focus { color: #fff; background: #555; }
 
     @container pg-basket (max-width: 500px) {
       .j0n4t-pg-basket-header span { display: none; }

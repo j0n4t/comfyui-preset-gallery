@@ -18,6 +18,7 @@ import PresetDOM from "./PresetDOM.js";
  * @property {HTMLElement} [container=document.body] Container element to attach the popup to.
  * @property {string} [popupClass="j0n4t-pg-autocomplete-popup"] CSS class name for the popup element.
  * @property {string} [itemClass="j0n4t-pg-autocomplete-item"] CSS class name for individual popup items.
+ * @property {boolean} [openOnClick=false] Whether clicking the input opens or refreshes suggestions.
  * @property {(query: string, cursor: number | undefined) => AutocompleteMatch[]} getMatches Evaluates text and returns match array.
  * @property {(item: any) => string} renderItem Generates inner HTML string for a match item.
  * @property {(item: any, event: MouseEvent | KeyboardEvent) => boolean | void} onSelect Callback when an item is selected. Return `true` to keep popup open.
@@ -55,6 +56,7 @@ export default class AutocompleteManager {
     container,
     popupClass = "j0n4t-pg-autocomplete-popup",
     itemClass = "j0n4t-pg-autocomplete-item",
+    openOnClick = false,
     getMatches,
     renderItem,
     onSelect,
@@ -69,6 +71,7 @@ export default class AutocompleteManager {
     this.popupClass = popupClass;
     /** @type {string} */
     this.itemClass = itemClass;
+    this.openOnClick = openOnClick;
     /** @type {(query: string, cursor: number | undefined) => AutocompleteMatch[]} */
     this.getMatches = getMatches;
     /** @type {(item: any) => string} */
@@ -113,7 +116,9 @@ export default class AutocompleteManager {
    */
   initEvents() {
     this.input.addEventListener("input", () => this.evaluate());
-    this.input.addEventListener("click", () => this.close());
+    this.input.addEventListener("click", () =>
+      this.openOnClick ? this.evaluate() : this.close(),
+    );
     this.input.addEventListener("blur", () => {
       if (this.onBlur) this.onBlur();
       setTimeout(() => this.close(), 200);

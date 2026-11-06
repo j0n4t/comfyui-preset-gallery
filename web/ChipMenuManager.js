@@ -176,10 +176,12 @@ export default class ChipMenuManager {
               : isNullSelected
                 ? "none"
                 : currentSelectedVal;
-
             varRowsHtml += `<div class="j0n4t-pg-var-popup-row">
             <label>${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(groupRaw))}</label>
-            <input type="text" class="j0n4t-pg-var-input" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" data-root-group="${PresetDOM.escapeHTML(rootGroup)}" data-issub="${isSub}" data-key="${PresetDOM.escapeHTML(dataKey)}" value="${PresetDOM.escapeHTML(displayValue)}" placeholder="🔍 Filter by folder/name..." tabindex="0" onclick="this.select()">
+            <div class="j0n4t-pg-var-input-wrap">
+              <input type="text" class="j0n4t-pg-var-input" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" data-root-group="${PresetDOM.escapeHTML(rootGroup)}" data-issub="${isSub}" data-key="${PresetDOM.escapeHTML(dataKey)}" value="${PresetDOM.escapeHTML(displayValue)}" placeholder="🔍 Filter by folder/name..." tabindex="0" onclick="this.select()">
+              <button type="button" class="j0n4t-pg-var-clear-btn" title="Clear variant (Random)" aria-label="Clear variant (Random)" tabindex="0">${PresetDOM.icons.close}</button>
+            </div>
             <button class="j0n4t-pg-var-edit-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Edit selected ${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.edit}</button>
             <button class="j0n4t-pg-var-reroll-btn" data-group="${PresetDOM.escapeHTML(groupRaw)}" data-gindex="${gIndex}" title="Re-roll ${PresetDOM.escapeHTML(PresetDisplay.toTitleCase(groupRaw))}" tabindex="0">${PresetDOM.icons.dice}</button>
           </div>`;
@@ -269,11 +271,12 @@ export default class ChipMenuManager {
           );
         inputWithOptions._options = options;
 
-        new AutocompleteManager({
+        const autocomplete = new AutocompleteManager({
           input: inputEl,
           container: document.body,
           popupClass: "j0n4t-pg-filter-autocomplete-popup",
           itemClass: "j0n4t-pg-filter-autocomplete-item",
+          openOnClick: true,
           getMatches: (query) => {
             const q = query.trim().toLowerCase();
             if (!q) {
@@ -317,6 +320,18 @@ export default class ChipMenuManager {
             inputEl.dispatchEvent(new Event("change", { bubbles: true }));
             return false;
           },
+        });
+
+        const clearButton =
+          inputEl.parentElement?.querySelector(".j0n4t-pg-var-clear-btn");
+        clearButton?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          inputEl.value = "";
+          inputEl.dataset.key = "";
+          inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+          inputEl.focus();
+          autocomplete.evaluate();
         });
       }
     });
