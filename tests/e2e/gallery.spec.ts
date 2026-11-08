@@ -790,7 +790,7 @@ test.describe("editor", () => {
       .locator('.j0n4t-pg-modal-overlay button[data-index="1"]')
       .click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toBe("presets_full.json");
+    expect(download.suggestedFilename()).toBe("Main_full.json");
     const file = await download.createReadStream();
     expect(file).not.toBeNull();
   });

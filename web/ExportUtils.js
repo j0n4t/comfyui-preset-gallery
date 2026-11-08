@@ -14,6 +14,7 @@ import PresetDisplay from "./PresetDisplay.js";
  * @property {boolean} [includeColors]
  * @property {PresetCache} [editedPresets]
  * @property {string} [libraryId]
+ * @property {string} [libraryName]
  */
 
 /**
@@ -45,6 +46,21 @@ const loadJSZip = async () => {
 };
 
 const ExportUtils = {
+  /**
+   * Sanitizes a library name for use as the leading stem of an exported
+   * filename: runs of non-alphanumeric characters become a single
+   * underscore ("Sdxl Styles" -> "Sdxl_Styles"), falling back to
+   * "presets" when nothing usable remains.
+   * @param {string} [name]
+   * @returns {string}
+   */
+  getExportStem(name) {
+    const stem = String(name || "")
+      .replace(/[^A-Za-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    return stem || "presets";
+  },
+
   /**
    * @param {string[]} selectedKeys
    * @param {PresetCache} presets
@@ -763,6 +779,9 @@ const ExportUtils = {
             includeColors,
             editedPresets,
             libraryId,
+            libraryName:
+              availableLibraries.find((library) => library.id === libraryId)
+                ?.name ?? libraryId,
           });
         }
       });
@@ -780,7 +799,10 @@ const ExportUtils = {
     selectedKeys = null,
     includeColors = true,
     editedPresets = {},
+    libraryId,
+    libraryName,
   }) {
+    const exportStem = ExportUtils.getExportStem(libraryName ?? libraryId);
     /** @type {PresetCache} */
     let presets = editedPresets;
 
@@ -886,7 +908,7 @@ const ExportUtils = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `presets_${mode}.zip`;
+        a.download = `${exportStem}_${mode}.zip`;
         a.click();
         URL.revokeObjectURL(url);
       } catch (err) {
@@ -954,7 +976,7 @@ const ExportUtils = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `presets_${mode}.${ext}`;
+    a.download = `${exportStem}_${mode}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   },

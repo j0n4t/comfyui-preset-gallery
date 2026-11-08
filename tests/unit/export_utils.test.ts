@@ -9,6 +9,22 @@ import PresetGalleryAPI from "../../web/PresetGalleryAPI.js";
 // real checkbox tree, which needs a DOM. The harness is imported first so
 // jsdom globals exist before ExportUtils is loaded.
 
+// --- getExportStem ---
+
+test("getExportStem keeps a plain library name", () => {
+  assert.equal(ExportUtils.getExportStem("Main"), "Main");
+});
+
+test("getExportStem sanitizes spaces and punctuation to underscores", () => {
+  assert.equal(ExportUtils.getExportStem("Sdxl Styles"), "Sdxl_Styles");
+  assert.equal(ExportUtils.getExportStem("my--lib  v2!"), "my_lib_v2");
+});
+
+test("getExportStem falls back to presets when nothing usable remains", () => {
+  assert.equal(ExportUtils.getExportStem(), "presets");
+  assert.equal(ExportUtils.getExportStem("  --  "), "presets");
+});
+
 // --- getSelectionSummary ---
 
 test("getSelectionSummary counts everything as new without an existing library", () => {
@@ -229,7 +245,7 @@ test("export modal switches libraries and reports the selected library", async (
   const originalGetPresets = PresetGalleryAPI.getPresets;
   const originalConfirm = ModalUtils.confirm;
   let exportedConfig:
-    | { libraryId?: string; selectedKeys?: string[] | null }
+    | { libraryId?: string; libraryName?: string; selectedKeys?: string[] | null }
     | undefined;
 
   try {
@@ -266,6 +282,7 @@ test("export modal switches libraries and reports the selected library", async (
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     assert.equal(exportedConfig?.libraryId, "second");
+    assert.equal(exportedConfig?.libraryName, "Second");
     assert.deepEqual(exportedConfig?.selectedKeys, ["Second"]);
   } finally {
     PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
