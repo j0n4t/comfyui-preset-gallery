@@ -523,6 +523,34 @@ export default class PresetGrid {
       this.executeFilterPipeline(this.dom.search.value);
     });
 
+    // In graph mode ComfyUI's GraphCanvas handles wheel in the capture
+    // phase and forwards it to the canvas for zoom/pan (the default legacy
+    // navigation mode), so a handler on this grid - a descendant of that
+    // container - never runs: capture reaches the container first. The
+    // document is the one point upstream of it, so interposing there keeps
+    // the wheel over the grid for the grid's own overflow scroll, matching
+    // app mode. `data-capture-wheel` on the grid (set in the markup) is
+    // ComfyUI's own opt-in for scrollable widgets and covers the focused
+    // case on its own. Canvas gestures (ctrl/meta pinch, horizontal-
+    // dominant) still pass through, so trackpad zoom/pan over the node
+    // keeps working. No preventDefault: the native scroll still happens.
+    document.addEventListener(
+      "wheel",
+      (e) => {
+        const target = /** @type {Element | null} */ (e.target);
+        if (typeof target?.closest !== "function") return;
+        if (!target.closest(".j0n4t-pg-grid")) return;
+        if (
+          e.ctrlKey ||
+          e.metaKey ||
+          Math.abs(e.deltaX) > Math.abs(e.deltaY)
+        )
+          return;
+        e.stopPropagation();
+      },
+      { capture: true, passive: true },
+    );
+
     this.dom.grid.addEventListener("click", (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
       if (

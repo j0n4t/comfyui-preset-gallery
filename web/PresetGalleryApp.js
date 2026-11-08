@@ -277,7 +277,7 @@ export default class PresetGalleryApp {
               <input type="file" id="j0n4t-pg-file" accept="image/*" style="display:none;" />
             </div>
 
-            <div class="j0n4t-pg-grid" role="listbox" aria-label="Preset Gallery List"></div>
+            <div class="j0n4t-pg-grid" data-capture-wheel="true" role="listbox" aria-label="Preset Gallery List"></div>
   `;
     return {
       wrap,

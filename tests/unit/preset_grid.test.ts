@@ -554,6 +554,58 @@ test("grid items show badges for unique presets from non-main libraries", () => 
   );
 });
 
+test("wheel over the grid does not reach the graph canvas zoom handler", () => {
+  const { grid } = makeGrid();
+  grid.compile(CACHE);
+
+  // In graph mode ComfyUI zooms the canvas from a wheel handler on an
+  // ancestor of the widget. The grid must swallow the event (without
+  // preventDefault, so its own overflow scroll still happens) before it
+  // reaches there.
+  let ancestorWheel = 0;
+  document.body.addEventListener("wheel", () => ancestorWheel++);
+
+  const item = items(grid)[0];
+  item.dispatchEvent(
+    new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100 }),
+  );
+
+  assert.equal(ancestorWheel, 0);
+});
+
+test("ctrl+wheel over the grid still reaches the canvas (pinch gesture)", () => {
+  const { grid } = makeGrid();
+  grid.compile(CACHE);
+
+  // Pinch-zoom gestures must keep working over the node; only plain
+  // vertical wheel is claimed for the grid's own scroll.
+  let ancestorWheel = 0;
+  document.body.addEventListener("wheel", () => ancestorWheel++);
+
+  items(grid)[0].dispatchEvent(
+    new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+      deltaY: 100,
+    }),
+  );
+
+  assert.equal(ancestorWheel, 1);
+});
+
+test("wheel away from the grid still reaches the canvas", () => {
+  makeGrid();
+
+  let ancestorWheel = 0;
+  document.body.addEventListener("wheel", () => ancestorWheel++);
+  document.body.dispatchEvent(
+    new WheelEvent("wheel", { bubbles: true, cancelable: true }),
+  );
+
+  assert.equal(ancestorWheel, 1);
+});
+
 test("clicking an item asks the context for the key it should store", () => {
   const { grid, context, state } = makeGrid();
   grid.compile(CACHE);
