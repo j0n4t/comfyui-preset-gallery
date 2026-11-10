@@ -3,9 +3,10 @@
  * each one holds, and the one storage key they live under.
  *
  * No DOM, no rendering: the Basket draws the sidebar and forwards user actions
- * here. A tab is `{id, title, basket, pins, rolls}` - the selection it held plus
- * the pins and rolled choices that went with it - and installing one is the
- * app's `restoreTabSelection`, the same transition a user edit goes through.
+ * here. A tab is `{id, title, basket, pins, rolls, dice}` - the selection it
+ * held plus the pins, rolled choices and (while the user asked for it) rolling
+ * options that went with it - and installing one is the app's
+ * `restoreTabSelection`, the same transition a user edit goes through.
  */
 import {
   STORAGE_KEYS,
@@ -102,7 +103,8 @@ export default class PresetBasketTabs {
   }
 
   /**
-   * Copy the live selection, pins and rolls into a tab.
+   * Copy the live selection, pins, rolls and - while the user asked for it -
+   * rolling options into a tab.
    * @param {BasketTab} tab
    * @param {string[]} [basket] - the selection to record, when the caller
    *   already has it (the Basket's render path does)
@@ -115,6 +117,20 @@ export default class PresetBasketTabs {
     tab.rolls = this.context.rollManager?.rolls
       ? JSON.parse(JSON.stringify(this.context.rollManager.rolls))
       : {};
+    // The rolling options are per tab only while the user asked for them to
+    // be; otherwise the global settings stay the single source. A tab left
+    // without them falls back to those settings when it is restored.
+    const settings = this.context.settings;
+    if (settings?.rememberDicePerTab) {
+      tab.dice = {
+        behavior:
+          settings.diceBehavior === "overwrite" ? "overwrite" : "variants",
+        onGeneration: settings.rollOnGeneration === true,
+        onSeedChange: settings.rollOnSeedChange === true,
+        min: settings.rollMin,
+        max: settings.rollMax,
+      };
+    }
   }
 
   /**

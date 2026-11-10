@@ -1067,6 +1067,90 @@ test.describe("persistence", () => {
       page.locator('.j0n4t-pg-item[data-style="Faces/Macro"]'),
     ).not.toHaveClass(/selected/);
   });
+
+  test("Basket tabs restore their own rolling options when the option is on", async ({
+    page,
+  }) => {
+    // The first tab gets overwrite and a range of its own.
+    let modal = await openRollingSettings(page);
+    await modal.locator("#j0n4t-pg-remember-dice-tab").check();
+    await modal.locator("#j0n4t-pg-dice-behavior").selectOption("overwrite");
+    await modal.locator("#j0n4t-pg-roll-min").fill("2");
+    await modal.locator("#j0n4t-pg-roll-max").fill("4");
+    await modal.locator('button[data-index="1"]').click();
+    await expect(page.locator(".j0n4t-pg-basket-reroll-btn")).toHaveClass(
+      /roll-overwrite/,
+    );
+
+    // A new tab starts from those options, then is switched to variants.
+    await page.locator(".j0n4t-pg-basket-tab-add-btn").click();
+    modal = await openRollingSettings(page);
+    await modal.locator("#j0n4t-pg-dice-behavior").selectOption("variants");
+    await modal.locator("#j0n4t-pg-roll-min").fill("5");
+    await modal.locator("#j0n4t-pg-roll-max").fill("6");
+    await modal.locator('button[data-index="1"]').click();
+    await expect(page.locator(".j0n4t-pg-basket-reroll-btn")).toHaveClass(
+      /roll-variants/,
+    );
+
+    // Switching back restores the first tab's options, on the dice button and
+    // in the settings the modal shows.
+    await page.locator(".j0n4t-pg-basket-tab-item").first().click();
+    await expect(page.locator(".j0n4t-pg-basket-reroll-btn")).toHaveClass(
+      /roll-overwrite/,
+    );
+    modal = await openRollingSettings(page);
+    await expect(modal.locator("#j0n4t-pg-dice-behavior")).toHaveValue(
+      "overwrite",
+    );
+    await expect(modal.locator("#j0n4t-pg-roll-min")).toHaveValue("2");
+    await modal.locator('button[data-index="0"]').click();
+
+    // ...and both tabs carry what they remembered.
+    const saved = await page.evaluate(
+      () =>
+        JSON.parse(
+          localStorage.getItem("comfy_preset_gallery_basket_tabs") ?? "{}",
+        ) as { tabs?: Array<{ dice?: unknown }> },
+    );
+    expect(saved.tabs?.[0]?.dice).toEqual({
+      behavior: "overwrite",
+      onGeneration: false,
+      onSeedChange: false,
+      min: 2,
+      max: 4,
+    });
+    expect(saved.tabs?.[1]?.dice).toEqual({
+      behavior: "variants",
+      onGeneration: false,
+      onSeedChange: false,
+      min: 5,
+      max: 6,
+    });
+  });
+
+  test("switching tabs leaves the rolling options alone while the option is off", async ({
+    page,
+  }) => {
+    // Give the first tab a remembered mode, then turn the option off.
+    let modal = await openRollingSettings(page);
+    await modal.locator("#j0n4t-pg-remember-dice-tab").check();
+    await modal.locator("#j0n4t-pg-dice-behavior").selectOption("overwrite");
+    await modal.locator('button[data-index="1"]').click();
+    await page.locator(".j0n4t-pg-basket-tab-add-btn").click();
+    modal = await openRollingSettings(page);
+    await modal.locator("#j0n4t-pg-dice-behavior").selectOption("variants");
+    await modal.locator('button[data-index="1"]').click();
+    modal = await openRollingSettings(page);
+    await modal.locator("#j0n4t-pg-remember-dice-tab").uncheck();
+    await modal.locator('button[data-index="1"]').click();
+
+    // The global behavior applies to every tab while the option is off.
+    await page.locator(".j0n4t-pg-basket-tab-item").first().click();
+    await expect(page.locator(".j0n4t-pg-basket-reroll-btn")).toHaveClass(
+      /roll-variants/,
+    );
+  });
 });
 
 test.describe("display height", () => {

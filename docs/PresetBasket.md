@@ -61,6 +61,11 @@ Three things describe "what is selected", and only one of them is authoritative:
 
 A tab is a snapshot of exactly those three: `{ id, title, basket, pins, rolls }`,
 persisted with the active tab id under `comfy_preset_gallery_basket_tabs`.
+While **Remember rolling options per Basket tab** is on, the snapshot also
+carries a `dice` object - behavior, auto-roll toggles and preset count range -
+which `restoreTabSelection` installs before the selection write, so the render
+that follows already reads it. A tab without one - imported, or saved before the
+option existed - falls back to the global settings.
 `PresetBasketTabs` owns that list, the active tab, the snapshots and the storage
 key; `PresetBasket` draws the sidebar, the tab menu and the title, and forwards
 every tab action to it. `render()` hands the selection it just rendered to

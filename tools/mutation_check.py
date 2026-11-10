@@ -108,6 +108,21 @@ MUTATIONS = [
      "    if (this.activeTabId === tabId) this.context.updateWidgetValue(tab.basket);",
      "    if (false) this.context.updateWidgetValue(tab.basket);",
      "tests/unit/preset_basket_tabs.test.ts"),
+    # A tab is a snapshot of the selection AND the rolling options in force
+    # while the per-tab option is on. Dropping the capture leaves every tab
+    # falling back to the global settings, so switching tabs never restores.
+    ("web/PresetBasketTabs.js",
+     "    const settings = this.context.settings;\n"
+     "    if (settings?.rememberDicePerTab) {",
+     "    const settings = this.context.settings;\n"
+     "    if (false) {",
+     "tests/unit/preset_basket_tabs.test.ts"),
+    # The restored behavior has to be the tab's, not the default: a tab saved
+    # as overwrite comes back as variants, which is the wrong roll on press.
+    ("web/PresetGallerySettings.js",
+     '    this.diceBehavior =\n      dice.behavior === "overwrite" ? "overwrite" : "variants";',
+     '    this.diceBehavior = "variants";',
+     "tests/unit/preset_gallery_settings.test.ts"),
     # A range selection includes both ends.
     ("web/BasketSelectionController.js",
      "for (let index = Math.min(start, end); index <= Math.max(start, end); index++) {",

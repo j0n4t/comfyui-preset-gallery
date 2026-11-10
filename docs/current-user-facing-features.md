@@ -39,9 +39,10 @@ the prompt sent through `final_preset`.
   switches to a text area for editing the whole selection; edits are reflected
   in the chips and composed prompt.
 - Add and switch between Basket tabs to keep separate selections. Each tab
-  remembers its selection, pins, and rolled choices. Click the Basket title to
-  rename the active tab; its tab menu can duplicate, close, export, or import
-  tabs.
+  remembers its selection, pins, and rolled choices and - when **Remember
+  rolling options per Basket tab** is on - its dice behavior, preset count
+  range and auto-roll toggles. Click the Basket title to rename the active tab;
+  its tab menu can duplicate, close, export, or import tabs.
 - Select multiple chips using the **Select** button, Ctrl/Cmd-click, or
   Shift-click. Copy, paste, pin/unpin, or delete the selected chips. Clipboard
   text works as plain text; where rich clipboard data is supported, pin and
@@ -50,6 +51,8 @@ the prompt sent through `final_preset`.
   selection with randomly chosen presets. Settings choose the main behavior,
   the preset-count range, and whether rolling happens on generation or seed
   changes. Holding Shift while clicking the dice button uses the other behavior.
+  With **Remember rolling options per Basket tab** on, each tab keeps its own
+  copy of these options and switching tabs restores them.
 
 ### Text entered as chips
 
@@ -95,7 +98,8 @@ Folder field also accepts `library#folder` to save into a library.
 ## Settings and persistence
 
 Settings include library selection and priority, library badges, chip
-qualification, rolling behavior, gallery height, and whether Basket/editor
+qualification, rolling behavior, gallery height, whether rolling options are
+remembered per Basket tab, and whether Basket/editor
 panel sizes are remembered. Display options include the three gallery views,
 grouping, hidden presets, and gallery visibility. Keyboard shortcuts include
 `Ctrl+F` or `/` to focus search, `Ctrl+E` to toggle the editor, `Ctrl+H` to

@@ -152,12 +152,32 @@ type CacheDerived = {
   variantKeyIndex?: Map<string, string>;
 };
 
+/**
+ * The two behaviors the basket dice button can be set to: re-roll the variants
+ * of the current selection, or replace the selection with new presets.
+ */
+type GalleryDiceBehavior = "variants" | "overwrite";
+
+/**
+ * The rolling options a Basket tab remembers while "remember rolling options
+ * per Basket tab" is on. A tab without one - imported, or saved before the
+ * option existed - falls back to the global settings.
+ */
+type BasketTabDice = {
+  behavior: GalleryDiceBehavior;
+  onGeneration: boolean;
+  onSeedChange: boolean;
+  min: number;
+  max: number;
+};
+
 type BasketTab = {
   id: string;
   title: string;
   basket: string[];
   pins: string[];
   rolls: Record<string, string>;
+  dice?: BasketTabDice;
 };
 
 /**
@@ -220,6 +240,7 @@ type GalleryContext = {
     basket?: string[];
     pins?: string[];
     rolls?: Record<string, string>;
+    dice?: BasketTabDice;
   }) => void;
   applyLibraries: (ids: string[]) => void;
   selectionKey: (key: string) => string;

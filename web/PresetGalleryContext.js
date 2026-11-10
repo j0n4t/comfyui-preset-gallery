@@ -28,7 +28,7 @@
  *     syncUI: (val: string) => void | Promise<void>,
  *     loadGallery: () => Promise<void>,
  *     updateWidgetValue: (arr: string[]) => void,
- *     restoreTabSelection: (tab: { basket?: string[]; pins?: string[]; rolls?: Record<string, string> }) => void,
+ *     restoreTabSelection: (tab: { basket?: string[]; pins?: string[]; rolls?: Record<string, string>; dice?: BasketTabDice }) => void,
  *     applyLibraries: (ids: string[]) => void,
  *     selectionKey: (key: string) => string,
  *     refreshLibraries: () => Promise<void>,
@@ -73,7 +73,7 @@ export default function createGalleryContext({ session, dom, widget, view }) {
     updateWidgetValue: (/** @type {string[]} */ arr) =>
       view.updateWidgetValue(arr),
     restoreTabSelection: (
-      /** @type {{ basket?: string[], pins?: string[], rolls?: Record<string, string> }} */ tab,
+      /** @type {{ basket?: string[], pins?: string[], rolls?: Record<string, string>, dice?: BasketTabDice }} */ tab,
     ) => view.restoreTabSelection(tab),
     applyLibraries: (/** @type {string[]} */ ids) => view.applyLibraries(ids),
     selectionKey: (/** @type {string} */ key) => view.selectionKey(key),

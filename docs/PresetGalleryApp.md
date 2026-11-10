@@ -20,7 +20,7 @@ The `PresetGalleryApp` serves as an interactive graphical interface attached to 
 ### 2.2. Preset Basket (Selection Management)
 
 - **Visual Selection Pool:** Displays currently selected presets in a dedicated basket area.
-- **"Feeling Lucky" / Reroll:** A dice button that auto-generates a random selection of presets. The logic picks a range of presets distributed across active for rolling folders to provide a varied prompt.
+- **"Feeling Lucky" / Reroll:** A dice button that auto-generates a random selection of presets. The logic picks a range of presets distributed across active for rolling folders to provide a varied prompt. The behavior, count range and auto-roll toggles can be remembered per Basket tab.
 - **Raw Toggle:** Users can switch to a raw textarea input to manually edit the token string.
 - **Basket Actions:** Multi-selection mode lets users click chips to select or deselect several at once, then copy, paste, pin/unpin, or delete the selection. Ctrl/Cmd-click and Shift-click selection remain available outside this mode.
 

@@ -32,10 +32,26 @@ function makeEnv({
   storage = fakeStorage(),
   selection = [] as string[],
   pins = [] as string[],
+  settings = null as {
+    rememberDicePerTab: boolean;
+    diceBehavior: string;
+    rollOnGeneration: boolean;
+    rollOnSeedChange: boolean;
+    rollMin: number;
+    rollMax: number;
+  } | null,
 }: {
   storage?: ReturnType<typeof fakeStorage>;
   selection?: string[];
   pins?: string[];
+  settings?: {
+    rememberDicePerTab: boolean;
+    diceBehavior: string;
+    rollOnGeneration: boolean;
+    rollOnSeedChange: boolean;
+    rollMin: number;
+    rollMax: number;
+  } | null;
 } = {}) {
   const pinned = new Set<string>(pins);
   const rollManager = new RollManager();
@@ -53,6 +69,7 @@ function makeEnv({
         .filter(Boolean),
     pinnedChips: pinned,
     rollManager,
+    settings,
     restoreTabSelection: (tab: BasketTab) => {
       calls.restoreTabSelection.push(tab);
       widgetValue = (tab.basket || []).join(", ");
@@ -494,6 +511,48 @@ test("snapshotList records the selection the basket rendered and persists", () =
     env.storage._map.get("comfy_preset_gallery_basket_tabs")!,
   );
   assert.deepEqual(saved.tabs[0].basket, ["faces/macro"]);
+});
+
+// --- per-tab rolling options ---
+
+test("snapshot records the rolling options while the option is on", () => {
+  const env = makeEnv({
+    settings: {
+      rememberDicePerTab: true,
+      diceBehavior: "overwrite",
+      rollOnGeneration: true,
+      rollOnSeedChange: false,
+      rollMin: 3,
+      rollMax: 9,
+    },
+  });
+  env.tabs.load();
+  env.tabs.snapshot();
+
+  assert.deepEqual(env.tabs.tabs[0].dice, {
+    behavior: "overwrite",
+    onGeneration: true,
+    onSeedChange: false,
+    min: 3,
+    max: 9,
+  });
+});
+
+test("snapshot leaves the rolling options out while the option is off", () => {
+  const env = makeEnv({
+    settings: {
+      rememberDicePerTab: false,
+      diceBehavior: "overwrite",
+      rollOnGeneration: true,
+      rollOnSeedChange: true,
+      rollMin: 1,
+      rollMax: 2,
+    },
+  });
+  env.tabs.load();
+  env.tabs.snapshot();
+
+  assert.equal(env.tabs.tabs[0].dice, undefined);
 });
 
 test("newId never collides with an existing tab", () => {

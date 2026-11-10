@@ -432,7 +432,12 @@ export default class PresetGalleryApp {
    * selection, so the render the write triggers already reads the restored
    * state. Same transition as a user edit minus the prune - a tab's basket and
    * pins were saved together.
-   * @param {{ basket?: string[], pins?: string[], rolls?: Record<string, string> }} tab
+   *
+   * The rolling options are restored before the write for the same reason: the
+   * render snapshots them back into the tab and the dice button reflects them,
+   * so no second pass is needed. A tab without them - imported, or saved
+   * before the option existed - leaves the global settings alone.
+   * @param {{ basket?: string[], pins?: string[], rolls?: Record<string, string>, dice?: BasketTabDice }} tab
    */
   restoreTabSelection(tab) {
     this.session.pinnedChips = new Set(tab.pins || []);
@@ -440,6 +445,9 @@ export default class PresetGalleryApp {
     this.session.rollManager.rolls = JSON.parse(
       JSON.stringify(tab.rolls || {}),
     );
+    if (this.settings?.rememberDicePerTab && tab.dice) {
+      this.settings.applyTabDice(tab.dice);
+    }
     this.writeSelection(tab.basket || []);
   }
 

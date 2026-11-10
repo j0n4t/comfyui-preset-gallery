@@ -156,6 +156,7 @@ export default class PresetGallerySettings {
     this.rollOnGeneration = false;
     this.rollOnSeedChange = false;
     this.diceBehavior = "variants";
+    this.rememberDicePerTab = false;
     this.heightMode = DEFAULT_HEIGHT_MODE;
     this.heightFixed = DEFAULT_HEIGHT_FIXED;
     this.rememberPanelSizes = false;
@@ -183,6 +184,7 @@ export default class PresetGallerySettings {
     this.rollOnSeedChange =
       saved.rollOnSeedChange !== undefined ? saved.rollOnSeedChange : false;
     this.diceBehavior = saved.diceBehavior || "variants";
+    this.rememberDicePerTab = saved.rememberDicePerTab === true;
     this.heightMode = toHeightMode(saved.heightMode);
     this.heightFixed = toFixedHeight(saved.heightFixed);
     this.rememberPanelSizes = saved.rememberPanelSizes === true;
@@ -201,6 +203,7 @@ export default class PresetGallerySettings {
       rollOnGeneration: this.rollOnGeneration,
       rollOnSeedChange: this.rollOnSeedChange,
       diceBehavior: this.diceBehavior,
+      rememberDicePerTab: this.rememberDicePerTab,
       heightMode: this.heightMode,
       heightFixed: this.heightFixed,
       rememberPanelSizes: this.rememberPanelSizes,
@@ -376,6 +379,29 @@ export default class PresetGallerySettings {
     this.applyLibraries(order);
   }
 
+  /**
+   * Install the rolling options a Basket tab remembered, when the user asked
+   * for them to be remembered per tab. The values are validated the way the
+   * modal validates them, so a corrupt snapshot cannot install an unusable
+   * range. Saving here is what makes the restored options survive a reload.
+   * @param {BasketTabDice} dice
+   */
+  applyTabDice(dice) {
+    this.diceBehavior =
+      dice.behavior === "overwrite" ? "overwrite" : "variants";
+    this.rollOnGeneration = dice.onGeneration === true;
+    this.rollOnSeedChange = dice.onSeedChange === true;
+    const min = Number(dice.min);
+    const max = Number(dice.max);
+    this.rollMin = Number.isFinite(min) && min > 0 ? Math.round(min) : 10;
+    this.rollMax =
+      Number.isFinite(max) && max > 0
+        ? Math.max(this.rollMin, Math.round(max))
+        : Math.max(this.rollMin, 20);
+    this.save();
+    this.updateDiceVisuals();
+  }
+
   updateDiceVisuals() {
     const diceBtn = document.querySelector(".j0n4t-pg-basket-reroll-btn");
     if (!diceBtn) return;
@@ -407,6 +433,8 @@ export default class PresetGallerySettings {
     let seedCheck;
     /** @type {HTMLInputElement | null} */
     let diceSelect;
+    /** @type {HTMLInputElement | null} */
+    let rememberDiceTabCheck;
     /** @type {HTMLSelectElement | null} */
     let heightModeSelect;
     /** @type {HTMLInputElement | null} */
@@ -459,6 +487,18 @@ export default class PresetGallerySettings {
             <input type="checkbox" id="j0n4t-pg-roll-on-seed" ${this.rollOnSeedChange ? "checked" : ""} />
             Dice roll on generation seed changes
           </label>
+        </div>
+
+        <div class="j0n4t-pg-modal-field">
+          <label class="j0n4t-pg-checkbox-wrap" style="height: auto; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <input type="checkbox" id="j0n4t-pg-remember-dice-tab" ${this.rememberDicePerTab ? "checked" : ""} />
+            Remember rolling options per Basket tab
+          </label>
+          <div style="font-size: 10px; color: #888; line-height: 1.4;">
+            Each tab keeps its own dice behavior, preset count range and auto-roll
+            toggles, and switching tabs restores them. While off, the options
+            above apply to every tab.
+          </div>
         </div>
       </div>
 
@@ -575,6 +615,7 @@ export default class PresetGallerySettings {
             this.rollOnGeneration = genCheck?.checked;
             this.rollOnSeedChange = seedCheck?.checked;
             this.diceBehavior = diceSelect?.value;
+            this.rememberDicePerTab = rememberDiceTabCheck?.checked === true;
             this.heightMode = toHeightMode(heightModeSelect?.value);
             this.heightFixed = toFixedHeight(heightFixedInput?.value);
             this.rememberPanelSizes = rememberPanelsCheck?.checked === true;
@@ -600,6 +641,7 @@ export default class PresetGallerySettings {
         genCheck = modal.querySelector("#j0n4t-pg-roll-on-gen");
         seedCheck = modal.querySelector("#j0n4t-pg-roll-on-seed");
         diceSelect = modal.querySelector("#j0n4t-pg-dice-behavior");
+        rememberDiceTabCheck = modal.querySelector("#j0n4t-pg-remember-dice-tab");
         heightModeSelect = modal.querySelector("#j0n4t-pg-height-mode");
         heightFixedInput = modal.querySelector("#j0n4t-pg-height-fixed");
         heightFixedField = modal.querySelector("#j0n4t-pg-height-fixed-field");

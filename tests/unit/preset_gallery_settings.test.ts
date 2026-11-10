@@ -188,6 +188,7 @@ test("save writes all preferences", () => {
       rollOnGeneration: true,
       rollOnSeedChange: true,
       diceBehavior: "overwrite",
+      rememberDicePerTab: false,
       heightMode: "fixed",
       heightFixed: 300,
       rememberPanelSizes: true,
@@ -235,6 +236,98 @@ test("updateDiceVisuals reflects the dice behavior and auto-roll flags", async (
   );
   assert.ok(btn.classList.contains("auto-roll"));
   assert.ok(btn.classList.contains("auto-roll-seed"));
+});
+
+// --- per-tab rolling options ---
+
+test("loads a saved rememberDicePerTab flag", () => {
+  fakeStorage({ pg_settings: JSON.stringify({ rememberDicePerTab: true }) });
+  const { settings } = makeSettings();
+  assert.equal(settings.rememberDicePerTab, true);
+});
+
+test("applyTabDice installs, persists and mirrors a tab's rolling options", async () => {
+  const map = fakeStorage();
+  makeDiceButton();
+  const { settings } = makeSettings();
+  await tick();
+
+  settings.applyTabDice({
+    behavior: "overwrite",
+    onGeneration: true,
+    onSeedChange: true,
+    min: 2,
+    max: 4,
+  });
+
+  assert.equal(settings.diceBehavior, "overwrite");
+  assert.equal(settings.rollOnGeneration, true);
+  assert.equal(settings.rollOnSeedChange, true);
+  assert.equal(settings.rollMin, 2);
+  assert.equal(settings.rollMax, 4);
+  const saved = JSON.parse(map.get("pg_settings")!) as Record<string, unknown>;
+  assert.equal(saved.diceBehavior, "overwrite");
+  assert.equal(saved.rollOnGeneration, true);
+  assert.equal(saved.rollMin, 2);
+  const btn = document.querySelector<HTMLButtonElement>(
+    ".j0n4t-pg-basket-reroll-btn",
+  )!;
+  assert.ok(btn.classList.contains("roll-overwrite"));
+  assert.ok(btn.classList.contains("auto-roll"));
+  assert.ok(btn.classList.contains("auto-roll-seed"));
+});
+
+test("applyTabDice validates a corrupt snapshot", () => {
+  fakeStorage();
+  const { settings } = makeSettings();
+
+  settings.applyTabDice({
+    behavior: "sideways",
+    onGeneration: true,
+    onSeedChange: false,
+    min: 0,
+    max: -3,
+  } as unknown as BasketTabDice);
+
+  assert.equal(settings.diceBehavior, "variants");
+  assert.equal(settings.rollMin, 10, "0 is not a count");
+  assert.equal(
+    settings.rollMax,
+    20,
+    "a negative max falls back to the default",
+  );
+
+  settings.applyTabDice({
+    behavior: "overwrite",
+    onGeneration: false,
+    onSeedChange: false,
+    min: 7,
+    max: 5,
+  });
+  assert.equal(settings.rollMin, 7);
+  assert.equal(settings.rollMax, 7, "the max is raised to the min");
+});
+
+test("the Rolling Options tab offers the per-tab flag and saves it", async () => {
+  const map = fakeStorage();
+  const { settings } = makeSettings();
+  const promise = settings.openModal();
+  const modal = document.querySelector(".j0n4t-pg-modal-overlay")!;
+  const check = modal.querySelector<HTMLInputElement>(
+    "#j0n4t-pg-remember-dice-tab",
+  )!;
+  assert.equal(check.checked, false, "off by default");
+
+  check.checked = true;
+  modal.querySelector<HTMLButtonElement>('button[data-index="1"]')?.click();
+
+  assert.equal(await promise, true);
+  assert.equal(settings.rememberDicePerTab, true);
+  assert.equal(
+    (JSON.parse(map.get("pg_settings")!) as Record<string, unknown>)
+      .rememberDicePerTab,
+    true,
+  );
 });
 
 // --- openModal ---
@@ -312,6 +405,7 @@ test("openModal save persists the inputs and syncs the widget", async () => {
       rollOnGeneration: true,
       rollOnSeedChange: false,
       diceBehavior: "overwrite",
+      rememberDicePerTab: false,
       heightMode: "fit",
       heightFixed: 640,
       rememberPanelSizes: false,
