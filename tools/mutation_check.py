@@ -25,17 +25,21 @@ MUTATIONS = [
     # value and the queued prompt reach the same picks. Without the reset a
     # second composition advances the counters and draws a different variant.
     ("web/PresetSession.js",
-     "    this.rollManager.resetCounts();\n"
-     "    return PresetLogic.expandRecursively",
-     "    return PresetLogic.expandRecursively",
+     "    this.rollManager.resetCounts();\n",
+     "",
      "tests/unit/preset_session.test.ts"),
     ("web/NestedPresetUtils.js",
      "if (!includeColors) continue;",
      "if (false) continue;",
      "tests/unit/nested_preset_utils.test.ts"),
     ("web/PresetLogic.js",
-     "if (char === ',' && depthParen === 0 && depthAngle === 0 && depthBrace === 0) {",
-     "if (char === ',') {",
+     "      if (\n"
+     "        char === \",\" &&\n"
+     "        depthParen === 0 &&\n"
+     "        depthAngle === 0 &&\n"
+     "        depthBrace === 0\n"
+     "      ) {",
+     "      if (char === \",\") {",
      "tests/unit/preset_logic.test.ts"),
     ("web/PngMetadata.js",
      '} else if (type === "zTXt") {',
@@ -46,8 +50,10 @@ MUTATIONS = [
      "if (false) {",
      "tests/unit/preset_gallery_api.test.ts"),
     ("web/ExportUtils.js",
-     "summary.replacedCount++;\n                } else {",
-     "summary.sameCount++;\n                } else {",
+     "          summary.replacedCount++;\n"
+     "        } else {",
+     "          summary.sameCount++;\n"
+     "        } else {",
      "tests/unit/export_utils.test.ts"),
     ("web/PresetEditor.js",
      "return uniqueKey !== editingPlainKey && !!cache[uniqueKey];",
@@ -82,17 +88,22 @@ MUTATIONS = [
     # comes back unpinned on the next switch or reload.
     ("web/PresetBasketTabs.js",
      "    tab.basket = [...basket];\n"
-     "    tab.pins = this.context.pinnedChips ? Array.from(this.context.pinnedChips) : [];",
+     "    tab.pins = this.context.pinnedChips\n"
+     "      ? Array.from(this.context.pinnedChips)\n"
+     "      : [];",
      "    tab.basket = [...basket];\n"
      "    tab.pins = [];",
      "tests/unit/preset_basket_tabs.test.ts"),
     # The saved active tab id decides which tab comes back. Falling back to the
     # first tab every time restores the wrong selection after a reload.
     ("web/PresetBasketTabs.js",
-     "        parsed.activeTabId && parsed.tabs.some((/** @type {BasketTab} */ t) => t.id === parsed.activeTabId)\n"
+     "        parsed.activeTabId &&\n"
+     "        parsed.tabs.some(\n"
+     "          (/** @type {BasketTab} */ t) => t.id === parsed.activeTabId,\n"
+     "        )\n"
      "          ? parsed.activeTabId\n"
      "          : parsed.tabs[0].id,",
-     "          parsed.tabs[0].id,",
+     "        parsed.tabs[0].id,",
      "tests/unit/preset_basket_tabs.test.ts"),
     # Removing the active tab has to install the neighbour it falls back to, or
     # the widget keeps running the deleted tab's selection.
@@ -125,8 +136,16 @@ MUTATIONS = [
      "tests/unit/preset_gallery_settings.test.ts"),
     # A range selection includes both ends.
     ("web/BasketSelectionController.js",
-     "for (let index = Math.min(start, end); index <= Math.max(start, end); index++) {",
-     "for (let index = Math.min(start, end); index < Math.max(start, end); index++) {",
+     "    for (\n"
+     "      let index = Math.min(start, end);\n"
+     "      index <= Math.max(start, end);\n"
+     "      index++\n"
+     "    ) {",
+     "    for (\n"
+     "      let index = Math.min(start, end);\n"
+     "      index < Math.max(start, end);\n"
+     "      index++\n"
+     "    ) {",
      "tests/unit/basket_selection.test.ts"),
     # Shift-click selects from the anchor, not from the clicked chip, or the
     # range collapses to a single chip.
@@ -137,9 +156,8 @@ MUTATIONS = [
     # The clipboard payload is versioned: accepting another version's shape
     # would paste chips this build cannot resolve.
     ("web/BasketSelectionController.js",
-     "    return payload.type === \"comfyui-preset-gallery-basket\" &&\n"
      "      payload.version === 1 &&\n",
-     "    return payload.type === \"comfyui-preset-gallery-basket\" &&\n",
+     "",
      "tests/unit/basket_selection.test.ts"),
     # Only image files are metadata sources; treating any file as one makes the
     # drop modal try to parse a text file.
@@ -156,15 +174,19 @@ MUTATIONS = [
     # A qualified token must keep its qualifier as the styleKey: resolving it to
     # the plain key points the chip at the other library's entry.
     ("web/ChipProjection.js",
-     "        const resolvedStyleKey = qualifiedInput ? coreJoined : (cached?.foundKey || subArray[0]);",
+     "        const resolvedStyleKey = qualifiedInput\n"
+     "          ? coreJoined\n"
+     "          : cached?.foundKey || subArray[0];",
      "        const resolvedStyleKey = cached?.foundKey || subArray[0];",
      "tests/unit/chip_projection.test.ts"),
     # Only a single token may collapse onto a preset; without the guard a run of
     # tokens that spells a preset body re-joins into the original preset chip,
     # undoing a spread.
     ("web/ChipProjection.js",
-     "      const cached = (len === 1)",
-     "      const cached = (true)",
+     "        len === 1\n"
+     "          ? lookup(coreJoined) ||",
+     "        true\n"
+     "          ? lookup(coreJoined) ||",
      "tests/unit/chip_projection.test.ts"),
     # The lookup is keyed on the weight-stripped core, so a weighted chip
     # resolves to the preset underneath it rather than to its "(key:1.5)" text.
@@ -207,8 +229,11 @@ MUTATIONS = [
     # catches is the class it was built for - a whole-cache operation inside the
     # per-entry loop - which is what this models.
     ("web/ChipProjection.js",
-     "    if (item.preset?.trim()) {\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
-     "    if (item.preset?.trim()) {\n      Object.keys(cache).forEach((k) => PresetLogic.getWrappedPreset(k, cache[k]?.preset || \"\", cache));\n      const wrappedPreset = PresetLogic.getWrappedPreset(key, item.preset, cache);",
+     "    if (item.preset?.trim()) {\n"
+     "      const wrappedPreset = PresetLogic.getWrappedPreset(",
+     "    if (item.preset?.trim()) {\n"
+     "      Object.keys(cache).forEach((k) => PresetLogic.getWrappedPreset(k, cache[k]?.preset || \"\", cache));\n"
+     "      const wrappedPreset = PresetLogic.getWrappedPreset(",
      "tests/unit/preset_logic.perf.test.ts"),
     # The group index enumerates a folder's prefixes AND suffixes. Dropping the
     # suffixes silently loses every group named after a leaf folder.
@@ -268,8 +293,13 @@ MUTATIONS = [
     # The folder helper must drop the last segment: keeping it makes the folder
     # the whole key, so every grid group header collapses to the key itself.
     ("web/PresetDisplay.js",
-     '  return PresetLogic.splitQualifiedKey(key).key.split("/").slice(0, -1).join("/");',
-     '  return PresetLogic.splitQualifiedKey(key).key.split("/").join("/");',
+     "  return PresetLogic.splitQualifiedKey(key)\n"
+     "    .key.split(\"/\")\n"
+     "    .slice(0, -1)\n"
+     "    .join(\"/\");",
+     "  return PresetLogic.splitQualifiedKey(key)\n"
+     "    .key.split(\"/\")\n"
+     "    .join(\"/\");",
      "tests/unit/preset_display.test.ts"),
     # ...and the name helper must keep it, not the first segment.
     ("web/PresetDisplay.js",
@@ -290,8 +320,10 @@ MUTATIONS = [
      "tests/unit/preset_display.test.ts"),
     # The hash is what the user sees; a changed constant is a visible change.
     ("web/PresetDisplay.js",
-     "  for (let i = 0; i < 6; i++) hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);",
-     "  for (let i = 0; i < 6; i++) hash = Math.imul(hash ^ str.charCodeAt(i), 15485864);",
+     "  for (let i = 0; i < 6; i++)\n"
+     "    hash = Math.imul(hash ^ str.charCodeAt(i), 15485863);",
+     "  for (let i = 0; i < 6; i++)\n"
+     "    hash = Math.imul(hash ^ str.charCodeAt(i), 15485864);",
      "tests/unit/preset_display.test.ts"),
     # Initials are capped at six characters.
     ("web/PresetDisplay.js",
@@ -306,8 +338,12 @@ MUTATIONS = [
      "tests/unit/preset_display.test.ts"),
     # Fuzzy matches are ordered by where the query appears, not alphabetically.
     ("web/PresetDisplay.js",
-     "    arr.sort((a, b) => (a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item)));",
-     "    arr.sort((a, b) => (a.idx !== b.idx ? b.idx - a.idx : a.item.localeCompare(b.item)));",
+     "    arr.sort((a, b) =>\n"
+     "      a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item),\n"
+     "    );",
+     "    arr.sort((a, b) =>\n"
+     "      a.idx !== b.idx ? b.idx - a.idx : a.item.localeCompare(b.item),\n"
+     "    );",
      "tests/unit/preset_display.test.ts"),
     # The title prepends the evaluated value when it differs from the body -
     # otherwise a chip that expands past its own text shows only the body.
@@ -331,8 +367,8 @@ MUTATIONS = [
     # Segmented labels are for chips whose text carries a variant or a tag. The
     # gate is what stops a plain chip getting segment spans in place of its label.
     ("web/PresetLogic.js",
-     'if (tokens.length > 0 && tokens.some(t => /[{<]/.test(t))) {',
-     'if (tokens.length > 0) {',
+     "    if (tokens.length > 0 && tokens.some((t) => /[{<]/.test(t))) {",
+     "    if (tokens.length > 0) {",
      "tests/unit/preset_basket.test.ts"),
 
     # The storage boundary (`web/GalleryStorage.js`). Phase 5a. It is the only
@@ -398,8 +434,14 @@ MUTATIONS = [
     # non-default library AND gives the two libraries different keys, because
     # with the same key in both the mutation is indistinguishable.
     ("web/PresetGalleryAPI.js",
-     "  static async deletePreset(uniqueKey, libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {\n    const presets = await PresetGalleryAPI.getPresets(libraryId);",
-     "  static async deletePreset(uniqueKey, libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID) {\n    const presets = await PresetGalleryAPI.getPresets();",
+     "    uniqueKey,\n"
+     "    libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID,\n"
+     "  ) {\n"
+     "    const presets = await PresetGalleryAPI.getPresets(libraryId);",
+     "    uniqueKey,\n"
+     "    libraryId = PresetGalleryAPI.DEFAULT_LIBRARY_ID,\n"
+     "  ) {\n"
+     "    const presets = await PresetGalleryAPI.getPresets();",
      "tests/unit/preset_gallery_api.test.ts"),
 ]
 
