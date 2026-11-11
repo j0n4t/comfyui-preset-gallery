@@ -364,6 +364,21 @@ MUTATIONS = [
      "  const shortfall = TOP_MATCH_LIMIT - fromStartsWith - fromFuzzy;",
      "  const shortfall = 0;",
      "tests/unit/preset_display.test.ts"),
+    # Normal entries fill the slots first; `_` entries are only checked for the
+    # room that leaves. Treating them as normal lets them crowd out the visible
+    # suggestions.
+    ("web/PresetDisplay.js",
+     "    startsWith: startsWith.filter((m) => !isHidden(m.item)),\n"
+     "    fuzzy: fuzzy.filter((m) => !isHidden(m.item)),",
+     "    startsWith,\n"
+     "    fuzzy,",
+     "tests/unit/preset_display.test.ts"),
+    # `_` entries take only the slots normal ones leave; appending them all
+    # overshoots the ten-suggestion cap.
+    ("web/PresetDisplay.js",
+     "    new Set([...normal, ...hidden.slice(0, TOP_MATCH_LIMIT - normal.length)]),",
+     "    new Set([...normal, ...hidden]),",
+     "tests/unit/preset_display.test.ts"),
     # The title prepends the evaluated value when it differs from the body -
     # otherwise a chip that expands past its own text shows only the body.
     ("web/PresetDisplay.js",

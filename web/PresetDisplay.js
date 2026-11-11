@@ -250,20 +250,49 @@ function getTopMatches(
   const startsWith = sortBucket(buckets.startsWith);
   const fuzzy = sortBucket(buckets.fuzzy);
 
-  const fromStartsWith = Math.min(startsWith.length, TOP_MATCH_PER_BUCKET);
-  const fromFuzzy = Math.min(fuzzy.length, TOP_MATCH_PER_BUCKET);
-  const shortfall = TOP_MATCH_LIMIT - fromStartsWith - fromFuzzy;
-  const extraStartsWith = Math.min(startsWith.length - fromStartsWith, shortfall);
-  const extraFuzzy = Math.min(
-    fuzzy.length - fromFuzzy,
-    shortfall - extraStartsWith,
-  );
+  const isHidden = (/** @type {string} */ item) =>
+    PresetLogic.splitQualifiedKey(item).key.startsWith("_");
+
+  /**
+   * The ranked slice of a bucket pair: five leading and five fuzzy by default,
+   * a bucket with fewer than its share leaving the rest to the other one.
+   * @param {{startsWith: SearchResult[], fuzzy: SearchResult[]}} buckets
+   * @returns {SearchResult[]}
+   */
+  const pick = (buckets) => {
+    const fromStartsWith = Math.min(
+      buckets.startsWith.length,
+      TOP_MATCH_PER_BUCKET,
+    );
+    const fromFuzzy = Math.min(buckets.fuzzy.length, TOP_MATCH_PER_BUCKET);
+    const shortfall = TOP_MATCH_LIMIT - fromStartsWith - fromFuzzy;
+    const extraStartsWith = Math.min(
+      buckets.startsWith.length - fromStartsWith,
+      shortfall,
+    );
+    const extraFuzzy = Math.min(
+      buckets.fuzzy.length - fromFuzzy,
+      shortfall - extraStartsWith,
+    );
+    return [
+      ...buckets.startsWith.slice(0, fromStartsWith + extraStartsWith),
+      ...buckets.fuzzy.slice(0, fromFuzzy + extraFuzzy),
+    ];
+  };
+
+  // Normal entries fill the slots first; `_` entries are only checked for the
+  // room that leaves, and render below them - the grid's own hidden-last order.
+  const normal = pick({
+    startsWith: startsWith.filter((m) => !isHidden(m.item)),
+    fuzzy: fuzzy.filter((m) => !isHidden(m.item)),
+  });
+  const hidden = pick({
+    startsWith: startsWith.filter((m) => isHidden(m.item)),
+    fuzzy: fuzzy.filter((m) => isHidden(m.item)),
+  });
 
   return Array.from(
-    new Set([
-      ...startsWith.slice(0, fromStartsWith + extraStartsWith),
-      ...fuzzy.slice(0, fromFuzzy + extraFuzzy),
-    ]),
+    new Set([...normal, ...hidden.slice(0, TOP_MATCH_LIMIT - normal.length)]),
   ).map((/** @type {SearchResult} */ match) => ({
     ...match,
     title: cache ? getPresetTitle(match.item, cache) : "",

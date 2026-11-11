@@ -285,6 +285,56 @@ test("getTopMatches fills a short fuzzy bucket with leading matches", () => {
   );
 });
 
+test("getTopMatches sinks `_` entries below every normal suggestion", () => {
+  const keys = ["face_a", "face_b", "_face_a", "x_face_a", "_x_face_a"];
+  const matches = PresetDisplay.getTopMatches(keys, "face", (k) => k);
+  assert.deepEqual(
+    matches.map((m) => m.item),
+    ["face_a", "face_b", "x_face_a", "_face_a", "_x_face_a"],
+  );
+});
+
+test("getTopMatches fills the slots normal entries leave with `_` entries", () => {
+  const keys = [
+    "face_a",
+    "face_b",
+    "face_c",
+    "x_face_a",
+    "x_face_b",
+    ...Array.from({ length: 10 }, (_, i) => `_face_${"abcdefghij"[i]}`),
+  ];
+  const matches = PresetDisplay.getTopMatches(keys, "face", (k) => k);
+  assert.deepEqual(
+    matches.map((m) => m.item),
+    [
+      "face_a",
+      "face_b",
+      "face_c",
+      "x_face_a",
+      "x_face_b",
+      "_face_a",
+      "_face_b",
+      "_face_c",
+      "_face_d",
+      "_face_e",
+    ],
+  );
+});
+
+test("getTopMatches does not let `_` entries displace normal ones", () => {
+  const keys = [
+    ...Array.from({ length: 8 }, (_, i) => `face_${"abcdefgh"[i]}`),
+    ...Array.from({ length: 8 }, (_, i) => `x_face_${"abcdefgh"[i]}`),
+    ...Array.from({ length: 5 }, (_, i) => `_face_${"abcde"[i]}`),
+  ];
+  const matches = PresetDisplay.getTopMatches(keys, "face", (k) => k);
+  assert.equal(matches.length, 10);
+  assert.ok(
+    matches.every((m) => !m.item.startsWith("_")),
+    "normal matches fill all ten slots",
+  );
+});
+
 // --- getPresetTitle --------------------------------------------------------
 
 test("getPresetTitle names the preset and its body", () => {

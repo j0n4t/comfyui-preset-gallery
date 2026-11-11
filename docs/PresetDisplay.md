@@ -56,7 +56,9 @@ the name is `sock`, and a colour hashes `wear` rather than `socks#wear`.
   bucket the earlier occurrence wins. At most ten suggestions come back, split
   five leading and five fuzzy by default; a bucket with fewer than its share
   leaves the rest to the other one (`3 leading + 7 fuzzy`). A cache entry with no
-  preset is not a candidate unless it is a virtual null.
+  preset is not a candidate unless it is a virtual null. Normal entries fill the
+  slots first; `_` entries take the room that leaves and render below them (the
+  grid's own hidden-last order).
 - `getVisibleKeys(cache, query)` — the keys a chooser should list. A merged
   cache also carries each winning library's qualified alias (`main#key`) as a
   non-enumerable property, so listing it beside its plain key would offer the
