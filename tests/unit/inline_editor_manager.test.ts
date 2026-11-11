@@ -300,3 +300,33 @@ test("autocomplete suggests qualified presets and renders qualified root preset 
   const metaSpan = rootRow!.querySelector(".j0n4t-pg-autocomplete-meta")!;
   assert.equal(metaSpan.textContent, "sample#root_preset");
 });
+
+test("a plain query does not duplicate a winning library's hidden alias", () => {
+  const env = makeEnv([]);
+  env.context.cache = {
+    "Faces/Portrait": { preset: "portrait" },
+    "socks#Faces/Portrait": { preset: "socks portrait" },
+  };
+  Object.defineProperty(env.context.cache, "main#Faces/Portrait", {
+    value: { preset: "portrait" },
+    enumerable: false,
+  });
+
+  // This asserts the whole list, so drop the popups earlier tests left behind.
+  document
+    .querySelectorAll(".j0n4t-pg-autocomplete-popup")
+    .forEach((el) => el.remove());
+
+  const editor = new InlineEditorManager(env.context, env.delegate);
+  editor.spawn(null, "");
+  const input = env.basketEl.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-inline-edit",
+  )!;
+  input.value = "portrait";
+  input.dispatchEvent(new Event("input"));
+
+  const metas = Array.from(
+    document.querySelectorAll(".j0n4t-pg-autocomplete-meta"),
+  ).map((el) => el.textContent);
+  assert.deepEqual(metas, ["Faces/Portrait", "socks#Faces/Portrait"]);
+});

@@ -81,6 +81,31 @@ test("getAllPresetFolders lists each folder once", () => {
   ]);
 });
 
+test("getVisibleKeys holds a winner's hidden alias back unless the query names a qualifier", () => {
+  const cache: PresetCache = {
+    "Faces/Portrait": { preset: "portrait" },
+    "socks#Faces/Portrait": { preset: "socks portrait" },
+  };
+  // The session files the winning library's own alias as non-enumerable.
+  Object.defineProperty(cache, "main#Faces/Portrait", {
+    value: { preset: "portrait" },
+    enumerable: false,
+  });
+
+  // A plain query lists the entry once, under the plain key.
+  assert.deepEqual(PresetDisplay.getVisibleKeys(cache, "portrait"), [
+    "Faces/Portrait",
+    "socks#Faces/Portrait",
+  ]);
+
+  // A query naming the qualifier can ask for that spelling.
+  assert.deepEqual(PresetDisplay.getVisibleKeys(cache, "main#"), [
+    "Faces/Portrait",
+    "socks#Faces/Portrait",
+    "main#Faces/Portrait",
+  ]);
+});
+
 // --- the colour helpers ---------------------------------------------------
 
 test("getPresetColor walks up to an assigned folder colour", () => {

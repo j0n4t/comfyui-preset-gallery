@@ -351,6 +351,28 @@ MUTATIONS = [
      "  if (expanded !== preset) return `${expanded}\\n\\n${title}`;",
      "  return title;",
      "tests/unit/preset_display.test.ts"),
+    # A chooser must not list a winning library's hidden alias (`main#key`)
+    # beside its plain key: the default library's entries would appear twice.
+    # The alias is still offered when the query names the qualifier, so the
+    # branch is load-bearing in both directions.
+    ("web/PresetDisplay.js",
+     "  const keys = Object.keys(cache);\n"
+     "  if (!query.includes(\"#\")) return keys;\n"
+     "  const aliases = Object.getOwnPropertyNames(cache).filter(\n"
+     "    (key) => !keys.includes(key),\n"
+     "  );\n"
+     "  return [...keys, ...aliases];",
+     "  return Object.getOwnPropertyNames(cache);",
+     "tests/unit/raw_text_autocomplete.test.ts"),
+    ("web/PresetDisplay.js",
+     "  const keys = Object.keys(cache);\n"
+     "  if (!query.includes(\"#\")) return keys;\n"
+     "  const aliases = Object.getOwnPropertyNames(cache).filter(\n"
+     "    (key) => !keys.includes(key),\n"
+     "  );\n"
+     "  return [...keys, ...aliases];",
+     "  return Object.keys(cache);",
+     "tests/unit/inline_editor_manager.test.ts"),
 
     # Chip evaluation (`web/PresetLogic.js`). Phase 4c was probed rather than
     # split - see docs/app-logic-refactor-plan.md - and the probe found these

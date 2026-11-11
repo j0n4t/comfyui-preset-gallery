@@ -55,6 +55,29 @@ function getAllPresetFolders(cache) {
 }
 
 /**
+ * The cache keys a chooser should list for a query.
+ *
+ * A merged cache files each library winner's qualified alias
+ * (`main#Faces/Portrait`) as a non-enumerable property, so the entry can be
+ * named either way. Listing those aliases beside their plain key would offer
+ * the default library's entries twice, so they are held back unless the query
+ * names a qualifier (`main#`) and is asking for that spelling. A shadowed
+ * library's `library#key` is enumerable and always listed - it is that copy's
+ * only spelling.
+ * @param {PresetCache} cache - Preset cache map.
+ * @param {string} [query] - The text being matched.
+ * @returns {string[]} Listable cache keys.
+ */
+function getVisibleKeys(cache, query = "") {
+  const keys = Object.keys(cache);
+  if (!query.includes("#")) return keys;
+  const aliases = Object.getOwnPropertyNames(cache).filter(
+    (key) => !keys.includes(key),
+  );
+  return [...keys, ...aliases];
+}
+
+/**
  * Computes the assigned or computed HSL color for a given preset key.
  * @param {string} [presetKey=""] - Preset identifier path key.
  * @param {PresetCache|null} [cache=null] - Optional lookup cache.
@@ -220,6 +243,7 @@ const PresetDisplay = {
   toTitleCase,
   getHashColor,
   getAllPresetFolders,
+  getVisibleKeys,
   getPresetColor,
   getPresetBaseFolder,
   getPresetName,
@@ -237,6 +261,7 @@ export {
   toTitleCase,
   getHashColor,
   getAllPresetFolders,
+  getVisibleKeys,
   getPresetColor,
   getPresetBaseFolder,
   getPresetName,

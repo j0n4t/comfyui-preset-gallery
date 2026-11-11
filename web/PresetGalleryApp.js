@@ -897,7 +897,7 @@ export default class PresetGalleryApp {
         query = query.trim().toLowerCase();
         if (!query) return [];
         return PresetDisplay.getTopMatches(
-          Object.getOwnPropertyNames(this.session.cache),
+          PresetDisplay.getVisibleKeys(this.session.cache, query),
           query,
           (k) => PresetDisplay.getSearchBlob(k, this.session.cache[k]),
           this.session.cache,

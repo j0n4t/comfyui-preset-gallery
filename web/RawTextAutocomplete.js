@@ -107,7 +107,7 @@ export default class RawTextAutocomplete {
           if (!currentToken) return [];
 
           return PresetDisplay.getTopMatches(
-            Object.getOwnPropertyNames(this.context.cache),
+            PresetDisplay.getVisibleKeys(this.context.cache, currentToken),
             currentToken,
             (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]),
             this.context.cache,

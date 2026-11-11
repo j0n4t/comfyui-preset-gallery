@@ -55,6 +55,12 @@ the name is `sock`, and a colour hashes `wear` rather than `socks#wear`.
   Matches whose blob _starts with_ the query outrank fuzzy ones, and within each
   bucket the earlier occurrence wins; each bucket is capped at three. A cache
   entry with no preset is not a candidate unless it is a virtual null.
+- `getVisibleKeys(cache, query)` — the keys a chooser should list. A merged
+  cache also carries each winning library's qualified alias (`main#key`) as a
+  non-enumerable property, so listing it beside its plain key would offer the
+  default library's entries twice; the alias is held back unless the query names
+  a qualifier (`main#`). A shadowed library's `library#key` is enumerable and
+  always listed - it is that copy's only spelling.
 
 ## Key Dependencies
 

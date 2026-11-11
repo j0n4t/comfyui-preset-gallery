@@ -203,7 +203,7 @@ export default class InlineEditorManager {
           query = query.trim().toLowerCase();
           if (!query) return [];
           return PresetDisplay.getTopMatches(
-            Object.getOwnPropertyNames(this.context.cache),
+            PresetDisplay.getVisibleKeys(this.context.cache, query),
             query,
             (k) => PresetDisplay.getSearchBlob(k, this.context.cache[k]),
             this.context.cache,
