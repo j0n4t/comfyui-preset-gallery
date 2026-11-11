@@ -345,6 +345,25 @@ MUTATIONS = [
      "      a.idx !== b.idx ? b.idx - a.idx : a.item.localeCompare(b.item),\n"
      "    );",
      "tests/unit/preset_display.test.ts"),
+    # A popup is capped at ten suggestions; a higher cap is more scrolling for
+    # no gain, and a lower one hides matches the ranking already found.
+    ("web/PresetDisplay.js",
+     "const TOP_MATCH_LIMIT = 10;",
+     "const TOP_MATCH_LIMIT = 6;",
+     "tests/unit/preset_display.test.ts"),
+    # The default split is five leading and five fuzzy; letting one bucket take
+    # ten crowds out the other kind of match.
+    ("web/PresetDisplay.js",
+     "const TOP_MATCH_PER_BUCKET = 5;",
+     "const TOP_MATCH_PER_BUCKET = 10;",
+     "tests/unit/preset_display.test.ts"),
+    # A bucket with fewer than its share leaves the rest to the other one, so a
+    # query with few leading matches still fills the list instead of showing a
+    # short popup.
+    ("web/PresetDisplay.js",
+     "  const shortfall = TOP_MATCH_LIMIT - fromStartsWith - fromFuzzy;",
+     "  const shortfall = 0;",
+     "tests/unit/preset_display.test.ts"),
     # The title prepends the evaluated value when it differs from the body -
     # otherwise a chip that expands past its own text shows only the body.
     ("web/PresetDisplay.js",

@@ -53,8 +53,10 @@ the name is `sock`, and a colour hashes `wear` rather than `socks#wear`.
 - `getTopMatches(list, query, blobFn, cache, ignorePreset)` — the ranked
   suggestion list. Every whitespace-separated query word must appear in the blob.
   Matches whose blob _starts with_ the query outrank fuzzy ones, and within each
-  bucket the earlier occurrence wins; each bucket is capped at three. A cache
-  entry with no preset is not a candidate unless it is a virtual null.
+  bucket the earlier occurrence wins. At most ten suggestions come back, split
+  five leading and five fuzzy by default; a bucket with fewer than its share
+  leaves the rest to the other one (`3 leading + 7 fuzzy`). A cache entry with no
+  preset is not a candidate unless it is a virtual null.
 - `getVisibleKeys(cache, query)` — the keys a chooser should list. A merged
   cache also carries each winning library's qualified alias (`main#key`) as a
   non-enumerable property, so listing it beside its plain key would offer the

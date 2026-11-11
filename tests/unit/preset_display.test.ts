@@ -221,6 +221,70 @@ test("getTopMatches returns nothing for an empty query", () => {
   );
 });
 
+test("getTopMatches shows at most ten, five from each bucket by default", () => {
+  const keys = [
+    ...Array.from({ length: 8 }, (_, i) => `face_${"abcdefgh"[i]}`),
+    ...Array.from({ length: 8 }, (_, i) => `x_face_${"abcdefgh"[i]}`),
+  ];
+  const matches = PresetDisplay.getTopMatches(keys, "face", (k) => k);
+  assert.equal(matches.length, 10);
+  assert.equal(
+    matches.filter((m) => m.item.startsWith("face_")).length,
+    5,
+    "five leading matches",
+  );
+  assert.equal(
+    matches.filter((m) => !m.item.startsWith("face_")).length,
+    5,
+    "five fuzzy matches",
+  );
+});
+
+test("getTopMatches fills a short leading bucket with fuzzy matches", () => {
+  const keys = [
+    "face_a",
+    "face_b",
+    "face_c",
+    ...Array.from({ length: 10 }, (_, i) => `x_face_${"abcdefghij"[i]}`),
+  ];
+  const matches = PresetDisplay.getTopMatches(keys, "face", (k) => k);
+  assert.deepEqual(
+    matches.map((m) => m.item),
+    [
+      "face_a",
+      "face_b",
+      "face_c",
+      "x_face_a",
+      "x_face_b",
+      "x_face_c",
+      "x_face_d",
+      "x_face_e",
+      "x_face_f",
+      "x_face_g",
+    ],
+  );
+});
+
+test("getTopMatches fills a short fuzzy bucket with leading matches", () => {
+  const keys = [
+    ...Array.from({ length: 8 }, (_, i) => `face_${"abcdefgh"[i]}`),
+    "x_face_a",
+    "x_face_b",
+  ];
+  const matches = PresetDisplay.getTopMatches(keys, "face", (k) => k);
+  assert.equal(matches.length, 10);
+  assert.equal(
+    matches.filter((m) => m.item.startsWith("face_")).length,
+    8,
+    "every leading match is kept",
+  );
+  assert.equal(
+    matches.filter((m) => !m.item.startsWith("face_")).length,
+    2,
+    "both fuzzy matches are kept",
+  );
+});
+
 // --- getPresetTitle --------------------------------------------------------
 
 test("getPresetTitle names the preset and its body", () => {

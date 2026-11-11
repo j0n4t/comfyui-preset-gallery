@@ -186,7 +186,19 @@ function getSearchBlob(key, item) {
 }
 
 /**
+ * The most suggestions `getTopMatches` returns, and the default share each
+ * bucket gets. A bucket with fewer than its share leaves the rest to the other
+ * one, so a query with few leading matches still fills the list.
+ */
+const TOP_MATCH_LIMIT = 10;
+const TOP_MATCH_PER_BUCKET = 5;
+
+/**
  * Filters list items matching a search query string.
+ *
+ * Matches whose blob starts with the query outrank the rest. The result is at
+ * most `TOP_MATCH_LIMIT` long, split evenly between the two buckets unless one
+ * of them runs out.
  * @param {string[]} list - Key list array.
  * @param {string} query - Query filter string.
  * @param {(item: string) => string} [blobFn] - Custom search blob mapper callback.
@@ -217,14 +229,14 @@ function getTopMatches(
         return acc;
       const blob = resolveBlob(item).toLowerCase();
       if (!queryWords.every((word) => blob.includes(word))) return acc;
-      const title = cache ? getPresetTitle(item, cache) : "";
       let idx = blob.indexOf(queryWords.join(" "));
       if (idx === -1) idx = blob.indexOf(queryWords[0]);
       if (idx === 0) {
-        if (acc.startsWith.length < 3)
-          acc.startsWith.push({ item, idx, title });
+        if (acc.startsWith.length < TOP_MATCH_LIMIT)
+          acc.startsWith.push({ item, idx, title: "" });
       } else {
-        if (acc.fuzzy.length < 3) acc.fuzzy.push({ item, idx, title });
+        if (acc.fuzzy.length < TOP_MATCH_LIMIT)
+          acc.fuzzy.push({ item, idx, title: "" });
       }
       return acc;
     },
@@ -234,9 +246,28 @@ function getTopMatches(
     arr.sort((a, b) =>
       a.idx !== b.idx ? a.idx - b.idx : a.item.localeCompare(b.item),
     );
-  return Array.from(
-    new Set([...sortBucket(buckets.startsWith), ...sortBucket(buckets.fuzzy)]),
+
+  const startsWith = sortBucket(buckets.startsWith);
+  const fuzzy = sortBucket(buckets.fuzzy);
+
+  const fromStartsWith = Math.min(startsWith.length, TOP_MATCH_PER_BUCKET);
+  const fromFuzzy = Math.min(fuzzy.length, TOP_MATCH_PER_BUCKET);
+  const shortfall = TOP_MATCH_LIMIT - fromStartsWith - fromFuzzy;
+  const extraStartsWith = Math.min(startsWith.length - fromStartsWith, shortfall);
+  const extraFuzzy = Math.min(
+    fuzzy.length - fromFuzzy,
+    shortfall - extraStartsWith,
   );
+
+  return Array.from(
+    new Set([
+      ...startsWith.slice(0, fromStartsWith + extraStartsWith),
+      ...fuzzy.slice(0, fromFuzzy + extraFuzzy),
+    ]),
+  ).map((/** @type {SearchResult} */ match) => ({
+    ...match,
+    title: cache ? getPresetTitle(match.item, cache) : "",
+  }));
 }
 
 const PresetDisplay = {
