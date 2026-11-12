@@ -63,11 +63,22 @@ import PresetDisplay from "./PresetDisplay.js";
  */
 
 /**
+ * A folder that left its library during a rename.
+ * @typedef {Object} FolderMove
+ * @property {string} libraryId the library the folder went to
+ * @property {string} folder the folder path inside that library
+ * @property {PresetCache} presets the moved presets, keyed by their new keys
+ * @property {string[]} selectedKeys the moved keys that were checked
+ */
+
+/**
  * One library in the picker.
  * @typedef {Object} PickerRow
  * @property {string} sourceId
  * @property {string} name
  * @property {PresetCache} presets
+ * @property {boolean} created true when a folder move brought the row into
+ *   being, so it can go away again when it empties
  * @property {SelectorTreeResult | null} tree
  * @property {HTMLElement | null} element
  * @property {HTMLElement | null} nameEl
@@ -185,11 +196,12 @@ const ExportUtils = {
   /**
    * @param {PresetCache} presets
    * @param {PresetCache | null} [existingPresets=null]
-   * @param {{ nested?: boolean, libraryId?: string }} [options] `nested` drops
-   *   the tree's own controls and its scroll cap, so it can sit inside another
-   *   selector - the bundle tree puts one of these under every library row.
-   *   `libraryId` names the library the presets belong to, which is how a
-   *   `library#folder` rename tells a move from a rename in place.
+   * @param {{ nested?: boolean, libraryId?: string, onMove?: (move: FolderMove) => void }} [options]
+   *   `nested` drops the tree's own controls and its scroll cap, so it can sit
+   *   inside another selector - the bundle tree puts one of these under every
+   *   library row. `libraryId` names the library the presets belong to, which is
+   *   how a `library#folder` rename tells a move from a rename in place, and
+   *   `onMove` is where a moved folder is handed over.
    * @returns {SelectorTreeResult}
    */
   buildPresetSelectorTree(presets, existingPresets = null, options = {}) {
@@ -488,18 +500,37 @@ const ExportUtils = {
       );
       if (groupEditBtn) {
         groupEditBtn.addEventListener("click", async () => {
-          const newGroupName = prompt(
-            "Rename Folder (use / to separate nested folders):",
+          const newGroupName = await ModalUtils.prompt(
+            "Rename Folder (use / for nested folders; library#folder moves it)",
             gKey === "root_presets" ? "" : gKey,
           );
           if (newGroupName === null) return;
-          const cleanNewFolder = newGroupName
-            .trim()
+          const trimmed = newGroupName.trim();
+          if (trimmed.startsWith("#")) {
+            await ModalUtils.alert("Name the library before the #.");
+            return;
+          }
+          // `library#folder` sends the folder to another library instead of
+          // renaming it where it is; without a library of our own there is no
+          // move to make, only a rename.
+          const { libraryId: namedLibrary, key: typedPath } =
+            PresetLogic.splitQualifiedKey(trimmed);
+          const cleanNewFolder = typedPath
             .split("/")
             .map((part) => part.trim().toLowerCase().replace(/ /g, "_"))
             .filter(Boolean)
             .join("/");
-          if (cleanNewFolder === gKey) return;
+          if (!cleanNewFolder) return;
+
+          if (namedLibrary !== null && options.libraryId == null) {
+            await ModalUtils.alert(
+              "Rename a folder to library#folder only inside the library picker.",
+            );
+            return;
+          }
+          const moving =
+            namedLibrary !== null && namedLibrary !== options.libraryId;
+          if (!moving && cleanNewFolder === gKey) return;
 
           const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (
             itemsBox.querySelectorAll(".j0n4t-pg-item-cb")
@@ -513,8 +544,45 @@ const ExportUtils = {
               newKey: cleanNewFolder
                 ? `${cleanNewFolder}/${itemName}`
                 : itemName,
+              checked: cb.checked,
             };
           });
+
+          if (moving) {
+            if (!options.onMove) {
+              await ModalUtils.alert(
+                "Moving a folder into another library needs the library picker.",
+              );
+              return;
+            }
+            /** @type {PresetCache} */
+            const moved = {};
+            /** @type {string[]} */
+            const selectedKeys = [];
+            for (const { oldKey, newKey, checked } of keyMoves) {
+              if (presets[oldKey]) {
+                moved[newKey] = presets[oldKey];
+                delete presets[oldKey];
+              }
+              if (checked) selectedKeys.push(newKey);
+            }
+            if (gKey !== "root_presets" && presets[gKey]?.__color__) {
+              moved[cleanNewFolder] = {
+                ...(moved[cleanNewFolder] || {}),
+                __color__: presets[gKey].__color__,
+              };
+              delete presets[gKey].__color__;
+              if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
+            }
+            options.onMove({
+              libraryId: namedLibrary,
+              folder: cleanNewFolder,
+              presets: moved,
+              selectedKeys,
+            });
+            return;
+          }
+
           const movingKeys = new Set(keyMoves.map(({ oldKey }) => oldKey));
           if (
             keyMoves.some(
@@ -763,11 +831,15 @@ const ExportUtils = {
     `;
     container.appendChild(controls);
 
-    /** @type {PickerRow[]} */
-    const pickerRows = (rows || []).map((row) => ({
-      sourceId: row.sourceId ?? row.name ?? "",
-      name: row.name ?? row.sourceId ?? "",
-      presets: row.presets || {},
+    /**
+     * @param {{sourceId: string, name: string, presets: PresetCache}} input
+     * @returns {PickerRow}
+     */
+    const makeRow = (input) => ({
+      sourceId: input.sourceId ?? input.name ?? "",
+      name: input.name ?? input.sourceId ?? "",
+      presets: input.presets || {},
+      created: false,
       tree: null,
       element: null,
       nameEl: null,
@@ -777,7 +849,10 @@ const ExportUtils = {
       itemsEl: null,
       renameEl: null,
       collapseEl: null,
-    }));
+    });
+
+    /** @type {PickerRow[]} */
+    const pickerRows = (rows || []).map(makeRow);
 
     /** Every preset checkbox inside a container, typed as an input. */
     const itemBoxes = (/** @type {HTMLElement} */ el) =>
@@ -791,6 +866,18 @@ const ExportUtils = {
 
     /** @param {number} n */
     const plural = (n) => (n === 1 ? "" : "s");
+
+    /**
+     * Real presets, ignoring the folder-colour entries a cache carries.
+     * @param {PresetCache} presets
+     */
+    const presetCount = (presets) =>
+      Object.values(presets).filter(
+        (item) =>
+          item &&
+          ((typeof item.preset === "string" && item.preset.trim().length > 0) ||
+            item.filename),
+      ).length;
 
     /**
      * @param {PickerRow} pr
@@ -808,7 +895,7 @@ const ExportUtils = {
      * @param {PickerRow} pr
      */
     const consequenceText = (pr) => {
-      const total = Object.keys(pr.presets).length;
+      const total = presetCount(pr.presets);
       const noun = `${total} preset${plural(total)}`;
       if (pr.name === pr.sourceId) {
         const duplicates = duplicatesAgainst(pr, pr.name);
@@ -825,7 +912,7 @@ const ExportUtils = {
      * @param {PickerRow} pr
      */
     const updateRow = (pr) => {
-      const total = Object.keys(pr.presets).length;
+      const total = presetCount(pr.presets);
       const selected = pr.tree ? pr.tree.getSelectedKeys().length : 0;
       if (pr.nameEl) {
         pr.nameEl.innerHTML =
@@ -851,7 +938,11 @@ const ExportUtils = {
       pr.tree = ExportUtils.buildPresetSelectorTree(
         pr.presets,
         existingCachesById ? existingCachesById[pr.name] ?? null : null,
-        { nested: true, libraryId: pr.name },
+        {
+          nested: true,
+          libraryId: pr.name,
+          onMove: (move) => onMove(pr, move),
+        },
       );
       itemsOf(pr).replaceChildren(pr.tree.element);
       updateRow(pr);
@@ -870,6 +961,56 @@ const ExportUtils = {
         cb.dispatchEvent(new Event("change"));
       });
       updateRow(pr);
+    };
+
+    /**
+     * Append a row and check the keys it arrived with.
+     * @param {{sourceId: string, name: string, presets: PresetCache}} input
+     * @param {Set<string> | null} [keptKeys]
+     * @returns {PickerRow}
+     */
+    const addRow = (input, keptKeys = null) => {
+      const pr = makeRow(input);
+      pr.created = true;
+      pickerRows.push(pr);
+      container.appendChild(renderRow(pr));
+      if (keptKeys) {
+        itemBoxes(itemsOf(pr)).forEach((cb) => {
+          cb.checked = keptKeys.has(cb.value);
+          cb.dispatchEvent(new Event("change"));
+        });
+        updateRow(pr);
+      }
+      return pr;
+    };
+
+    /**
+     * A folder renamed to another library: it leaves this row and lands in the
+     * row for that library, which a first move creates.
+     * @param {PickerRow} pr the row the folder left
+     * @param {FolderMove} move
+     */
+    const onMove = (pr, move) => {
+      const target = pickerRows.find((other) => other.name === move.libraryId);
+      if (target) {
+        target.presets = { ...target.presets, ...move.presets };
+        applyRow(target, new Set(move.selectedKeys));
+      } else {
+        addRow(
+          {
+            sourceId: pr.name,
+            name: move.libraryId,
+            presets: move.presets,
+          },
+          new Set(move.selectedKeys),
+        );
+      }
+      applyRow(pr);
+      // A row that only existed because a folder moved in goes away when it
+      // empties; one of the original rows stays put.
+      if (pr.created && Object.keys(pr.presets).length === 0) {
+        removeRow(pr);
+      }
     };
 
     /**

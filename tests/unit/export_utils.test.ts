@@ -367,8 +367,8 @@ test("import modal can target a new library", async () => {
   }
 });
 
-test("renaming a nested folder uses and preserves its slash-separated path", () => {
-  const originalPrompt = globalThis.prompt;
+test("renaming a nested folder uses and preserves its slash-separated path", async () => {
+  const originalPrompt = ModalUtils.prompt;
   let promptDefault: string | undefined;
   const presets: PresetCache = {
     "Faces/Portraits/Studio": { preset: "studio" },
@@ -376,10 +376,10 @@ test("renaming a nested folder uses and preserves its slash-separated path", () 
   };
 
   try {
-    globalThis.prompt = (_message, defaultValue) => {
+    ModalUtils.prompt = (async (_message: string, defaultValue = "") => {
       promptDefault = defaultValue;
       return "Faces/Editorial";
-    };
+    }) as typeof ModalUtils.prompt;
     const tree = ExportUtils.buildPresetSelectorTree(presets);
     const group = Array.from(
       tree.element.querySelectorAll(".j0n4t-pg-tree-group"),
@@ -390,6 +390,7 @@ test("renaming a nested folder uses and preserves its slash-separated path", () 
     );
     assert.ok(group);
     group.querySelector<HTMLElement>(".j0n4t-pg-edit-group-btn")?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     assert.equal(promptDefault, "Faces/Portraits");
     assert.equal(
@@ -400,7 +401,94 @@ test("renaming a nested folder uses and preserves its slash-separated path", () 
     assert.equal(presets["faces/editorial"]?.__color__, "#ff0000");
     assert.equal(presets["Faces/Portraits/Studio"], undefined);
   } finally {
-    globalThis.prompt = originalPrompt;
+    ModalUtils.prompt = originalPrompt;
+  }
+});
+
+test("a folder move is refused when no picker is there to receive it", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  const originalAlert = ModalUtils.alert;
+  const alerts: string[] = [];
+  try {
+    ModalUtils.prompt = (async () => "otherlib#Faces") as typeof ModalUtils.prompt;
+    ModalUtils.alert = (async (message: string) => {
+      alerts.push(message);
+    }) as typeof ModalUtils.alert;
+    const presets: PresetCache = { "faces/portrait": { preset: "portrait" } };
+    const tree = ExportUtils.buildPresetSelectorTree(presets, null, {
+      libraryId: "main",
+    });
+    const group = tree.element.querySelector(".j0n4t-pg-tree-group");
+    assert.ok(group);
+    group.querySelector<HTMLElement>(".j0n4t-pg-edit-group-btn")?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(alerts.length, 1);
+    assert.equal(
+      presets["faces/portrait"]?.preset,
+      "portrait",
+      "nothing moved",
+    );
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+    ModalUtils.alert = originalAlert;
+  }
+});
+
+test("a library qualifier with no library name is refused", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  const originalAlert = ModalUtils.alert;
+  const alerts: string[] = [];
+  try {
+    ModalUtils.prompt = (async () => "#Faces") as typeof ModalUtils.prompt;
+    ModalUtils.alert = (async (message: string) => {
+      alerts.push(message);
+    }) as typeof ModalUtils.alert;
+    const tree = ExportUtils.buildPresetSelectorTree(
+      { "faces/portrait": { preset: "portrait" } },
+      null,
+      { libraryId: "main" },
+    );
+    tree.element
+      .querySelector<HTMLElement>(".j0n4t-pg-edit-group-btn")
+      ?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(alerts.length, 1);
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+    ModalUtils.alert = originalAlert;
+  }
+});
+
+test("a tree with no library of its own refuses a move", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  const originalAlert = ModalUtils.alert;
+  const alerts: string[] = [];
+  let received = 0;
+  try {
+    ModalUtils.prompt = (async () => "main#Faces") as typeof ModalUtils.prompt;
+    ModalUtils.alert = (async (message: string) => {
+      alerts.push(message);
+    }) as typeof ModalUtils.alert;
+    const presets: PresetCache = { "faces/portrait": { preset: "portrait" } };
+    // a receiver is present, so only the missing library can refuse the move
+    const tree = ExportUtils.buildPresetSelectorTree(presets, null, {
+      onMove: () => {
+        received += 1;
+      },
+    });
+    tree.element
+      .querySelector<HTMLElement>(".j0n4t-pg-edit-group-btn")
+      ?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(alerts.length, 1);
+    assert.equal(received, 0, "the move was never handed over");
+    assert.equal(presets["faces/portrait"]?.preset, "portrait");
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+    ModalUtils.alert = originalAlert;
   }
 });
 

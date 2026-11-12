@@ -204,6 +204,47 @@ MUTATIONS = [
      "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"
      "          cb.checked = true;",
      "tests/unit/library_picker.test.ts"),
+    # A move only exists when a picker is there to receive it.
+    ("web/ExportUtils.js",
+     "            if (!options.onMove) {",
+     "            if (false) {",
+     "tests/unit/export_utils.test.ts"),
+    # A library qualifier with nothing before the # is not a move.
+    ("web/ExportUtils.js",
+     '          if (trimmed.startsWith("#")) {',
+     "          if (false) {",
+     "tests/unit/export_utils.test.ts"),
+    # A tree that does not belong to a library cannot move one.
+    ("web/ExportUtils.js",
+     "          if (namedLibrary !== null && options.libraryId == null) {",
+     "          if (false) {",
+     "tests/unit/export_utils.test.ts"),
+    # A move reports the keys that were checked, so they arrive checked.
+    ("web/ExportUtils.js",
+     "              if (checked) selectedKeys.push(newKey);",
+     "              if (false) selectedKeys.push(newKey);",
+     "tests/unit/library_picker.test.ts"),
+    # The moved presets leave the library they came from.
+    ("web/ExportUtils.js",
+     "              if (presets[oldKey]) {\n"
+     "                moved[newKey] = presets[oldKey];\n"
+     "                delete presets[oldKey];\n"
+     "              }",
+     "              if (presets[oldKey]) {\n"
+     "                moved[newKey] = presets[oldKey];\n"
+     "              }",
+     "tests/unit/library_picker.test.ts"),
+    # A move that creates a row checks the keys it carried.
+    ("web/ExportUtils.js",
+     "            presets: move.presets,\n"
+     "          },\n"
+     "          new Set(move.selectedKeys),\n"
+     "        );",
+     "            presets: move.presets,\n"
+     "          },\n"
+     "          null,\n"
+     "        );",
+     "tests/unit/library_picker.test.ts"),
     # The case-insensitive fallback is what lets a key typed in another case
     # resolve; without it only the exact stored spelling works.
     ("web/PresetLogic.js",

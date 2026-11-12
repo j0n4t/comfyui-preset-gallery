@@ -61,6 +61,38 @@ function rowNames(p: Picker): Array<string | null> {
   );
 }
 
+/** The folder group row for `group`, wherever it currently lives. */
+function groupEl(p: Picker, group: string): HTMLElement | null {
+  const found = Array.from(
+    p.element.querySelectorAll(".j0n4t-pg-tree-group"),
+  ).find(
+    (el) =>
+      el.querySelector<HTMLInputElement>(".j0n4t-pg-group-cb")?.dataset.group ===
+      group,
+  );
+  return (found as HTMLElement | undefined) ?? null;
+}
+
+/** Click a folder's rename button and let the prompt resolve. */
+async function renameFolder(
+  p: Picker,
+  group: string,
+  answer: string,
+): Promise<void> {
+  const originalPrompt = ModalUtils.prompt;
+  try {
+    ModalUtils.prompt = (async () => answer) as typeof ModalUtils.prompt;
+    const btn = groupEl(p, group)?.querySelector<HTMLElement>(
+      ".j0n4t-pg-edit-group-btn",
+    );
+    assert.ok(btn, `no rename button for ${group}`);
+    btn.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+  }
+}
+
 test("the picker renders one row per library", () => {
   const p = picker({
     rows: [
@@ -307,6 +339,146 @@ test("getShape returns the libraries to write", () => {
   assert.deepEqual(p.getShape().main, {
     "faces/portrait": { preset: "portrait" },
   });
+});
+
+test("a folder renamed to another library moves into that row", async () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: {
+          "faces/portrait": { preset: "portrait" },
+          "faces/macro": { preset: "macro" },
+          "urban/night": { preset: "night" },
+          faces: { __color__: "#ff0000" },
+        },
+      },
+      { sourceId: "styles", name: "styles", presets: {} },
+    ],
+    existingCachesById: { main: {}, styles: {} },
+  });
+
+  await renameFolder(p, "faces", "styles#Urban");
+
+  // the folder left the main row, keeping its colour
+  assert.equal(p.getShape().main["faces/portrait"], undefined);
+  assert.equal(p.getShape().main["faces/macro"], undefined);
+  assert.equal(p.getShape().main["faces"], undefined);
+  assert.equal(p.getShape().main["urban/night"]?.preset, "night");
+  // and landed in the styles row under its new name
+  assert.equal(p.getShape().styles["urban/portrait"]?.preset, "portrait");
+  assert.equal(p.getShape().styles["urban/macro"]?.preset, "macro");
+  assert.equal(p.getShape().styles["urban"]?.__color__, "#ff0000");
+});
+
+test("a move to a library that is not a row creates one", async () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: {
+          "faces/portrait": { preset: "portrait" },
+          faces: { __color__: "#ff0000" },
+        },
+      },
+    ],
+  });
+
+  await renameFolder(p, "faces", "portrait_pack#Faces");
+
+  assert.deepEqual(Object.keys(p.getShape()).sort(), [
+    "main",
+    "portrait_pack",
+  ]);
+  assert.equal(
+    p.getShape().portrait_pack["faces/portrait"]?.preset,
+    "portrait",
+  );
+  assert.equal(p.getShape().portrait_pack["faces"]?.__color__, "#ff0000");
+  assert.equal(
+    consequenceLines(p)[1],
+    "creates a new library · 1 preset",
+    "the new row says what it is",
+  );
+});
+
+test("a move carries the checked state of the presets", async () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: {
+          "faces/portrait": { preset: "portrait" },
+          "faces/macro": { preset: "macro" },
+        },
+      },
+    ],
+    existingCachesById: { main: {}, styles: {} },
+  });
+
+  // leave faces/macro unchecked before moving the folder
+  const macro = p.element.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-item-cb[value='faces/macro']",
+  );
+  assert.ok(macro);
+  macro.checked = false;
+  macro.dispatchEvent(new Event("change"));
+
+  // the target is not a row yet, so the move has to create one
+  await renameFolder(p, "faces", "portrait_pack#Faces");
+
+  // main stays as an empty original row; portrait_pack holds the move
+  assert.deepEqual(Object.keys(p.getShape()).sort(), [
+    "main",
+    "portrait_pack",
+  ]);
+  assert.deepEqual(p.getSelection().portrait_pack, ["faces/portrait"]);
+});
+
+test("a plain folder rename stays in its row", async () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: { "faces/portrait": { preset: "portrait" } },
+      },
+    ],
+  });
+
+  await renameFolder(p, "faces", "Faces/Editorial");
+
+  assert.equal(
+    p.getShape().main["faces/editorial/portrait"]?.preset,
+    "portrait",
+  );
+  assert.deepEqual(Object.keys(p.getShape()), ["main"]);
+});
+
+test("a row created by a move goes away when it empties", async () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: { "faces/portrait": { preset: "portrait" } },
+      },
+    ],
+  });
+
+  await renameFolder(p, "faces", "portrait_pack#Faces");
+  assert.deepEqual(Object.keys(p.getShape()).sort(), [
+    "main",
+    "portrait_pack",
+  ]);
+
+  // move the same folder on into the main row; portrait_pack empties and goes
+  await renameFolder(p, "faces", "main#Faces");
+  assert.deepEqual(Object.keys(p.getShape()), ["main"]);
+  assert.equal(p.getShape().main["faces/portrait"]?.preset, "portrait");
 });
 
 test("the duplicate switch is global, and only in import mode", () => {
