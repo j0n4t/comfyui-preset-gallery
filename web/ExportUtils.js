@@ -791,22 +791,20 @@ const ExportUtils = {
   },
 
   /**
-   * @param {ExportConfig} config
+   * The preset map an export writes.
+   *
+   * Entries with no text and no image are dropped, folder colours are kept only
+   * for folders the exported keys still reach, and the keys are sorted so the
+   * output is stable. `selectedKeys` narrows the export to a selection; a null
+   * or omitted value exports the whole library.
+   * @param {PresetCache} presets
+   * @param {string[] | null} [selectedKeys]
+   * @param {boolean} [includeColors]
+   * @returns {PresetCache}
    */
-  async exportPresets({
-    format = "zip",
-    mode = "full",
-    selectedKeys = null,
-    includeColors = true,
-    editedPresets = {},
-    libraryId,
-    libraryName,
-  }) {
-    const exportStem = ExportUtils.getExportStem(libraryName ?? libraryId);
-    /** @type {PresetCache} */
-    let presets = editedPresets;
-
+  filterExportPresets(presets, selectedKeys = null, includeColors = true) {
     /**
+     * The folders a set of keys reaches, so their colours survive a selection.
      * @param {PresetCache} [presetMap]
      * @param {string[] | null} [keys]
      * @returns {Set<string>}
@@ -831,9 +829,10 @@ const ExportUtils = {
       return active;
     };
 
+    /** @type {PresetCache} */
+    let filtered = {};
+
     if (selectedKeys && Array.isArray(selectedKeys)) {
-      /** @type {PresetCache} */
-      const filtered = {};
       for (const k of selectedKeys) {
         if (presets?.[k]) {
           const itemCopy = { ...presets[k] };
@@ -852,11 +851,8 @@ const ExportUtils = {
           }
         }
       }
-      presets = filtered;
     } else {
       const activeFolders = getActiveFolders(presets);
-      /** @type {PresetCache} */
-      const filtered = {};
       for (const [k, item] of Object.entries(presets)) {
         if (!item) continue;
         const hasContent =
@@ -870,39 +866,75 @@ const ExportUtils = {
           filtered[k] = { __color__: item.__color__ };
         }
       }
-      presets = filtered;
     }
 
-    presets = Object.keys(presets)
+    return Object.keys(filtered)
       .sort()
       .reduce((acc, key) => {
-        acc[key] = presets[key];
+        acc[key] = filtered[key];
         return acc;
       }, /** @type {PresetCache} */ ({}));
+  },
+
+  /**
+   * Write one library's entries into a zip, under `prefix` when it has one.
+   *
+   * Text becomes `<key>.txt`, an image becomes `<key>.<ext>` carrying the
+   * base64 payload, and a folder colour becomes `<key>/__color__.txt`. A
+   * colour-only entry writes its colour and nothing else.
+   * @param {any} zip a JSZip instance
+   * @param {string} prefix library id, or "" for the archive root
+   * @param {PresetCache} presets
+   * @param {string} mode "full" or "preset-only"
+   * @param {boolean} includeColors
+   */
+  addPresetZipEntries(zip, prefix, presets, mode, includeColors) {
+    const base = prefix ? `${prefix.replace(/\/+$/, "")}/` : "";
+    for (const [key, item] of Object.entries(presets)) {
+      if (item.preset) {
+        zip.file(`${base}${key}.txt`, item.preset || "");
+
+        if (mode !== "preset-only" && item.filename) {
+          const parsed = PresetLogic.parseDataURL(item.filename);
+          if (parsed) {
+            zip.file(`${base}${key}.${parsed.ext}`, parsed.base64, {
+              base64: true,
+            });
+          }
+        }
+      }
+
+      if (includeColors && item.__color__) {
+        zip.file(`${base}${key}/__color__.txt`, item.__color__);
+      }
+    }
+  },
+
+  /**
+   * @param {ExportConfig} config
+   */
+  async exportPresets({
+    format = "zip",
+    mode = "full",
+    selectedKeys = null,
+    includeColors = true,
+    editedPresets = {},
+    libraryId,
+    libraryName,
+  }) {
+    const exportStem = ExportUtils.getExportStem(libraryName ?? libraryId);
+    const presets = ExportUtils.filterExportPresets(
+      editedPresets,
+      selectedKeys,
+      includeColors,
+    );
 
     if (format === "zip") {
       try {
         const JSZip = await loadJSZip();
         const zip = new JSZip();
 
-        for (const [key, item] of Object.entries(presets)) {
-          if (item.preset) {
-            zip.file(`${key}.txt`, item.preset || "");
-
-            if (mode !== "preset-only" && item.filename) {
-              const parsed = PresetLogic.parseDataURL(item.filename);
-              if (parsed) {
-                zip.file(`${key}.${parsed.ext}`, parsed.base64, {
-                  base64: true,
-                });
-              }
-            }
-          }
-
-          if (includeColors && item.__color__) {
-            zip.file(`${key}/__color__.txt`, item.__color__);
-          }
-        }
+        ExportUtils.addPresetZipEntries(zip, "", presets, mode, includeColors);
 
         const blob = await zip.generateAsync({ type: "blob" });
         const url = URL.createObjectURL(blob);
@@ -1203,6 +1235,89 @@ const ExportUtils = {
    * @returns {Promise<{ success: boolean }>}
    */
   /**
+   * Merge the selected imported entries into a target library's own cache.
+   *
+   * `incomingPresets` is the map the selector tree holds - the imported map with
+   * any rename or text edit applied - so a key the tree renamed is read from it
+   * rather than from the file as it was parsed. `skip` leaves an existing key
+   * alone, `keep_both` files the imported copy under `_copy_N`, and `overwrite`
+   * (the default) replaces it. Folder colours follow the imported keys.
+   * @param {PresetCache} currentPresets the target library as it is now
+   * @param {PresetCache} incomingPresets
+   * @param {string[]} selectedKeys
+   * @param {string} duplicateStrategy
+   * @param {boolean} importColors
+   * @returns {PresetCache} the merged cache, ready to save
+   */
+  applyImportSelection(
+    currentPresets,
+    incomingPresets,
+    selectedKeys,
+    duplicateStrategy,
+    importColors,
+  ) {
+    const importedActiveFolders = new Set();
+
+    for (const key of selectedKeys) {
+      const item = incomingPresets[key];
+      if (!item || (!item.preset && !item.filename)) continue;
+
+      let targetKey = key;
+      if (
+        targetKey in currentPresets &&
+        currentPresets[targetKey].preset
+      ) {
+        if (duplicateStrategy === "skip") {
+          continue;
+        } else if (duplicateStrategy === "keep_both") {
+          let copyIndex = 1;
+          const parts = key.split("/");
+          const baseName = parts.pop();
+          const folderPrefix = parts.length ? parts.join("/") + "/" : "";
+          while (
+            `${folderPrefix}${baseName}_copy_${copyIndex}` in currentPresets &&
+            currentPresets[`${folderPrefix}${baseName}_copy_${copyIndex}`]
+              .preset
+          ) {
+            copyIndex++;
+          }
+          targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
+        }
+      }
+
+      const newItem = { ...item };
+      if (!importColors) delete newItem.__color__;
+      currentPresets[targetKey] = newItem;
+
+      const targetParts = targetKey.split("/");
+      while (targetParts.length > 1) {
+        targetParts.pop();
+        importedActiveFolders.add(targetParts.join("/"));
+      }
+
+      const origParts = key.split("/");
+      while (origParts.length > 1) {
+        origParts.pop();
+        importedActiveFolders.add(origParts.join("/"));
+      }
+    }
+
+    if (importColors) {
+      for (const folderKey of importedActiveFolders) {
+        const sourceItem = incomingPresets[folderKey];
+        if (sourceItem && sourceItem.__color__) {
+          currentPresets[folderKey] = {
+            ...(currentPresets[folderKey] || {}),
+            __color__: sourceItem.__color__,
+          };
+        }
+      }
+    }
+
+    return currentPresets;
+  },
+
+  /**
    * @param {File} file
    * @param {string} defaultLibraryId the library to preselect
    */
@@ -1332,67 +1447,14 @@ const ExportUtils = {
           },
         ) => {
           const currentPresets = await PresetGalleryAPI.getPresets(libraryId);
-          const importedActiveFolders = new Set();
-
-          for (const key of selectedKeys) {
-            const item = editedPresets[key] || importedPresets[key];
-            if (!item || (!item.preset && !item.filename)) continue;
-
-            let targetKey = key;
-            if (
-              targetKey in currentPresets &&
-              currentPresets[targetKey].preset
-            ) {
-              if (duplicateStrategy === "skip") {
-                continue;
-              } else if (duplicateStrategy === "keep_both") {
-                let copyIndex = 1;
-                const parts = key.split("/");
-                const baseName = parts.pop();
-                const folderPrefix = parts.length ? parts.join("/") + "/" : "";
-                while (
-                  `${folderPrefix}${baseName}_copy_${copyIndex}` in
-                    currentPresets &&
-                  currentPresets[`${folderPrefix}${baseName}_copy_${copyIndex}`]
-                    .preset
-                ) {
-                  copyIndex++;
-                }
-                targetKey = `${folderPrefix}${baseName}_copy_${copyIndex}`;
-              }
-            }
-
-            const newItem = { ...item };
-            if (!importColors) delete newItem.__color__;
-            currentPresets[targetKey] = newItem;
-
-            const targetParts = targetKey.split("/");
-            while (targetParts.length > 1) {
-              targetParts.pop();
-              importedActiveFolders.add(targetParts.join("/"));
-            }
-
-            const origParts = key.split("/");
-            while (origParts.length > 1) {
-              origParts.pop();
-              importedActiveFolders.add(origParts.join("/"));
-            }
-          }
-
-          if (importColors) {
-            for (const folderKey of importedActiveFolders) {
-              const sourceItem =
-                editedPresets[folderKey] || importedPresets[folderKey];
-              if (sourceItem && sourceItem.__color__) {
-                currentPresets[folderKey] = {
-                  ...(currentPresets[folderKey] || {}),
-                  __color__: sourceItem.__color__,
-                };
-              }
-            }
-          }
-
-          await PresetGalleryAPI.savePresets(currentPresets, libraryId);
+          const merged = ExportUtils.applyImportSelection(
+            currentPresets,
+            editedPresets,
+            selectedKeys,
+            duplicateStrategy,
+            importColors,
+          );
+          await PresetGalleryAPI.savePresets(merged, libraryId);
           resolve({ success: true });
         },
       );

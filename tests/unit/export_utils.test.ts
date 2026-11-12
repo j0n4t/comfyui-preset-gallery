@@ -434,3 +434,164 @@ test("renaming a nested folder uses and preserves its slash-separated path", () 
     globalThis.prompt = originalPrompt;
   }
 });
+
+// --- filterExportPresets ---
+
+test("filterExportPresets narrows to the selection and keeps the folders it reaches", () => {
+  const filtered = ExportUtils.filterExportPresets(
+    {
+      "Faces/Portrait": { preset: "portrait" },
+      "Faces/Macro": { preset: "macro" },
+      Faces: { __color__: "#ff0000" },
+      Ghost: { __color__: "#000000" },
+    },
+    ["Faces/Portrait"],
+  );
+
+  assert.deepEqual(filtered, {
+    "Faces/Portrait": { preset: "portrait" },
+    Faces: { __color__: "#ff0000" },
+  });
+});
+
+test("filterExportPresets drops folder colours when includeColors is false", () => {
+  const filtered = ExportUtils.filterExportPresets(
+    {
+      "Faces/Portrait": { preset: "portrait" },
+      Faces: { __color__: "#ff0000" },
+    },
+    ["Faces/Portrait"],
+    false,
+  );
+
+  assert.deepEqual(filtered, { "Faces/Portrait": { preset: "portrait" } });
+});
+
+test("filterExportPresets drops content-less entries and sorts keys", () => {
+  const filtered = ExportUtils.filterExportPresets({
+    "B/Two": { preset: "two" },
+    Ghost: { __color__: "#000000" },
+    "A/One": { preset: "one" },
+  });
+
+  assert.deepEqual(Object.keys(filtered), ["A/One", "B/Two"]);
+});
+
+// --- addPresetZipEntries ---
+
+function recordingZip(): {
+  files: Record<string, string>;
+  file: (path: string, contents: string) => void;
+} {
+  const files: Record<string, string> = {};
+  return {
+    files,
+    file: (path, contents) => {
+      files[path] = contents;
+    },
+  };
+}
+
+test("addPresetZipEntries writes text, image and colour entries under a prefix", () => {
+  const zip = recordingZip();
+  ExportUtils.addPresetZipEntries(
+    zip,
+    "main",
+    {
+      "Faces/Portrait": {
+        preset: "portrait",
+        filename: "data:image/png;base64,AAAA",
+      },
+      Faces: { __color__: "#ff0000" },
+    },
+    "full",
+    true,
+  );
+
+  assert.deepEqual(Object.keys(zip.files).sort(), [
+    "main/Faces/Portrait.png",
+    "main/Faces/Portrait.txt",
+    "main/Faces/__color__.txt",
+  ]);
+  assert.equal(zip.files["main/Faces/Portrait.txt"], "portrait");
+  assert.equal(zip.files["main/Faces/__color__.txt"], "#ff0000");
+});
+
+test("addPresetZipEntries skips images in preset-only mode and honours an empty prefix", () => {
+  const zip = recordingZip();
+  ExportUtils.addPresetZipEntries(
+    zip,
+    "",
+    { Root: { preset: "root", filename: "data:image/png;base64,AAAA" } },
+    "preset-only",
+    true,
+  );
+
+  assert.deepEqual(Object.keys(zip.files), ["Root.txt"]);
+});
+
+// --- applyImportSelection ---
+
+test("applyImportSelection overwrites an existing key by default", () => {
+  const merged = ExportUtils.applyImportSelection(
+    { "Faces/Portrait": { preset: "old" } },
+    { "Faces/Portrait": { preset: "new" } },
+    ["Faces/Portrait"],
+    "overwrite",
+    true,
+  );
+
+  assert.deepEqual(merged, { "Faces/Portrait": { preset: "new" } });
+});
+
+test("applyImportSelection skip leaves the existing key alone", () => {
+  const merged = ExportUtils.applyImportSelection(
+    { "Faces/Portrait": { preset: "old" } },
+    { "Faces/Portrait": { preset: "new" } },
+    ["Faces/Portrait"],
+    "skip",
+    true,
+  );
+
+  assert.deepEqual(merged, { "Faces/Portrait": { preset: "old" } });
+});
+
+test("applyImportSelection keep_both files the import under a copy suffix", () => {
+  const merged = ExportUtils.applyImportSelection(
+    { "Faces/Portrait": { preset: "old" } },
+    { "Faces/Portrait": { preset: "new" } },
+    ["Faces/Portrait"],
+    "keep_both",
+    true,
+  );
+
+  assert.deepEqual(merged, {
+    "Faces/Portrait": { preset: "old" },
+    "Faces/Portrait_copy_1": { preset: "new" },
+  });
+});
+
+test("applyImportSelection carries folder colours only when asked", () => {
+  const incoming: PresetCache = {
+    "Faces/Portrait": { preset: "new" },
+    Faces: { __color__: "#ff0000" },
+  };
+
+  const withColors = ExportUtils.applyImportSelection(
+    {},
+    incoming,
+    ["Faces/Portrait"],
+    "overwrite",
+    true,
+  );
+  assert.equal(withColors["Faces"]?.__color__, "#ff0000");
+
+  const withoutColors = ExportUtils.applyImportSelection(
+    {},
+    incoming,
+    ["Faces/Portrait"],
+    "overwrite",
+    false,
+  );
+  assert.equal(withoutColors["Faces"], undefined);
+});
