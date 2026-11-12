@@ -175,6 +175,35 @@ MUTATIONS = [
      "      );",
      "      false;",
      "tests/unit/library_bundle.test.ts"),
+    # The picker's pencil renames the row through a prompt.
+    ("web/ExportUtils.js",
+     "        const typed = await ModalUtils.prompt(\"Library name\", pr.name);",
+     "        const typed = pr.name;",
+     "tests/unit/library_picker.test.ts"),
+    # An unusable name is refused, not written.
+    ("web/ExportUtils.js",
+     "        if (!/^[A-Za-z0-9_-]+$/.test(clean)) {",
+     "        if (false) {",
+     "tests/unit/library_picker.test.ts"),
+    # Renaming onto another row folds the two into one.
+    ("web/ExportUtils.js",
+     "      const target = pickerRows.find(\n"
+     "        (other) => other !== pr && other.name === clean,\n"
+     "      );",
+     "      const target = null;",
+     "tests/unit/library_picker.test.ts"),
+    # The consequence line tells a new library from a merge.
+    ("web/ExportUtils.js",
+     "      if (!known) return `creates a new library · ${noun}`;",
+     "      if (!known) return `merges into ${pr.name} · ${noun}`;",
+     "tests/unit/library_picker.test.ts"),
+    # The master checkbox drives every row.
+    ("web/ExportUtils.js",
+     "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"
+     "          cb.checked = masterCb.checked;",
+     "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"
+     "          cb.checked = true;",
+     "tests/unit/library_picker.test.ts"),
     # The case-insensitive fallback is what lets a key typed in another case
     # resolve; without it only the exact stored spelling works.
     ("web/PresetLogic.js",

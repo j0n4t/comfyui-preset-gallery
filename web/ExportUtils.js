@@ -63,6 +63,33 @@ import PresetDisplay from "./PresetDisplay.js";
  */
 
 /**
+ * One library in the picker.
+ * @typedef {Object} PickerRow
+ * @property {string} sourceId
+ * @property {string} name
+ * @property {PresetCache} presets
+ * @property {SelectorTreeResult | null} tree
+ * @property {HTMLElement | null} element
+ * @property {HTMLElement | null} nameEl
+ * @property {HTMLElement | null} consequenceEl
+ * @property {HTMLElement | null} countEl
+ * @property {HTMLInputElement | null} checkEl
+ * @property {HTMLElement | null} itemsEl
+ * @property {HTMLElement | null} renameEl
+ * @property {HTMLElement | null} collapseEl
+ */
+
+/**
+ * The editable preview of an import or export.
+ * @typedef {Object} LibraryPicker
+ * @property {HTMLDivElement} element
+ * @property {() => Array<{sourceId: string, name: string, presets: PresetCache, selectedKeys: string[]}>} getRows
+ * @property {() => Record<string, PresetCache>} getShape
+ * @property {() => Record<string, string[]>} getSelection
+ * @property {() => string} getStrategy
+ */
+
+/**
  * The bundle selector: one group row per library, each holding that library's
  * own preset tree.
  * @typedef {Object} BundleSelectorTree
@@ -158,9 +185,11 @@ const ExportUtils = {
   /**
    * @param {PresetCache} presets
    * @param {PresetCache | null} [existingPresets=null]
-   * @param {{ nested?: boolean }} [options] `nested` drops the tree's own
-   *   controls and its scroll cap, so it can sit inside another selector - the
-   *   bundle tree puts one of these under every library row.
+   * @param {{ nested?: boolean, libraryId?: string }} [options] `nested` drops
+   *   the tree's own controls and its scroll cap, so it can sit inside another
+   *   selector - the bundle tree puts one of these under every library row.
+   *   `libraryId` names the library the presets belong to, which is how a
+   *   `library#folder` rename tells a move from a rename in place.
    * @returns {SelectorTreeResult}
    */
   buildPresetSelectorTree(presets, existingPresets = null, options = {}) {
@@ -679,6 +708,347 @@ const ExportUtils = {
           }
         });
         if (stateChanged) updateGroupAndMasterStates();
+      },
+    };
+  },
+
+  /**
+   * The editable preview of what an import or export will write.
+   *
+   * Every row is one library: a checkbox, a name with a pencil, a line saying
+   * what writing it will do, and its own preset tree. The preview *is* the
+   * shape - a rename or a checkbox mutates it in place, and `getShape()` is
+   * what the caller writes. There is no history and no undo.
+   *
+   * `name` is the library that will be written; `sourceId` is the library the
+   * row's presets came from, which is what tells "restores in place" apart from
+   * "merges into" another library. Renaming a row onto another row's name
+   * merges the two, so names stay unique.
+   * @param {Object} options
+   * @param {Array<{sourceId: string, name: string, presets: PresetCache}>} options.rows
+   * @param {Array<{id: string, name: string}>} [options.served]
+   * @param {Record<string, PresetCache> | null} [options.existingCachesById]
+   * @param {"import" | "export"} [options.mode]
+   * @returns {LibraryPicker}
+   */
+  buildLibraryPicker({
+    rows,
+    served = [],
+    existingCachesById = null,
+    mode = "import",
+  }) {
+    const container = document.createElement("div");
+    container.className = "j0n4t-pg-selector-container";
+
+    const controls = document.createElement("div");
+    controls.className = "j0n4t-pg-selector-controls";
+    controls.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <label class="j0n4t-pg-checkbox-wrap" style="margin: 0;">
+          <input type="checkbox" id="j0n4t-pg-picker-sel-all" checked />
+          <span><strong>Select / Deselect All Libraries</strong></span>
+        </label>
+        <button type="button" id="j0n4t-pg-picker-toggle-collapse" style="background: transparent; border: 1px solid #777; color: inherit; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">Collapse All</button>
+      </div>
+      ${mode === "import" ? `
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+          <label for="j0n4t-pg-picker-strategy" style="font-size: 0.85em; color: #aaa;">Duplicate presets</label>
+          <select id="j0n4t-pg-picker-strategy" style="flex: 1;">
+            <option value="overwrite">Overwrite existing presets</option>
+            <option value="skip">Skip duplicates</option>
+            <option value="keep_both">Keep both (rename with _copy)</option>
+          </select>
+        </div>
+      ` : ""}
+    `;
+    container.appendChild(controls);
+
+    /** @type {PickerRow[]} */
+    const pickerRows = (rows || []).map((row) => ({
+      sourceId: row.sourceId ?? row.name ?? "",
+      name: row.name ?? row.sourceId ?? "",
+      presets: row.presets || {},
+      tree: null,
+      element: null,
+      nameEl: null,
+      consequenceEl: null,
+      countEl: null,
+      checkEl: null,
+      itemsEl: null,
+      renameEl: null,
+      collapseEl: null,
+    }));
+
+    /** Every preset checkbox inside a container, typed as an input. */
+    const itemBoxes = (/** @type {HTMLElement} */ el) =>
+      /** @type {HTMLInputElement[]} */ (
+        Array.from(el.querySelectorAll(".j0n4t-pg-item-cb"))
+      );
+
+    /** A row's preset box, which `renderRow` always sets before use. */
+    const itemsOf = (/** @type {PickerRow} */ pr) =>
+      /** @type {HTMLElement} */ (pr.itemsEl);
+
+    /** @param {number} n */
+    const plural = (n) => (n === 1 ? "" : "s");
+
+    /**
+     * @param {PickerRow} pr
+     * @param {string} libraryId
+     */
+    const duplicatesAgainst = (pr, libraryId) =>
+      ExportUtils.getDuplicateCount(
+        Object.keys(pr.presets),
+        pr.presets,
+        existingCachesById ? existingCachesById[libraryId] ?? null : null,
+      );
+
+    /**
+     * One line under the name saying what writing this row will do.
+     * @param {PickerRow} pr
+     */
+    const consequenceText = (pr) => {
+      const total = Object.keys(pr.presets).length;
+      const noun = `${total} preset${plural(total)}`;
+      if (pr.name === pr.sourceId) {
+        const duplicates = duplicatesAgainst(pr, pr.name);
+        return `restores in place · ${noun}, ${duplicates} duplicate${plural(duplicates)}`;
+      }
+      const known = served.find((library) => library.id === pr.name);
+      if (!known) return `creates a new library · ${noun}`;
+      const duplicates = duplicatesAgainst(pr, pr.name);
+      return `merges into ${known.name} · ${noun}, ${duplicates} duplicate${plural(duplicates)}`;
+    };
+
+    /**
+     * Rebuild the header from the row's current state.
+     * @param {PickerRow} pr
+     */
+    const updateRow = (pr) => {
+      const total = Object.keys(pr.presets).length;
+      const selected = pr.tree ? pr.tree.getSelectedKeys().length : 0;
+      if (pr.nameEl) {
+        pr.nameEl.innerHTML =
+          `<strong>${PresetDOM.escapeHTML(pr.name)}</strong>` +
+          ` (${selected}/${total})`;
+      }
+      if (pr.consequenceEl) {
+        pr.consequenceEl.textContent = consequenceText(pr);
+      }
+      const boxes = pr.itemsEl ? itemBoxes(pr.itemsEl) : [];
+      const checked = boxes.filter((cb) => cb.checked).length;
+      if (pr.checkEl) {
+        pr.checkEl.checked = boxes.length > 0 && checked === boxes.length;
+        pr.checkEl.indeterminate = checked > 0 && checked < boxes.length;
+      }
+    };
+
+    /**
+     * Mount the row's preset tree against its current name.
+     * @param {PickerRow} pr
+     */
+    const mountTree = (pr) => {
+      pr.tree = ExportUtils.buildPresetSelectorTree(
+        pr.presets,
+        existingCachesById ? existingCachesById[pr.name] ?? null : null,
+        { nested: true, libraryId: pr.name },
+      );
+      itemsOf(pr).replaceChildren(pr.tree.element);
+      updateRow(pr);
+    };
+
+    /**
+     * Rebuild the tree, keeping the keys the user had checked.
+     * @param {PickerRow} pr
+     * @param {Set<string> | null} [keptKeys]
+     */
+    const applyRow = (pr, keptKeys = null) => {
+      const kept = keptKeys ?? new Set(pr.tree?.getSelectedKeys() || []);
+      mountTree(pr);
+      itemBoxes(itemsOf(pr)).forEach((cb) => {
+        cb.checked = kept.has(cb.value);
+        cb.dispatchEvent(new Event("change"));
+      });
+      updateRow(pr);
+    };
+
+    /**
+     * @param {PickerRow} pr
+     */
+    const removeRow = (pr) => {
+      pr.element?.remove();
+      const index = pickerRows.indexOf(pr);
+      if (index !== -1) pickerRows.splice(index, 1);
+    };
+
+    /**
+     * Renaming onto another row's name folds the two rows into one.
+     * @param {PickerRow} pr
+     * @param {string} clean
+     */
+    const renameRow = (pr, clean) => {
+      if (clean === pr.name) return;
+      const target = pickerRows.find(
+        (other) => other !== pr && other.name === clean,
+      );
+      if (target) {
+        // Both rows' picks survive the fold.
+        const kept = new Set([
+          ...(target.tree?.getSelectedKeys() || []),
+          ...(pr.tree?.getSelectedKeys() || []),
+        ]);
+        target.presets = { ...target.presets, ...pr.presets };
+        removeRow(pr);
+        applyRow(target, kept);
+        return;
+      }
+      pr.name = clean;
+      applyRow(pr);
+    };
+
+    /**
+     * @param {PickerRow} pr
+     */
+    const bindRow = (pr) => {
+      pr.renameEl?.addEventListener("click", async () => {
+        const typed = await ModalUtils.prompt("Library name", pr.name);
+        if (typed === null) return;
+        const clean = typed.trim();
+        if (!/^[A-Za-z0-9_-]+$/.test(clean)) {
+          await ModalUtils.alert(
+            "Use only letters, numbers, underscores, and hyphens.",
+          );
+          return;
+        }
+        renameRow(pr, clean);
+      });
+
+      pr.checkEl?.addEventListener("change", () => {
+        const checked = /** @type {HTMLInputElement} */ (pr.checkEl).checked;
+        itemBoxes(itemsOf(pr)).forEach((cb) => {
+          cb.checked = checked;
+          cb.dispatchEvent(new Event("change"));
+        });
+        updateRow(pr);
+      });
+
+      itemsOf(pr).addEventListener("change", (e) => {
+        const target = e.target;
+        if (
+          target instanceof HTMLElement &&
+          target.classList.contains("j0n4t-pg-item-cb")
+        ) {
+          updateRow(pr);
+        }
+      });
+
+      pr.collapseEl?.addEventListener("click", () => {
+        const isCollapsed = itemsOf(pr).style.display === "none";
+        itemsOf(pr).style.display = isCollapsed ? "" : "none";
+        if (pr.collapseEl) {
+          pr.collapseEl.textContent = isCollapsed ? "▼" : "▶";
+        }
+      });
+    };
+
+    /** @param {PickerRow} pr */
+    const renderRow = (pr) => {
+      const groupEl = document.createElement("div");
+      groupEl.className = "j0n4t-pg-tree-group j0n4t-pg-bundle-group";
+
+      const header = document.createElement("div");
+      header.className = "j0n4t-pg-tree-group-header";
+      header.innerHTML = `
+        <div style="display: flex; align-items: center; width: 100%; padding-right: 4px;">
+          <span class="j0n4t-pg-collapse-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em;">▼</span>
+          <label class="j0n4t-pg-checkbox-wrap" style="margin: 0; display: flex; align-items: center;">
+            <input type="checkbox" class="j0n4t-pg-bundle-lib-cb" checked />
+            <span class="j0n4t-pg-group-name j0n4t-pg-bundle-name" style="border-left:3px solid #007acc; padding-left:6px; margin-right: 8px;"></span>
+          </label>
+          <button type="button" class="j0n4t-pg-bundle-rename" title="Rename this library" style="background: transparent; border: 1px solid #555; color: inherit; cursor: pointer; border-radius: 3px; padding: 0 6px; font-size: 0.85em;">✎</button>
+          <span class="j0n4t-pg-bundle-count" style="margin-left: auto; color: #888; font-size: 0.8em;"></span>
+        </div>
+        <div class="j0n4t-pg-bundle-consequence" style="color: #888; font-size: 0.8em; margin-top: 2px; padding-left: 28px;"></div>
+      `;
+
+      const itemsBox = document.createElement("div");
+      itemsBox.className = "j0n4t-pg-tree-group-items";
+
+      pr.element = groupEl;
+      pr.nameEl = header.querySelector(".j0n4t-pg-bundle-name");
+      pr.consequenceEl = header.querySelector(".j0n4t-pg-bundle-consequence");
+      pr.countEl = header.querySelector(".j0n4t-pg-bundle-count");
+      pr.checkEl = header.querySelector(".j0n4t-pg-bundle-lib-cb");
+      pr.renameEl = header.querySelector(".j0n4t-pg-bundle-rename");
+      pr.collapseEl = header.querySelector(".j0n4t-pg-collapse-btn");
+      pr.itemsEl = itemsBox;
+
+      groupEl.appendChild(header);
+      groupEl.appendChild(itemsBox);
+      bindRow(pr);
+      mountTree(pr);
+      return groupEl;
+    };
+
+    for (const pr of pickerRows) {
+      container.appendChild(renderRow(pr));
+    }
+
+    const masterCb = /** @type {HTMLInputElement | null} */ (
+      controls.querySelector("#j0n4t-pg-picker-sel-all")
+    );
+    masterCb?.addEventListener("change", () => {
+      for (const pr of pickerRows) {
+        if (pr.checkEl) pr.checkEl.checked = masterCb.checked;
+        itemBoxes(itemsOf(pr)).forEach((cb) => {
+          cb.checked = masterCb.checked;
+          cb.dispatchEvent(new Event("change"));
+        });
+        updateRow(pr);
+      }
+    });
+
+    const toggleAllBtn = /** @type {HTMLButtonElement | null} */ (
+      controls.querySelector("#j0n4t-pg-picker-toggle-collapse")
+    );
+    let allCollapsed = false;
+    toggleAllBtn?.addEventListener("click", () => {
+      allCollapsed = !allCollapsed;
+      toggleAllBtn.textContent = allCollapsed ? "Expand All" : "Collapse All";
+      for (const pr of pickerRows) {
+        if (pr.collapseEl) pr.collapseEl.textContent = allCollapsed ? "▶" : "▼";
+        itemsOf(pr).style.display = allCollapsed ? "none" : "";
+      }
+    });
+
+    return {
+      element: container,
+      getRows: () =>
+        pickerRows.map((pr) => ({
+          sourceId: pr.sourceId,
+          name: pr.name,
+          presets: pr.presets,
+          selectedKeys: pr.tree ? pr.tree.getSelectedKeys() : [],
+        })),
+      getShape: () => {
+        /** @type {Record<string, PresetCache>} */
+        const shape = {};
+        for (const pr of pickerRows) shape[pr.name] = pr.presets;
+        return shape;
+      },
+      getSelection: () => {
+        /** @type {Record<string, string[]>} */
+        const selection = {};
+        for (const pr of pickerRows) {
+          selection[pr.name] = pr.tree ? pr.tree.getSelectedKeys() : [];
+        }
+        return selection;
+      },
+      getStrategy: () => {
+        const el = /** @type {HTMLSelectElement | null} */ (
+          container.querySelector("#j0n4t-pg-picker-strategy")
+        );
+        return el ? el.value : "overwrite";
       },
     };
   },
