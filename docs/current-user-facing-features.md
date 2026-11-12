@@ -80,16 +80,15 @@ Folder colors and group names can be managed from the gallery's folder headers.
 
 Import and export live in **Settings → Import / Export**. Import accepts `.zip`,
 `.json`, `.yaml`, and `.yml`; export offers `.zip`, `.json`, and `.yaml`. Both
-dialogs let users choose which presets to transfer and how duplicates are
-handled. Imported keys are normalized to lowercase with underscores, matching
-what the editor writes. Every import dialog shows the libraries it will write
-as rows, one preset tree per row, with one duplicate strategy for all of them.
-A row's pencil renames its destination: an existing name merges into that
-library and reports how many presets clash, a new name creates a library, and
-`library#folder` moves a folder into another row. Exporting with the **All
-libraries (bundle)** scope shows every library the same way, with its folders
-and presets underneath, so the export can cover whole libraries or individual
-presets. Importing a bundle shows one row per library, so a bundle can be
+directions show the libraries involved as rows, one preset tree per row, and
+both share one duplicate strategy. A row's pencil renames it: in import that is
+the destination - an existing library merges and reports how many presets
+clash, a new name creates a library - and in export it is the library that gets
+written. `library#folder` in a folder rename moves presets into another row.
+Imported keys are normalized to lowercase with underscores, matching what the
+editor writes. Exporting with the **All libraries (bundle)** scope always
+writes one archive; **Single library** writes one file, unless a folder move
+added a row. Importing a bundle shows one row per library, so a bundle can be
 restored, partly imported, merged into an existing library, or imported under a
 new name of its own.
 

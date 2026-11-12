@@ -809,13 +809,13 @@ export default class PresetGallerySettings {
 
     /** @type {string} */
     let libraryId = served[0].id;
-    /** @type {{ getSelectedKeys: () => string[], getPresets: () => PresetCache, element: HTMLElement } | null} */
-    let tree = null;
     /**
-     * The bundle picker: one group row per library, each holding that
-     * library's preset tree.
+     * One picker per scope; each row is a library and holds that library's
+     * preset tree, so what is checked in a row is what gets written from it.
+     * @type {{ getRows: () => Array<{ name: string, presets: PresetCache, selectedKeys: string[] }>, element: HTMLElement } | null}
      */
-    /** @type {{ element: HTMLElement, rows: unknown[], getSelectedKeysByLibrary: () => Record<string, string[]>, getPresetsByLibrary: () => Record<string, PresetCache> } | null} */
+    let tree = null;
+    /** @type {{ getRows: () => Array<{ name: string, presets: PresetCache, selectedKeys: string[] }>, element: HTMLElement } | null} */
     let bundleTree = null;
 
     const scopeEl = /** @type {HTMLSelectElement | null} */ (
@@ -845,7 +845,17 @@ export default class PresetGallerySettings {
 
     const renderTree = () => {
       if (!treeEl) return;
-      tree = ExportUtils.buildPresetSelectorTree(caches[libraryId] || {});
+      tree = ExportUtils.buildLibraryPicker({
+        rows: [
+          {
+            sourceId: libraryId,
+            name: libraryId,
+            presets: caches[libraryId] || {},
+          },
+        ],
+        served,
+        mode: "export",
+      });
       treeEl.replaceChildren(tree.element);
     };
 
@@ -864,9 +874,14 @@ export default class PresetGallerySettings {
 
     const renderBundleTree = () => {
       if (!bundleTreeEl) return;
-      bundleTree = ExportUtils.buildBundleSelectorTree({
-        libraries: served,
-        cachesById: caches,
+      bundleTree = ExportUtils.buildLibraryPicker({
+        rows: served.map((library) => ({
+          sourceId: library.id,
+          name: library.id,
+          presets: caches[library.id] || {},
+        })),
+        served,
+        mode: "export",
       });
       bundleTreeEl.replaceChildren(bundleTree.element);
     };
@@ -899,51 +914,56 @@ export default class PresetGallerySettings {
       .querySelector("#j0n4t-pg-io-export")
       ?.addEventListener("click", async () => {
         const format = formatEl?.value || "zip";
-        const mode = modeEl?.value || "full";
+        const exportMode = modeEl?.value || "full";
         const includeColors = colorsEl ? colorsEl.checked : true;
+        const isBundle = scopeEl?.value === "bundle";
+        const picker = isBundle ? bundleTree : tree;
+        const rows = (picker?.getRows() || []).filter(
+          (row) => row.selectedKeys.length > 0,
+        );
 
-        if (scopeEl?.value === "bundle") {
-          const selected = bundleTree
-            ? bundleTree.getSelectedKeysByLibrary()
-            : {};
-          const picked = served.filter(
-            (library) => (selected[library.id] || []).length > 0,
-          );
-          if (!picked.length) {
-            await ModalUtils.alert(
-              "Please select at least one preset to export.",
-            );
-            return;
-          }
-          await ExportUtils.exportLibraryBundle(
-            picked,
-            caches,
-            format,
-            mode,
-            includeColors,
-            selected,
-          );
-          return;
-        }
-
-        const selectedKeys = tree ? tree.getSelectedKeys() : [];
-        if (!selectedKeys.length) {
+        if (!rows.length) {
           await ModalUtils.alert(
             "Please select at least one preset to export.",
           );
           return;
         }
-        await ExportUtils.exportPresets({
+
+        /**
+         * The name a row is written under: the server's display name when the
+         * row is a served library, the row's own name otherwise.
+         * @param {string} id
+         * @returns {string}
+         */
+        const displayName = (id) =>
+          served.find((library) => library.id === id)?.name ?? id;
+
+        // The scope decides the container: All libraries always writes one
+        // archive, so the file the user gets matches the scope they picked.
+        // Single library writes one file - unless a folder move added a row,
+        // because the moved presets have to go somewhere.
+        if (!isBundle && rows.length === 1) {
+          const row = rows[0];
+          await ExportUtils.exportPresets({
+            format,
+            mode: exportMode,
+            selectedKeys: row.selectedKeys,
+            includeColors,
+            editedPresets: row.presets,
+            libraryId: row.name,
+            libraryName: displayName(row.name),
+          });
+          return;
+        }
+
+        await ExportUtils.exportLibraryBundle(
+          rows.map((row) => ({ id: row.name, name: displayName(row.name) })),
+          Object.fromEntries(rows.map((row) => [row.name, row.presets])),
           format,
-          mode,
-          selectedKeys,
+          exportMode,
           includeColors,
-          editedPresets: tree ? tree.getPresets() : {},
-          libraryId,
-          libraryName:
-            served.find((library) => library.id === libraryId)?.name ??
-            libraryId,
-        });
+          Object.fromEntries(rows.map((row) => [row.name, row.selectedKeys])),
+        );
       });
 
     const fileInput = /** @type {HTMLInputElement | null} */ (

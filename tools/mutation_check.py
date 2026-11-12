@@ -105,75 +105,11 @@ MUTATIONS = [
      "      element: nested ? treeBox : container,",
      "      element: container,",
      "tests/unit/export_utils.test.ts"),
-    # The library header drives its subtree, not the other way round.
-    ("web/ExportUtils.js",
-     "        const checked = /** @type {HTMLInputElement} */ (row.checkEl).checked;",
-     "        const checked = true;",
-     "tests/unit/library_bundle.test.ts"),
-    ("web/ExportUtils.js",
-     "        itemBoxes(row.itemsEl).forEach((cb) => {\n"
-     "          cb.checked = masterCb.checked;\n"
-     "          cb.dispatchEvent(new Event(\"change\"));\n"
-     "        });\n"
-     "        updateLibraryState(row);",
-     "        itemBoxes(row.itemsEl).forEach((cb) => {\n"
-     "          cb.checked = true;\n"
-     "          cb.dispatchEvent(new Event(\"change\"));\n"
-     "        });\n"
-     "        updateLibraryState(row);",
-     "tests/unit/library_bundle.test.ts"),
-    # Rebuilding against a new target must keep what the user already picked.
-    ("web/ExportUtils.js",
-     "          cb.checked = kept.has(cb.value);",
-     "          cb.checked = true;",
-     "tests/unit/library_bundle.test.ts"),
-    # A library cannot be its own import target.
-    ("web/ExportUtils.js",
-     "        if (library.id === row.id) continue;",
-     "        if (false) continue;",
-     "tests/unit/library_bundle.test.ts"),
     # The import writes the presets checked in the tree; a row with nothing
     # checked is reported and not written, not written as a no-op.
     ("web/ExportUtils.js",
      "          if (!row.selectedKeys.length) {",
      "          if (false) {",
-     "tests/unit/library_bundle.test.ts"),
-    # The bundle picker offers a way to land a library under a new name.
-    ("web/ExportUtils.js",
-     '        `<option value="${CREATE_LIBRARY_OPTION}">＋ Add as a new library…</option>`,',
-     '        "",',
-     "tests/unit/library_bundle.test.ts"),
-    # Choosing it has to ask for the name; falling straight through to
-    # `targetSelect.value` would set the target to the sentinel itself.
-    ("web/ExportUtils.js",
-     "          const newId = await ExportUtils.promptForNewLibraryId([\n"
-     "            ...served,\n"
-     "            ...libraries,\n"
-     "            ...createdIds,\n"
-     "          ]);",
-     "          const newId = targetSelect.value;",
-     "tests/unit/library_bundle.test.ts"),
-    # Cancelling the prompt snaps the dropdown back to the previous target.
-    ("web/ExportUtils.js",
-     "          if (!newId) {\n"
-     "            targetSelect.value = row.target;\n"
-     "            return;\n"
-     "          }",
-     "          if (!newId) {\n"
-     "            return;\n"
-     "          }",
-     "tests/unit/library_bundle.test.ts"),
-    # The new id becomes a real option, or the select cannot show the choice.
-    ("web/ExportUtils.js",
-     "          targetSelect.insertBefore(option, sentinel);\n",
-     "",
-     "tests/unit/library_bundle.test.ts"),
-    # A name that is already taken is refused rather than silently overwritten.
-    ("web/ExportUtils.js",
-     "      (taken || []).some(\n"
-     "        (library) => library.id.toLowerCase() === newLibraryId.toLowerCase(),\n"
-     "      );",
-     "      false;",
      "tests/unit/library_bundle.test.ts"),
     # The picker's pencil renames the row through a prompt.
     ("web/ExportUtils.js",
@@ -215,6 +151,29 @@ MUTATIONS = [
      "    for (const row of result.rows) {",
      "    for (const row of [result.rows[0]]) {",
      "tests/unit/library_bundle.test.ts"),
+    # The consequence line is import-only: export has nothing to merge on the
+    # server, so a row there has nothing to report.
+    ("web/ExportUtils.js",
+     "      const consequenceHtml =\n"
+     "        mode === \"import\"",
+     "      const consequenceHtml =\n"
+     "        true",
+     "tests/unit/library_picker.test.ts"),
+    # The scope decides the container: narrowing the bundle scope to one
+    # library still has to write an archive, or the file stops matching the
+    # scope the user picked.
+    ("web/PresetGallerySettings.js",
+     "        if (!isBundle && rows.length === 1) {",
+     "        if (rows.length === 1) {",
+     "tests/unit/preset_gallery_settings.test.ts"),
+    # A row with nothing checked is left out of the export, not written as a
+    # library with no presets.
+    ("web/PresetGallerySettings.js",
+     "        const rows = (picker?.getRows() || []).filter(\n"
+     "          (row) => row.selectedKeys.length > 0,\n"
+     "        );",
+     "        const rows = picker?.getRows() || [];",
+     "tests/unit/preset_gallery_settings.test.ts"),
     # The master checkbox drives every row.
     ("web/ExportUtils.js",
      "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"

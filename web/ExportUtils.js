@@ -50,19 +50,6 @@ import PresetDisplay from "./PresetDisplay.js";
  */
 
 /**
- * One library row in the bundle selector tree.
- * @typedef {Object} BundleTreeRow
- * @property {string} id
- * @property {string} name
- * @property {PresetCache} presets
- * @property {string} target "restore", "skip" or a served library id
- * @property {string} strategy
- * @property {HTMLElement | null} countEl
- * @property {HTMLInputElement | null} checkEl
- * @property {HTMLElement | null} itemsEl
- */
-
-/**
  * A folder that left its library during a rename.
  * @typedef {Object} FolderMove
  * @property {string} libraryId the library the folder went to
@@ -118,21 +105,8 @@ import PresetDisplay from "./PresetDisplay.js";
  * @property {() => string} getStrategy
  */
 
-/**
- * The bundle selector: one group row per library, each holding that library's
- * own preset tree.
- * @typedef {Object} BundleSelectorTree
- * @property {HTMLDivElement} element
- * @property {BundleTreeRow[]} rows
- * @property {() => Record<string, string[]>} getSelectedKeysByLibrary
- * @property {() => Record<string, PresetCache>} getPresetsByLibrary
- */
-
 /** The bundle manifest version this build writes and reads. */
 const BUNDLE_VERSION = 1;
-
-/** The sentinel target value that asks for a new library id. */
-const CREATE_LIBRARY_OPTION = "__create_new_library__";
 
 /**
  * A zip-shaped sink that collects entries into a plain record instead of
@@ -1115,6 +1089,14 @@ const ExportUtils = {
       const groupEl = document.createElement("div");
       groupEl.className = "j0n4t-pg-tree-group j0n4t-pg-bundle-group";
 
+      // The pencil is how the preview edits the shape: renaming a row names
+      // the library that gets written, in export as in import. The consequence
+      // line is import-only - export has nothing to merge on the server.
+      const consequenceHtml =
+        mode === "import"
+          ? `<div class="j0n4t-pg-bundle-consequence" style="color: #888; font-size: 0.8em; margin-top: 2px; padding-left: 28px;"></div>`
+          : "";
+
       const header = document.createElement("div");
       header.className = "j0n4t-pg-tree-group-header";
       header.innerHTML = `
@@ -1127,7 +1109,7 @@ const ExportUtils = {
           <button type="button" class="j0n4t-pg-bundle-rename" title="Rename this library" style="background: transparent; border: 1px solid #555; color: inherit; cursor: pointer; border-radius: 3px; padding: 0 6px; font-size: 0.85em;">✎</button>
           <span class="j0n4t-pg-bundle-count" style="margin-left: auto; color: #888; font-size: 0.8em;"></span>
         </div>
-        <div class="j0n4t-pg-bundle-consequence" style="color: #888; font-size: 0.8em; margin-top: 2px; padding-left: 28px;"></div>
+        ${consequenceHtml}
       `;
 
       const itemsBox = document.createElement("div");
@@ -1219,327 +1201,6 @@ const ExportUtils = {
           container.querySelector("#j0n4t-pg-picker-strategy")
         );
         return el ? el.value : "overwrite";
-      },
-    };
-  },
-
-  /**
-   * The multi-library selector: one group row per library, each holding that
-   * library's own preset tree.
-   *
-   * Every library is a row in the same shape as a folder group, so a whole
-   * bundle reads as one tree - the library header carries a checkbox and its
-   * preset count, with the folder groups and items underneath. The per-library
-   * tree is `buildPresetSelectorTree` with `nested`, so it brings the
-   * new/replaced/same badges, the diffs and the inline editor.
-   *
-   * `importControls` adds a target and a duplicate-strategy dropdown to each
-   * library header; the import dialog needs them, the export side does not.
-   * Changing the target rebuilds that library's tree against the new target,
-   * keeping the keys already checked.
-   * @param {Object} options
-   * @param {Array<{id: string, name: string}>} options.libraries
-   * @param {Record<string, PresetCache>} options.cachesById
-   * @param {Record<string, PresetCache> | null} [options.existingCachesById]
-   * @param {Array<{id: string, name: string}>} [options.served] libraries a target may name
-   * @param {boolean} [options.importControls]
-   * @returns {BundleSelectorTree}
-   */
-  buildBundleSelectorTree({
-    libraries,
-    cachesById,
-    existingCachesById = null,
-    served = [],
-    importControls = false,
-  }) {
-    const container = document.createElement("div");
-    container.className = "j0n4t-pg-selector-container";
-
-    const controls = document.createElement("div");
-    controls.className = "j0n4t-pg-selector-controls";
-    controls.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-        <label class="j0n4t-pg-checkbox-wrap" style="margin: 0;">
-          <input type="checkbox" id="j0n4t-pg-bundle-sel-all" checked />
-          <span><strong>Select / Deselect All Libraries</strong></span>
-        </label>
-        <button type="button" id="j0n4t-pg-bundle-toggle-collapse" style="background: transparent; border: 1px solid #777; color: inherit; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.85em;">Collapse All</button>
-      </div>
-    `;
-    container.appendChild(controls);
-
-    /** @type {BundleTreeRow[]} */
-    const rows = [];
-    /** @type {Map<string, SelectorTreeResult>} */
-    const trees = new Map();
-    /** @type {HTMLElement[]} */
-    const groupEls = [];
-    /**
-     * Ids created in this dialog, so a second library cannot claim the same
-     * name. Other rows' dropdowns are not rebuilt, so this does not offer them
-     * as targets.
-     */
-    const createdIds = /** @type {Array<{id: string, name: string}>} */ ([]);
-
-    /** @param {BundleTreeRow} row */
-    const targetOptions = (row) => {
-      /** @type {string[]} */
-      const options = [
-        `<option value="restore" ${row.target === "restore" ? "selected" : ""}>Restore to ${PresetDOM.escapeHTML(row.id)}</option>`,
-        `<option value="skip" ${row.target === "skip" ? "selected" : ""}>Skip this library</option>`,
-      ];
-      for (const library of served) {
-        if (library.id === row.id) continue;
-        options.push(
-          `<option value="${PresetDOM.escapeHTML(library.id)}" ${row.target === library.id ? "selected" : ""}>Import into ${PresetDOM.escapeHTML(library.name)}</option>`,
-        );
-      }
-      options.push(
-        `<option value="${CREATE_LIBRARY_OPTION}">＋ Add as a new library…</option>`,
-      );
-      return options.join("");
-    };
-
-    /** @param {BundleTreeRow} row */
-    const effectiveTarget = (row) =>
-      row.target === "restore" ? row.id : row.target;
-
-    /** @param {BundleTreeRow} row */
-    const updateCount = (row) => {
-      if (!row.countEl) return;
-      const total = Object.keys(row.presets).length;
-      const selected = trees.get(row.id)?.getSelectedKeys().length ?? 0;
-      if (effectiveTarget(row) === "skip") {
-        row.countEl.textContent = `${total} presets (skipped)`;
-        return;
-      }
-      const duplicates = ExportUtils.getDuplicateCount(
-        Object.keys(row.presets),
-        row.presets,
-        existingCachesById
-          ? existingCachesById[effectiveTarget(row)] ?? null
-          : null,
-      );
-      row.countEl.textContent = `${selected}/${total} presets, ${duplicates} duplicate${duplicates === 1 ? "" : "s"}`;
-    };
-
-    /** Every preset checkbox inside a container, typed as an input. */
-    const itemBoxes = (/** @type {HTMLElement} */ el) =>
-      /** @type {HTMLInputElement[]} */ (
-        Array.from(el.querySelectorAll(".j0n4t-pg-item-cb"))
-      );
-
-    /**
-     * Reflect one library's checkbox and count from its subtree.
-     * @param {BundleTreeRow} current
-     */
-    const updateLibraryState = (current) => {
-      const boxes = current.itemsEl ? itemBoxes(current.itemsEl) : [];
-      const checked = boxes.filter((cb) => cb.checked).length;
-      if (current.checkEl) {
-        current.checkEl.checked = boxes.length > 0 && checked === boxes.length;
-        current.checkEl.indeterminate = checked > 0 && checked < boxes.length;
-      }
-      updateCount(current);
-    };
-
-    for (const library of libraries || []) {
-      const presets = (cachesById && cachesById[library.id]) || {};
-      /** @type {BundleTreeRow} */
-      const row = {
-        id: library.id,
-        name: library.name || library.id,
-        presets,
-        target: "restore",
-        strategy: "overwrite",
-        countEl: null,
-        checkEl: null,
-        itemsEl: null,
-      };
-      rows.push(row);
-
-      const groupEl = document.createElement("div");
-      groupEl.className = "j0n4t-pg-tree-group j0n4t-pg-bundle-group";
-      groupEls.push(groupEl);
-
-      const groupHeader = document.createElement("div");
-      groupHeader.className = "j0n4t-pg-tree-group-header";
-      groupHeader.innerHTML = `
-        <div style="display: flex; align-items: center; width: 100%; padding-right: 4px;">
-          <span class="j0n4t-pg-collapse-btn" style="cursor: pointer; padding-right: 8px; user-select: none; width: 20px; text-align: center; font-size: 0.9em;">▼</span>
-          <label class="j0n4t-pg-checkbox-wrap" style="margin: 0; display: flex; align-items: center;">
-            <input type="checkbox" class="j0n4t-pg-bundle-lib-cb" checked />
-            <span class="j0n4t-pg-group-name" style="border-left:3px solid #007acc; padding-left:6px; margin-right: 8px;"><strong>${PresetDOM.escapeHTML(row.name)}</strong> (${Object.keys(presets).length})</span>
-          </label>
-          <span class="j0n4t-pg-bundle-count" style="margin-left: auto; color: #888; font-size: 0.8em;"></span>
-        </div>
-        ${importControls ? `
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            <select class="j0n4t-pg-bundle-target" style="flex: 1;">${targetOptions(row)}</select>
-            <select class="j0n4t-pg-bundle-strategy" style="flex: 1;">
-              <option value="overwrite">Overwrite existing presets</option>
-              <option value="skip">Skip duplicates</option>
-              <option value="keep_both">Keep both (rename with _copy)</option>
-            </select>
-          </div>
-        ` : ""}
-      `;
-
-      const itemsBox = document.createElement("div");
-      itemsBox.className = "j0n4t-pg-tree-group-items";
-
-      row.countEl = groupHeader.querySelector(".j0n4t-pg-bundle-count");
-      row.checkEl = groupHeader.querySelector(".j0n4t-pg-bundle-lib-cb");
-      row.itemsEl = itemsBox;
-
-      /** Rebuild the library's preset tree against its effective target. */
-      const mountTree = () => {
-        const tree = ExportUtils.buildPresetSelectorTree(
-          presets,
-          existingCachesById
-            ? existingCachesById[effectiveTarget(row)] ?? null
-            : null,
-          { nested: true },
-        );
-        trees.set(row.id, tree);
-        itemsBox.replaceChildren(tree.element);
-        updateLibraryState(row);
-      };
-
-      /** Rebuild the tree against the row's target, keeping the current pick. */
-      const applyTarget = () => {
-        const kept = new Set(trees.get(row.id)?.getSelectedKeys() || []);
-        mountTree();
-        itemBoxes(itemsBox).forEach((cb) => {
-          cb.checked = kept.has(cb.value);
-          cb.dispatchEvent(new Event("change"));
-        });
-        updateLibraryState(row);
-      };
-
-      row.checkEl?.addEventListener("change", () => {
-        const checked = /** @type {HTMLInputElement} */ (row.checkEl).checked;
-        itemBoxes(itemsBox).forEach((cb) => {
-          cb.checked = checked;
-          cb.dispatchEvent(new Event("change"));
-        });
-        updateLibraryState(row);
-      });
-
-      itemsBox.addEventListener("change", (e) => {
-        const target = e.target;
-        if (
-          target instanceof HTMLElement &&
-          target.classList.contains("j0n4t-pg-item-cb")
-        ) {
-          updateLibraryState(row);
-        }
-      });
-
-      const collapseBtn = /** @type {HTMLElement | null} */ (
-        groupHeader.querySelector(".j0n4t-pg-collapse-btn")
-      );
-      collapseBtn?.addEventListener("click", () => {
-        const isCollapsed = itemsBox.style.display === "none";
-        itemsBox.style.display = isCollapsed ? "" : "none";
-        if (collapseBtn) collapseBtn.textContent = isCollapsed ? "▼" : "▶";
-      });
-
-      if (importControls) {
-        const targetSelect = /** @type {HTMLSelectElement | null} */ (
-          groupHeader.querySelector(".j0n4t-pg-bundle-target")
-        );
-        targetSelect?.addEventListener("change", async () => {
-          if (targetSelect.value !== CREATE_LIBRARY_OPTION) {
-            row.target = targetSelect.value;
-            applyTarget();
-            return;
-          }
-          const newId = await ExportUtils.promptForNewLibraryId([
-            ...served,
-            ...libraries,
-            ...createdIds,
-          ]);
-          if (!newId) {
-            targetSelect.value = row.target;
-            return;
-          }
-          createdIds.push({ id: newId, name: newId });
-          const sentinel = targetSelect.querySelector(
-            `option[value="${CREATE_LIBRARY_OPTION}"]`,
-          );
-          const option = document.createElement("option");
-          option.value = newId;
-          option.textContent = newId;
-          targetSelect.insertBefore(option, sentinel);
-          targetSelect.value = newId;
-          row.target = newId;
-          applyTarget();
-        });
-
-        const strategySelect = /** @type {HTMLSelectElement | null} */ (
-          groupHeader.querySelector(".j0n4t-pg-bundle-strategy")
-        );
-        strategySelect?.addEventListener("change", () => {
-          row.strategy = strategySelect.value;
-        });
-      }
-
-      groupEl.appendChild(groupHeader);
-      groupEl.appendChild(itemsBox);
-      mountTree();
-      container.appendChild(groupEl);
-    }
-
-    const masterCb = /** @type {HTMLInputElement | null} */ (
-      controls.querySelector("#j0n4t-pg-bundle-sel-all")
-    );
-    masterCb?.addEventListener("change", () => {
-      for (const row of rows) {
-        if (!row.itemsEl) continue;
-        itemBoxes(row.itemsEl).forEach((cb) => {
-          cb.checked = masterCb.checked;
-          cb.dispatchEvent(new Event("change"));
-        });
-        updateLibraryState(row);
-      }
-    });
-
-    const toggleAllBtn = /** @type {HTMLButtonElement | null} */ (
-      controls.querySelector("#j0n4t-pg-bundle-toggle-collapse")
-    );
-    let isAllCollapsed = false;
-    toggleAllBtn?.addEventListener("click", () => {
-      isAllCollapsed = !isAllCollapsed;
-      toggleAllBtn.textContent = isAllCollapsed ? "Expand All" : "Collapse All";
-      groupEls.forEach((groupEl) => {
-        const btn = /** @type {HTMLElement | null} */ (
-          groupEl.querySelector(".j0n4t-pg-collapse-btn")
-        );
-        const box = /** @type {HTMLElement | null} */ (
-          groupEl.querySelector(".j0n4t-pg-tree-group-items")
-        );
-        if (btn) btn.textContent = isAllCollapsed ? "▶" : "▼";
-        if (box) box.style.display = isAllCollapsed ? "none" : "";
-      });
-    });
-
-    return {
-      element: container,
-      rows,
-      getSelectedKeysByLibrary: () => {
-        /** @type {Record<string, string[]>} */
-        const selected = {};
-        for (const row of rows) {
-          selected[row.id] = trees.get(row.id)?.getSelectedKeys() || [];
-        }
-        return selected;
-      },
-      getPresetsByLibrary: () => {
-        /** @type {Record<string, PresetCache>} */
-        const presets = {};
-        for (const row of rows) presets[row.id] = row.presets;
-        return presets;
       },
     };
   },
@@ -1954,39 +1615,6 @@ const ExportUtils = {
     a.download = `${exportStem}_${mode}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
-  },
-
-  /**
-   * Ask for a new library id and validate it.
-   *
-   * Returns null when the prompt is cancelled or the name is unusable, and
-   * reports the reason. Both import dialogs share this, so a name that is
-   * rejected in one is rejected in the other.
-   * @param {Array<{id: string, name: string}>} taken ids the new library must not collide with
-   * @returns {Promise<string | null>}
-   */
-  async promptForNewLibraryId(taken) {
-    const newLibraryId = await ModalUtils.prompt("Create New Library", "");
-    const validId =
-      newLibraryId &&
-      /^[A-Za-z0-9_-]+$/.test(newLibraryId) &&
-      !["main", "default"].includes(newLibraryId.toLowerCase());
-    const alreadyExists =
-      newLibraryId &&
-      (taken || []).some(
-        (library) => library.id.toLowerCase() === newLibraryId.toLowerCase(),
-      );
-    if (!validId || alreadyExists) {
-      if (newLibraryId !== null) {
-        await ModalUtils.alert(
-          alreadyExists
-            ? "A library with that ID already exists."
-            : "Use only letters, numbers, underscores, and hyphens. The ID cannot be main or default.",
-        );
-      }
-      return null;
-    }
-    return newLibraryId;
   },
 
   /**

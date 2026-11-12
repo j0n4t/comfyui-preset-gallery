@@ -530,3 +530,65 @@ test("the duplicate switch is global, and only in import mode", () => {
   );
   assert.equal(exp.getStrategy(), "overwrite");
 });
+
+test("export mode keeps the pencil but drops the consequence line", () => {
+  const exp = picker({ mode: "export" });
+  assert.ok(
+    exp.element.querySelector(".j0n4t-pg-bundle-rename"),
+    "a row can still be renamed, which names the library written",
+  );
+  assert.equal(
+    exp.element.querySelector(".j0n4t-pg-bundle-consequence"),
+    null,
+    "export has nothing to merge on the server",
+  );
+});
+
+test("renaming a row rebuilds the tree and keeps the user's selection", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  try {
+    ModalUtils.prompt = async () => "second";
+    const p = picker({
+      rows: [
+        {
+          sourceId: "main",
+          name: "main",
+          presets: { "Faces/Portrait": { preset: "portrait" } },
+        },
+      ],
+      served: [
+        { id: "main", name: "Main" },
+        { id: "second", name: "Second" },
+      ],
+      existingCachesById: { second: { "Faces/Portrait": { preset: "old" } } },
+    });
+    document.body.appendChild(p.element);
+
+    const box = p.element.querySelector<HTMLInputElement>(
+      ".j0n4t-pg-item-cb",
+    );
+    assert.ok(box);
+    box.checked = false;
+    box.dispatchEvent(new Event("change"));
+
+    p.element
+      .querySelector<HTMLElement>(".j0n4t-pg-bundle-rename")
+      ?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const rebuilt = p.element.querySelector<HTMLInputElement>(
+      ".j0n4t-pg-item-cb",
+    );
+    assert.ok(rebuilt, "the tree is rebuilt against the new destination");
+    assert.equal(
+      rebuilt.checked,
+      false,
+      "the user's choice survives the rebuild",
+    );
+    assert.deepEqual(p.getSelection(), { second: [] });
+
+    p.element.remove();
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+  }
+});
