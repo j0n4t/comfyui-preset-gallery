@@ -124,8 +124,8 @@ MUTATIONS = [
      "tests/unit/library_bundle.test.ts"),
     # Rebuilding against a new target must keep what the user already picked.
     ("web/ExportUtils.js",
-     "            cb.checked = kept.has(cb.value);",
-     "            cb.checked = true;",
+     "          cb.checked = kept.has(cb.value);",
+     "          cb.checked = true;",
      "tests/unit/library_bundle.test.ts"),
     # A library cannot be its own import target.
     ("web/ExportUtils.js",
@@ -137,6 +137,43 @@ MUTATIONS = [
     ("web/ExportUtils.js",
      "          if (!keys.length) {",
      "          if (!Object.keys(row.presets).length) {",
+     "tests/unit/library_bundle.test.ts"),
+    # The bundle picker offers a way to land a library under a new name.
+    ("web/ExportUtils.js",
+     '        `<option value="${CREATE_LIBRARY_OPTION}">＋ Add as a new library…</option>`,',
+     '        "",',
+     "tests/unit/library_bundle.test.ts"),
+    # Choosing it has to ask for the name; falling straight through to
+    # `targetSelect.value` would set the target to the sentinel itself.
+    ("web/ExportUtils.js",
+     "          const newId = await ExportUtils.promptForNewLibraryId([\n"
+     "            ...served,\n"
+     "            ...libraries,\n"
+     "            ...createdIds,\n"
+     "          ]);",
+     "          const newId = targetSelect.value;",
+     "tests/unit/library_bundle.test.ts"),
+    # Cancelling the prompt snaps the dropdown back to the previous target.
+    ("web/ExportUtils.js",
+     "          if (!newId) {\n"
+     "            targetSelect.value = row.target;\n"
+     "            return;\n"
+     "          }",
+     "          if (!newId) {\n"
+     "            return;\n"
+     "          }",
+     "tests/unit/library_bundle.test.ts"),
+    # The new id becomes a real option, or the select cannot show the choice.
+    ("web/ExportUtils.js",
+     "          targetSelect.insertBefore(option, sentinel);\n",
+     "",
+     "tests/unit/library_bundle.test.ts"),
+    # A name that is already taken is refused rather than silently overwritten.
+    ("web/ExportUtils.js",
+     "      (taken || []).some(\n"
+     "        (library) => library.id.toLowerCase() === newLibraryId.toLowerCase(),\n"
+     "      );",
+     "      false;",
      "tests/unit/library_bundle.test.ts"),
     # The case-insensitive fallback is what lets a key typed in another case
     # resolve; without it only the exact stored spelling works.

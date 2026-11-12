@@ -597,7 +597,8 @@ test("the bundle tree adds a target and strategy per library when asked", () => 
   assert.ok(target, "the library row carries a target");
   assert.deepEqual(
     Array.from(target.options).map((option) => option.value),
-    ["restore", "skip", "second"],
+    ["restore", "skip", "second", "__create_new_library__"],
+    "the last entry asks for a new library",
   );
   assert.ok(
     tree.element.querySelector(".j0n4t-pg-bundle-strategy"),
@@ -607,6 +608,187 @@ test("the bundle tree adds a target and strategy per library when asked", () => 
   target.value = "second";
   target.dispatchEvent(new Event("change"));
   assert.equal(tree.rows[0].target, "second");
+});
+
+test("the bundle tree can import a library under a new name", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  try {
+    ModalUtils.prompt = async () => "portrait_pack";
+    const tree = ExportUtils.buildBundleSelectorTree({
+      libraries: [{ id: "main", name: "Main" }],
+      cachesById: { main: { "faces/portrait": { preset: "portrait" } } },
+      existingCachesById: { second: { "faces/portrait": { preset: "old" } } },
+      served: [
+        { id: "main", name: "Main" },
+        { id: "second", name: "Second" },
+      ],
+      importControls: true,
+    });
+
+    const target = tree.element.querySelector<HTMLSelectElement>(
+      ".j0n4t-pg-bundle-target",
+    );
+    assert.ok(target);
+    target.value = "__create_new_library__";
+    target.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(tree.rows[0].target, "portrait_pack");
+    assert.equal(target.value, "portrait_pack");
+    assert.ok(
+      Array.from(target.options).some(
+        (option) => option.value === "portrait_pack",
+      ),
+      "the new library becomes a real option once named",
+    );
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+  }
+});
+
+test("cancelling the new-library prompt leaves the target alone", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  try {
+    ModalUtils.prompt = async () => null;
+    const tree = ExportUtils.buildBundleSelectorTree({
+      libraries: [{ id: "main", name: "Main" }],
+      cachesById: { main: { "faces/portrait": { preset: "portrait" } } },
+      served: [{ id: "main", name: "Main" }],
+      importControls: true,
+    });
+
+    const target = tree.element.querySelector<HTMLSelectElement>(
+      ".j0n4t-pg-bundle-target",
+    );
+    assert.ok(target);
+    target.value = "__create_new_library__";
+    target.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(tree.rows[0].target, "restore", "the target is unchanged");
+    assert.equal(target.value, "restore", "the dropdown snaps back");
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+  }
+});
+
+test("an invalid new-library name is refused", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  const originalAlert = ModalUtils.alert;
+  /** @type {string[]} */
+  const alerts = [];
+  try {
+    ModalUtils.prompt = async () => "bad name";
+    ModalUtils.alert = (async (message: string) => {
+      alerts.push(message);
+    }) as typeof ModalUtils.alert;
+    const tree = ExportUtils.buildBundleSelectorTree({
+      libraries: [{ id: "main", name: "Main" }],
+      cachesById: { main: { "faces/portrait": { preset: "portrait" } } },
+      served: [{ id: "main", name: "Main" }],
+      importControls: true,
+    });
+
+    const target = tree.element.querySelector<HTMLSelectElement>(
+      ".j0n4t-pg-bundle-target",
+    );
+    assert.ok(target);
+    target.value = "__create_new_library__";
+    target.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(tree.rows[0].target, "restore");
+    assert.equal(target.value, "restore");
+    assert.equal(alerts.length, 1, "the reason is reported");
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+    ModalUtils.alert = originalAlert;
+  }
+});
+
+test("a new-library name that is already taken is refused", async () => {
+  const originalPrompt = ModalUtils.prompt;
+  const originalAlert = ModalUtils.alert;
+  /** @type {string[]} */
+  const alerts = [];
+  try {
+    ModalUtils.prompt = async () => "second";
+    ModalUtils.alert = (async (message: string) => {
+      alerts.push(message);
+    }) as typeof ModalUtils.alert;
+    const tree = ExportUtils.buildBundleSelectorTree({
+      libraries: [
+        { id: "main", name: "Main" },
+        { id: "styles", name: "Styles" },
+      ],
+      cachesById: { main: { "faces/portrait": { preset: "portrait" } } },
+      served: [
+        { id: "main", name: "Main" },
+        { id: "second", name: "Second" },
+      ],
+      importControls: true,
+    });
+
+    const target = tree.element.querySelector<HTMLSelectElement>(
+      ".j0n4t-pg-bundle-target",
+    );
+    assert.ok(target);
+    target.value = "__create_new_library__";
+    target.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(tree.rows[0].target, "restore");
+    assert.equal(target.value, "restore");
+    assert.equal(alerts.length, 1, "the collision is reported");
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+    ModalUtils.alert = originalAlert;
+  }
+});
+
+test("a bundle dialog can import a library under a new name", async () => {
+  const entries = ExportUtils.buildBundleEntries(
+    [{ id: "main", name: "Main" }],
+    { main: { "faces/portrait": { preset: "portrait" } } },
+    "json",
+    "full",
+    true,
+  );
+  const stub = stubBundleImport({
+    libraries: [{ id: "main", name: "Main", default: true }],
+    entries,
+  });
+  const originalPrompt = ModalUtils.prompt;
+
+  try {
+    ModalUtils.prompt = async () => "portrait_pack";
+    const promise = ExportUtils.importFile(
+      { name: "bundle.zip" } as unknown as File,
+      "main",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const target = document.querySelector<HTMLSelectElement>(
+      "#j0n4t-pg-bimp-tree .j0n4t-pg-bundle-target",
+    );
+    assert.ok(target, "the dialog lists a target per library");
+    target.value = "__create_new_library__";
+    target.dispatchEvent(new Event("change"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    document.querySelector<HTMLButtonElement>("#j0n4t-pg-bimp-confirm")?.click();
+
+    const result = await promise;
+    assert.equal(result.success, true);
+    assert.deepEqual(
+      stub.writes.map((write) => write.libraryId),
+      ["portrait_pack"],
+      "the library is written under its new name",
+    );
+  } finally {
+    ModalUtils.prompt = originalPrompt;
+    stub.restore();
+  }
 });
 
 test("changing the target rebuilds the tree and keeps the user's selection", () => {

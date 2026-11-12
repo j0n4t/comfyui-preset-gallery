@@ -75,6 +75,9 @@ import PresetDisplay from "./PresetDisplay.js";
 /** The bundle manifest version this build writes and reads. */
 const BUNDLE_VERSION = 1;
 
+/** The sentinel target value that asks for a new library id. */
+const CREATE_LIBRARY_OPTION = "__create_new_library__";
+
 /**
  * A zip-shaped sink that collects entries into a plain record instead of
  * writing them, so a bundle can be assembled without a zip library.
@@ -731,6 +734,12 @@ const ExportUtils = {
     const trees = new Map();
     /** @type {HTMLElement[]} */
     const groupEls = [];
+    /**
+     * Ids created in this dialog, so a second library cannot claim the same
+     * name. Other rows' dropdowns are not rebuilt, so this does not offer them
+     * as targets.
+     */
+    const createdIds = /** @type {Array<{id: string, name: string}>} */ ([]);
 
     /** @param {BundleTreeRow} row */
     const targetOptions = (row) => {
@@ -745,6 +754,9 @@ const ExportUtils = {
           `<option value="${PresetDOM.escapeHTML(library.id)}" ${row.target === library.id ? "selected" : ""}>Import into ${PresetDOM.escapeHTML(library.name)}</option>`,
         );
       }
+      options.push(
+        `<option value="${CREATE_LIBRARY_OPTION}">＋ Add as a new library…</option>`,
+      );
       return options.join("");
     };
 
@@ -854,6 +866,17 @@ const ExportUtils = {
         updateLibraryState(row);
       };
 
+      /** Rebuild the tree against the row's target, keeping the current pick. */
+      const applyTarget = () => {
+        const kept = new Set(trees.get(row.id)?.getSelectedKeys() || []);
+        mountTree();
+        itemBoxes(itemsBox).forEach((cb) => {
+          cb.checked = kept.has(cb.value);
+          cb.dispatchEvent(new Event("change"));
+        });
+        updateLibraryState(row);
+      };
+
       row.checkEl?.addEventListener("change", () => {
         const checked = /** @type {HTMLInputElement} */ (row.checkEl).checked;
         itemBoxes(itemsBox).forEach((cb) => {
@@ -886,15 +909,32 @@ const ExportUtils = {
         const targetSelect = /** @type {HTMLSelectElement | null} */ (
           groupHeader.querySelector(".j0n4t-pg-bundle-target")
         );
-        targetSelect?.addEventListener("change", () => {
-          row.target = targetSelect.value;
-          const kept = new Set(trees.get(row.id)?.getSelectedKeys() || []);
-          mountTree();
-          itemBoxes(itemsBox).forEach((cb) => {
-            cb.checked = kept.has(cb.value);
-            cb.dispatchEvent(new Event("change"));
-          });
-          updateLibraryState(row);
+        targetSelect?.addEventListener("change", async () => {
+          if (targetSelect.value !== CREATE_LIBRARY_OPTION) {
+            row.target = targetSelect.value;
+            applyTarget();
+            return;
+          }
+          const newId = await ExportUtils.promptForNewLibraryId([
+            ...served,
+            ...libraries,
+            ...createdIds,
+          ]);
+          if (!newId) {
+            targetSelect.value = row.target;
+            return;
+          }
+          createdIds.push({ id: newId, name: newId });
+          const sentinel = targetSelect.querySelector(
+            `option[value="${CREATE_LIBRARY_OPTION}"]`,
+          );
+          const option = document.createElement("option");
+          option.value = newId;
+          option.textContent = newId;
+          targetSelect.insertBefore(option, sentinel);
+          targetSelect.value = newId;
+          row.target = newId;
+          applyTarget();
         });
 
         const strategySelect = /** @type {HTMLSelectElement | null} */ (
@@ -1377,6 +1417,39 @@ const ExportUtils = {
   },
 
   /**
+   * Ask for a new library id and validate it.
+   *
+   * Returns null when the prompt is cancelled or the name is unusable, and
+   * reports the reason. Both import dialogs share this, so a name that is
+   * rejected in one is rejected in the other.
+   * @param {Array<{id: string, name: string}>} taken ids the new library must not collide with
+   * @returns {Promise<string | null>}
+   */
+  async promptForNewLibraryId(taken) {
+    const newLibraryId = await ModalUtils.prompt("Create New Library", "");
+    const validId =
+      newLibraryId &&
+      /^[A-Za-z0-9_-]+$/.test(newLibraryId) &&
+      !["main", "default"].includes(newLibraryId.toLowerCase());
+    const alreadyExists =
+      newLibraryId &&
+      (taken || []).some(
+        (library) => library.id.toLowerCase() === newLibraryId.toLowerCase(),
+      );
+    if (!validId || alreadyExists) {
+      if (newLibraryId !== null) {
+        await ModalUtils.alert(
+          alreadyExists
+            ? "A library with that ID already exists."
+            : "Use only letters, numbers, underscores, and hyphens. The ID cannot be main or default.",
+        );
+      }
+      return null;
+    }
+    return newLibraryId;
+  },
+
+  /**
    * @param {PresetCache} importedPresets
    * @param {string} defaultLibraryId the library to preselect
    * @param {(result: { selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }) => void} onConfirm
@@ -1461,28 +1534,10 @@ const ExportUtils = {
       libraryEl.addEventListener("change", async () => {
         const requestedLibrary = libraryEl.value;
         if (requestedLibrary === createLibraryOption) {
-          const newLibraryId = await ModalUtils.prompt(
-            "Create New Library",
-            "",
+          const newLibraryId = await ExportUtils.promptForNewLibraryId(
+            availableLibraries,
           );
-          const validId =
-            newLibraryId &&
-            /^[A-Za-z0-9_-]+$/.test(newLibraryId) &&
-            !["main", "default"].includes(newLibraryId.toLowerCase());
-          const alreadyExists =
-            newLibraryId &&
-            availableLibraries.some(
-              (library) =>
-                library.id.toLowerCase() === newLibraryId.toLowerCase(),
-            );
-          if (!validId || alreadyExists) {
-            if (newLibraryId !== null) {
-              await ModalUtils.alert(
-                alreadyExists
-                  ? "A library with that ID already exists."
-                  : "Use only letters, numbers, underscores, and hyphens. The ID cannot be main or default.",
-              );
-            }
+          if (!newLibraryId) {
             libraryEl.value = libraryId;
             return;
           }

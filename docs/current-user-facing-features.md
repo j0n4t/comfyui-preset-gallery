@@ -86,8 +86,8 @@ what the editor writes. Exporting with the **All libraries (bundle)** scope
 shows every library as a row in one tree, with its folders and presets
 underneath, so the export can cover whole libraries or individual presets;
 importing a bundle shows the same tree, each library carrying its own target
-and duplicate strategy, so a bundle can be restored, partly imported, or merged
-into an existing library.
+and duplicate strategy, so a bundle can be restored, partly imported, merged
+into an existing library, or imported under a new name of its own.
 
 ## Preset libraries
 
