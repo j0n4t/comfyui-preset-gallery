@@ -97,6 +97,7 @@ The module relies on several helper modules:
   - Reads file text via `FileReader`.
   - Parses YAML (`YAMLUtils.parse`) or JSON (`JSON.parse`).
   - Flattens nested structures (`NestedPresetUtils.nestedToFlat`).
+  - Normalizes keys: lowercased, spaces to underscores - the same rule the editor's save, the export tree's rename and the zip import apply, so an imported preset cannot exist under two spellings.
   - Generates thumbnails for embedded data URL images.
 - **Integration**: Triggers `showImportModal`, resolves duplicate handling according to chosen strategy, appends unique copy suffixes if required, preserves group colors, and saves final presets via `PresetGalleryAPI.savePresets`.
 

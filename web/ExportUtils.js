@@ -1436,6 +1436,12 @@ const ExportUtils = {
 
   /**
    * Parse a preset document (JSON or YAML) into a flat cache.
+   *
+   * Keys are normalized the way every other write normalizes them - the
+   * editor's save, the export tree's rename and the zip import all lowercase
+   * and turn spaces into underscores. A document import is a write too, so
+   * without this the same preset could exist as both `Faces/Portrait` and
+   * `faces/portrait` depending on how it arrived.
    * @param {string} text
    * @param {string} format "json" or "yaml"
    * @returns {Promise<PresetCache>}
@@ -1447,6 +1453,12 @@ const ExportUtils = {
       throw new Error("Invalid file structure");
     }
     const presets = NestedPresetUtils.nestedToFlat(parsedData);
+    for (const key of Object.keys(presets)) {
+      const cleanKey = key.toLowerCase().replace(/ /g, "_");
+      if (cleanKey === key) continue;
+      presets[cleanKey] = presets[key];
+      delete presets[key];
+    }
     for (const item of Object.values(presets)) {
       if (item && item.filename && item.filename.startsWith("data:image/")) {
         item.filename = await PresetDOM.createThumbnail(item.filename);

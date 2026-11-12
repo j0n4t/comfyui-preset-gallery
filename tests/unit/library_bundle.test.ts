@@ -193,9 +193,34 @@ test("a json bundle round-trips through the same parser as a single-library file
   assert.equal(bundle.layout, "json");
   assert.equal(bundle.libraries[0].id, "styles");
   assert.equal(
-    bundle.libraries[0].presets["Faces/Portrait"]?.preset,
+    bundle.libraries[0].presets["faces/portrait"]?.preset,
     "portrait",
   );
+});
+
+test("presetsFromDocument normalizes keys the way every other write does", async () => {
+  const presets = await ExportUtils.presetsFromDocument(
+    JSON.stringify({
+      Faces: { Portrait: "portrait", __color__: "#ff0000" },
+      "Urban Night": "night",
+    }),
+    "json",
+  );
+
+  assert.deepEqual(presets, {
+    "faces/portrait": { preset: "portrait" },
+    faces: { __color__: "#ff0000" },
+    urban_night: { preset: "night" },
+  });
+});
+
+test("presetsFromDocument normalizes a yaml import the same way", async () => {
+  const presets = await ExportUtils.presetsFromDocument(
+    "Faces:\n  Portrait: portrait\n",
+    "yaml",
+  );
+
+  assert.deepEqual(presets, { "faces/portrait": { preset: "portrait" } });
 });
 
 // --- bundle import routing ---

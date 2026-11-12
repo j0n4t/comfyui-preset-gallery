@@ -82,6 +82,12 @@ MUTATIONS = [
      "          continue;\n"
      '        } else if (duplicateStrategy === "keep_both") {',
      "tests/unit/export_utils.test.ts"),
+    # A document import is a write: without the normalization the same preset
+    # can exist under both `Faces/Portrait` and `faces/portrait`.
+    ("web/ExportUtils.js",
+     '      const cleanKey = key.toLowerCase().replace(/ /g, "_");\n',
+     "      const cleanKey = key;\n",
+     "tests/unit/library_bundle.test.ts"),
     ("web/PresetEditor.js",
      "return uniqueKey !== editingPlainKey && !!cache[uniqueKey];",
      "return !!cache[uniqueKey];",

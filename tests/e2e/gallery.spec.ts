@@ -754,7 +754,7 @@ test.describe("editor", () => {
   }) => {
     await openPanel(page);
     const settings = await openIoTab(page);
-    await settings.locator("#j0n4t-pg-io-file").setInputFiles({
+    const file = {
       name: "incoming.json",
       mimeType: "application/json",
       buffer: Buffer.from(
@@ -763,8 +763,11 @@ test.describe("editor", () => {
           Imported: { One: "new imported text" },
         }),
       ),
-    });
-    const modal = page.locator(".j0n4t-pg-modal-overlay").last();
+    };
+
+    // Keys arrive lowercased, the way every other write stores them.
+    await settings.locator("#j0n4t-pg-io-file").setInputFiles(file);
+    let modal = page.locator(".j0n4t-pg-modal-overlay").last();
     await expect(modal.locator("#j0n4t-pg-dup-strategy")).toBeVisible();
     await modal.locator("#j0n4t-pg-dup-strategy").selectOption("keep_both");
     await modal.locator("#j0n4t-pg-imp-confirm").click();
@@ -775,14 +778,30 @@ test.describe("editor", () => {
       .click();
 
     await expect(
-      page.locator('.j0n4t-pg-item[data-style="Faces/Portrait"]'),
-    ).toHaveAttribute("title", /portrait, studio lighting, dramatic shadows/);
-    await expect(
-      page.locator('.j0n4t-pg-item[data-style="Faces/Portrait_copy_1"]'),
+      page.locator('.j0n4t-pg-item[data-style="faces/portrait"]'),
     ).toHaveAttribute("title", /imported portrait/);
     await expect(
-      page.locator('.j0n4t-pg-item[data-style="Imported/One"]'),
+      page.locator('.j0n4t-pg-item[data-style="imported/one"]'),
     ).toBeVisible();
+
+    // The alert over the settings modal is dismissed before the next import.
+    await page.locator(".j0n4t-pg-modal-overlay").last().locator("button").click();
+
+    // Importing the same file again meets the duplicates it just wrote.
+    await settings.locator("#j0n4t-pg-io-file").setInputFiles(file);
+    modal = page.locator(".j0n4t-pg-modal-overlay").last();
+    await expect(modal.locator("#j0n4t-pg-dup-strategy")).toBeVisible();
+    await modal.locator("#j0n4t-pg-dup-strategy").selectOption("keep_both");
+    await modal.locator("#j0n4t-pg-imp-confirm").click();
+    await page
+      .locator(".j0n4t-pg-modal-overlay")
+      .last()
+      .locator('button[data-index="1"]')
+      .click();
+
+    await expect(
+      page.locator('.j0n4t-pg-item[data-style="faces/portrait_copy_1"]'),
+    ).toHaveAttribute("title", /imported portrait/);
   });
 
   test("exporting one selected preset downloads the chosen JSON format", async ({
