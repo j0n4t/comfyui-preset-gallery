@@ -5,7 +5,6 @@ import PresetBasket from "./PresetBasket.js";
 import PresetEditor from "./PresetEditor.js";
 import PresetGrid from "./PresetGrid.js";
 import PresetLogic from "./PresetLogic.js";
-import ExportUtils from "./ExportUtils.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetGallerySettings from "./PresetGallerySettings.js";
 import PresetSession from "./PresetSession.js";
@@ -260,9 +259,6 @@ export default class PresetGalleryApp {
             <div class="j0n4t-pg-editor collapsed no-image">
               <div class="j0n4t-pg-row">
                 <div id="j0n4t-pg-banner" class="j0n4t-pg-editor-banner" title="📝 Select an Item">📝 Select an Item</div>
-                <input type="file" id="j0n4t-pg-json-file" accept=".zip,.json,.yaml,.yml" style="display:none;" />
-                <button type="button" id="j0n4t-pg-import-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Import Presets (.zip, .yaml, .json)" aria-label="Import Presets">${PresetDOM.icons.import}</button>
-                <button type="button" id="j0n4t-pg-export-btn" class="j0n4t-pg-btn" style="background:#454545;" title="Export Presets (.zip, .yaml, .json)" aria-label="Export Presets">${PresetDOM.icons.export}</button>
                 <button type="button" id="j0n4t-pg-clear-fields-btn" class="j0n4t-pg-btn" style="background:#555;">New</button>
                 <button type="button" id="j0n4t-pg-save-btn" class="j0n4t-pg-btn" style="background:#007acc;">Save</button>
                 <button type="button" id="j0n4t-pg-del-btn" class="j0n4t-pg-btn" style="background:#a32a2a;">Delete</button>
@@ -343,15 +339,6 @@ export default class PresetGalleryApp {
       ),
       btnDel: /** @type {HTMLButtonElement} */ (
         wrap.querySelector("#j0n4t-pg-del-btn")
-      ),
-      inpJsonFile: /** @type {HTMLInputElement} */ (
-        wrap.querySelector("#j0n4t-pg-json-file")
-      ),
-      btnImport: /** @type {HTMLButtonElement} */ (
-        wrap.querySelector("#j0n4t-pg-import-btn")
-      ),
-      btnExport: /** @type {HTMLButtonElement} */ (
-        wrap.querySelector("#j0n4t-pg-export-btn")
       ),
       btnCopyBasket: /** @type {HTMLButtonElement} */ (
         wrap.querySelector(".j0n4t-pg-basket-copy-btn")
@@ -737,26 +724,6 @@ export default class PresetGalleryApp {
       this.dom.search.value = "";
       this.grid.executeFilterPipeline();
       this.dom.search.focus();
-    });
-
-    this.dom.btnExport.addEventListener("click", () => {
-      ExportUtils.showExportModal(this.defaultLibraryId, (config) => {
-        ExportUtils.exportPresets(config);
-      });
-    });
-
-    this.dom.btnImport.addEventListener("click", () =>
-      this.dom.inpJsonFile.click(),
-    );
-    this.dom.inpJsonFile.addEventListener("change", async (e) => {
-      const file = /** @type {HTMLInputElement} */ (e.target).files?.[0];
-      if (!file) return;
-      const res = await ExportUtils.importFile(file, this.defaultLibraryId);
-      if (res.success) {
-        await this.refreshLibraries();
-        await ModalUtils.alert("Presets imported successfully!");
-      }
-      this.dom.inpJsonFile.value = "";
     });
 
     this.dom.btnRerollBasket.addEventListener("click", (e) => {

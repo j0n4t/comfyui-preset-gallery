@@ -1,6 +1,7 @@
 import ModalUtils from "./ModalUtils.js";
 import PresetDOM from "./PresetDOM.js";
 import PresetGalleryAPI from "./PresetGalleryAPI.js";
+import ExportUtils from "./ExportUtils.js";
 import {
   STORAGE_KEYS,
   defaultStorage,
@@ -455,6 +456,7 @@ export default class PresetGallerySettings {
         <button type="button" class="j0n4t-pg-tab-btn active" data-tab="settings">Rolling Options</button>
         <button type="button" class="j0n4t-pg-tab-btn" data-tab="display">Display</button>
         <button type="button" class="j0n4t-pg-tab-btn" data-tab="shortcuts">Keyboard Shortcuts</button>
+        <button type="button" class="j0n4t-pg-tab-btn" data-tab="io">Import / Export</button>
       </div>
 
       <div id="j0n4t-pg-tab-settings" class="j0n4t-pg-tab-panel active">
@@ -596,11 +598,76 @@ export default class PresetGallerySettings {
           </div>
         </div>
       </div>
+
+      <div id="j0n4t-pg-tab-io" class="j0n4t-pg-tab-panel">
+        <div class="j0n4t-pg-modal-field">
+          <label>Export Scope</label>
+          <select id="j0n4t-pg-io-scope">
+            <option value="single">Single library</option>
+            <option value="bundle">All libraries (bundle)</option>
+          </select>
+        </div>
+
+        <div class="j0n4t-pg-modal-field" id="j0n4t-pg-io-single-field">
+          <label for="j0n4t-pg-io-library">Library</label>
+          <select id="j0n4t-pg-io-library"></select>
+        </div>
+
+        <div class="j0n4t-pg-modal-field" id="j0n4t-pg-io-bundle-field" style="display: none;">
+          <label>Select Libraries to Export</label>
+          <div id="j0n4t-pg-io-library-list" style="border: 1px solid #333; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="j0n4t-pg-modal-row">
+          <div class="j0n4t-pg-modal-field" style="flex: 1;">
+            <label>File Layout</label>
+            <select id="j0n4t-pg-io-format">
+              <option value="zip">ZIP (one file per preset)</option>
+              <option value="json">JSON (one file per library)</option>
+              <option value="yaml">YAML (one file per library)</option>
+            </select>
+          </div>
+          <div class="j0n4t-pg-modal-field" style="flex: 1;">
+            <label>Data Content</label>
+            <select id="j0n4t-pg-io-mode">
+              <option value="full">Full Data (With Images)</option>
+              <option value="preset-only">Presets Only (Clean)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="j0n4t-pg-modal-field">
+          <label class="j0n4t-pg-checkbox-wrap">
+            <input type="checkbox" id="j0n4t-pg-io-colors" checked />
+            <span><strong>Include Custom Group Colors (__color__)</strong></span>
+          </label>
+        </div>
+
+        <div class="j0n4t-pg-modal-field">
+          <label>Select Presets & Groups to Export</label>
+          <div id="j0n4t-pg-io-tree"></div>
+        </div>
+
+        <div class="j0n4t-pg-modal-actions">
+          <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-io-export" style="background:#007acc;">Export</button>
+        </div>
+
+        <div class="j0n4t-pg-modal-field" style="border-top: 1px solid #333; padding-top: 10px;">
+          <label>Import from a file</label>
+          <div style="font-size: 10px; color: #888; line-height: 1.4;">
+            Accepts a library bundle (.zip) or a single-library export
+            (.zip, .json, .yaml).
+          </div>
+          <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-io-import" style="background:#454545;">Import File...</button>
+          <input type="file" id="j0n4t-pg-io-file" accept=".zip,.json,.yaml,.yml" style="display: none;" />
+        </div>
+      </div>
     `;
 
     const result = await ModalUtils.show({
       title: "Preset Gallery Settings",
       content,
+      expand: true,
       buttons: [
         { text: "Cancel", closeOnFinish: true },
         {
@@ -680,6 +747,9 @@ export default class PresetGallerySettings {
           this.syncLibraryList(modal);
         });
 
+        // The import/export tab reads the same server state on every open.
+        this.syncIoTab(modal);
+
         // The pixel field only means anything in fixed mode.
         const syncFixedField = () => {
           if (heightFixedField) {
@@ -711,5 +781,205 @@ export default class PresetGallerySettings {
     });
 
     return result === true;
+  }
+
+  /**
+   * Fill the Import / Export tab from the server.
+   *
+   * The tab hosts both flows: a single-library export, which is what the editor
+   * buttons used to offer, and a whole-bundle export, plus the import picker.
+   * Libraries and their caches are read on every open, so a library created
+   * elsewhere is already listed by the time the tab is opened.
+   * @param {HTMLDivElement} modal
+   */
+  async syncIoTab(modal) {
+    const libraries = await PresetGalleryAPI.fetchLibraries();
+    const served = libraries.length
+      ? libraries
+      : [
+          {
+            id: PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+            name: PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+            default: true,
+          },
+        ];
+    const caches = await PresetGalleryAPI.fetchLibraryCaches(
+      served.map((library) => library.id),
+    );
+
+    /** @type {string} */
+    let libraryId = served[0].id;
+    /** @type {{ getSelectedKeys: () => string[], getPresets: () => PresetCache, element: HTMLElement } | null} */
+    let tree = null;
+
+    const scopeEl = /** @type {HTMLSelectElement | null} */ (
+      modal.querySelector("#j0n4t-pg-io-scope")
+    );
+    const singleField = /** @type {HTMLElement | null} */ (
+      modal.querySelector("#j0n4t-pg-io-single-field")
+    );
+    const bundleField = /** @type {HTMLElement | null} */ (
+      modal.querySelector("#j0n4t-pg-io-bundle-field")
+    );
+    const libraryEl = /** @type {HTMLSelectElement | null} */ (
+      modal.querySelector("#j0n4t-pg-io-library")
+    );
+    const listEl = modal.querySelector("#j0n4t-pg-io-library-list");
+    const treeEl = modal.querySelector("#j0n4t-pg-io-tree");
+    const formatEl = /** @type {HTMLSelectElement | null} */ (
+      modal.querySelector("#j0n4t-pg-io-format")
+    );
+    const modeEl = /** @type {HTMLSelectElement | null} */ (
+      modal.querySelector("#j0n4t-pg-io-mode")
+    );
+    const colorsEl = /** @type {HTMLInputElement | null} */ (
+      modal.querySelector("#j0n4t-pg-io-colors")
+    );
+
+    /** @type {Array<{ id: string, checked: boolean }>} */
+    const chosen = served.map((library) => ({
+      id: library.id,
+      checked: true,
+    }));
+
+    const renderTree = () => {
+      if (!treeEl) return;
+      tree = ExportUtils.buildPresetSelectorTree(caches[libraryId] || {});
+      treeEl.replaceChildren(tree.element);
+    };
+
+    const renderLibrarySelect = () => {
+      if (!libraryEl) return;
+      libraryEl.replaceChildren(
+        ...served.map((library) => {
+          const option = document.createElement("option");
+          option.value = library.id;
+          option.textContent = library.name;
+          if (library.id === libraryId) option.selected = true;
+          return option;
+        }),
+      );
+    };
+
+    const renderBundleList = () => {
+      if (!listEl) return;
+      listEl.replaceChildren();
+
+      const allRow = document.createElement("div");
+      allRow.style.cssText =
+        "display: flex; justify-content: space-between; align-items: center;";
+      const allLabel = document.createElement("label");
+      allLabel.className = "j0n4t-pg-checkbox-wrap";
+      allLabel.style.margin = "0";
+      const allCheck = document.createElement("input");
+      allCheck.type = "checkbox";
+      allCheck.checked = chosen.every((entry) => entry.checked);
+      allCheck.addEventListener("change", () => {
+        for (const entry of chosen) entry.checked = allCheck.checked;
+        renderBundleList();
+      });
+      allLabel.append(allCheck, document.createTextNode(" Select / Deselect All"));
+      allRow.appendChild(allLabel);
+      listEl.appendChild(allRow);
+
+      for (const entry of chosen) {
+        const row = document.createElement("div");
+        row.className = "j0n4t-pg-checkbox-wrap";
+        row.style.margin = "0";
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = entry.checked;
+        box.addEventListener("change", () => {
+          entry.checked = box.checked;
+        });
+        const name =
+          served.find((library) => library.id === entry.id)?.name ?? entry.id;
+        row.append(box, document.createTextNode(` ${name}`));
+        listEl.appendChild(row);
+      }
+    };
+
+    const syncScope = () => {
+      const isBundle = scopeEl?.value === "bundle";
+      if (singleField) singleField.style.display = isBundle ? "none" : "";
+      if (bundleField) bundleField.style.display = isBundle ? "" : "none";
+    };
+
+    scopeEl?.addEventListener("change", syncScope);
+    libraryEl?.addEventListener("change", () => {
+      libraryId = /** @type {HTMLSelectElement} */ (libraryEl).value;
+      renderTree();
+    });
+
+    renderLibrarySelect();
+    renderBundleList();
+    renderTree();
+    syncScope();
+
+    modal
+      .querySelector("#j0n4t-pg-io-export")
+      ?.addEventListener("click", async () => {
+        const format = formatEl?.value || "zip";
+        const mode = modeEl?.value || "full";
+        const includeColors = colorsEl ? colorsEl.checked : true;
+
+        if (scopeEl?.value === "bundle") {
+          const picked = served.filter((library) =>
+            chosen.some(
+              (entry) => entry.id === library.id && entry.checked,
+            ),
+          );
+          if (!picked.length) {
+            await ModalUtils.alert(
+              "Please select at least one library to export.",
+            );
+            return;
+          }
+          await ExportUtils.exportLibraryBundle(
+            picked,
+            caches,
+            format,
+            mode,
+            includeColors,
+          );
+          return;
+        }
+
+        const selectedKeys = tree ? tree.getSelectedKeys() : [];
+        if (!selectedKeys.length) {
+          await ModalUtils.alert(
+            "Please select at least one preset to export.",
+          );
+          return;
+        }
+        await ExportUtils.exportPresets({
+          format,
+          mode,
+          selectedKeys,
+          includeColors,
+          editedPresets: tree ? tree.getPresets() : {},
+          libraryId,
+          libraryName:
+            served.find((library) => library.id === libraryId)?.name ??
+            libraryId,
+        });
+      });
+
+    const fileInput = /** @type {HTMLInputElement | null} */ (
+      modal.querySelector("#j0n4t-pg-io-file")
+    );
+    modal
+      .querySelector("#j0n4t-pg-io-import")
+      ?.addEventListener("click", () => fileInput?.click());
+    fileInput?.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      const result = await ExportUtils.importFile(file, libraryId);
+      if (result.success) {
+        await this.context.refreshLibraries?.();
+        await ModalUtils.alert("Presets imported successfully!");
+      }
+      fileInput.value = "";
+    });
   }
 }

@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import "./dom-harness.ts";
 import PresetGallerySettings from "../../web/PresetGallerySettings.js";
+import ExportUtils from "../../web/ExportUtils.js";
+import PresetGalleryAPI from "../../web/PresetGalleryAPI.js";
 
 // PresetGallerySettings persists the roll preferences to localStorage and
 // mirrors them onto the reroll dice button's classes. The context is a stub
@@ -937,4 +939,175 @@ test("the Display tab remembers the panel-size flag", async () => {
     { basket: 150 },
     "the sizes are kept for when it is turned back on",
   );
+});
+
+// --- the Import / Export tab ---
+
+type ServedLibrary = { id: string; name: string; default: boolean };
+
+/** The libraries the tab reads, and the caches it merges for the tree. */
+function stubServedLibraries(
+  libraries: ServedLibrary[],
+  caches: Record<string, PresetCache>,
+) {
+  const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
+  const originalFetchCaches = PresetGalleryAPI.fetchLibraryCaches;
+  PresetGalleryAPI.fetchLibraries = async () => libraries;
+  PresetGalleryAPI.fetchLibraryCaches = async () => caches;
+  return () => {
+    PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
+    PresetGalleryAPI.fetchLibraryCaches = originalFetchCaches;
+  };
+}
+
+const SERVED: ServedLibrary[] = [
+  { id: "main", name: "Main", default: true },
+  { id: "styles", name: "Styles", default: false },
+];
+
+test("the Import / Export tab exports the libraries picked in bundle scope", async () => {
+  fakeStorage();
+  const { settings } = makeSettings();
+  const restoreLibraries = stubServedLibraries(SERVED, {
+    main: { "Faces/Portrait": { preset: "portrait" } },
+    styles: { "Urban/Night": { preset: "night" } },
+  });
+  const originalExport = ExportUtils.exportLibraryBundle;
+  /** @type {unknown[]} */
+  let exported: unknown[] = [];
+
+  try {
+    ExportUtils.exportLibraryBundle = async (...args) => {
+      exported = args;
+    };
+
+    const promise = settings.openModal();
+    await tick(20);
+    const modal = document.querySelector(".j0n4t-pg-modal-overlay");
+    assert.ok(modal, "modal is mounted");
+    modal.querySelector<HTMLButtonElement>(
+      '.j0n4t-pg-tab-btn[data-tab="io"]',
+    )?.click();
+    await tick(20);
+
+    const scope = modal.querySelector<HTMLSelectElement>(
+      "#j0n4t-pg-io-scope",
+    );
+    assert.ok(scope);
+    scope.value = "bundle";
+    scope.dispatchEvent(new Event("change"));
+    await tick();
+
+    const boxes = modal.querySelectorAll<HTMLInputElement>(
+      "#j0n4t-pg-io-library-list input[type='checkbox']",
+    );
+    assert.equal(boxes.length, 3, "select-all plus one per library");
+    assert.ok(boxes[1].checked && boxes[2].checked, "every library is picked");
+
+    boxes[2].checked = false;
+    boxes[2].dispatchEvent(new Event("change"));
+
+    const format = modal.querySelector<HTMLSelectElement>(
+      "#j0n4t-pg-io-format",
+    );
+    const mode = modal.querySelector<HTMLSelectElement>(
+      "#j0n4t-pg-io-mode",
+    );
+    const colors = modal.querySelector<HTMLInputElement>(
+      "#j0n4t-pg-io-colors",
+    );
+    if (format) format.value = "json";
+    if (mode) mode.value = "preset-only";
+    if (colors) colors.checked = false;
+
+    modal.querySelector<HTMLButtonElement>("#j0n4t-pg-io-export")?.click();
+    await tick(20);
+
+    const picked = exported[0] as Array<{ id: string }>;
+    assert.deepEqual(
+      picked.map((library) => library.id),
+      ["main"],
+      "only the checked library is exported",
+    );
+    assert.equal(exported[2], "json");
+    assert.equal(exported[3], "preset-only");
+    assert.equal(exported[4], false);
+
+    modal.querySelector<HTMLButtonElement>('button[data-index="0"]')?.click();
+    assert.equal(await promise, false);
+  } finally {
+    ExportUtils.exportLibraryBundle = originalExport;
+    restoreLibraries();
+  }
+});
+
+test("the Import / Export tab exports the selected presets of one library", async () => {
+  fakeStorage();
+  const { settings } = makeSettings();
+  const restoreLibraries = stubServedLibraries(SERVED, {
+    main: {
+      "Faces/Portrait": { preset: "portrait" },
+      "Faces/Macro": { preset: "macro" },
+    },
+    styles: { "Urban/Night": { preset: "night" } },
+  });
+  const originalExport = ExportUtils.exportPresets;
+  /** @type {Record<string, unknown> | undefined} */
+  let exported: Record<string, unknown> | undefined;
+
+  try {
+    ExportUtils.exportPresets = async (config) => {
+      exported = config as Record<string, unknown>;
+    };
+
+    const promise = settings.openModal();
+    await tick(20);
+    const modal = document.querySelector(".j0n4t-pg-modal-overlay");
+    assert.ok(modal, "modal is mounted");
+    modal.querySelector<HTMLButtonElement>(
+      '.j0n4t-pg-tab-btn[data-tab="io"]',
+    )?.click();
+    await tick(20);
+
+    const librarySelect = modal.querySelector<HTMLSelectElement>(
+      "#j0n4t-pg-io-library",
+    );
+    assert.ok(librarySelect);
+    assert.deepEqual(
+      Array.from(librarySelect.options).map((option) => option.value),
+      ["main", "styles"],
+    );
+    assert.equal(librarySelect.value, "main");
+
+    const boxes = modal.querySelectorAll<HTMLInputElement>(
+      "#j0n4t-pg-io-tree .j0n4t-pg-item-cb",
+    );
+    assert.equal(boxes.length, 2);
+    for (const box of boxes) {
+      box.checked = false;
+      box.dispatchEvent(new Event("change"));
+    }
+    const portrait = modal.querySelector<HTMLInputElement>(
+      '#j0n4t-pg-io-tree .j0n4t-pg-item-cb[value="Faces/Portrait"]',
+    );
+    assert.ok(portrait);
+    portrait.checked = true;
+    portrait.dispatchEvent(new Event("change"));
+
+    modal.querySelector<HTMLButtonElement>("#j0n4t-pg-io-export")?.click();
+    await tick(20);
+
+    assert.equal(exported?.libraryId, "main");
+    assert.equal(exported?.libraryName, "Main");
+    assert.equal(exported?.format, "zip");
+    assert.equal(exported?.mode, "full");
+    assert.equal(exported?.includeColors, true);
+    assert.deepEqual(exported?.selectedKeys, ["Faces/Portrait"]);
+
+    modal.querySelector<HTMLButtonElement>('button[data-index="0"]')?.click();
+    assert.equal(await promise, false);
+  } finally {
+    ExportUtils.exportPresets = originalExport;
+    restoreLibraries();
+  }
 });

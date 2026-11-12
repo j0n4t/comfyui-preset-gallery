@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
 
 // Drives the real web/ modules through dev/index.html: a stubbed ComfyUI host,
 // no backend, no menu choreography. See dev/index.html for the harness itself.
@@ -118,6 +120,15 @@ async function openDisplayTab(page: Page) {
   const modal = page.locator(".j0n4t-pg-modal-overlay");
   await expect(modal).toBeVisible();
   await modal.locator('.j0n4t-pg-tab-btn[data-tab="display"]').click();
+  return modal;
+}
+
+/** Open the settings modal on its Import / Export tab. */
+async function openIoTab(page: Page) {
+  await page.locator("#j0n4t-pg-config-btn").click();
+  const modal = page.locator(".j0n4t-pg-modal-overlay");
+  await expect(modal).toBeVisible();
+  await modal.locator('.j0n4t-pg-tab-btn[data-tab="io"]').click();
   return modal;
 }
 
@@ -742,7 +753,8 @@ test.describe("editor", () => {
     page,
   }) => {
     await openPanel(page);
-    await page.locator("#j0n4t-pg-json-file").setInputFiles({
+    const settings = await openIoTab(page);
+    await settings.locator("#j0n4t-pg-io-file").setInputFiles({
       name: "incoming.json",
       mimeType: "application/json",
       buffer: Buffer.from(
@@ -752,12 +764,14 @@ test.describe("editor", () => {
         }),
       ),
     });
-    const modal = page.locator(".j0n4t-pg-modal-overlay");
+    const modal = page.locator(".j0n4t-pg-modal-overlay").last();
     await expect(modal.locator("#j0n4t-pg-dup-strategy")).toBeVisible();
     await modal.locator("#j0n4t-pg-dup-strategy").selectOption("keep_both");
     await modal.locator("#j0n4t-pg-imp-confirm").click();
     await page
-      .locator('.j0n4t-pg-modal-overlay button[data-index="1"]')
+      .locator(".j0n4t-pg-modal-overlay")
+      .last()
+      .locator('button[data-index="1"]')
       .click();
 
     await expect(
@@ -775,24 +789,74 @@ test.describe("editor", () => {
     page,
   }) => {
     await openPanel(page);
-    await page.locator("#j0n4t-pg-export-btn").click();
-    const modal = page.locator(".j0n4t-pg-modal-overlay");
-    await expect(modal.locator("#j0n4t-pg-exp-confirm")).toBeVisible();
-    await modal.locator("#j0n4t-pg-exp-format").selectOption("json");
-    for (const checkbox of await modal.locator(".j0n4t-pg-item-cb").all()) {
+    const settings = await openIoTab(page);
+    await settings.locator("#j0n4t-pg-io-format").selectOption("json");
+    for (const checkbox of await settings.locator(".j0n4t-pg-item-cb").all()) {
       await checkbox.uncheck();
     }
-    await modal.locator('.j0n4t-pg-item-cb[value="Faces/Portrait"]').check();
+    await settings
+      .locator('.j0n4t-pg-item-cb[value="Faces/Portrait"]')
+      .check();
 
     const downloadPromise = page.waitForEvent("download");
-    await modal.locator("#j0n4t-pg-exp-confirm").click();
-    await page
-      .locator('.j0n4t-pg-modal-overlay button[data-index="1"]')
-      .click();
+    await settings.locator("#j0n4t-pg-io-export").click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe("Main_full.json");
     const file = await download.createReadStream();
     expect(file).not.toBeNull();
+  });
+
+  test("a bundle export imports back over a changed library", async ({
+    page,
+  }) => {
+    await openPanel(page);
+    const settings = await openIoTab(page);
+    await settings.locator("#j0n4t-pg-io-scope").selectOption("bundle");
+
+    // The zip layout needs a zip library; the repo ships one the harness can use.
+    await page.evaluate(readFileSync("web/lib/jszip.min.js", "utf8"));
+
+    const downloadPromise = page.waitForEvent("download");
+    await settings.locator("#j0n4t-pg-io-export").click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe(
+      "preset_gallery_libraries_full.zip",
+    );
+    const bundlePath = join("test-results", "bundle-export.zip");
+    await download.saveAs(bundlePath);
+
+    // Replace the library behind the app's back, then reload so the grid shows
+    // it. The key is lowercase because the zip layout reads entries lowercased.
+    await page.evaluate(async () => {
+      await fetch("/preset_gallery/presets?library=main", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ "faces/portrait": { preset: "mutated" } }),
+      });
+    });
+    await page.reload();
+    await openPanel(page);
+    await expect(
+      page.locator('.j0n4t-pg-item[data-style="faces/portrait"]'),
+    ).toHaveAttribute("title", /mutated/);
+
+    const restored = await openIoTab(page);
+    await restored.locator("#j0n4t-pg-io-file").setInputFiles(bundlePath);
+    const bundleModal = page.locator(".j0n4t-pg-modal-overlay").last();
+    await expect(
+      bundleModal.locator("#j0n4t-pg-bimp-confirm"),
+    ).toBeVisible();
+    await bundleModal.locator("#j0n4t-pg-bimp-confirm").click();
+    await page
+      .locator(".j0n4t-pg-modal-overlay")
+      .last()
+      .locator('button[data-index="1"]')
+      .click();
+
+    await expect(
+      page.locator('.j0n4t-pg-item[data-style="faces/portrait"]'),
+    ).toHaveAttribute("title", /portrait, studio lighting, dramatic shadows/);
+    rmSync(bundlePath, { force: true });
   });
 });
 

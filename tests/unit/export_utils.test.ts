@@ -240,60 +240,6 @@ test("getPresets returns the map the tree was built with", () => {
   assert.equal(tree.getPresets(), PRESETS);
 });
 
-test("export modal switches libraries and reports the selected library", async () => {
-  const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
-  const originalGetPresets = PresetGalleryAPI.getPresets;
-  const originalConfirm = ModalUtils.confirm;
-  let exportedConfig:
-    | { libraryId?: string; libraryName?: string; selectedKeys?: string[] | null }
-    | undefined;
-
-  try {
-    PresetGalleryAPI.fetchLibraries = async () => [
-      { id: "main", name: "Main", default: true },
-      { id: "second", name: "Second", default: false },
-    ];
-    PresetGalleryAPI.getPresets = async (libraryId) => {
-      const presets: PresetCache = {};
-      presets[libraryId === "second" ? "Second" : "First"] = {
-        preset: libraryId === "second" ? "second" : "first",
-      };
-      return presets;
-    };
-    ModalUtils.confirm = async () => true;
-
-    await ExportUtils.showExportModal("main", (config) => {
-      exportedConfig = config;
-    });
-
-    const librarySelect = document.querySelector<HTMLSelectElement>(
-      "#j0n4t-pg-exp-library",
-    );
-    assert.ok(librarySelect);
-    librarySelect.value = "second";
-    librarySelect.dispatchEvent(new Event("change"));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    const selectedPreset = document.querySelector<HTMLInputElement>(
-      '.j0n4t-pg-item-cb[value="Second"]',
-    );
-    assert.ok(selectedPreset);
-    document.querySelector<HTMLButtonElement>("#j0n4t-pg-exp-confirm")?.click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    assert.equal(exportedConfig?.libraryId, "second");
-    assert.equal(exportedConfig?.libraryName, "Second");
-    assert.deepEqual(exportedConfig?.selectedKeys, ["Second"]);
-  } finally {
-    PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
-    PresetGalleryAPI.getPresets = originalGetPresets;
-    ModalUtils.confirm = originalConfirm;
-    document
-      .querySelectorAll(".j0n4t-pg-modal-overlay")
-      .forEach((overlay) => overlay.remove());
-  }
-});
-
 test("import modal compares against and targets the selected library", async () => {
   const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
   const originalGetPresets = PresetGalleryAPI.getPresets;
