@@ -78,9 +78,13 @@ Click a gallery item's edit control to load it into the editor. Saving over an
 existing preset asks for confirmation; deleting also asks for confirmation.
 Folder colors and group names can be managed from the gallery's folder headers.
 
-Import accepts `.zip`, `.json`, `.yaml`, and `.yml`; export offers `.zip`,
-`.json`, and `.yaml`. The import/export dialogs let users choose which presets
-to transfer and how duplicates are handled.
+Import and export live in **Settings → Import / Export**. Import accepts `.zip`,
+`.json`, `.yaml`, and `.yml`; export offers `.zip`, `.json`, and `.yaml`. Both
+dialogs let users choose which presets to transfer and how duplicates are
+handled. Exporting with the **All libraries (bundle)** scope writes every
+selected library into one `.zip`; importing it lists each library with its own
+target and duplicate strategy, so a bundle can be restored, partly imported, or
+merged into an existing library.
 
 ## Preset libraries
 
@@ -94,6 +98,10 @@ An entry from a non-winning library can be kept distinct in the Basket with its
 `library#preset-key` qualifier. **Tag basket chips with their library** controls
 whether that qualifier is retained when adding a gallery item. The editor's
 Folder field also accepts `library#folder` to save into a library.
+
+A whole installation can be backed up from **Settings → Import / Export** by
+exporting every library as one bundle, and restored later by importing that
+file.
 
 ## Settings and persistence
 

@@ -140,7 +140,13 @@ test("readBundleFromZip rejects a manifest it does not understand", async () => 
   await assert.rejects(
     () =>
       ExportUtils.readBundleFromZip(
-        fakeZip({ "manifest.json": JSON.stringify({ version: 99 }) }),
+        fakeZip({
+          "manifest.json": JSON.stringify({
+            version: 99,
+            layout: "files",
+            libraries: [],
+          }),
+        }),
       ),
     /Unsupported or corrupt/,
   );

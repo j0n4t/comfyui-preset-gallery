@@ -55,6 +55,33 @@ MUTATIONS = [
      "          summary.sameCount++;\n"
      "        } else {",
      "tests/unit/export_utils.test.ts"),
+    # The manifest names the zip layout "files"; handing back the export format
+    # instead would store per-preset files under a json or yaml layout.
+    ("web/ExportUtils.js",
+     '    return format === "json" || format === "yaml" ? format : "files";',
+     "    return format;",
+     "tests/unit/library_bundle.test.ts"),
+    # A manifest from another build is refused outright; reading it with this
+    # build's layout would corrupt the restore.
+    ("web/ExportUtils.js",
+     "      manifest.version !== BUNDLE_VERSION ||",
+     "      false ||",
+     "tests/unit/library_bundle.test.ts"),
+    # The zip layout stores one file per preset; routing it to the document
+    # branch would write a single file per library instead.
+    ("web/ExportUtils.js",
+     '      if (layout === "files") {',
+     "      if (false) {",
+     "tests/unit/library_bundle.test.ts"),
+    # skip has to leave an existing key alone, not overwrite it.
+    ("web/ExportUtils.js",
+     '        if (duplicateStrategy === "skip") {\n'
+     "          continue;\n"
+     '        } else if (duplicateStrategy === "keep_both") {',
+     '        if (false) {\n'
+     "          continue;\n"
+     '        } else if (duplicateStrategy === "keep_both") {',
+     "tests/unit/export_utils.test.ts"),
     ("web/PresetEditor.js",
      "return uniqueKey !== editingPlainKey && !!cache[uniqueKey];",
      "return !!cache[uniqueKey];",

@@ -50,15 +50,18 @@ The module relies on several helper modules:
   - **State Propagation**: Automatic handling of indeterminate states and recursive checkbox selection propagation (Master ↔ Group ↔ Item).
   - **Duplicate Strategy Application**: Programmatically updates item selection states based on chosen duplicate handling strategies (`skip`, `overwrite`, `keep_both`).
 
-### 4. Export Modal Dialog (`showExportModal`)
+### 4. Export Form (Settings → Import / Export)
 
-- **Purpose**: Provides a user interface for configuring export parameters.
+- **Purpose**: The export interface, hosted in a Settings tab rather than a modal.
+- **Scope**: Single library (a library picker plus the preset selector tree) or
+  All libraries (a checkbox list with Select / Deselect All; whole libraries
+  only, no per-preset tree).
 - **Configuration Options**:
-  - **File Format**: ZIP Archive (`.zip`), YAML (`.yaml`), or JSON (`.json`).
+  - **File Layout**: ZIP (one file per preset), JSON or YAML (one document per
+    library). A bundle is always one `.zip`; the layout is what is inside it.
   - **Data Content Mode**: Full Data (with images) vs. Presets Only (clean text/structure).
   - **Custom Colors**: Toggle to include/exclude custom group color definitions (`__color__`).
-  - **Preset Tree Mount**: Embedded preset selector tree for granular selection.
-- **Summary & Confirmation**: Displays export summary statistics before triggering actual file generation.
+  - **Preset Tree Mount**: Embedded preset selector tree, for the single-library scope.
 
 ### 5. Multi-Format Export Engine (`exportPresets`)
 
@@ -96,3 +99,13 @@ The module relies on several helper modules:
   - Flattens nested structures (`NestedPresetUtils.nestedToFlat`).
   - Generates thumbnails for embedded data URL images.
 - **Integration**: Triggers `showImportModal`, resolves duplicate handling according to chosen strategy, appends unique copy suffixes if required, preserves group colors, and saves final presets via `PresetGalleryAPI.savePresets`.
+
+### 8. Multi-Library Bundles
+
+- **Purpose**: Export and import several libraries as one archive, and restore a whole installation.
+- **Container**: Always one `.zip`, named `preset_gallery_libraries_<mode>.zip`. A bundle is told apart from a single-library export by a root `manifest.json` (`{ version, layout, libraries: [{ id, name }] }`); `readBundleFromZip` returns `null` without one, and `importFile` then takes the single-library path.
+- **Layouts**: The File Layout dropdown picks what is inside the archive.
+  - `ZIP` (manifest `layout: "files"`): `<libraryId>/<key>.txt`, `<libraryId>/<key>.<ext>`, `<libraryId>/<folder>/__color__.txt`. This is the single-library layout namespaced by library id, assembled through `addPresetZipEntries` so the two cannot drift.
+  - `JSON` / `YAML` (manifest `layout: "json" | "yaml"`): one document per library at `libraries/<libraryId>.<ext>`, in the same shape the single-library export writes, so the existing parser reads it back.
+- **Build path**: `buildBundleEntries` produces the file table as a plain record (path -> text, or `{ base64 }` for an image), which is also what makes the layout unit-testable without a zip library. `buildLibraryBundleZip` writes that table into a JSZip instance; `exportLibraryBundle` downloads it.
+- **Import path**: `importFile` routes a zip with a manifest to `showImportBundleModal`. Each library gets a row with its own target (Restore to its id, Skip, or merge into another served library) and its own duplicate strategy, plus one shared colors toggle. `importBundle` writes the selected rows one target at a time, so two rows aiming at the same library accumulate. Empty libraries are reported and not written.
