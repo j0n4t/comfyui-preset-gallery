@@ -33,6 +33,37 @@ import PresetDisplay from "./PresetDisplay.js";
  * @property {(strategy: string) => void} applyDuplicateStrategy
  */
 
+/**
+ * One library inside a bundle: its id and name plus the presets it holds.
+ * @typedef {Object} BundleLibrary
+ * @property {string} id
+ * @property {string} name
+ * @property {PresetCache} presets
+ */
+
+/**
+ * A multi-library archive: the manifest plus one entry per library.
+ * @typedef {Object} LibraryBundle
+ * @property {number} version
+ * @property {string} layout
+ * @property {BundleLibrary[]} libraries
+ */
+
+/** The bundle manifest version this build writes and reads. */
+const BUNDLE_VERSION = 1;
+
+/**
+ * A zip-shaped sink that collects entries into a plain record instead of
+ * writing them, so a bundle can be assembled without a zip library.
+ * @param {Record<string, string | {base64: string}>} entries
+ * @returns {{ file: (path: string, contents: string, options?: {base64?: boolean}) => void }}
+ */
+const bundleEntrySink = (entries) => ({
+  file: (path, contents, options) => {
+    entries[path] = options?.base64 ? { base64: contents } : contents;
+  },
+});
+
 const loadJSZip = async () => {
   if (window.JSZip) return window.JSZip;
   return new Promise((resolve, reject) => {
@@ -882,7 +913,11 @@ const ExportUtils = {
    * Text becomes `<key>.txt`, an image becomes `<key>.<ext>` carrying the
    * base64 payload, and a folder colour becomes `<key>/__color__.txt`. A
    * colour-only entry writes its colour and nothing else.
-   * @param {any} zip a JSZip instance
+   *
+   * `zip` only needs a `file(path, data, options)` method, so a plain record
+   * sink works too - that is how `buildBundleEntries` assembles a bundle
+   * without a zip library.
+   * @param {any} zip a JSZip instance or a compatible sink
    * @param {string} prefix library id, or "" for the archive root
    * @param {PresetCache} presets
    * @param {string} mode "full" or "preset-only"
@@ -908,6 +943,174 @@ const ExportUtils = {
         zip.file(`${base}${key}/__color__.txt`, item.__color__);
       }
     }
+  },
+
+  /**
+   * The manifest's layout name for an export format: the zip format stores one
+   * file per preset, the others store one document per library.
+   * @param {string} format
+   * @returns {string}
+   */
+  bundleLayout(format) {
+    return format === "json" || format === "yaml" ? format : "files";
+  },
+
+  /**
+   * The bundle's root manifest: what it is, which layout it uses, and the
+   * libraries it carries.
+   * @param {Array<{id: string, name: string}>} libraries
+   * @param {string} layout
+   * @returns {{version: number, layout: string, libraries: Array<{id: string, name: string}>}}
+   */
+  buildBundleManifest(libraries, layout) {
+    return {
+      version: BUNDLE_VERSION,
+      layout,
+      libraries: (libraries || []).map((library) => ({
+        id: library.id,
+        name: library.name || library.id,
+      })),
+    };
+  },
+
+  /**
+   * The bundle's file table: archive path -> text, or `{ base64 }` for an image.
+   *
+   * The per-library layout is the single-library export namespaced by the
+   * library id, which is why the entries go through `addPresetZipEntries`.
+   * @param {Array<{id: string, name: string}>} libraries
+   * @param {Record<string, PresetCache>} cachesById
+   * @param {string} format
+   * @param {string} mode
+   * @param {boolean} includeColors
+   * @returns {Record<string, string | {base64: string}>}
+   */
+  buildBundleEntries(libraries, cachesById, format, mode, includeColors) {
+    const layout = ExportUtils.bundleLayout(format);
+    /** @type {Record<string, string | {base64: string}>} */
+    const entries = {};
+
+    entries["manifest.json"] = JSON.stringify(
+      ExportUtils.buildBundleManifest(libraries, layout),
+      null,
+      2,
+    );
+
+    for (const library of libraries || []) {
+      const presets = ExportUtils.filterExportPresets(
+        (cachesById && cachesById[library.id]) || {},
+        null,
+        includeColors,
+      );
+
+      if (layout === "files") {
+        ExportUtils.addPresetZipEntries(
+          bundleEntrySink(entries),
+          library.id,
+          presets,
+          mode,
+          includeColors,
+        );
+        continue;
+      }
+
+      entries[`libraries/${library.id}.${layout}`] =
+        ExportUtils.serializeLibraryFile(presets, layout, mode);
+    }
+
+    return entries;
+  },
+
+  /**
+   * The document for one library inside a json/yaml bundle: the same shape the
+   * single-library export writes, so the existing parser reads it back.
+   * @param {PresetCache} presets
+   * @param {string} format "json" or "yaml"
+   * @param {string} mode "full" or "preset-only"
+   * @returns {string}
+   */
+  serializeLibraryFile(presets, format, mode) {
+    if (format === "yaml") {
+      return YAMLUtils.stringify(
+        NestedPresetUtils.flatToNested(presets, mode === "preset-only", true),
+      );
+    }
+    if (mode === "preset-only") {
+      return JSON.stringify(
+        NestedPresetUtils.flatToNested(presets, true, true),
+        null,
+        2,
+      );
+    }
+    return JSON.stringify(presets, null, 2);
+  },
+
+  /**
+   * Build the bundle archive and return the JSZip instance, so a caller can
+   * download it or inspect it.
+   * @param {Array<{id: string, name: string}>} libraries
+   * @param {Record<string, PresetCache>} cachesById
+   * @param {string} format
+   * @param {string} mode
+   * @param {boolean} includeColors
+   * @returns {Promise<any>}
+   */
+  async buildLibraryBundleZip(
+    libraries,
+    cachesById,
+    format,
+    mode,
+    includeColors,
+  ) {
+    const JSZip = await loadJSZip();
+    const zip = new JSZip();
+    const entries = ExportUtils.buildBundleEntries(
+      libraries,
+      cachesById,
+      format,
+      mode,
+      includeColors,
+    );
+    for (const [path, contents] of Object.entries(entries)) {
+      if (contents && typeof contents === "object") {
+        zip.file(path, contents.base64, { base64: true });
+      } else {
+        zip.file(path, contents);
+      }
+    }
+    return zip;
+  },
+
+  /**
+   * Build the bundle and download it as one archive.
+   * @param {Array<{id: string, name: string}>} libraries
+   * @param {Record<string, PresetCache>} cachesById
+   * @param {string} format
+   * @param {string} mode
+   * @param {boolean} includeColors
+   * @returns {Promise<void>}
+   */
+  async exportLibraryBundle(
+    libraries,
+    cachesById,
+    format,
+    mode,
+    includeColors,
+  ) {
+    const zip = await ExportUtils.buildLibraryBundleZip(
+      libraries,
+      cachesById,
+      format,
+      mode,
+      includeColors,
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `preset_gallery_libraries_${mode}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 
   /**
@@ -1318,6 +1521,175 @@ const ExportUtils = {
   },
 
   /**
+   * Read the preset entries under `prefix` from a zip into a flat cache.
+   *
+   * `prefix` namespaces a bundle: with "main/" only the entries under that
+   * folder are read, and the keys come back without it, so the result is that
+   * library's own cache. Without a prefix the whole archive is read, which is
+   * the single-library export layout.
+   * @param {any} zip a JSZip instance
+   * @param {string} [prefix]
+   * @returns {Promise<PresetCache>}
+   */
+  async readPresetEntriesFromZip(zip, prefix = "") {
+    const normalizedPrefix = prefix
+      ? `${prefix.replace(/^\/+/, "").replace(/\/+$/, "")}/`
+      : "";
+    /** @type {PresetCache} */
+    const presets = {};
+    /** @type {Record<string, any>} */
+    const txtFiles = {};
+    /** @type {Record<string, { entry: any, ext: string }>} */
+    const imgFiles = {};
+
+    for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+      const entry = /** @type {any} */ (zipEntry);
+      if (entry.dir) continue;
+      const normalizedPath = relativePath
+        .replace(/\\/g, "/")
+        .replace(/^\/+/, "");
+      if (normalizedPrefix && !normalizedPath.startsWith(normalizedPrefix)) {
+        continue;
+      }
+      const localPath = normalizedPrefix
+        ? normalizedPath.slice(normalizedPrefix.length)
+        : normalizedPath;
+      if (!localPath) continue;
+
+      if (
+        localPath.endsWith("/__color__.txt") ||
+        localPath === "__color__.txt"
+      ) {
+        const groupKey = localPath
+          .replace(/\/?__color__\.txt$/i, "")
+          .toLowerCase()
+          .replace(/ /g, "_");
+        const colorVal = (await entry.async("string")).trim();
+        if (groupKey) {
+          presets[groupKey] = {
+            ...(presets[groupKey] || {}),
+            __color__: colorVal,
+          };
+        }
+        continue;
+      }
+      const lastDot = localPath.lastIndexOf(".");
+      if (lastDot === -1) continue;
+      const ext = localPath.slice(lastDot + 1).toLowerCase();
+      const keyPath = localPath.slice(0, lastDot);
+      if (ext === "txt") {
+        txtFiles[keyPath] = entry;
+      } else if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) {
+        imgFiles[keyPath] = { entry, ext };
+      }
+    }
+
+    for (const [key, txtEntry] of Object.entries(txtFiles)) {
+      const presetText = await txtEntry.async("string");
+      let filename;
+      if (imgFiles[key]) {
+        const { entry, ext } = imgFiles[key];
+        const base64 = await entry.async("base64");
+        const mime = PresetLogic.getMimeType(ext);
+        const dataUrl = `data:${mime};base64,${base64}`;
+        filename = await PresetDOM.createThumbnail(dataUrl);
+      }
+      const cleanKey = key.toLowerCase().replace(/ /g, "_");
+      if (!cleanKey) continue;
+      presets[cleanKey] = {
+        ...(presets[cleanKey] || {}),
+        preset: presetText,
+        filename: filename,
+      };
+    }
+
+    return presets;
+  },
+
+  /**
+   * Parse a preset document (JSON or YAML) into a flat cache.
+   * @param {string} text
+   * @param {string} format "json" or "yaml"
+   * @returns {Promise<PresetCache>}
+   */
+  async presetsFromDocument(text, format) {
+    const parsedData =
+      format === "yaml" ? YAMLUtils.parse(text) : JSON.parse(text);
+    if (typeof parsedData !== "object" || parsedData === null) {
+      throw new Error("Invalid file structure");
+    }
+    const presets = NestedPresetUtils.nestedToFlat(parsedData);
+    for (const item of Object.values(presets)) {
+      if (item && item.filename && item.filename.startsWith("data:image/")) {
+        item.filename = await PresetDOM.createThumbnail(item.filename);
+      }
+    }
+    return presets;
+  },
+
+  /**
+   * Read a bundle archive into its manifest and per-library caches.
+   *
+   * Returns null when the archive has no manifest, which is how a
+   * single-library export (or any other zip) is told apart from a bundle.
+   * @param {any} zip a JSZip instance
+   * @returns {Promise<LibraryBundle | null>}
+   */
+  async readBundleFromZip(zip) {
+    const manifestEntry = zip.files["manifest.json"];
+    if (!manifestEntry) return null;
+
+    let manifest;
+    try {
+      manifest = JSON.parse(await manifestEntry.async("string"));
+    } catch {
+      return null;
+    }
+    if (
+      !manifest ||
+      manifest.version !== BUNDLE_VERSION ||
+      !["files", "json", "yaml"].includes(manifest.layout) ||
+      !Array.isArray(manifest.libraries)
+    ) {
+      throw new Error("Unsupported or corrupt library bundle");
+    }
+
+    /** @type {LibraryBundle} */
+    const bundle = {
+      version: manifest.version,
+      layout: manifest.layout,
+      libraries: [],
+    };
+
+    for (const library of manifest.libraries) {
+      if (!library || typeof library.id !== "string" || !library.id) continue;
+      /** @type {PresetCache} */
+      let presets = {};
+      if (manifest.layout === "files") {
+        presets = await ExportUtils.readPresetEntriesFromZip(
+          zip,
+          `${library.id}/`,
+        );
+      } else {
+        const entry = zip.files[`libraries/${library.id}.${manifest.layout}`];
+        if (entry) {
+          presets = await ExportUtils.presetsFromDocument(
+            await entry.async("string"),
+            manifest.layout,
+          );
+        }
+      }
+      bundle.libraries.push({
+        id: library.id,
+        name: library.name || library.id,
+        presets,
+      });
+    }
+
+    return bundle;
+  },
+
+  /**
    * @param {File} file
    * @param {string} defaultLibraryId the library to preselect
    */
@@ -1329,63 +1701,7 @@ const ExportUtils = {
       try {
         const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(file);
-        /** @type {Record<string, any>} */
-        const txtFiles = {};
-        /** @type {Record<string, { entry: any, ext: string }>} */
-        const imgFiles = {};
-
-        for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-          const entry = /** @type {any} */ (zipEntry);
-          if (entry.dir) continue;
-          const normalizedPath = relativePath
-            .replace(/\\/g, "/")
-            .replace(/^[/\\]+/, "");
-          if (
-            normalizedPath.endsWith("/__color__.txt") ||
-            normalizedPath === "__color__.txt"
-          ) {
-            const groupKey = normalizedPath
-              .replace(/\/?__color__\.txt$/i, "")
-              .toLowerCase()
-              .replace(/ /g, "_");
-            const colorVal = (await entry.async("string")).trim();
-            if (groupKey) {
-              importedPresets[groupKey] = {
-                ...(importedPresets[groupKey] || {}),
-                __color__: colorVal,
-              };
-            }
-            continue;
-          }
-          const lastDot = normalizedPath.lastIndexOf(".");
-          if (lastDot === -1) continue;
-          const ext = normalizedPath.slice(lastDot + 1).toLowerCase();
-          const keyPath = normalizedPath.slice(0, lastDot);
-          if (ext === "txt") {
-            txtFiles[keyPath] = entry;
-          } else if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) {
-            imgFiles[keyPath] = { entry, ext };
-          }
-        }
-
-        for (const [key, txtEntry] of Object.entries(txtFiles)) {
-          const presetText = await txtEntry.async("string");
-          let filename;
-          if (imgFiles[key]) {
-            const { entry, ext } = imgFiles[key];
-            const base64 = await entry.async("base64");
-            const mime = PresetLogic.getMimeType(ext);
-            const dataUrl = `data:${mime};base64,${base64}`;
-            filename = await PresetDOM.createThumbnail(dataUrl);
-          }
-          const cleanKey = key.toLowerCase().replace(/ /g, "_");
-          if (!cleanKey) continue;
-          importedPresets[cleanKey] = {
-            ...(importedPresets[cleanKey] || {}),
-            preset: presetText,
-            filename: filename,
-          };
-        }
+        importedPresets = await ExportUtils.readPresetEntriesFromZip(zip);
       } catch (err) {
         await ModalUtils.alert(
           "Failed to parse ZIP file: " + /** @type {Error} */ (err).message,
@@ -1401,25 +1717,12 @@ const ExportUtils = {
           reader.onerror = reject;
           reader.readAsText(file);
         });
-        let parsedData = null;
-        if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
-          parsedData = YAMLUtils.parse(/** @type {string} */ (text));
-        } else {
-          parsedData = JSON.parse(/** @type {string} */ (text));
-        }
-        if (typeof parsedData !== "object" || parsedData === null) {
-          throw new Error("Invalid file structure");
-        }
-        importedPresets = NestedPresetUtils.nestedToFlat(parsedData);
-        for (const item of Object.values(importedPresets)) {
-          if (
-            item &&
-            item.filename &&
-            item.filename.startsWith("data:image/")
-          ) {
-            item.filename = await PresetDOM.createThumbnail(item.filename);
-          }
-        }
+        importedPresets = await ExportUtils.presetsFromDocument(
+          /** @type {string} */ (text),
+          file.name.endsWith(".yaml") || file.name.endsWith(".yml")
+            ? "yaml"
+            : "json",
+        );
       } catch (err) {
         await ModalUtils.alert(
           "Failed to parse file: " + /** @type {Error} */ (err).message,
