@@ -45,7 +45,7 @@ The main namespace holding all parsing logic, string formatting, and utility fun
 
 - **`getUnrolledTemplate(val, cache, seen)`**: Recursively expands standard presets while leaving `{group}` variant syntax intact. Wraps presets if prepend/append configs exist in the cache.
 - **`expandRecursively(val, cache, seen, rollManager)`**: Performs deep, recursive expansion of both standard presets and `{group:value}` references within templates. Integrates seamlessly with `RollManager` to track dynamic rolls.
-- **`parseTokens(val, cache, ignorePreset)`**: Lexically parses a raw prompt string into structural tokens (tags, variables, delimiters, plain text, and known preset matches) while respecting logical boundaries.
+- **`parseTokens(val, cache, ignorePreset)`**: Lexically parses a raw prompt string into structural tokens (tags, variables, delimiters, plain text, and known preset matches) while respecting logical boundaries. Candidates match case-insensitively (the input is lowercased once, candidates carry a lowercased form), and a matched token keeps the text as typed.
 
 #### Chip Processing
 
@@ -59,7 +59,7 @@ The main namespace holding all parsing logic, string formatting, and utility fun
 - **`getGroupMatches(groupName, cache)`**: Finds all cache keys that belong to a specific group/folder.
 - **`isVirtualNull(val)`**: Checks if a string acts as a nullifier (e.g., "none" or "null").
 - **`resolveVariantKey(groupName, val, cache)`**: Looks up and resolves a target variant key within the preset cache dictionary.
-- **`findPresetMatch(text, cache)`**: Evaluates if a raw text input maps directly to an exact preset key or preset string value.
+- **`findPresetMatch(text, cache)`**: Evaluates if a raw text input maps directly to a preset key or preset string value. The exact spelling is tried first, then a lowercased index, so a key typed in another case still resolves.
 
 #### Formatting & Extraction
 

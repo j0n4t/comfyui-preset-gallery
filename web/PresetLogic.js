@@ -31,16 +31,32 @@ function buildCandidates(cache) {
         cache,
       );
       if (wrappedPreset) {
-        candidates.push({ matchStr: wrappedPreset, key, item });
+        candidates.push({
+          matchStr: wrappedPreset,
+          lowerMatchStr: wrappedPreset.toLowerCase(),
+          key,
+          item,
+        });
       }
 
       const trimmedPreset = item.preset.trim();
       if (trimmedPreset && trimmedPreset !== wrappedPreset) {
-        candidates.push({ matchStr: trimmedPreset, key, item });
+        candidates.push({
+          matchStr: trimmedPreset,
+          lowerMatchStr: trimmedPreset.toLowerCase(),
+          key,
+          item,
+        });
       }
     }
     if (key && key.trim()) {
-      candidates.push({ matchStr: key.trim(), key, item });
+      const trimmedKey = key.trim();
+      candidates.push({
+        matchStr: trimmedKey,
+        lowerMatchStr: trimmedKey.toLowerCase(),
+        key,
+        item,
+      });
     }
   }
 
@@ -61,12 +77,13 @@ function buildCandidates(cache) {
  * Groups candidates by their first character, keeping `buildCandidates`'
  * longest-first order inside each bucket.
  *
- * The walk in `parseTokens` tests `val.startsWith(cand.matchStr, i)` for every
- * candidate at every position. A candidate whose first character is not
- * `val[i]` cannot match, so bucketing removes those comparisons without
- * changing which candidate wins: the buckets are a partition of the same list
- * and the relative order within a bucket is the list's own order, so the first
- * candidate to match at a position is still the first one in the whole list.
+ * The walk in `parseTokens` tests `lowerVal.startsWith(cand.lowerMatchStr, i)`
+ * for every candidate at every position, against the whole input lowercased
+ * once. A candidate whose first character cannot match `lowerVal[i]` cannot
+ * match at all, so bucketing removes those comparisons without changing which
+ * candidate wins: the buckets are a partition of the same list and the relative
+ * order within a bucket is the list's own order, so the first candidate to
+ * match at a position is still the first one in the whole list.
  *
  * Measured on a 4.5 KB basket text with 1301 candidates: the comparison loop
  * goes from ~30 ms to ~1.4 ms, and the whole walk drops by ~75%.
@@ -82,7 +99,7 @@ function bucketCandidatesByFirstChar(candidates) {
   const buckets = new Map();
   for (const cand of candidates) {
     if (!cand.matchStr) continue;
-    const first = cand.matchStr[0];
+    const first = cand.lowerMatchStr[0];
     let bucket = buckets.get(first);
     if (!bucket) {
       bucket = [];
@@ -163,12 +180,19 @@ function buildGroupIndex(cache) {
  *
  * So this keeps first-wins and preset-only, which is what the scan did.
  *
+ * It returns two maps: the exact one, and the same strings lowercased.
+ * `findPresetMatch` tries the exact map first, so nothing that resolves today
+ * changes, and falls back to the lowercased one so a key typed in another case
+ * still resolves.
+ *
  * @param {PresetCache} cache
- * @returns {Map<string, ChipLookupEntry>}
+ * @returns {{ exact: Map<string, ChipLookupEntry>, lower: Map<string, ChipLookupEntry> }}
  */
 function buildPresetMatchIndex(cache) {
   /** @type {Map<string, ChipLookupEntry>} */
-  const index = new Map();
+  const exact = new Map();
+  /** @type {Map<string, ChipLookupEntry>} */
+  const lower = new Map();
 
   const keys = Object.getOwnPropertyNames(cache);
   for (const key of keys) {
@@ -179,12 +203,17 @@ function buildPresetMatchIndex(cache) {
     // All three name the same entry, so their order within it does not matter;
     // `has` is what makes an earlier entry win over a later one.
     for (const matchStr of [key.trim(), item.preset.trim(), wrapped]) {
-      if (matchStr && !index.has(matchStr)) {
-        index.set(matchStr, { foundKey: key, foundItem: item });
+      if (!matchStr) continue;
+      if (!exact.has(matchStr)) {
+        exact.set(matchStr, { foundKey: key, foundItem: item });
+      }
+      const lowerStr = matchStr.toLowerCase();
+      if (!lower.has(lowerStr)) {
+        lower.set(lowerStr, { foundKey: key, foundItem: item });
       }
     }
   }
-  return index;
+  return { exact, lower };
 }
 
 /**
@@ -1067,12 +1096,20 @@ const PresetLogic = {
     }
 
     const derived = derivedFor(cache);
-    if (!derived.presetMatchIndex) {
-      derived.presetMatchIndex = buildPresetMatchIndex(cache);
+    if (!derived.presetMatchIndex || !derived.presetMatchIndexLower) {
+      const indexes = buildPresetMatchIndex(cache);
+      derived.presetMatchIndex = indexes.exact;
+      derived.presetMatchIndexLower = indexes.lower;
     }
+    const exactIndex =
+      /** @type {Map<string, ChipLookupEntry>} */ (derived.presetMatchIndex);
+    const lowerIndex =
+      /** @type {Map<string, ChipLookupEntry>} */ (derived.presetMatchIndexLower);
     const hit =
-      derived.presetMatchIndex.get(trimmed) ||
-      (split.libraryId ? derived.presetMatchIndex.get(split.key) : null);
+      exactIndex.get(trimmed) ||
+      (split.libraryId ? exactIndex.get(split.key) : null) ||
+      lowerIndex.get(trimmed.toLowerCase()) ||
+      (split.libraryId ? lowerIndex.get(split.key.toLowerCase()) : null);
     return hit ? { key: hit.foundKey, item: hit.foundItem } : null;
   },
 
@@ -1103,6 +1140,10 @@ const PresetLogic = {
     /** @type {ParsedToken[]} */
     const tokens = [];
     if (!val) return tokens;
+
+    // The walk matches case-insensitively, so it runs against the input
+    // lowercased once rather than lowering either side per comparison.
+    const lowerVal = val.toLowerCase();
 
     /** @type {Map<string, ChipCandidate[]>|null} */
     let candidatesByFirstChar = null;
@@ -1136,10 +1177,10 @@ const PresetLogic = {
       const startIdx = idx;
       let matched = null;
 
-      const startBucket = candidatesByFirstChar?.get(val[idx]);
+      const startBucket = candidatesByFirstChar?.get(lowerVal[idx]);
       if (startBucket) {
         for (const cand of startBucket) {
-          if (val.startsWith(cand.matchStr, idx)) {
+          if (lowerVal.startsWith(cand.lowerMatchStr, idx)) {
             if (
               (ignorePreset && cand.key?.endsWith(ignorePreset)) ||
               cand.matchStr === ignorePreset
@@ -1158,11 +1199,19 @@ const PresetLogic = {
           .slice(idx)
           .match(/^\{[^{}]+(?::(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)?\}/i);
         if (varMatch) {
-          matched = { matchStr: varMatch[0], isVar: true };
+          matched = {
+            matchStr: varMatch[0],
+            lowerMatchStr: varMatch[0].toLowerCase(),
+            isVar: true,
+          };
         } else {
           const tagMatch = val.slice(idx).match(/^<[^<>]+>/i);
           if (tagMatch) {
-            matched = { matchStr: tagMatch[0], isTag: true };
+            matched = {
+            matchStr: tagMatch[0],
+            lowerMatchStr: tagMatch[0].toLowerCase(),
+            isTag: true,
+          };
           }
         }
       }
@@ -1171,7 +1220,9 @@ const PresetLogic = {
         tokens.push({
           start: idx,
           end: idx + matched.matchStr.length,
-          text: matched.matchStr,
+          // The text as typed, not the candidate's stored spelling: a
+          // case-insensitive match must not rewrite what the user wrote.
+          text: val.slice(startIdx, startIdx + matched.matchStr.length),
           key: matched.key,
           item: matched.item,
           isTag: matched.isTag,
@@ -1205,10 +1256,10 @@ const PresetLogic = {
             ) {
               foundNextMatch = true;
             } else {
-              const plainBucket = candidatesByFirstChar?.get(val[endPlain]);
+              const plainBucket = candidatesByFirstChar?.get(lowerVal[endPlain]);
               if (plainBucket) {
                 for (const cand of plainBucket) {
-                  if (val.startsWith(cand.matchStr, endPlain)) {
+                  if (lowerVal.startsWith(cand.lowerMatchStr, endPlain)) {
                     if (
                       cand.key === ignorePreset ||
                       cand.matchStr === ignorePreset

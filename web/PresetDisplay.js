@@ -15,6 +15,7 @@
  */
 import PresetLogic from "./PresetLogic.js";
 import RollManager from "./RollManager.js";
+import { derivedFor } from "./CacheDerived.js";
 
 /**
  * Formats underscore/hyphen delimited strings into Title Case.
@@ -78,6 +79,30 @@ function getVisibleKeys(cache, query = "") {
 }
 
 /**
+ * Maps lowercased folder paths to the colour stored under them.
+ *
+ * `getPresetColor` walks a preset key's own path segments, so without this a
+ * folder colour is only found when the key spells the folder exactly the way it
+ * was stored. The index lets the fallback find it in any case.
+ * @param {PresetCache} cache
+ * @returns {Map<string, string>}
+ */
+function presetColorIndex(cache) {
+  const derived = derivedFor(cache);
+  if (!derived.presetColorIndex) {
+    /** @type {Map<string, string>} */
+    const index = new Map();
+    for (const [key, item] of Object.entries(cache)) {
+      if (item?.__color__ && !index.has(key.toLowerCase())) {
+        index.set(key.toLowerCase(), item.__color__);
+      }
+    }
+    derived.presetColorIndex = index;
+  }
+  return derived.presetColorIndex;
+}
+
+/**
  * Computes the assigned or computed HSL color for a given preset key.
  * @param {string} [presetKey=""] - Preset identifier path key.
  * @param {PresetCache|null} [cache=null] - Optional lookup cache.
@@ -85,11 +110,19 @@ function getVisibleKeys(cache, query = "") {
  */
 function getPresetColor(presetKey = "", cache = null) {
   const parts = PresetLogic.splitQualifiedKey(presetKey).key.split("/");
+  /** @type {Map<string, string> | null} */
+  let lowerColors = null;
   for (let i = parts.length; i > 0; i--) {
     const parentPath = parts.slice(0, i).join("/");
-    if (cache && cache[parentPath] && cache[parentPath].__color__) {
+    if (!cache) continue;
+    if (cache[parentPath]?.__color__) {
       return cache[parentPath].__color__;
     }
+    // Exact case first at each level, then any case: a folder colour belongs
+    // to the folder, whatever case the preset key spells it in.
+    if (!lowerColors) lowerColors = presetColorIndex(cache);
+    const hit = lowerColors.get(parentPath.toLowerCase());
+    if (hit) return hit;
   }
   const topLevel = parts[0];
   return getHashColor(topLevel);

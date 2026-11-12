@@ -44,6 +44,8 @@ the name is `sock`, and a colour hashes `wear` rather than `socks#wear`.
   what the user sees, so the hash constant is not a detail.
 - `getPresetColor(key, cache)` — walks up the key's path looking for an assigned
   `__color__` on a folder, and falls back to the hash of the top-level folder.
+  The exact spelling is tried first at each level, then a lowercased index, so a
+  folder colour follows the folder whatever case the key spells it in.
 
 ### Search
 

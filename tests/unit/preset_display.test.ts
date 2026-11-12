@@ -120,6 +120,22 @@ test("getPresetColor walks up to an assigned folder colour", () => {
   assert.equal(PresetDisplay.getPresetColor("Faces", cache), "#ff0000");
 });
 
+test("getPresetColor finds a folder colour typed in another case", () => {
+  const cache: PresetCache = {
+    faces: { __color__: "#ff0000", preset: "" },
+    "faces/portrait": { preset: "pro" },
+  };
+
+  assert.equal(
+    PresetDisplay.getPresetColor("faces/portrait", cache),
+    "#ff0000",
+  );
+  assert.equal(
+    PresetDisplay.getPresetColor("Faces/Portrait", cache),
+    "#ff0000",
+  );
+});
+
 test("getPresetColor falls back to a hash colour on the top-level folder", () => {
   const color = PresetDisplay.getPresetColor("Faces/Portrait", {
     "Faces/Portrait": { preset: "pro" },

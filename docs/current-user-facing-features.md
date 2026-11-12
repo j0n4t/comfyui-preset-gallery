@@ -104,6 +104,10 @@ A whole installation can be backed up from **Settings → Import / Export** by
 exporting every library as one bundle, and restored later by importing that
 file.
 
+Preset keys are matched case-insensitively when a chip is resolved, so typing a
+preset name or key in a different case than it is stored still finds it; the
+exact stored spelling always wins when both exist.
+
 ## Settings and persistence
 
 Settings include library selection and priority, library badges, chip

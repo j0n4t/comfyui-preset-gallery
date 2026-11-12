@@ -755,6 +755,55 @@ test("findPresetMatch ignores entries without a preset", () => {
   assert.equal(PresetLogic.findPresetMatch("Smile", cache)?.key, "Smile");
 });
 
+test("findPresetMatch resolves a key typed in another case", () => {
+  const cache: PresetCache = {
+    "Faces/Portrait": { preset: "portrait" },
+    "faces/macro": { preset: "macro" },
+  };
+
+  assert.equal(
+    PresetLogic.findPresetMatch("faces/portrait", cache)?.key,
+    "Faces/Portrait",
+  );
+  assert.equal(
+    PresetLogic.findPresetMatch("FACES/PORTRAIT", cache)?.key,
+    "Faces/Portrait",
+  );
+});
+
+test("findPresetMatch prefers the exact spelling over a differently-cased entry", () => {
+  const cache: PresetCache = {
+    "Faces/Portrait": { preset: "upper" },
+    "faces/portrait": { preset: "lower" },
+  };
+
+  assert.equal(
+    PresetLogic.findPresetMatch("faces/portrait", cache)?.item?.preset,
+    "lower",
+  );
+  assert.equal(
+    PresetLogic.findPresetMatch("Faces/Portrait", cache)?.item?.preset,
+    "upper",
+  );
+  // No exact spelling, so the lowercased index decides - first one wins.
+  assert.equal(
+    PresetLogic.findPresetMatch("FACES/PORTRAIT", cache)?.item?.preset,
+    "upper",
+  );
+});
+
+test("parseTokens resolves a preset typed in another case and keeps the text", () => {
+  const cache: PresetCache = { "faces/portrait": { preset: "portrait, solo" } };
+
+  const [exact] = PresetLogic.parseTokens("faces/portrait", cache);
+  assert.equal(exact.key, "faces/portrait");
+  assert.equal(exact.text, "faces/portrait");
+
+  const [cased] = PresetLogic.parseTokens("Faces/Portrait", cache);
+  assert.equal(cased.key, "faces/portrait");
+  assert.equal(cased.text, "Faces/Portrait");
+});
+
 test("findPresetMatch prefers an exact key over a later entry's text", () => {
   const cache: PresetCache = {
     "Pose/Smile": { preset: "smile" },

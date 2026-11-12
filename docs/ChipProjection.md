@@ -19,6 +19,9 @@ and vice versa.
 Maps a sequential list of selection tokens to `ChipGroupInput[]`, one entry per
 chip, each carrying:
 
+A token resolves against the exact spelling first and then a lowercased form of
+the same lookup, so a chip typed in another case still lands on its preset.
+
 | Field                     | Meaning                                                                            |
 | ------------------------- | ---------------------------------------------------------------------------------- |
 | `styleKey`                | the cache key the chip is keyed on, or the token as written when it names no entry |

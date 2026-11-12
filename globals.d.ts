@@ -134,6 +134,8 @@ type ChipLookupEntry = {
  */
 type ChipCandidate = {
   matchStr: string;
+  /** `matchStr` lowercased, so the walk compares without allocating. */
+  lowerMatchStr: string;
   key?: string;
   item?: PresetCacheItem;
   isVar?: boolean;
@@ -146,10 +148,13 @@ type ChipCandidate = {
  */
 type CacheDerived = {
   lookupMap?: Map<string, ChipLookupEntry>;
+  lookupMapLower?: Map<string, ChipLookupEntry>;
   candidatesByFirstChar?: Map<string, ChipCandidate[]>;
   groupIndex?: Map<string, string[]>;
   presetMatchIndex?: Map<string, ChipLookupEntry>;
+  presetMatchIndexLower?: Map<string, ChipLookupEntry>;
   variantKeyIndex?: Map<string, string>;
+  presetColorIndex?: Map<string, string>;
 };
 
 /**

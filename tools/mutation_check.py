@@ -88,6 +88,28 @@ MUTATIONS = [
      '      const cleanKey = key.toLowerCase().replace(/ /g, "_");\n',
      "      const cleanKey = key;\n",
      "tests/unit/library_bundle.test.ts"),
+    # The case-insensitive fallback is what lets a key typed in another case
+    # resolve; without it only the exact stored spelling works.
+    ("web/PresetLogic.js",
+     "      lowerIndex.get(trimmed.toLowerCase()) ||\n",
+     "      null ||\n",
+     "tests/unit/preset_logic.test.ts"),
+    # The walk compares against the input lowercased once; comparing the raw
+    # input instead only ever matches a lowercase spelling.
+    ("web/PresetLogic.js",
+     "    const lowerVal = val.toLowerCase();\n",
+     "    const lowerVal = val;\n",
+     "tests/unit/preset_logic.test.ts"),
+    # A chip lookup falls back to the lowercased map for the same reason.
+    ("web/ChipProjection.js",
+     "        lookupIn(lookupMap, k) || lookupIn(lookupMapLower, k.toLowerCase());",
+     "        lookupIn(lookupMap, k);",
+     "tests/unit/chip_projection.test.ts"),
+    # A folder colour is found through the lowercased folder index.
+    ("web/PresetDisplay.js",
+     "    const hit = lowerColors.get(parentPath.toLowerCase());",
+     "    const hit = lowerColors.get(parentPath);",
+     "tests/unit/preset_display.test.ts"),
     ("web/PresetEditor.js",
      "return uniqueKey !== editingPlainKey && !!cache[uniqueKey];",
      "return !!cache[uniqueKey];",
@@ -230,25 +252,41 @@ MUTATIONS = [
     # The lookup must be memoised per cache: rebuilding it per call is the
     # cold-start cost the build budget measures.
     ("web/ChipProjection.js",
-     "    if (!derived.lookupMap) derived.lookupMap = buildLookupMap(cache);",
-     "    derived.lookupMap = buildLookupMap(cache);",
+     "    if (!derived.lookupMap || !derived.lookupMapLower) {\n"
+     "      const maps = buildLookupMap(cache);\n"
+     "      derived.lookupMap = maps.exact;\n"
+     "      derived.lookupMapLower = maps.lower;\n"
+     "    }",
+     "    if (true) {\n"
+     "      const maps = buildLookupMap(cache);\n"
+     "      derived.lookupMap = maps.exact;\n"
+     "      derived.lookupMapLower = maps.lower;\n"
+     "    }",
      "tests/unit/chip_projection.test.ts"),
     # lookup entries the chips resolve through (drop each -> its own test fails)
     ("web/ChipProjection.js",
-     "lookupMap.set(trimmedPreset, { foundKey: key, foundItem: item });",
-     "lookupMap.set(trimmedPreset + '\\u0000', { foundKey: key, foundItem: item });",
+     "        exact.set(trimmedPreset, entry);\n"
+     "        lower.set(trimmedPreset.toLowerCase(), entry);",
+     "        exact.set(trimmedPreset + '\\u0000', entry);\n"
+     "        lower.set(trimmedPreset.toLowerCase() + '\\u0000', entry);",
      "tests/unit/preset_logic.perf.test.ts"),   # raw-text resolution
     ("web/ChipProjection.js",
-     "lookupMap.set(wrappedPreset, { foundKey: key, foundItem: item });",
-     "lookupMap.set(wrappedPreset + '\\u0000', { foundKey: key, foundItem: item });",
+     "        exact.set(wrappedPreset, entry);\n"
+     "        lower.set(wrappedPreset.toLowerCase(), entry);",
+     "        exact.set(wrappedPreset + '\\u0000', entry);\n"
+     "        lower.set(wrappedPreset.toLowerCase() + '\\u0000', entry);",
      "tests/unit/preset_logic.perf.test.ts"),   # wrapped resolution
-    # Both key lines, or the .trim() one still supplies the entry and the
+    # Every key line, or one of the others still supplies the entry and the
     # mutation changes nothing.
     ("web/ChipProjection.js",
-     "      lookupMap.set(key, { foundKey: key, foundItem: item });\n"
-     "      lookupMap.set(key.trim(), { foundKey: key, foundItem: item });",
-     "      lookupMap.set(key + '\\u0000', { foundKey: key, foundItem: item });\n"
-     "      lookupMap.set(key.trim() + '\\u0000', { foundKey: key, foundItem: item });",
+     "      exact.set(key, entry);\n"
+     "      exact.set(key.trim(), entry);\n"
+     "      lower.set(key.toLowerCase(), entry);\n"
+     "      lower.set(key.trim().toLowerCase(), entry);",
+     "      exact.set(key + '\\u0000', entry);\n"
+     "      exact.set(key.trim() + '\\u0000', entry);\n"
+     "      lower.set(key.toLowerCase() + '\\u0000', entry);\n"
+     "      lower.set(key.trim().toLowerCase() + '\\u0000', entry);",
      "tests/unit/preset_logic.perf.test.ts"),   # weighted-token resolution
     # the roll must stay observable, or a cache-keyed memo would silently win
     ("web/PresetLogic.js",
@@ -285,8 +323,8 @@ MUTATIONS = [
     # which preset a chip resolves to, and 510 strings in a real library are
     # claimed more than once.
     ("web/PresetLogic.js",
-     "      if (matchStr && !index.has(matchStr)) {",
-     "      if (matchStr) {",
+     "      if (!exact.has(matchStr)) {",
+     "      if (true) {",
      "tests/unit/preset_logic.test.ts"),
     # ...and it must skip entries without a preset, as the scan did.
     ("web/PresetLogic.js",
@@ -309,8 +347,8 @@ MUTATIONS = [
     # Keying it on the whole string leaves every multi-character candidate
     # unreachable, and its text degrades to plain text with no error.
     ("web/PresetLogic.js",
-     "    const first = cand.matchStr[0];",
-     "    const first = cand.matchStr;",
+     "    const first = cand.lowerMatchStr[0];",
+     "    const first = cand.lowerMatchStr;",
      "tests/unit/preset_logic.perf.test.ts"),
     # Candidates are longest-first and the walk takes the first match, so a
     # bucket in any other order picks the shorter candidate instead.

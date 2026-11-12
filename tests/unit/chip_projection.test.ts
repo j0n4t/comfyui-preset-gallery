@@ -54,6 +54,14 @@ test("one token is one chip, keyed as it was given", () => {
   assert.deepEqual(chips[0].subArray, ["Faces/Portrait"]);
 });
 
+test("a chip typed in another case resolves to the stored preset", () => {
+  const chips = ChipProjection.getGroupedChips(["faces/portrait"], CACHE);
+
+  assert.equal(chips.length, 1);
+  assert.equal(chips[0].styleKey, "Faces/Portrait");
+  assert.equal(chips[0].item?.preset, "portrait, solo");
+});
+
 test("a run of tokens never merges into one chip", () => {
   // The collapse to a preset is guarded to a single token, so consecutive
   // tokens that happen to spell a preset body stay separate chips. Without the
