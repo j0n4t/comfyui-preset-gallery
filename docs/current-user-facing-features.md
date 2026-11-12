@@ -82,12 +82,16 @@ Import and export live in **Settings → Import / Export**. Import accepts `.zip
 `.json`, `.yaml`, and `.yml`; export offers `.zip`, `.json`, and `.yaml`. Both
 dialogs let users choose which presets to transfer and how duplicates are
 handled. Imported keys are normalized to lowercase with underscores, matching
-what the editor writes. Exporting with the **All libraries (bundle)** scope
-shows every library as a row in one tree, with its folders and presets
-underneath, so the export can cover whole libraries or individual presets;
-importing a bundle shows the same tree, each library carrying its own target
-and duplicate strategy, so a bundle can be restored, partly imported, merged
-into an existing library, or imported under a new name of its own.
+what the editor writes. Every import dialog shows the libraries it will write
+as rows, one preset tree per row, with one duplicate strategy for all of them.
+A row's pencil renames its destination: an existing name merges into that
+library and reports how many presets clash, a new name creates a library, and
+`library#folder` moves a folder into another row. Exporting with the **All
+libraries (bundle)** scope shows every library the same way, with its folders
+and presets underneath, so the export can cover whole libraries or individual
+presets. Importing a bundle shows one row per library, so a bundle can be
+restored, partly imported, merged into an existing library, or imported under a
+new name of its own.
 
 ## Preset libraries
 

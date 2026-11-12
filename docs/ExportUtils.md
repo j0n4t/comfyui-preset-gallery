@@ -78,13 +78,14 @@ The module relies on several helper modules:
 ### 6. Import Modal Dialog (`showImportModal`)
 
 - **Purpose**: Pre-import interface for inspecting imported data against current presets.
-- **Duplicate Detection**: Automatically detects duplicate keys and displays duplicate counts.
-- **Duplicate Handling Strategy Dropdown**:
+- **Row**: The dialog mounts `buildLibraryPicker` seeded with a single row, named after the library the file is being imported into. The row carries that library's preset tree, its preset count and its duplicate count, so what is already on the server is what the badges and diffs compare against.
+- **Landing the import**: The row's pencil (`✎`) renames it. An unchanged name writes to that library; a served library's name merges into it and reports its duplicates; any other name creates a new library. A folder renamed to `lib#folder` moves its presets into that row.
+- **Duplicate Handling Strategy Dropdown** (one, shared by every row):
   - _Overwrite existing presets_
   - _Skip duplicates_
   - _Keep both (Rename imported with `_copy`)_
 - **Import Custom Colors**: Toggle for importing group colors (`__color__`).
-- **Import Summary**: Displays pre-import counts (Total Selected, New Styles, Replaced Styles, Unchanged Styles) in a confirmation modal.
+- **Import Summary**: One line per row in the confirmation modal - new / replaced / unchanged, and the preset count the destination library will hold once the strategy is applied.
 
 ### 7. File Import Processor (`importFile`)
 
@@ -99,7 +100,7 @@ The module relies on several helper modules:
   - Flattens nested structures (`NestedPresetUtils.nestedToFlat`).
   - Normalizes keys: lowercased, spaces to underscores - the same rule the editor's save, the export tree's rename and the zip import apply, so an imported preset cannot exist under two spellings.
   - Generates thumbnails for embedded data URL images.
-- **Integration**: Triggers `showImportModal`, resolves duplicate handling according to chosen strategy, appends unique copy suffixes if required, preserves group colors, and saves final presets via `PresetGalleryAPI.savePresets`.
+- **Integration**: A zip carrying a root manifest goes to `showImportBundleModal`; anything else goes to `showImportModal`. Both end in `writeImport`, which writes each selected row one destination at a time - reading the destination fresh before every save, so two rows aimed at the same library accumulate instead of the second clobbering the first.
 
 ### 8. Multi-Library Bundles
 
@@ -109,6 +110,6 @@ The module relies on several helper modules:
   - `ZIP` (manifest `layout: "files"`): `<libraryId>/<key>.txt`, `<libraryId>/<key>.<ext>`, `<libraryId>/<folder>/__color__.txt`. This is the single-library layout namespaced by library id, assembled through `addPresetZipEntries` so the two cannot drift.
   - `JSON` / `YAML` (manifest `layout: "json" | "yaml"`): one document per library at `libraries/<libraryId>.<ext>`, in the same shape the single-library export writes, so the existing parser reads it back.
 - **Build path**: `buildBundleEntries` produces the file table as a plain record (path -> text, or `{ base64 }` for an image), which is also what makes the layout unit-testable without a zip library. An optional per-library key selection narrows each library to what the picker checked; a library left with nothing selected is left out of the archive, manifest included. `buildLibraryBundleZip` writes that table into a JSZip instance; `exportLibraryBundle` downloads it.
-- **Picker**: `buildBundleSelectorTree` renders one group row per library, each holding that library's own preset tree (`buildPresetSelectorTree` with `nested`, which drops its own select-all and scroll cap). The library header carries a checkbox and its preset count, and the folder groups, duplicate badges, diffs and inline editor sit underneath it. A master row selects or clears every library.
-- **Import path**: `importFile` routes a zip with a manifest to `showImportBundleModal`, which mounts the same picker with `importControls`: each library header also carries its own target (Restore to its id, Skip, merge into another served library, or `＋ Add as a new library…` to land it under a name of its own) and its own duplicate strategy, plus one shared colors toggle. Changing the target rebuilds that library's tree against the new target, keeping the keys already checked, so the badges and diffs follow it. `importBundle` writes the selected rows one target at a time, so two rows aiming at the same library accumulate. Libraries with nothing selected are left out, and empty ones are reported and not written.
-- **New library names**: `promptForNewLibraryId` is shared with the single-library import, so both dialogs validate a new id the same way - letters, numbers, underscores and hyphens; not `main` or `default`; not already taken by a served library or by another library in the bundle. The bundle dialog refuses a collision against the bundle's own ids too, because two rows writing the same name would clobber each other.
+- **Picker**: `buildLibraryPicker` is the shared row container, used by the import dialogs and by the Settings export scope. Each row holds one library's preset tree (`buildPresetSelectorTree` with `nested`, which drops its own select-all and scroll cap), its preset count and, in import mode, its duplicate count. A master row selects or clears every row. In import mode each row also carries a pencil (`✎`) that renames the destination: an unchanged name writes where the row came from, a served library's name merges into it and reports its duplicates, and any other name creates a new library. Renaming onto another row folds the two into one. The duplicate strategy is one global switch for the whole picker.
+- **Import path**: `importFile` routes a zip with a manifest to `showImportBundleModal`, which mounts the picker seeded with one row per library in the bundle. A row's presets are compared against the destination the row is named after, so renaming a row re-measures the badges and diffs. `importBundle` writes the selected rows one destination at a time, so two rows aiming at the same library accumulate. Rows with nothing selected are left out, and empty ones are reported and not written.
+- **New library names**: The Settings export scope's bundle picker still offers `＋ Add as a new library…`, which goes through `promptForNewLibraryId` - letters, numbers, underscores and hyphens; not `main` or `default`; not already taken by a served library or by another library in the bundle. The import dialogs do the same job with the row's pencil, so a name is validated where it is typed.

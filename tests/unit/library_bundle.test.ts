@@ -339,19 +339,23 @@ test("a bundle row can target another library", async () => {
     entries,
   });
 
+  const originalPrompt = ModalUtils.prompt;
+
   try {
+    ModalUtils.prompt = async () => "second";
     const promise = ExportUtils.importFile(
       { name: "bundle.zip" } as unknown as File,
       "main",
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const target = document.querySelector<HTMLSelectElement>(
-      ".j0n4t-pg-bundle-target",
+    const rename = document.querySelector<HTMLElement>(
+      ".j0n4t-pg-bundle-rename",
     );
-    assert.ok(target, "the bundle dialog lists a target per library");
-    target.value = "second";
-    target.dispatchEvent(new Event("change"));
+    assert.ok(rename, "the bundle dialog renames a library");
+    rename.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     document.querySelector<HTMLButtonElement>("#j0n4t-pg-bimp-confirm")?.click();
 
     const result = await promise;
@@ -361,6 +365,7 @@ test("a bundle row can target another library", async () => {
       ["second"],
     );
   } finally {
+    ModalUtils.prompt = originalPrompt;
     stub.restore();
   }
 });
@@ -426,23 +431,115 @@ test("a bundle dialog imports only the presets checked in its tree", async () =>
   }
 });
 
+test("the import summary reports every destination library", async () => {
+  const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
+  const originalFetchCaches = PresetGalleryAPI.fetchLibraryCaches;
+  const originalConfirm = ModalUtils.confirm;
+  let summary = "";
+  try {
+    PresetGalleryAPI.fetchLibraries = async () => [
+      { id: "main", name: "Main", default: true },
+    ];
+    PresetGalleryAPI.fetchLibraryCaches = async () => ({
+      main: { Imported: { preset: "existing" } },
+    });
+    ModalUtils.confirm = async (message) => {
+      summary = message;
+      return false;
+    };
+
+    await ExportUtils.showImportModal(
+      { Imported: { preset: "new" }, Fresh: { preset: "fresh" } },
+      "main",
+      () => {},
+    );
+    document
+      .querySelector<HTMLButtonElement>("#j0n4t-pg-imp-confirm")
+      ?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.match(
+      summary,
+      /main: 1 new, 1 replaced, 0 unchanged → 2 presets/,
+    );
+  } finally {
+    PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
+    PresetGalleryAPI.fetchLibraryCaches = originalFetchCaches;
+    ModalUtils.confirm = originalConfirm;
+    document
+      .querySelectorAll(".j0n4t-pg-modal-overlay")
+      .forEach((overlay) => overlay.remove());
+  }
+});
+
+test("a bundle dialog writes every selected row", async () => {
+  const entries = ExportUtils.buildBundleEntries(
+    [
+      { id: "main", name: "Main" },
+      { id: "styles", name: "Styles" },
+    ],
+    {
+      main: { "faces/portrait": { preset: "portrait" } },
+      styles: { "urban/night": { preset: "night" } },
+    },
+    "json",
+    "full",
+    true,
+  );
+  const stub = stubBundleImport({
+    libraries: [
+      { id: "main", name: "Main", default: true },
+      { id: "styles", name: "Styles", default: false },
+    ],
+    entries,
+  });
+
+  try {
+    const promise = ExportUtils.importFile(
+      { name: "bundle.zip" } as unknown as File,
+      "main",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    document
+      .querySelector<HTMLButtonElement>("#j0n4t-pg-bimp-confirm")
+      ?.click();
+
+    const result = await promise;
+    assert.equal(result.success, true);
+    assert.deepEqual(
+      stub.writes.map((write) => write.libraryId).sort(),
+      ["main", "styles"],
+      "every selected row is written",
+    );
+  } finally {
+    stub.restore();
+  }
+});
+
 test("a zip without a manifest still uses the single-library import", async () => {
   const stub = stubBundleImport({
     libraries: [{ id: "main", name: "Main", default: true }],
     entries: { "Faces/Portrait.txt": "portrait" },
   });
   const originalShowImportModal = ExportUtils.showImportModal;
-  let captured: { presets?: PresetCache; libraryId?: string } = {};
+  let captured: { presets?: PresetCache; defaultLibraryId?: string } = {};
 
   try {
-    ExportUtils.showImportModal = async (presets, libraryId, onConfirm) => {
-      captured = { presets, libraryId };
+    ExportUtils.showImportModal = async (presets, defaultLibraryId, onConfirm) => {
+      captured = { presets, defaultLibraryId };
       await onConfirm({
-        selectedKeys: Object.keys(presets),
-        duplicateStrategy: "overwrite",
+        rows: [
+          {
+            name: defaultLibraryId,
+            sourceId: defaultLibraryId,
+            presets,
+            selectedKeys: Object.keys(presets),
+            count: Object.keys(presets).length,
+          },
+        ],
         importColors: true,
-        editedPresets: presets,
-        libraryId,
+        strategy: "overwrite",
       });
     };
 
@@ -452,7 +549,7 @@ test("a zip without a manifest still uses the single-library import", async () =
     );
 
     assert.equal(result.success, true);
-    assert.equal(captured.libraryId, "main");
+    assert.equal(captured.defaultLibraryId, "main");
     assert.equal(captured.presets?.["faces/portrait"]?.preset, "portrait");
     assert.deepEqual(
       stub.writes.map((write) => write.libraryId),
@@ -768,12 +865,11 @@ test("a bundle dialog can import a library under a new name", async () => {
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const target = document.querySelector<HTMLSelectElement>(
-      "#j0n4t-pg-bimp-tree .j0n4t-pg-bundle-target",
+    const rename = document.querySelector<HTMLElement>(
+      "#j0n4t-pg-bimp-tree .j0n4t-pg-bundle-rename",
     );
-    assert.ok(target, "the dialog lists a target per library");
-    target.value = "__create_new_library__";
-    target.dispatchEvent(new Event("change"));
+    assert.ok(rename, "the dialog renames a library");
+    rename.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     document.querySelector<HTMLButtonElement>("#j0n4t-pg-bimp-confirm")?.click();

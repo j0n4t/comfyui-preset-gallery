@@ -768,8 +768,8 @@ test.describe("editor", () => {
     // Keys arrive lowercased, the way every other write stores them.
     await settings.locator("#j0n4t-pg-io-file").setInputFiles(file);
     let modal = page.locator(".j0n4t-pg-modal-overlay").last();
-    await expect(modal.locator("#j0n4t-pg-dup-strategy")).toBeVisible();
-    await modal.locator("#j0n4t-pg-dup-strategy").selectOption("keep_both");
+    await expect(modal.locator("#j0n4t-pg-picker-strategy")).toBeVisible();
+    await modal.locator("#j0n4t-pg-picker-strategy").selectOption("keep_both");
     await modal.locator("#j0n4t-pg-imp-confirm").click();
     await page
       .locator(".j0n4t-pg-modal-overlay")
@@ -790,8 +790,8 @@ test.describe("editor", () => {
     // Importing the same file again meets the duplicates it just wrote.
     await settings.locator("#j0n4t-pg-io-file").setInputFiles(file);
     modal = page.locator(".j0n4t-pg-modal-overlay").last();
-    await expect(modal.locator("#j0n4t-pg-dup-strategy")).toBeVisible();
-    await modal.locator("#j0n4t-pg-dup-strategy").selectOption("keep_both");
+    await expect(modal.locator("#j0n4t-pg-picker-strategy")).toBeVisible();
+    await modal.locator("#j0n4t-pg-picker-strategy").selectOption("keep_both");
     await modal.locator("#j0n4t-pg-imp-confirm").click();
     await page
       .locator(".j0n4t-pg-modal-overlay")

@@ -263,10 +263,12 @@ test("getPresets returns the map the tree was built with", () => {
   assert.equal(tree.getPresets(), PRESETS);
 });
 
-test("import modal compares against and targets the selected library", async () => {
+test("import modal compares against the row's library", async () => {
   const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
   const originalGetPresets = PresetGalleryAPI.getPresets;
+  const originalFetchCaches = PresetGalleryAPI.fetchLibraryCaches;
   const originalConfirm = ModalUtils.confirm;
+  const originalPrompt = ModalUtils.prompt;
   let importTarget: string | undefined;
 
   try {
@@ -274,45 +276,55 @@ test("import modal compares against and targets the selected library", async () 
       { id: "main", name: "Main", default: true },
       { id: "second", name: "Second", default: false },
     ];
-    PresetGalleryAPI.getPresets = async (libraryId) => {
-      const presets: PresetCache = {};
-      if (libraryId === "main") presets.Imported = { preset: "existing" };
-      return presets;
+    const held: Record<string, PresetCache> = {
+      main: { Imported: { preset: "existing" } },
+      second: {},
     };
+    PresetGalleryAPI.getPresets = async (libraryId) =>
+      held[libraryId ?? ""] ?? {};
+    PresetGalleryAPI.fetchLibraryCaches = async () => ({ ...held });
     ModalUtils.confirm = async () => true;
 
     await ExportUtils.showImportModal(
       { Imported: { preset: "new" } },
       "main",
-      ({ libraryId }) => {
-        importTarget = libraryId;
+      ({ rows }) => {
+        importTarget = rows[0].name;
       },
     );
 
+    // main already holds Imported, so the row reports the duplicate
     assert.match(
-      document.querySelector("#j0n4t-pg-dup-label")?.textContent ?? "",
-      /1 detected/,
+      document.querySelector(".j0n4t-pg-bundle-consequence")?.textContent ??
+        "",
+      /merges into Main · 1 preset, 1 duplicate/,
     );
-    const librarySelect = document.querySelector<HTMLSelectElement>(
-      "#j0n4t-pg-imp-library",
-    );
-    assert.ok(librarySelect);
-    librarySelect.value = "second";
-    librarySelect.dispatchEvent(new Event("change"));
+
+    // renaming the row to a library that does not hold it clears the duplicate
+    ModalUtils.prompt = async () => "second";
+    document
+      .querySelector<HTMLElement>(".j0n4t-pg-bundle-rename")
+      ?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     assert.match(
-      document.querySelector("#j0n4t-pg-dup-label")?.textContent ?? "",
-      /0 detected/,
+      document.querySelector(".j0n4t-pg-bundle-consequence")?.textContent ??
+        "",
+      /merges into Second · 1 preset, 0 duplicates/,
     );
-    document.querySelector<HTMLButtonElement>("#j0n4t-pg-imp-confirm")?.click();
+
+    document
+      .querySelector<HTMLButtonElement>("#j0n4t-pg-imp-confirm")
+      ?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     assert.equal(importTarget, "second");
   } finally {
     PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
     PresetGalleryAPI.getPresets = originalGetPresets;
+    PresetGalleryAPI.fetchLibraryCaches = originalFetchCaches;
     ModalUtils.confirm = originalConfirm;
+    ModalUtils.prompt = originalPrompt;
     document
       .querySelectorAll(".j0n4t-pg-modal-overlay")
       .forEach((overlay) => overlay.remove());
@@ -322,6 +334,7 @@ test("import modal compares against and targets the selected library", async () 
 test("import modal can target a new library", async () => {
   const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
   const originalGetPresets = PresetGalleryAPI.getPresets;
+  const originalFetchCaches = PresetGalleryAPI.fetchLibraryCaches;
   const originalConfirm = ModalUtils.confirm;
   const originalPrompt = ModalUtils.prompt;
   let importTarget: string | undefined;
@@ -331,27 +344,82 @@ test("import modal can target a new library", async () => {
       { id: "main", name: "Main", default: true },
     ];
     PresetGalleryAPI.getPresets = async () => ({});
+    PresetGalleryAPI.fetchLibraryCaches = async () => ({ main: {} });
     ModalUtils.confirm = async () => true;
     ModalUtils.prompt = async () => "new_styles";
 
     await ExportUtils.showImportModal(
       { Imported: { preset: "new" } },
       "main",
-      ({ libraryId }) => {
-        importTarget = libraryId;
+      ({ rows }) => {
+        importTarget = rows[0].name;
       },
     );
 
-    const librarySelect = document.querySelector<HTMLSelectElement>(
-      "#j0n4t-pg-imp-library",
-    );
-    assert.ok(librarySelect);
-    librarySelect.value = "__create_new_library__";
-    librarySelect.dispatchEvent(new Event("change"));
+    document
+      .querySelector<HTMLElement>(".j0n4t-pg-bundle-rename")
+      ?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    assert.equal(librarySelect.value, "new_styles");
-    assert.ok(librarySelect.querySelector('option[value="new_styles"]'));
+    assert.match(
+      document.querySelector(".j0n4t-pg-bundle-consequence")?.textContent ??
+        "",
+      /creates a new library · 1 preset/,
+    );
+
+    document
+      .querySelector<HTMLButtonElement>("#j0n4t-pg-imp-confirm")
+      ?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(importTarget, "new_styles");
+  } finally {
+    PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
+    PresetGalleryAPI.getPresets = originalGetPresets;
+    PresetGalleryAPI.fetchLibraryCaches = originalFetchCaches;
+    ModalUtils.confirm = originalConfirm;
+    ModalUtils.prompt = originalPrompt;
+    document
+      .querySelectorAll(".j0n4t-pg-modal-overlay")
+      .forEach((overlay) => overlay.remove());
+  }
+});
+
+test("import modal can target a new library", async () => {
+  const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
+  const originalGetPresets = PresetGalleryAPI.getPresets;
+  const originalFetchCaches = PresetGalleryAPI.fetchLibraryCaches;
+  const originalConfirm = ModalUtils.confirm;
+  const originalPrompt = ModalUtils.prompt;
+  let importTarget: string | undefined;
+
+  try {
+    PresetGalleryAPI.fetchLibraries = async () => [
+      { id: "main", name: "Main", default: true },
+    ];
+    PresetGalleryAPI.getPresets = async () => ({});
+    PresetGalleryAPI.fetchLibraryCaches = async () => ({ main: {} });
+    ModalUtils.confirm = async () => true;
+    ModalUtils.prompt = async () => "new_styles";
+
+    await ExportUtils.showImportModal(
+      { Imported: { preset: "new" } },
+      "main",
+      ({ rows }) => {
+        importTarget = rows[0].name;
+      },
+    );
+
+    document
+      .querySelector<HTMLElement>(".j0n4t-pg-bundle-rename")
+      ?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.match(
+      document.querySelector(".j0n4t-pg-bundle-consequence")?.textContent ?? "",
+      /creates a new library · 1 preset/,
+    );
+
     document.querySelector<HTMLButtonElement>("#j0n4t-pg-imp-confirm")?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -359,6 +427,7 @@ test("import modal can target a new library", async () => {
   } finally {
     PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
     PresetGalleryAPI.getPresets = originalGetPresets;
+    PresetGalleryAPI.fetchLibraryCaches = originalFetchCaches;
     ModalUtils.confirm = originalConfirm;
     ModalUtils.prompt = originalPrompt;
     document

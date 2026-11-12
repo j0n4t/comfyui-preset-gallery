@@ -72,6 +72,24 @@ import PresetDisplay from "./PresetDisplay.js";
  */
 
 /**
+ * One library an import will write.
+ * @typedef {Object} ImportWrite
+ * @property {string} name
+ * @property {string} sourceId the library the presets came from
+ * @property {PresetCache} presets
+ * @property {string[]} selectedKeys
+ * @property {number} count real presets, ignoring folder-colour entries
+ */
+
+/**
+ * The edited preview an import dialog hands back.
+ * @typedef {Object} ImportResult
+ * @property {ImportWrite[]} rows
+ * @property {boolean} importColors
+ * @property {string} strategy
+ */
+
+/**
  * One library in the picker.
  * @typedef {Object} PickerRow
  * @property {string} sourceId
@@ -94,7 +112,7 @@ import PresetDisplay from "./PresetDisplay.js";
  * The editable preview of an import or export.
  * @typedef {Object} LibraryPicker
  * @property {HTMLDivElement} element
- * @property {() => Array<{sourceId: string, name: string, presets: PresetCache, selectedKeys: string[]}>} getRows
+ * @property {() => Array<{sourceId: string, name: string, presets: PresetCache, selectedKeys: string[], count: number}>} getRows
  * @property {() => Record<string, PresetCache>} getShape
  * @property {() => Record<string, string[]>} getSelection
  * @property {() => string} getStrategy
@@ -897,7 +915,7 @@ const ExportUtils = {
     const consequenceText = (pr) => {
       const total = presetCount(pr.presets);
       const noun = `${total} preset${plural(total)}`;
-      if (pr.name === pr.sourceId) {
+      if (pr.sourceId && pr.name === pr.sourceId) {
         const duplicates = duplicatesAgainst(pr, pr.name);
         return `restores in place · ${noun}, ${duplicates} duplicate${plural(duplicates)}`;
       }
@@ -1135,6 +1153,16 @@ const ExportUtils = {
       container.appendChild(renderRow(pr));
     }
 
+    const strategyEl = /** @type {HTMLSelectElement | null} */ (
+      container.querySelector("#j0n4t-pg-picker-strategy")
+    );
+    strategyEl?.addEventListener("change", () => {
+      for (const pr of pickerRows) {
+        pr.tree?.applyDuplicateStrategy(strategyEl.value);
+        updateRow(pr);
+      }
+    });
+
     const masterCb = /** @type {HTMLInputElement | null} */ (
       controls.querySelector("#j0n4t-pg-picker-sel-all")
     );
@@ -1170,6 +1198,7 @@ const ExportUtils = {
           name: pr.name,
           presets: pr.presets,
           selectedKeys: pr.tree ? pr.tree.getSelectedKeys() : [],
+          count: presetCount(pr.presets),
         })),
       getShape: () => {
         /** @type {Record<string, PresetCache>} */
@@ -1963,7 +1992,7 @@ const ExportUtils = {
   /**
    * @param {PresetCache} importedPresets
    * @param {string} defaultLibraryId the library to preselect
-   * @param {(result: { selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }) => void} onConfirm
+   * @param {(result: ImportResult) => void} onConfirm
    */
   async showImportModal(importedPresets, defaultLibraryId, onConfirm) {
     const libraries = await PresetGalleryAPI.fetchLibraries();
@@ -1976,40 +2005,22 @@ const ExportUtils = {
             default: true,
           },
         ];
-    let libraryId = availableLibraries.some(
+    const defaultId = availableLibraries.some(
       (library) => library.id === defaultLibraryId,
     )
       ? defaultLibraryId
       : availableLibraries[0].id;
-    let currentPresets = await PresetGalleryAPI.getPresets(libraryId);
+    const caches = await PresetGalleryAPI.fetchLibraryCaches(
+      availableLibraries.map((library) => library.id),
+    );
     const overlay = document.createElement("div");
     overlay.className = "j0n4t-pg-modal-overlay";
 
     const modal = document.createElement("div");
     modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
 
-    const duplicates = Object.keys(importedPresets).filter(
-      (k) => k in currentPresets && importedPresets[k].preset,
-    );
-    const createLibraryOption = "__create_new_library__";
-
     modal.innerHTML = `
       <h3>📥 Import Presets</h3>
-      <div class="j0n4t-pg-modal-field">
-        <label for="j0n4t-pg-imp-library">Import into library</label>
-        <select id="j0n4t-pg-imp-library">
-          ${availableLibraries.map((library) => `<option value="${PresetDOM.escapeHTML(library.id)}" ${library.id === libraryId ? "selected" : ""}>${PresetDOM.escapeHTML(library.name)}</option>`).join("")}
-          <option value="${createLibraryOption}">＋ Create a new library…</option>
-        </select>
-      </div>
-      <div class="j0n4t-pg-modal-field">
-        <label id="j0n4t-pg-dup-label">Handling Duplicate Presets (${duplicates.length} detected)</label>
-        <select id="j0n4t-pg-dup-strategy">
-          <option value="overwrite">Overwrite existing presets</option>
-          <option value="skip">Skip duplicates</option>
-          <option value="keep_both">Keep both (Rename imported with _copy)</option>
-        </select>
-      </div>
       <div class="j0n4t-pg-modal-field">
         <label class="j0n4t-pg-checkbox-wrap">
           <input type="checkbox" id="j0n4t-pg-imp-colors" checked />
@@ -2017,7 +2028,7 @@ const ExportUtils = {
         </label>
       </div>
       <div class="j0n4t-pg-modal-field">
-        <label>Select Presets & Groups to Import</label>
+        <label>Preview the Libraries to Import</label>
         <div id="j0n4t-pg-tree-mount"></div>
       </div>
       <div class="j0n4t-pg-modal-actions">
@@ -2028,79 +2039,24 @@ const ExportUtils = {
 
     overlay.appendChild(modal);
 
-    let tree = ExportUtils.buildPresetSelectorTree(
-      importedPresets,
-      currentPresets,
-    );
+    const picker = ExportUtils.buildLibraryPicker({
+      rows: [
+        {
+          // a file import has no library of its own, so the row never claims
+          // to be restoring one
+          sourceId: "",
+          name: defaultId,
+          presets: importedPresets,
+        },
+      ],
+      served: availableLibraries,
+      existingCachesById: caches,
+      mode: "import",
+    });
     const mount = /** @type {HTMLElement | null} */ (
       modal.querySelector("#j0n4t-pg-tree-mount")
     );
-    if (mount) mount.appendChild(tree.element);
-
-    const libraryEl = /** @type {HTMLSelectElement | null} */ (
-      modal.querySelector("#j0n4t-pg-imp-library")
-    );
-    const duplicateLabel = modal.querySelector("#j0n4t-pg-dup-label");
-    if (libraryEl && mount) {
-      libraryEl.addEventListener("change", async () => {
-        const requestedLibrary = libraryEl.value;
-        if (requestedLibrary === createLibraryOption) {
-          const newLibraryId = await ExportUtils.promptForNewLibraryId(
-            availableLibraries,
-          );
-          if (!newLibraryId) {
-            libraryEl.value = libraryId;
-            return;
-          }
-
-          libraryId = newLibraryId;
-          currentPresets = {};
-          const option = document.createElement("option");
-          option.value = newLibraryId;
-          option.textContent = newLibraryId;
-          libraryEl.insertBefore(
-            option,
-            libraryEl.querySelector(`option[value="${createLibraryOption}"]`),
-          );
-          libraryEl.value = newLibraryId;
-          if (duplicateLabel)
-            duplicateLabel.textContent =
-              "Handling Duplicate Presets (0 detected)";
-          tree = ExportUtils.buildPresetSelectorTree(
-            importedPresets,
-            currentPresets,
-          );
-          mount.replaceChildren(tree.element);
-          return;
-        }
-        const libraryPresets =
-          await PresetGalleryAPI.getPresets(requestedLibrary);
-        if (libraryEl.value !== requestedLibrary) return;
-        libraryId = requestedLibrary;
-        currentPresets = libraryPresets;
-        const duplicateCount = Object.keys(importedPresets).filter(
-          (key) => key in currentPresets && importedPresets[key].preset,
-        ).length;
-        if (duplicateLabel) {
-          duplicateLabel.textContent = `Handling Duplicate Presets (${duplicateCount} detected)`;
-        }
-        tree = ExportUtils.buildPresetSelectorTree(
-          importedPresets,
-          currentPresets,
-        );
-        mount.replaceChildren(tree.element);
-      });
-    }
-
-    const dupSelect = /** @type {HTMLSelectElement | null} */ (
-      modal.querySelector("#j0n4t-pg-dup-strategy")
-    );
-    if (dupSelect) {
-      dupSelect.addEventListener("change", (e) => {
-        const target = /** @type {HTMLSelectElement} */ (e.target);
-        tree.applyDuplicateStrategy(target.value);
-      });
-    }
+    if (mount) mount.replaceChildren(picker.element);
 
     const close = () => overlay.remove();
     const cancelBtn = /** @type {HTMLButtonElement | null} */ (
@@ -2117,41 +2073,34 @@ const ExportUtils = {
     );
     if (confirmBtn) {
       confirmBtn.addEventListener("click", async () => {
-        const selectedKeys = tree.getSelectedKeys();
-        if (!selectedKeys.length) {
+        const rows = picker.getRows().filter((row) => row.selectedKeys.length);
+        if (!rows.length) {
           await ModalUtils.alert(
             "Please select at least one preset to import.",
           );
           return;
         }
-        const duplicateStrategy = dupSelect ? dupSelect.value : "overwrite";
         const colorsEl = /** @type {HTMLInputElement | null} */ (
           modal.querySelector("#j0n4t-pg-imp-colors")
         );
         const importColors = colorsEl ? colorsEl.checked : true;
-        const editedPresets = tree.getPresets();
-        const summary = ExportUtils.getSelectionSummary(
-          selectedKeys,
-          editedPresets,
-          currentPresets,
+        const strategy = picker.getStrategy();
+
+        /** @type {string[]} */
+        const summaryLines = ExportUtils.importSummary(
+          rows,
+          caches,
+          strategy,
+          importColors,
         );
+
         if (
           await ModalUtils.confirm(
-            `📊 Import Summary:\n` +
-              `• Total Selected: ${summary.total}\n` +
-              `• New Styles: ${summary.newCount}\n` +
-              `• Replaced Styles: ${summary.replacedCount}\n` +
-              `• Unchanged Styles: ${summary.sameCount}`,
+            `📊 Import Summary:\n${summaryLines.join("\n")}`,
           )
         ) {
           close();
-          onConfirm({
-            selectedKeys,
-            duplicateStrategy,
-            importColors,
-            editedPresets,
-            libraryId,
-          });
+          onConfirm({ rows, importColors, strategy });
         }
       });
     }
@@ -2440,14 +2389,11 @@ const ExportUtils = {
   },
 
   /**
-   * The bundle import dialog: one row per library, each holding that library's
-   * preset tree and choosing its own target and duplicate strategy.
-   *
-   * "Restore to <id>" writes the library back where it came from, creating it
-   * when the server does not serve it yet; "Skip" writes nothing; naming another
-   * served library merges into that one instead.
+   * The bundle import dialog: the picker, seeded with one row per library in
+   * the bundle. Renaming a row sends it to another library; a folder renamed to
+   * `library#folder` moves into that row.
    * @param {LibraryBundle} bundle
-   * @param {(result: { rows: Array<{ id: string, presets: PresetCache, selectedKeys: string[], target: string, strategy: string }>, importColors: boolean }) => void} onConfirm
+   * @param {(result: ImportResult) => void} onConfirm
    */
   async showImportBundleModal(bundle, onConfirm) {
     const libraries = await PresetGalleryAPI.fetchLibraries();
@@ -2487,27 +2433,20 @@ const ExportUtils = {
     `;
     overlay.appendChild(modal);
 
+    const picker = ExportUtils.buildLibraryPicker({
+      rows: bundle.libraries.map((library) => ({
+        sourceId: library.id,
+        name: library.id,
+        presets: library.presets,
+      })),
+      served,
+      existingCachesById: caches,
+      mode: "import",
+    });
     const treeEl = /** @type {HTMLElement | null} */ (
       modal.querySelector("#j0n4t-pg-bimp-tree")
     );
-
-    /** @type {Record<string, PresetCache>} */
-    const cachesById = {};
-    for (const library of bundle.libraries) {
-      cachesById[library.id] = library.presets;
-    }
-
-    const tree = ExportUtils.buildBundleSelectorTree({
-      libraries: bundle.libraries.map((library) => ({
-        id: library.id,
-        name: library.name,
-      })),
-      cachesById,
-      existingCachesById: caches,
-      served,
-      importControls: true,
-    });
-    treeEl?.replaceChildren(tree.element);
+    treeEl?.replaceChildren(picker.element);
 
     const close = () => overlay.remove();
     const cancelBtn = /** @type {HTMLButtonElement | null} */ (
@@ -2528,6 +2467,7 @@ const ExportUtils = {
           modal.querySelector("#j0n4t-pg-bimp-colors")
         );
         const importColors = colorsEl ? colorsEl.checked : true;
+        const strategy = picker.getStrategy();
 
         /** @type {string[]} */
         const summaryLines = [];
@@ -2535,34 +2475,24 @@ const ExportUtils = {
         const empty = [];
         /** @type {string[]} */
         const skipped = [];
-        /** @type {Array<{ row: BundleTreeRow, target: string, keys: string[] }>} */
-        const writes = [];
+        /** @type {ImportWrite[]} */
+        const rows = [];
 
-        for (const row of tree.rows) {
-          if (!Object.keys(row.presets).length) {
+        for (const row of picker.getRows()) {
+          if (!row.count) {
             empty.push(row.name);
             continue;
           }
-          const keys = tree.getSelectedKeysByLibrary()[row.id] || [];
-          if (!keys.length) {
+          if (!row.selectedKeys.length) {
             skipped.push(row.name);
             continue;
           }
-          const target = row.target === "restore" ? row.id : row.target;
-          if (target === "skip") {
-            summaryLines.push(`• ${row.name}: skipped`);
-            continue;
-          }
-          const summary = ExportUtils.getSelectionSummary(
-            keys,
-            row.presets,
-            caches[target],
-          );
-          writes.push({ row, target, keys });
-          summaryLines.push(
-            `• ${row.name} → ${target}: ${summary.newCount} new, ${summary.replacedCount} replaced, ${summary.sameCount} unchanged`,
-          );
+          rows.push(row);
         }
+
+        summaryLines.push(
+          ...ExportUtils.importSummary(rows, caches, strategy, importColors),
+        );
         if (empty.length) {
           summaryLines.push(`• Empty, not written: ${empty.join(", ")}`);
         }
@@ -2572,7 +2502,7 @@ const ExportUtils = {
           );
         }
 
-        if (!writes.length) {
+        if (!rows.length) {
           await ModalUtils.alert("Please select at least one preset to import.");
           return;
         }
@@ -2583,21 +2513,64 @@ const ExportUtils = {
           )
         ) {
           close();
-          onConfirm({
-            rows: writes.map(({ row, target, keys }) => ({
-              id: row.id,
-              presets: row.presets,
-              selectedKeys: keys,
-              target,
-              strategy: row.strategy,
-            })),
-            importColors,
-          });
+          onConfirm({ rows, importColors, strategy });
         }
       });
     }
 
     document.body.appendChild(overlay);
+  },
+
+  /**
+   * One line per destination library: what arrives, and what the library will
+   * hold once the global strategy is applied.
+   * @param {ImportWrite[]} rows
+   * @param {Record<string, PresetCache>} caches the destination libraries now
+   * @param {string} strategy
+   * @param {boolean} importColors
+   * @returns {string[]}
+   */
+  importSummary(rows, caches, strategy, importColors) {
+    return rows.map((row) => {
+      const target = caches[row.name] ?? {};
+      const summary = ExportUtils.getSelectionSummary(
+        row.selectedKeys,
+        row.presets,
+        target,
+      );
+      const resulting = ExportUtils.applyImportSelection(
+        { ...target },
+        row.presets,
+        row.selectedKeys,
+        strategy,
+        importColors,
+      );
+      const label =
+        !row.sourceId || row.name === row.sourceId
+          ? row.name
+          : `${row.name} ← ${row.sourceId}`;
+      return `• ${label}: ${summary.newCount} new, ${summary.replacedCount} replaced, ${summary.sameCount} unchanged → ${Object.keys(resulting).length} presets`;
+    });
+  },
+
+  /**
+   * Write an import, one destination library at a time.
+   * same library accumulate, because each write reads the destination fresh.
+   * @param {ImportResult} result
+   * @returns {Promise<void>}
+   */
+  async writeImport(result) {
+    for (const row of result.rows) {
+      const current = await PresetGalleryAPI.getPresets(row.name);
+      const merged = ExportUtils.applyImportSelection(
+        current,
+        row.presets,
+        row.selectedKeys,
+        result.strategy,
+        result.importColors,
+      );
+      await PresetGalleryAPI.savePresets(merged, row.name);
+    }
   },
 
   /**
@@ -2608,28 +2581,10 @@ const ExportUtils = {
    */
   async importBundle(bundle) {
     return new Promise((resolve) => {
-      ExportUtils.showImportBundleModal(
-        bundle,
-        async (
-          /** @type {{ rows: Array<{ id: string, presets: PresetCache, selectedKeys: string[], target: string, strategy: string }>, importColors: boolean }} */ {
-            rows,
-            importColors,
-          },
-        ) => {
-          for (const row of rows) {
-            const current = await PresetGalleryAPI.getPresets(row.target);
-            const merged = ExportUtils.applyImportSelection(
-              current,
-              row.presets,
-              row.selectedKeys,
-              row.strategy,
-              importColors,
-            );
-            await PresetGalleryAPI.savePresets(merged, row.target);
-          }
-          resolve({ success: true });
-        },
-      );
+      ExportUtils.showImportBundleModal(bundle, async (result) => {
+        await ExportUtils.writeImport(result);
+        resolve({ success: true });
+      });
     });
   },
 
@@ -2696,24 +2651,8 @@ const ExportUtils = {
       ExportUtils.showImportModal(
         importedPresets,
         defaultLibraryId,
-        async (
-          /** @type {{ selectedKeys: string[], duplicateStrategy: string, importColors: boolean, editedPresets: PresetCache, libraryId: string }} */ {
-            selectedKeys,
-            duplicateStrategy,
-            importColors,
-            editedPresets,
-            libraryId,
-          },
-        ) => {
-          const currentPresets = await PresetGalleryAPI.getPresets(libraryId);
-          const merged = ExportUtils.applyImportSelection(
-            currentPresets,
-            editedPresets,
-            selectedKeys,
-            duplicateStrategy,
-            importColors,
-          );
-          await PresetGalleryAPI.savePresets(merged, libraryId);
+        async (result) => {
+          await ExportUtils.writeImport(result);
           resolve({ success: true });
         },
       );

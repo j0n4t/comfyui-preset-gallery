@@ -481,6 +481,37 @@ test("a row created by a move goes away when it empties", async () => {
   assert.equal(p.getShape().main["faces/portrait"]?.preset, "portrait");
 });
 
+test("changing the duplicate switch re-applies the selection in every row", () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: { "faces/portrait": { preset: "portrait" } },
+      },
+    ],
+    existingCachesById: { main: { "faces/portrait": { preset: "old" } } },
+  });
+  const strategy = p.element.querySelector<HTMLSelectElement>(
+    "#j0n4t-pg-picker-strategy",
+  );
+  assert.ok(strategy);
+  // a replaced preset is checked by default
+  assert.deepEqual(p.getSelection().main, ["faces/portrait"]);
+
+  strategy.value = "skip";
+  strategy.dispatchEvent(new Event("change"));
+  assert.deepEqual(
+    p.getSelection().main,
+    [],
+    "skip unchecks the replaced preset",
+  );
+
+  strategy.value = "keep_both";
+  strategy.dispatchEvent(new Event("change"));
+  assert.deepEqual(p.getSelection().main, ["faces/portrait"]);
+});
+
 test("the duplicate switch is global, and only in import mode", () => {
   const imp = picker({ mode: "import" });
   const strategy = imp.element.querySelector<HTMLSelectElement>(

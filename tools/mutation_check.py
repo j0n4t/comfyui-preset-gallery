@@ -132,11 +132,11 @@ MUTATIONS = [
      "        if (library.id === row.id) continue;",
      "        if (false) continue;",
      "tests/unit/library_bundle.test.ts"),
-    # The import writes the presets checked in the tree; a library with nothing
+    # The import writes the presets checked in the tree; a row with nothing
     # checked is reported and not written, not written as a no-op.
     ("web/ExportUtils.js",
-     "          if (!keys.length) {",
-     "          if (!Object.keys(row.presets).length) {",
+     "          if (!row.selectedKeys.length) {",
+     "          if (false) {",
      "tests/unit/library_bundle.test.ts"),
     # The bundle picker offers a way to land a library under a new name.
     ("web/ExportUtils.js",
@@ -197,6 +197,24 @@ MUTATIONS = [
      "      if (!known) return `creates a new library · ${noun}`;",
      "      if (!known) return `merges into ${pr.name} · ${noun}`;",
      "tests/unit/library_picker.test.ts"),
+    # Changing the switch re-applies the selection in every row: without the
+    # loop a row keeps the checks it had under the previous strategy.
+    ("web/ExportUtils.js",
+     "        pr.tree?.applyDuplicateStrategy(strategyEl.value);",
+     "        pr.tree?.applyDuplicateStrategy(\"overwrite\");",
+     "tests/unit/library_picker.test.ts"),
+    # The summary reads each destination's own cache; without it every row is
+    # measured against an empty library and counts every preset as new.
+    ("web/ExportUtils.js",
+     "      const target = caches[row.name] ?? {};",
+     "      const target = {};",
+     "tests/unit/library_bundle.test.ts"),
+    # Every selected row is written, not just the first: a bundle of two
+    # libraries would leave the second one behind.
+    ("web/ExportUtils.js",
+     "    for (const row of result.rows) {",
+     "    for (const row of [result.rows[0]]) {",
+     "tests/unit/library_bundle.test.ts"),
     # The master checkbox drives every row.
     ("web/ExportUtils.js",
      "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"
