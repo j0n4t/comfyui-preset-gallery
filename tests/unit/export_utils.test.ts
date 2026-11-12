@@ -126,6 +126,29 @@ test("buildPresetSelectorTree checks every item when there is no existing librar
   );
 });
 
+test("buildPresetSelectorTree nested drops its own controls and scroll cap", () => {
+  const tree = ExportUtils.buildPresetSelectorTree(PRESETS, null, {
+    nested: true,
+  });
+
+  assert.equal(
+    tree.element.querySelector(".j0n4t-pg-selector-controls"),
+    null,
+    "a nested tree brings no select-all of its own",
+  );
+  assert.equal(tree.element.querySelector("#j0n4t-pg-sel-all"), null);
+  assert.equal(
+    tree.element.querySelectorAll(".j0n4t-pg-item-cb").length,
+    3,
+    "the nested tree still lists every preset",
+  );
+  assert.equal(tree.element.style.maxHeight, "none");
+  assert.deepEqual(
+    sorted(tree.getSelectedKeys()),
+    ["Faces/Macro", "Faces/Portrait", "RootPreset"].sort(),
+  );
+});
+
 test("buildPresetSelectorTree marks identical presets as same and leaves them unchecked", () => {
   const tree = ExportUtils.buildPresetSelectorTree(PRESETS, {
     "Faces/Portrait": { preset: "portrait" },

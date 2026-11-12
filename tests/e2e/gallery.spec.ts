@@ -810,11 +810,13 @@ test.describe("editor", () => {
     await openPanel(page);
     const settings = await openIoTab(page);
     await settings.locator("#j0n4t-pg-io-format").selectOption("json");
-    for (const checkbox of await settings.locator(".j0n4t-pg-item-cb").all()) {
+    for (const checkbox of await settings
+      .locator("#j0n4t-pg-io-tree .j0n4t-pg-item-cb")
+      .all()) {
       await checkbox.uncheck();
     }
     await settings
-      .locator('.j0n4t-pg-item-cb[value="Faces/Portrait"]')
+      .locator('#j0n4t-pg-io-tree .j0n4t-pg-item-cb[value="Faces/Portrait"]')
       .check();
 
     const downloadPromise = page.waitForEvent("download");
@@ -875,6 +877,78 @@ test.describe("editor", () => {
     await expect(
       page.locator('.j0n4t-pg-item[data-style="faces/portrait"]'),
     ).toHaveAttribute("title", /portrait, studio lighting, dramatic shadows/);
+    rmSync(bundlePath, { force: true });
+  });
+
+  test("a bundle export carries only the presets picked in its tree", async ({
+    page,
+  }) => {
+    await openPanel(page);
+
+    // Two presets, so the picker's selection is visible.
+    await page.evaluate(async () => {
+      await fetch("/preset_gallery/presets?library=main", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          "faces/portrait": { preset: "portrait, studio lighting" },
+          "faces/macro": { preset: "macro, close focus" },
+        }),
+      });
+    });
+    await page.reload();
+    await openPanel(page);
+
+    const settings = await openIoTab(page);
+    await settings.locator("#j0n4t-pg-io-scope").selectOption("bundle");
+    const macro = settings.locator(
+      "#j0n4t-pg-io-bundle-tree .j0n4t-pg-item-cb[value='faces/macro']",
+    );
+    await expect(macro).toHaveCount(1);
+    await macro.uncheck();
+
+    // The zip layout needs a zip library; the repo ships one the harness can use.
+    await page.evaluate(readFileSync("web/lib/jszip.min.js", "utf8"));
+    const downloadPromise = page.waitForEvent("download");
+    await settings.locator("#j0n4t-pg-io-export").click();
+    const download = await downloadPromise;
+    const bundlePath = join("test-results", "bundle-selection.zip");
+    await download.saveAs(bundlePath);
+
+    // Clear the library, then restore from the bundle: only the checked preset
+    // comes back.
+    await page.evaluate(async () => {
+      await fetch("/preset_gallery/presets?library=main", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+    });
+    await page.reload();
+    await openPanel(page);
+    await expect(
+      page.locator('.j0n4t-pg-item[data-style^="faces/"]'),
+    ).toHaveCount(0);
+
+    const restored = await openIoTab(page);
+    await restored.locator("#j0n4t-pg-io-file").setInputFiles(bundlePath);
+    const bundleModal = page.locator(".j0n4t-pg-modal-overlay").last();
+    await expect(
+      bundleModal.locator("#j0n4t-pg-bimp-confirm"),
+    ).toBeVisible();
+    await bundleModal.locator("#j0n4t-pg-bimp-confirm").click();
+    await page
+      .locator(".j0n4t-pg-modal-overlay")
+      .last()
+      .locator('button[data-index="1"]')
+      .click();
+
+    await expect(
+      page.locator('.j0n4t-pg-item[data-style="faces/portrait"]'),
+    ).toHaveCount(1);
+    await expect(
+      page.locator('.j0n4t-pg-item[data-style="faces/macro"]'),
+    ).toHaveCount(0);
     rmSync(bundlePath, { force: true });
   });
 });

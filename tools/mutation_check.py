@@ -88,6 +88,56 @@ MUTATIONS = [
      '      const cleanKey = key.toLowerCase().replace(/ /g, "_");\n',
      "      const cleanKey = key;\n",
      "tests/unit/library_bundle.test.ts"),
+    # A bundle export honours the picker: without the per-library selection the
+    # whole library is written, and a library with nothing checked is still
+    # listed in the manifest.
+    ("web/ExportUtils.js",
+     "          selectedKeysById ? selectedKeysById[library.id] ?? null : null,",
+     "          null,",
+     "tests/unit/library_bundle.test.ts"),
+    ("web/ExportUtils.js",
+     "      .filter(({ presets }) => Object.keys(presets).length > 0);",
+     "      .filter(() => true);",
+     "tests/unit/library_bundle.test.ts"),
+    # A nested tree hands back its own box, not the wrapper: handing back the
+    # wrapper would mount a per-library select-all row inside the bundle group.
+    ("web/ExportUtils.js",
+     "      element: nested ? treeBox : container,",
+     "      element: container,",
+     "tests/unit/export_utils.test.ts"),
+    # The library header drives its subtree, not the other way round.
+    ("web/ExportUtils.js",
+     "        const checked = /** @type {HTMLInputElement} */ (row.checkEl).checked;",
+     "        const checked = true;",
+     "tests/unit/library_bundle.test.ts"),
+    ("web/ExportUtils.js",
+     "        itemBoxes(row.itemsEl).forEach((cb) => {\n"
+     "          cb.checked = masterCb.checked;\n"
+     "          cb.dispatchEvent(new Event(\"change\"));\n"
+     "        });\n"
+     "        updateLibraryState(row);",
+     "        itemBoxes(row.itemsEl).forEach((cb) => {\n"
+     "          cb.checked = true;\n"
+     "          cb.dispatchEvent(new Event(\"change\"));\n"
+     "        });\n"
+     "        updateLibraryState(row);",
+     "tests/unit/library_bundle.test.ts"),
+    # Rebuilding against a new target must keep what the user already picked.
+    ("web/ExportUtils.js",
+     "            cb.checked = kept.has(cb.value);",
+     "            cb.checked = true;",
+     "tests/unit/library_bundle.test.ts"),
+    # A library cannot be its own import target.
+    ("web/ExportUtils.js",
+     "        if (library.id === row.id) continue;",
+     "        if (false) continue;",
+     "tests/unit/library_bundle.test.ts"),
+    # The import writes the presets checked in the tree; a library with nothing
+    # checked is reported and not written, not written as a no-op.
+    ("web/ExportUtils.js",
+     "          if (!keys.length) {",
+     "          if (!Object.keys(row.presets).length) {",
+     "tests/unit/library_bundle.test.ts"),
     # The case-insensitive fallback is what lets a key typed in another case
     # resolve; without it only the exact stored spelling works.
     ("web/PresetLogic.js",

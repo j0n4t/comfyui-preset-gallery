@@ -347,7 +347,7 @@ test("a bundle row can target another library", async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const target = document.querySelector<HTMLSelectElement>(
-      ".j0n4t-pg-bimp-target",
+      ".j0n4t-pg-bundle-target",
     );
     assert.ok(target, "the bundle dialog lists a target per library");
     target.value = "second";
@@ -360,6 +360,67 @@ test("a bundle row can target another library", async () => {
       stub.writes.map((write) => write.libraryId),
       ["second"],
     );
+  } finally {
+    stub.restore();
+  }
+});
+
+test("a bundle dialog imports only the presets checked in its tree", async () => {
+  const entries = ExportUtils.buildBundleEntries(
+    [
+      { id: "main", name: "Main" },
+      { id: "styles", name: "Styles" },
+    ],
+    {
+      main: {
+        "faces/portrait": { preset: "portrait" },
+        "faces/macro": { preset: "macro" },
+      },
+      styles: { "urban/night": { preset: "night" } },
+    },
+    "json",
+    "full",
+    true,
+  );
+  const stub = stubBundleImport({
+    libraries: [
+      { id: "main", name: "Main", default: true },
+      { id: "styles", name: "Styles", default: false },
+    ],
+    entries,
+  });
+
+  try {
+    const promise = ExportUtils.importFile(
+      { name: "bundle.zip" } as unknown as File,
+      "main",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const boxes = document.querySelectorAll<HTMLInputElement>(
+      "#j0n4t-pg-bimp-tree .j0n4t-pg-item-cb",
+    );
+    assert.equal(
+      boxes.length,
+      3,
+      "the dialog lists every preset of every library",
+    );
+    for (const box of boxes) {
+      if (box.value === "faces/portrait") continue;
+      box.checked = false;
+      box.dispatchEvent(new Event("change"));
+    }
+
+    document.querySelector<HTMLButtonElement>("#j0n4t-pg-bimp-confirm")?.click();
+
+    const result = await promise;
+    assert.equal(result.success, true);
+    assert.equal(
+      stub.writes.length,
+      1,
+      "a library with nothing selected is not written",
+    );
+    assert.deepEqual(Object.keys(stub.writes[0].presets), ["faces/portrait"]);
   } finally {
     stub.restore();
   }
@@ -401,4 +462,189 @@ test("a zip without a manifest still uses the single-library import", async () =
     ExportUtils.showImportModal = originalShowImportModal;
     stub.restore();
   }
+});
+
+test("buildBundleEntries honours a per-library selection and drops empty libraries", () => {
+  const caches = {
+    main: {
+      "Faces/Portrait": { preset: "portrait" },
+      "Faces/Macro": { preset: "macro" },
+    },
+    styles: { "Urban/Night": { preset: "night" } },
+  };
+
+  const entries = ExportUtils.buildBundleEntries(
+    [
+      { id: "main", name: "Main" },
+      { id: "styles", name: "Styles" },
+    ],
+    caches,
+    "json",
+    "full",
+    true,
+    { main: ["Faces/Portrait"], styles: [] },
+  );
+
+  assert.deepEqual(
+    JSON.parse(entries["libraries/main.json"] as string),
+    { "Faces/Portrait": { preset: "portrait" } },
+  );
+  assert.equal(
+    entries["libraries/styles.json"],
+    undefined,
+    "a library with nothing selected is left out",
+  );
+  assert.deepEqual(
+    JSON.parse(entries["manifest.json"] as string).libraries,
+    [{ id: "main", name: "Main" }],
+    "the manifest lists only the libraries that made it into the bundle",
+  );
+});
+
+// --- buildBundleSelectorTree ---
+
+test("buildBundleSelectorTree puts one preset tree under each library row", () => {
+  const tree = ExportUtils.buildBundleSelectorTree({
+    libraries: [
+      { id: "main", name: "Main" },
+      { id: "styles", name: "Styles" },
+    ],
+    cachesById: {
+      main: { "Faces/Portrait": { preset: "portrait" } },
+      styles: { "Urban/Night": { preset: "night" } },
+    },
+  });
+
+  assert.deepEqual(
+    tree.rows.map((row) => row.id),
+    ["main", "styles"],
+  );
+  assert.equal(
+    tree.element.querySelectorAll(".j0n4t-pg-bundle-group").length,
+    2,
+    "one group row per library",
+  );
+  assert.equal(
+    tree.element.querySelectorAll(".j0n4t-pg-item-cb").length,
+    2,
+    "every library's presets are listed",
+  );
+  assert.deepEqual(tree.getSelectedKeysByLibrary(), {
+    main: ["Faces/Portrait"],
+    styles: ["Urban/Night"],
+  });
+});
+
+test("a library header checkbox toggles its whole subtree", () => {
+  const tree = ExportUtils.buildBundleSelectorTree({
+    libraries: [{ id: "main", name: "Main" }],
+    cachesById: {
+      main: {
+        "Faces/Portrait": { preset: "portrait" },
+        "Faces/Macro": { preset: "macro" },
+      },
+    },
+  });
+
+  const header = tree.element.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-bundle-lib-cb",
+  );
+  assert.ok(header, "the library row carries a checkbox");
+  header.checked = false;
+  header.dispatchEvent(new Event("change"));
+
+  assert.equal(header.checked, false, "the header follows its subtree");
+  assert.equal(header.indeterminate, false);
+  assert.deepEqual(tree.getSelectedKeysByLibrary(), { main: [] });
+});
+
+test("the master checkbox clears every library", () => {
+  const tree = ExportUtils.buildBundleSelectorTree({
+    libraries: [
+      { id: "main", name: "Main" },
+      { id: "styles", name: "Styles" },
+    ],
+    cachesById: {
+      main: { "Faces/Portrait": { preset: "portrait" } },
+      styles: { "Urban/Night": { preset: "night" } },
+    },
+  });
+
+  const master = tree.element.querySelector<HTMLInputElement>(
+    "#j0n4t-pg-bundle-sel-all",
+  );
+  assert.ok(master);
+  master.checked = false;
+  master.dispatchEvent(new Event("change"));
+
+  assert.deepEqual(tree.getSelectedKeysByLibrary(), { main: [], styles: [] });
+});
+
+test("the bundle tree adds a target and strategy per library when asked", () => {
+  const tree = ExportUtils.buildBundleSelectorTree({
+    libraries: [{ id: "main", name: "Main" }],
+    cachesById: { main: { "Faces/Portrait": { preset: "portrait" } } },
+    served: [
+      { id: "main", name: "Main" },
+      { id: "second", name: "Second" },
+    ],
+    importControls: true,
+  });
+
+  const target = tree.element.querySelector<HTMLSelectElement>(
+    ".j0n4t-pg-bundle-target",
+  );
+  assert.ok(target, "the library row carries a target");
+  assert.deepEqual(
+    Array.from(target.options).map((option) => option.value),
+    ["restore", "skip", "second"],
+  );
+  assert.ok(
+    tree.element.querySelector(".j0n4t-pg-bundle-strategy"),
+    "the library row carries a duplicate strategy",
+  );
+
+  target.value = "second";
+  target.dispatchEvent(new Event("change"));
+  assert.equal(tree.rows[0].target, "second");
+});
+
+test("changing the target rebuilds the tree and keeps the user's selection", () => {
+  const tree = ExportUtils.buildBundleSelectorTree({
+    libraries: [{ id: "main", name: "Main" }],
+    cachesById: { main: { "Faces/Portrait": { preset: "portrait" } } },
+    existingCachesById: {
+      second: { "Faces/Portrait": { preset: "old" } },
+    },
+    served: [
+      { id: "main", name: "Main" },
+      { id: "second", name: "Second" },
+    ],
+    importControls: true,
+  });
+
+  const box = tree.element.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-item-cb",
+  );
+  assert.ok(box);
+  box.checked = false;
+  box.dispatchEvent(new Event("change"));
+
+  const target = tree.element.querySelector<HTMLSelectElement>(
+    ".j0n4t-pg-bundle-target",
+  );
+  assert.ok(target);
+  target.value = "second";
+  target.dispatchEvent(new Event("change"));
+
+  const rebuilt = tree.element.querySelector<HTMLInputElement>(
+    ".j0n4t-pg-item-cb",
+  );
+  assert.ok(rebuilt, "the tree is rebuilt against the new target");
+  assert.equal(
+    rebuilt.checked,
+    false,
+    "the user's choice survives the rebuild",
+  );
+  assert.deepEqual(tree.getSelectedKeysByLibrary(), { main: [] });
 });

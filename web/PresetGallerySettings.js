@@ -614,8 +614,8 @@ export default class PresetGallerySettings {
         </div>
 
         <div class="j0n4t-pg-modal-field" id="j0n4t-pg-io-bundle-field" style="display: none;">
-          <label>Select Libraries to Export</label>
-          <div id="j0n4t-pg-io-library-list" style="border: 1px solid #333; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto;"></div>
+          <label>Select Libraries & Presets to Export</label>
+          <div id="j0n4t-pg-io-bundle-tree" style="max-height: 320px; overflow-y: auto;"></div>
         </div>
 
         <div class="j0n4t-pg-modal-row">
@@ -643,7 +643,7 @@ export default class PresetGallerySettings {
           </label>
         </div>
 
-        <div class="j0n4t-pg-modal-field">
+        <div class="j0n4t-pg-modal-field" id="j0n4t-pg-io-tree-field">
           <label>Select Presets & Groups to Export</label>
           <div id="j0n4t-pg-io-tree"></div>
         </div>
@@ -811,6 +811,12 @@ export default class PresetGallerySettings {
     let libraryId = served[0].id;
     /** @type {{ getSelectedKeys: () => string[], getPresets: () => PresetCache, element: HTMLElement } | null} */
     let tree = null;
+    /**
+     * The bundle picker: one group row per library, each holding that
+     * library's preset tree.
+     */
+    /** @type {{ element: HTMLElement, rows: unknown[], getSelectedKeysByLibrary: () => Record<string, string[]>, getPresetsByLibrary: () => Record<string, PresetCache> } | null} */
+    let bundleTree = null;
 
     const scopeEl = /** @type {HTMLSelectElement | null} */ (
       modal.querySelector("#j0n4t-pg-io-scope")
@@ -824,8 +830,9 @@ export default class PresetGallerySettings {
     const libraryEl = /** @type {HTMLSelectElement | null} */ (
       modal.querySelector("#j0n4t-pg-io-library")
     );
-    const listEl = modal.querySelector("#j0n4t-pg-io-library-list");
+    const bundleTreeEl = modal.querySelector("#j0n4t-pg-io-bundle-tree");
     const treeEl = modal.querySelector("#j0n4t-pg-io-tree");
+    const treeField = modal.querySelector("#j0n4t-pg-io-tree-field");
     const formatEl = /** @type {HTMLSelectElement | null} */ (
       modal.querySelector("#j0n4t-pg-io-format")
     );
@@ -835,12 +842,6 @@ export default class PresetGallerySettings {
     const colorsEl = /** @type {HTMLInputElement | null} */ (
       modal.querySelector("#j0n4t-pg-io-colors")
     );
-
-    /** @type {Array<{ id: string, checked: boolean }>} */
-    const chosen = served.map((library) => ({
-      id: library.id,
-      checked: true,
-    }));
 
     const renderTree = () => {
       if (!treeEl) return;
@@ -861,48 +862,27 @@ export default class PresetGallerySettings {
       );
     };
 
-    const renderBundleList = () => {
-      if (!listEl) return;
-      listEl.replaceChildren();
-
-      const allRow = document.createElement("div");
-      allRow.style.cssText =
-        "display: flex; justify-content: space-between; align-items: center;";
-      const allLabel = document.createElement("label");
-      allLabel.className = "j0n4t-pg-checkbox-wrap";
-      allLabel.style.margin = "0";
-      const allCheck = document.createElement("input");
-      allCheck.type = "checkbox";
-      allCheck.checked = chosen.every((entry) => entry.checked);
-      allCheck.addEventListener("change", () => {
-        for (const entry of chosen) entry.checked = allCheck.checked;
-        renderBundleList();
+    const renderBundleTree = () => {
+      if (!bundleTreeEl) return;
+      bundleTree = ExportUtils.buildBundleSelectorTree({
+        libraries: served,
+        cachesById: caches,
       });
-      allLabel.append(allCheck, document.createTextNode(" Select / Deselect All"));
-      allRow.appendChild(allLabel);
-      listEl.appendChild(allRow);
-
-      for (const entry of chosen) {
-        const row = document.createElement("div");
-        row.className = "j0n4t-pg-checkbox-wrap";
-        row.style.margin = "0";
-        const box = document.createElement("input");
-        box.type = "checkbox";
-        box.checked = entry.checked;
-        box.addEventListener("change", () => {
-          entry.checked = box.checked;
-        });
-        const name =
-          served.find((library) => library.id === entry.id)?.name ?? entry.id;
-        row.append(box, document.createTextNode(` ${name}`));
-        listEl.appendChild(row);
-      }
+      bundleTreeEl.replaceChildren(bundleTree.element);
     };
 
     const syncScope = () => {
       const isBundle = scopeEl?.value === "bundle";
       if (singleField) singleField.style.display = isBundle ? "none" : "";
       if (bundleField) bundleField.style.display = isBundle ? "" : "none";
+      if (treeField) {
+        /** @type {HTMLElement} */ (treeField).style.display = isBundle
+          ? "none"
+          : "";
+      }
+      // The bundle tree is built only when it is on screen: hidden in the DOM it
+      // would still answer every unscoped preset query in the modal.
+      if (isBundle && !bundleTree) renderBundleTree();
     };
 
     scopeEl?.addEventListener("change", syncScope);
@@ -912,7 +892,6 @@ export default class PresetGallerySettings {
     });
 
     renderLibrarySelect();
-    renderBundleList();
     renderTree();
     syncScope();
 
@@ -924,14 +903,15 @@ export default class PresetGallerySettings {
         const includeColors = colorsEl ? colorsEl.checked : true;
 
         if (scopeEl?.value === "bundle") {
-          const picked = served.filter((library) =>
-            chosen.some(
-              (entry) => entry.id === library.id && entry.checked,
-            ),
+          const selected = bundleTree
+            ? bundleTree.getSelectedKeysByLibrary()
+            : {};
+          const picked = served.filter(
+            (library) => (selected[library.id] || []).length > 0,
           );
           if (!picked.length) {
             await ModalUtils.alert(
-              "Please select at least one library to export.",
+              "Please select at least one preset to export.",
             );
             return;
           }
@@ -941,6 +921,7 @@ export default class PresetGallerySettings {
             format,
             mode,
             includeColors,
+            selected,
           );
           return;
         }

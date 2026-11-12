@@ -999,13 +999,13 @@ test("the Import / Export tab exports the libraries picked in bundle scope", asy
     await tick();
 
     const boxes = modal.querySelectorAll<HTMLInputElement>(
-      "#j0n4t-pg-io-library-list input[type='checkbox']",
+      "#j0n4t-pg-io-bundle-tree .j0n4t-pg-bundle-lib-cb",
     );
-    assert.equal(boxes.length, 3, "select-all plus one per library");
-    assert.ok(boxes[1].checked && boxes[2].checked, "every library is picked");
+    assert.equal(boxes.length, 2, "one row per library");
+    assert.ok(boxes[0].checked && boxes[1].checked, "every library is picked");
 
-    boxes[2].checked = false;
-    boxes[2].dispatchEvent(new Event("change"));
+    boxes[1].checked = false;
+    boxes[1].dispatchEvent(new Event("change"));
 
     const format = modal.querySelector<HTMLSelectElement>(
       "#j0n4t-pg-io-format",
