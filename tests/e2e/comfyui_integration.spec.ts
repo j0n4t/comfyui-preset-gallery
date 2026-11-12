@@ -14,8 +14,8 @@ const NODE_TYPE = "PresetGalleryNode";
 // suite's assertions are only valid against the build it was written
 // against. ComfyUI serves that build's manifest at its root; pin the commit
 // so a frontend swap fails here, loudly, instead of failing later as a wall
-// of LiteGraph errors (F15).
-const FRONTEND_COMMIT = "dc6160bf354a185f010637e79aed1e0327bfdd6a"; // comfyui_frontend 1.58.0
+// of LiteGraph errors (F15). The manifest carries no version, only a commit.
+const FRONTEND_COMMIT = "57ccfb021d4bf9977b19e018ee24d3238241a75b";
 
 test.beforeAll(async ({ request }) => {
   let reachable = false;
@@ -35,7 +35,7 @@ test.beforeAll(async ({ request }) => {
   const { commit } = (await manifest.json()) as { commit?: string };
   expect(
     commit,
-    `the frontend build under test does not match the pin (expected ${FRONTEND_COMMIT}, comfyui_frontend 1.58.0)` +
+    `the frontend build under test does not match the pin (expected ${FRONTEND_COMMIT})` +
       ` - re-validate this suite against the new frontend and update FRONTEND_COMMIT`,
   ).toBe(FRONTEND_COMMIT);
 });

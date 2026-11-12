@@ -96,9 +96,8 @@ at the node's bottom edge, so a failure means the image would have looked wrong.
 - **Browser split:** chromium locally (enough to gate a push); CI
   (`process.env.CI`) enables firefox and webkit plus the retry policy.
 - **Frontend pin:** the live e2e suite asserts the served
-  `build-manifest.json` commit (`FRONTEND_COMMIT`, comfyui_frontend 1.58.0)
-  before running — update it when the frontend is upgraded, after re-validating
-  the suite.
+  `build-manifest.json` commit (`FRONTEND_COMMIT`) before running - update it
+  when the frontend is upgraded, after re-validating the suite.
 - **Mutation discipline:** every behaviour change ships with a test, and
   `tools/mutation_check.py` proves the suite still catches deliberate
   breakage (it restores the exact pre-run bytes; never `git checkout`).
