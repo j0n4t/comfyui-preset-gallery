@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import "./dom-harness.ts";
 import ExportUtils from "../../web/ExportUtils.js";
+import ModalUtils from "../../web/ModalUtils.js";
+import PresetGalleryAPI from "../../web/PresetGalleryAPI.js";
 
 // A bundle is assembled from a plain record and read back through a fake zip,
 // so no zip library is needed: `buildBundleEntries` produces the file table and
@@ -188,4 +190,184 @@ test("a json bundle round-trips through the same parser as a single-library file
     bundle.libraries[0].presets["Faces/Portrait"]?.preset,
     "portrait",
   );
+});
+
+// --- bundle import routing ---
+
+type SavedWrite = { libraryId: string; presets: PresetCache };
+
+type StubOptions = {
+  libraries: Array<{ id: string; name: string; default: boolean }>;
+  entries: Record<string, string | { base64: string }>;
+};
+
+/**
+ * Stand in for the server and the zip library: the archive is a fixed set of
+ * entries, every library reads back empty, and every write is recorded.
+ */
+function stubBundleImport(options: StubOptions) {
+  const win = window as unknown as { JSZip?: unknown };
+  const originalJSZip = win.JSZip;
+  const originalFetchLibraries = PresetGalleryAPI.fetchLibraries;
+  const originalFetchCaches = PresetGalleryAPI.fetchLibraryCaches;
+  const originalGetPresets = PresetGalleryAPI.getPresets;
+  const originalSavePresets = PresetGalleryAPI.savePresets;
+  const originalConfirm = ModalUtils.confirm;
+
+  const writes: SavedWrite[] = [];
+  win.JSZip = { loadAsync: async () => fakeZip(options.entries) };
+  PresetGalleryAPI.fetchLibraries = async () => options.libraries;
+  PresetGalleryAPI.fetchLibraryCaches = async () =>
+    Object.fromEntries(options.libraries.map((library) => [library.id, {}]));
+  PresetGalleryAPI.getPresets = async () => ({});
+  PresetGalleryAPI.savePresets = async (presets: PresetCache, libraryId = "main") => {
+    writes.push({ libraryId, presets });
+    return { success: true };
+  };
+  ModalUtils.confirm = async () => true;
+
+  return {
+    writes,
+    restore: () => {
+      win.JSZip = originalJSZip;
+      PresetGalleryAPI.fetchLibraries = originalFetchLibraries;
+      PresetGalleryAPI.fetchLibraryCaches = originalFetchCaches;
+      PresetGalleryAPI.getPresets = originalGetPresets;
+      PresetGalleryAPI.savePresets = originalSavePresets;
+      ModalUtils.confirm = originalConfirm;
+      document
+        .querySelectorAll(".j0n4t-pg-modal-overlay")
+        .forEach((overlay) => overlay.remove());
+    },
+  };
+}
+
+test("importFile routes a bundle zip through the bundle dialog", async () => {
+  const entries = ExportUtils.buildBundleEntries(
+    [
+      { id: "main", name: "Main" },
+      { id: "styles", name: "Styles" },
+    ],
+    {
+      main: { "Faces/Portrait": { preset: "portrait" } },
+      styles: { "Urban/Night": { preset: "night" } },
+    },
+    "zip",
+    "full",
+    true,
+  );
+  const stub = stubBundleImport({
+    libraries: [
+      { id: "main", name: "Main", default: true },
+      { id: "styles", name: "Styles", default: false },
+    ],
+    entries,
+  });
+
+  try {
+    const promise = ExportUtils.importFile(
+      { name: "bundle.zip" } as unknown as File,
+      "main",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const confirmBtn = document.querySelector<HTMLButtonElement>(
+      "#j0n4t-pg-bimp-confirm",
+    );
+    assert.ok(confirmBtn, "the bundle dialog is showing");
+    confirmBtn.click();
+
+    const result = await promise;
+    assert.equal(result.success, true);
+    // Each library is restored under its own id, and the zip layout
+    // normalises keys the way the single-library import always has.
+    assert.deepEqual(
+      stub.writes.map((write) => write.libraryId),
+      ["main", "styles"],
+    );
+    assert.equal(stub.writes[0].presets["faces/portrait"]?.preset, "portrait");
+    assert.equal(stub.writes[1].presets["urban/night"]?.preset, "night");
+  } finally {
+    stub.restore();
+  }
+});
+
+test("a bundle row can target another library", async () => {
+  const entries = ExportUtils.buildBundleEntries(
+    [{ id: "main", name: "Main" }],
+    { main: { "Faces/Portrait": { preset: "portrait" } } },
+    "zip",
+    "full",
+    true,
+  );
+  const stub = stubBundleImport({
+    libraries: [
+      { id: "main", name: "Main", default: true },
+      { id: "second", name: "Second", default: false },
+    ],
+    entries,
+  });
+
+  try {
+    const promise = ExportUtils.importFile(
+      { name: "bundle.zip" } as unknown as File,
+      "main",
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const target = document.querySelector<HTMLSelectElement>(
+      ".j0n4t-pg-bimp-target",
+    );
+    assert.ok(target, "the bundle dialog lists a target per library");
+    target.value = "second";
+    target.dispatchEvent(new Event("change"));
+    document.querySelector<HTMLButtonElement>("#j0n4t-pg-bimp-confirm")?.click();
+
+    const result = await promise;
+    assert.equal(result.success, true);
+    assert.deepEqual(
+      stub.writes.map((write) => write.libraryId),
+      ["second"],
+    );
+  } finally {
+    stub.restore();
+  }
+});
+
+test("a zip without a manifest still uses the single-library import", async () => {
+  const stub = stubBundleImport({
+    libraries: [{ id: "main", name: "Main", default: true }],
+    entries: { "Faces/Portrait.txt": "portrait" },
+  });
+  const originalShowImportModal = ExportUtils.showImportModal;
+  let captured: { presets?: PresetCache; libraryId?: string } = {};
+
+  try {
+    ExportUtils.showImportModal = async (presets, libraryId, onConfirm) => {
+      captured = { presets, libraryId };
+      await onConfirm({
+        selectedKeys: Object.keys(presets),
+        duplicateStrategy: "overwrite",
+        importColors: true,
+        editedPresets: presets,
+        libraryId,
+      });
+    };
+
+    const result = await ExportUtils.importFile(
+      { name: "single.zip" } as unknown as File,
+      "main",
+    );
+
+    assert.equal(result.success, true);
+    assert.equal(captured.libraryId, "main");
+    assert.equal(captured.presets?.["faces/portrait"]?.preset, "portrait");
+    assert.deepEqual(
+      stub.writes.map((write) => write.libraryId),
+      ["main"],
+    );
+  } finally {
+    ExportUtils.showImportModal = originalShowImportModal;
+    stub.restore();
+  }
 });

@@ -1690,6 +1690,295 @@ const ExportUtils = {
   },
 
   /**
+   * How many of a bundle library's keys the target library already holds.
+   * @param {string[]} keys
+   * @param {PresetCache} presets
+   * @param {PresetCache | null} [existing]
+   * @returns {number}
+   */
+  getDuplicateCount(keys, presets, existing = null) {
+    if (!existing) return 0;
+    return keys.filter((key) => key in existing && presets[key]?.preset).length;
+  },
+
+  /**
+   * The bundle import dialog: one row per library, each choosing its own target
+   * and duplicate strategy.
+   *
+   * "Restore to <id>" writes the library back where it came from, creating it
+   * when the server does not serve it yet; "Skip" writes nothing; naming another
+   * served library merges into that one instead.
+   * @param {LibraryBundle} bundle
+   * @param {(result: { rows: Array<{ id: string, presets: PresetCache, selectedKeys: string[], target: string, strategy: string }>, importColors: boolean }) => void} onConfirm
+   */
+  async showImportBundleModal(bundle, onConfirm) {
+    const libraries = await PresetGalleryAPI.fetchLibraries();
+    const served = libraries.length
+      ? libraries
+      : [
+          {
+            id: PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+            name: PresetGalleryAPI.DEFAULT_LIBRARY_ID,
+            default: true,
+          },
+        ];
+    const caches = await PresetGalleryAPI.fetchLibraryCaches(
+      served.map((library) => library.id),
+    );
+
+    /** @type {Array<{ id: string, name: string, presets: PresetCache, target: string, strategy: string, checked: boolean, countEl: HTMLElement | null }>} */
+    const rows = [];
+
+    const overlay = document.createElement("div");
+    overlay.className = "j0n4t-pg-modal-overlay";
+    const modal = document.createElement("div");
+    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
+    modal.innerHTML = `
+      <h3>📥 Import Libraries</h3>
+      <div class="j0n4t-pg-modal-field">
+        <label class="j0n4t-pg-checkbox-wrap">
+          <input type="checkbox" id="j0n4t-pg-bimp-colors" checked />
+          <span><strong>Import Custom Group Colors (__color__)</strong></span>
+        </label>
+      </div>
+      <div class="j0n4t-pg-modal-field">
+        <label>Select Libraries to Import</label>
+        <div id="j0n4t-pg-bimp-list" style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+      <div class="j0n4t-pg-modal-actions">
+        <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-bimp-cancel" style="background:#444;">Cancel</button>
+        <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-bimp-confirm" style="background:#007acc;">Import Selected</button>
+      </div>
+    `;
+    overlay.appendChild(modal);
+
+    const list = /** @type {HTMLElement | null} */ (
+      modal.querySelector("#j0n4t-pg-bimp-list")
+    );
+
+    /** @param {{ id: string, target: string }} row */
+    const targetOptions = (row) => {
+      /** @type {string[]} */
+      const options = [
+        `<option value="restore" ${row.target === "restore" ? "selected" : ""}>Restore to ${PresetDOM.escapeHTML(row.id)}</option>`,
+        `<option value="skip" ${row.target === "skip" ? "selected" : ""}>Skip this library</option>`,
+      ];
+      for (const library of served) {
+        if (library.id === row.id) continue;
+        options.push(
+          `<option value="${PresetDOM.escapeHTML(library.id)}" ${row.target === library.id ? "selected" : ""}>Import into ${PresetDOM.escapeHTML(library.name)}</option>`,
+        );
+      }
+      return options.join("");
+    };
+
+    /** @param {typeof rows[number]} row */
+    const effectiveTarget = (row) =>
+      row.target === "restore" ? row.id : row.target;
+
+    /** @param {typeof rows[number]} row */
+    const updateCount = (row) => {
+      if (!row.countEl) return;
+      const keys = Object.keys(row.presets);
+      if (!row.checked) {
+        row.countEl.textContent = `${keys.length} presets (not selected)`;
+        return;
+      }
+      if (effectiveTarget(row) === "skip") {
+        row.countEl.textContent = `${keys.length} presets (skipped)`;
+        return;
+      }
+      const duplicates = ExportUtils.getDuplicateCount(
+        keys,
+        row.presets,
+        caches[effectiveTarget(row)],
+      );
+      row.countEl.textContent = `${keys.length} presets, ${duplicates} duplicate${duplicates === 1 ? "" : "s"}`;
+    };
+
+    for (const library of bundle.libraries) {
+      /** @type {typeof rows[number]} */
+      const row = {
+        id: library.id,
+        name: library.name,
+        presets: library.presets,
+        target: "restore",
+        strategy: "overwrite",
+        checked: true,
+        countEl: null,
+      };
+      rows.push(row);
+
+      const rowEl = document.createElement("div");
+      rowEl.className = "j0n4t-pg-bimp-row";
+      rowEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label class="j0n4t-pg-checkbox-wrap" style="margin: 0;">
+            <input type="checkbox" class="j0n4t-pg-bimp-check" checked />
+          </label>
+          <span style="flex: 1;"><strong>${PresetDOM.escapeHTML(library.name)}</strong> <span style="color: #888;">(${PresetDOM.escapeHTML(library.id)})</span></span>
+          <span class="j0n4t-pg-bimp-count" style="color: #888; font-size: 0.85em;"></span>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <select class="j0n4t-pg-bimp-target" style="flex: 1;">${targetOptions(row)}</select>
+          <select class="j0n4t-pg-bimp-strategy" style="flex: 1;">
+            <option value="overwrite">Overwrite existing presets</option>
+            <option value="skip">Skip duplicates</option>
+            <option value="keep_both">Keep both (rename with _copy)</option>
+          </select>
+        </div>
+      `;
+      list?.appendChild(rowEl);
+
+      const check = /** @type {HTMLInputElement | null} */ (
+        rowEl.querySelector(".j0n4t-pg-bimp-check")
+      );
+      check?.addEventListener("change", () => {
+        row.checked = check.checked;
+        updateCount(row);
+      });
+
+      const targetSelect = /** @type {HTMLSelectElement | null} */ (
+        rowEl.querySelector(".j0n4t-pg-bimp-target")
+      );
+      targetSelect?.addEventListener("change", () => {
+        row.target = targetSelect.value;
+        updateCount(row);
+      });
+
+      const strategySelect = /** @type {HTMLSelectElement | null} */ (
+        rowEl.querySelector(".j0n4t-pg-bimp-strategy")
+      );
+      strategySelect?.addEventListener("change", () => {
+        row.strategy = strategySelect.value;
+      });
+
+      row.countEl = rowEl.querySelector(".j0n4t-pg-bimp-count");
+      updateCount(row);
+    }
+
+    const close = () => overlay.remove();
+    const cancelBtn = /** @type {HTMLButtonElement | null} */ (
+      modal.querySelector("#j0n4t-pg-bimp-cancel")
+    );
+    if (cancelBtn) cancelBtn.addEventListener("click", close);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+
+    const confirmBtn = /** @type {HTMLButtonElement | null} */ (
+      modal.querySelector("#j0n4t-pg-bimp-confirm")
+    );
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", async () => {
+        const selected = rows.filter((row) => row.checked);
+        if (!selected.length) {
+          await ModalUtils.alert(
+            "Please select at least one library to import.",
+          );
+          return;
+        }
+
+        const colorsEl = /** @type {HTMLInputElement | null} */ (
+          modal.querySelector("#j0n4t-pg-bimp-colors")
+        );
+        const importColors = colorsEl ? colorsEl.checked : true;
+
+        /** @type {string[]} */
+        const summaryLines = [];
+        /** @type {Array<{ row: typeof rows[number], target: string, keys: string[] }>} */
+        const writes = [];
+        /** @type {string[]} */
+        const empty = [];
+
+        for (const row of selected) {
+          const keys = Object.keys(row.presets);
+          if (!keys.length) {
+            empty.push(row.name);
+            continue;
+          }
+          const target = effectiveTarget(row);
+          if (target === "skip") {
+            summaryLines.push(`• ${row.name}: skipped`);
+            continue;
+          }
+          const summary = ExportUtils.getSelectionSummary(
+            keys,
+            row.presets,
+            caches[target],
+          );
+          writes.push({ row, target, keys });
+          summaryLines.push(
+            `• ${row.name} → ${target}: ${summary.newCount} new, ${summary.replacedCount} replaced, ${summary.sameCount} unchanged`,
+          );
+        }
+        if (empty.length) {
+          summaryLines.push(`• Empty, not written: ${empty.join(", ")}`);
+        }
+
+        if (!writes.length) {
+          await ModalUtils.alert("Nothing to import.");
+          return;
+        }
+
+        if (
+          await ModalUtils.confirm(
+            `📊 Import Summary:\n${summaryLines.join("\n")}`,
+          )
+        ) {
+          close();
+          onConfirm({
+            rows: writes.map(({ row, target, keys }) => ({
+              id: row.id,
+              presets: row.presets,
+              selectedKeys: keys,
+              target,
+              strategy: row.strategy,
+            })),
+            importColors,
+          });
+        }
+      });
+    }
+
+    document.body.appendChild(overlay);
+  },
+
+  /**
+   * Run the bundle import dialog and write every selected library, one target
+   * at a time so two rows aiming at the same library accumulate.
+   * @param {LibraryBundle} bundle
+   * @returns {Promise<{ success: boolean }>}
+   */
+  async importBundle(bundle) {
+    return new Promise((resolve) => {
+      ExportUtils.showImportBundleModal(
+        bundle,
+        async (
+          /** @type {{ rows: Array<{ id: string, presets: PresetCache, selectedKeys: string[], target: string, strategy: string }>, importColors: boolean }} */ {
+            rows,
+            importColors,
+          },
+        ) => {
+          for (const row of rows) {
+            const current = await PresetGalleryAPI.getPresets(row.target);
+            const merged = ExportUtils.applyImportSelection(
+              current,
+              row.presets,
+              row.selectedKeys,
+              row.strategy,
+              importColors,
+            );
+            await PresetGalleryAPI.savePresets(merged, row.target);
+          }
+          resolve({ success: true });
+        },
+      );
+    });
+  },
+
+  /**
    * @param {File} file
    * @param {string} defaultLibraryId the library to preselect
    */
@@ -1701,6 +1990,18 @@ const ExportUtils = {
       try {
         const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(file);
+        const bundle = await ExportUtils.readBundleFromZip(zip);
+        if (bundle) {
+          try {
+            return await ExportUtils.importBundle(bundle);
+          } catch (err) {
+            await ModalUtils.alert(
+              "Failed to import the library bundle: " +
+                /** @type {Error} */ (err).message,
+            );
+            return { success: false };
+          }
+        }
         importedPresets = await ExportUtils.readPresetEntriesFromZip(zip);
       } catch (err) {
         await ModalUtils.alert(
