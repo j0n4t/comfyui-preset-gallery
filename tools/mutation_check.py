@@ -212,12 +212,59 @@ MUTATIONS = [
      ".j0n4t-pg-modal.j0n4t-pg-modal-expand { width: 520px; max-width: 90vw; }",
      ".j0n4t-pg-modal.j0n4t-pg-modal-large { width: 520px; max-width: 90vw; }",
      "tests/unit/modal_utils.test.ts"),
+    # Collapse All has to reach inside the row's tree, not just hide the tree:
+    # the folders and any preset's open details drawer or editor go with it.
+    ("web/ExportUtils.js",
+     "        pr.tree?.setAllCollapsed(allCollapsed);",
+     "        void allCollapsed;",
+     "tests/unit/library_picker.test.ts"),
+    # A bulk check has to be one pass per row. Firing a change event per preset
+    # re-ran the group scan per event - O(items x groups) - and blocked the
+    # page on a large library.
+    ("web/ExportUtils.js",
+     "        pr.tree?.setAllChecked(masterCb.checked);",
+     "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"
+     "          cb.checked = masterCb.checked;\n"
+     "          cb.dispatchEvent(new Event(\"change\"));\n"
+     "        });",
+     "tests/unit/library_picker.perf.test.ts"),
+    # The group scan has to stay single-pass too: a per-group querySelectorAll
+    # per change event is the same quadratic shape.
+    ("web/ExportUtils.js",
+     "      const totals = new Map();\n"
+     "      const checkedByGroup = new Map();\n"
+     "      itemCbs.forEach((cb) => {\n"
+     "        const group = cb.dataset.group || \"\";\n"
+     "        totals.set(group, (totals.get(group) || 0) + 1);\n"
+     "        if (cb.checked) {\n"
+     "          checkedByGroup.set(group, (checkedByGroup.get(group) || 0) + 1);\n"
+     "        }\n"
+     "      });",
+     "      const totals = new Map();\n"
+     "      const checkedByGroup = new Map();\n"
+     "      groupCbs.forEach((gCb) => {\n"
+     "        const gKey = gCb.dataset.group || \"\";\n"
+     "        const groupItems = treeBox.querySelectorAll(\n"
+     "          `.j0n4t-pg-item-cb[data-group=\"${CSS.escape(gKey)}\"]`,\n"
+     "        );\n"
+     "        totals.set(gKey, groupItems.length);\n"
+     "        checkedByGroup.set(\n"
+     "          gKey,\n"
+     "          Array.from(groupItems).filter((c) => c.checked).length,\n"
+     "        );\n"
+     "      });",
+     "tests/unit/library_picker.perf.test.ts"),
+    # A folder's colour comes from the same path walk the grid uses. The old
+    # exact-key read missed a colour stored on a parent folder, or one spelled
+    # in another case, and showed the default blue instead.
+    ("web/ExportUtils.js",
+     "        groupHex = PresetDisplay.getPresetColor(gKey, presets);",
+     "        groupHex = presets[gKey]?.__color__ ?? \"#007acc\";",
+     "tests/unit/export_utils.test.ts"),
     # The master checkbox drives every row.
     ("web/ExportUtils.js",
-     "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"
-     "          cb.checked = masterCb.checked;",
-     "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"
-     "          cb.checked = true;",
+     "        pr.tree?.setAllChecked(masterCb.checked);",
+     "        pr.tree?.setAllChecked(true);",
      "tests/unit/library_picker.test.ts"),
     # A move only exists when a picker is there to receive it.
     ("web/ExportUtils.js",

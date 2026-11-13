@@ -31,6 +31,8 @@ import PresetDisplay from "./PresetDisplay.js";
  * @property {() => string[]} getSelectedKeys
  * @property {() => PresetCache} getPresets
  * @property {(strategy: string) => void} applyDuplicateStrategy
+ * @property {(collapsed: boolean) => void} setAllCollapsed
+ * @property {(checked: boolean) => void} setAllChecked
  */
 
 /**
@@ -245,8 +247,11 @@ const ExportUtils = {
         gName = "Root Presets";
       } else {
         gName = gKey.split("/").map(PresetDisplay.toTitleCase).join(" › ");
-        if (presets[gKey] && presets[gKey].__color__)
-          groupHex = presets[gKey].__color__;
+        // Same lookup the grid uses for a folder header: walk up the path, and
+        // take a parent folder's colour. The old exact-key read missed a colour
+        // stored on a parent folder, or one spelled in another case, and fell
+        // back to the default blue.
+        groupHex = PresetDisplay.getPresetColor(gKey, presets);
       }
 
       let newCount = 0;
@@ -658,44 +663,73 @@ const ExportUtils = {
     );
 
     let isAllCollapsed = false;
-    if (toggleAllBtn) {
-      toggleAllBtn.addEventListener("click", () => {
-        isAllCollapsed = !isAllCollapsed;
-        toggleAllBtn.textContent = isAllCollapsed
-          ? "Expand All"
-          : "Collapse All";
-        treeBox
-          .querySelectorAll(".j0n4t-pg-collapse-btn")
-          .forEach((btn, idx) => {
-            btn.textContent = isAllCollapsed ? "▶" : "▼";
-            const box = /** @type {HTMLElement | null} */ (
-              treeBox.querySelectorAll(".j0n4t-pg-tree-group-items")[idx]
-            );
-            if (box) box.style.display = isAllCollapsed ? "none" : "";
-          });
+    /**
+     * Collapse or expand everything the tree holds: the folder groups, and any
+     * preset's own expanded contents - the `⊞` details drawer and the `✎`
+     * inline editor. Expanding does not reopen those; they are per-preset and
+     * were opened by hand.
+     * @param {boolean} collapsed
+     */
+    const setAllCollapsed = (collapsed) => {
+      isAllCollapsed = collapsed;
+      if (toggleAllBtn) {
+        toggleAllBtn.textContent = collapsed ? "Expand All" : "Collapse All";
+      }
+      treeBox
+        .querySelectorAll(".j0n4t-pg-collapse-btn")
+        .forEach((btn, idx) => {
+          btn.textContent = collapsed ? "▶" : "▼";
+          const box = /** @type {HTMLElement | null} */ (
+            treeBox.querySelectorAll(".j0n4t-pg-tree-group-items")[idx]
+          );
+          if (box) box.style.display = collapsed ? "none" : "";
+        });
+      if (!collapsed) return;
+      treeBox
+        .querySelectorAll(".j0n4t-pg-details-container")
+        .forEach((el) => {
+          /** @type {HTMLElement} */ (el).style.display = "none";
+        });
+      treeBox.querySelectorAll(".j0n4t-pg-details-btn").forEach((el) => {
+        /** @type {HTMLElement} */ (el).textContent = "⊞";
       });
+      treeBox
+        .querySelectorAll(".j0n4t-pg-edit-container")
+        .forEach((el) => {
+          /** @type {HTMLElement} */ (el).style.display = "none";
+        });
+    };
+    if (toggleAllBtn) {
+      toggleAllBtn.addEventListener("click", () =>
+        setAllCollapsed(!isAllCollapsed),
+      );
     }
 
     const updateGroupAndMasterStates = () => {
+      // One pass over the items. Querying each group's items here was
+      // O(items x groups) per change event, which is what made a single click
+      // in a large library block the page for seconds.
+      const totals = new Map();
+      const checkedByGroup = new Map();
+      itemCbs.forEach((cb) => {
+        const group = cb.dataset.group || "";
+        totals.set(group, (totals.get(group) || 0) + 1);
+        if (cb.checked) {
+          checkedByGroup.set(group, (checkedByGroup.get(group) || 0) + 1);
+        }
+      });
+
       let allItemsChecked = true;
       let anyItemChecked = false;
 
       groupCbs.forEach((gCb) => {
-        const gKey = gCb.dataset.group || "";
-        const groupItems = /** @type {NodeListOf<HTMLInputElement>} */ (
-          treeBox.querySelectorAll(
-            `.j0n4t-pg-item-cb[data-group="${CSS.escape(gKey)}"]`,
-          )
-        );
-        const checkedCount = Array.from(groupItems).filter(
-          (c) => c.checked,
-        ).length;
-        gCb.checked =
-          checkedCount === groupItems.length && groupItems.length > 0;
-        gCb.indeterminate =
-          checkedCount > 0 && checkedCount < groupItems.length;
-        if (checkedCount > 0) anyItemChecked = true;
-        if (checkedCount < groupItems.length) allItemsChecked = false;
+        const group = gCb.dataset.group || "";
+        const total = totals.get(group) || 0;
+        const count = checkedByGroup.get(group) || 0;
+        gCb.checked = count === total && total > 0;
+        gCb.indeterminate = count > 0 && count < total;
+        if (count > 0) anyItemChecked = true;
+        if (count < total) allItemsChecked = false;
       });
 
       if (masterCb) {
@@ -704,17 +738,29 @@ const ExportUtils = {
       }
     };
 
-    if (masterCb) {
-      masterCb.addEventListener("change", () => {
-        itemCbs.forEach((cb) => {
-          cb.checked = masterCb.checked;
-          cb.dataset.userModified = "true";
-        });
-        groupCbs.forEach((cb) => {
-          cb.checked = masterCb.checked;
-          cb.indeterminate = false;
-        });
+    /**
+     * Check or uncheck every preset in the tree in one pass. The picker uses
+     * this for its own master checkbox and for a library's checkbox: setting
+     * each box and firing its `change` event costs O(items x groups).
+     * @param {boolean} checked
+     */
+    const setAllChecked = (checked) => {
+      itemCbs.forEach((cb) => {
+        cb.checked = checked;
+        cb.dataset.userModified = "true";
       });
+      groupCbs.forEach((cb) => {
+        cb.checked = checked;
+        cb.indeterminate = false;
+      });
+      if (masterCb) {
+        masterCb.checked = checked;
+        masterCb.indeterminate = false;
+      }
+    };
+
+    if (masterCb) {
+      masterCb.addEventListener("change", () => setAllChecked(masterCb.checked));
     }
 
     groupCbs.forEach((gCb) => {
@@ -749,6 +795,8 @@ const ExportUtils = {
           (cb) => /** @type {HTMLInputElement} */ (cb).value,
         ),
       getPresets: () => presets,
+      setAllCollapsed,
+      setAllChecked,
       applyDuplicateStrategy: (strategy) => {
         let stateChanged = false;
         itemCbs.forEach((cb) => {
@@ -1058,10 +1106,7 @@ const ExportUtils = {
 
       pr.checkEl?.addEventListener("change", () => {
         const checked = /** @type {HTMLInputElement} */ (pr.checkEl).checked;
-        itemBoxes(itemsOf(pr)).forEach((cb) => {
-          cb.checked = checked;
-          cb.dispatchEvent(new Event("change"));
-        });
+        pr.tree?.setAllChecked(checked);
         updateRow(pr);
       });
 
@@ -1151,10 +1196,9 @@ const ExportUtils = {
     masterCb?.addEventListener("change", () => {
       for (const pr of pickerRows) {
         if (pr.checkEl) pr.checkEl.checked = masterCb.checked;
-        itemBoxes(itemsOf(pr)).forEach((cb) => {
-          cb.checked = masterCb.checked;
-          cb.dispatchEvent(new Event("change"));
-        });
+        // One bulk set per row: firing a change event per preset was
+        // O(items x groups) and blocked the page on a large library.
+        pr.tree?.setAllChecked(masterCb.checked);
         updateRow(pr);
       }
     });
@@ -1169,6 +1213,9 @@ const ExportUtils = {
       for (const pr of pickerRows) {
         if (pr.collapseEl) pr.collapseEl.textContent = allCollapsed ? "▶" : "▼";
         itemsOf(pr).style.display = allCollapsed ? "none" : "";
+        // The row's whole tree collapses, and with it the folders and any
+        // preset's expanded contents inside it.
+        pr.tree?.setAllCollapsed(allCollapsed);
       }
     });
 

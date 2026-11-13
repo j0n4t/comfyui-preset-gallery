@@ -118,6 +118,40 @@ test("buildPresetSelectorTree groups presets by folder and skips color-only entr
   assert.equal(items.length, 3);
 });
 
+test("a folder group takes its custom colour, including from a parent folder", () => {
+  const tree = ExportUtils.buildPresetSelectorTree({
+    Faces: { __color__: "#ff0000" },
+    "Faces/Portrait": { preset: "portrait" },
+    "Faces/Studio/Detail": { preset: "detail" },
+    "Urban/Night": { preset: "night" },
+  });
+  const styles = Array.from(
+    tree.element.querySelectorAll<HTMLElement>(".j0n4t-pg-group-name"),
+  ).map((el) => el.getAttribute("style") || "");
+  assert.equal(styles.length, 3);
+  assert.ok(styles[0].includes("#ff0000"), "the folder's own colour");
+  assert.ok(
+    styles[1].includes("#ff0000"),
+    "a nested folder inherits its parent's colour",
+  );
+  assert.ok(
+    !styles[2].includes("#007acc"),
+    "an uncoloured folder falls back to the hash, not the old default",
+  );
+});
+
+test("a folder colour is found whatever case the preset keys spell it in", () => {
+  const tree = ExportUtils.buildPresetSelectorTree({
+    faces: { __color__: "#00ff00" },
+    "Faces/Portrait": { preset: "portrait" },
+  });
+  const style =
+    tree.element.querySelector<HTMLElement>(".j0n4t-pg-group-name")?.getAttribute(
+      "style",
+    ) ?? "";
+  assert.ok(style.includes("#00ff00"), `unexpected style: ${style}`);
+});
+
 test("buildPresetSelectorTree checks every item when there is no existing library", () => {
   const tree = ExportUtils.buildPresetSelectorTree(PRESETS);
   assert.deepEqual(

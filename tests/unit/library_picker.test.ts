@@ -531,6 +531,64 @@ test("the duplicate switch is global, and only in import mode", () => {
   assert.equal(exp.getStrategy(), "overwrite");
 });
 
+test("collapse all collapses the folders and any preset's expanded contents", () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: { "Faces/Portrait": { preset: "portrait" } },
+      },
+    ],
+  });
+  document.body.appendChild(p.element);
+
+  // Open one preset's details drawer and its inline editor.
+  p.element.querySelector<HTMLElement>(".j0n4t-pg-details-btn")?.click();
+  p.element.querySelector<HTMLElement>(".j0n4t-pg-edit-btn")?.click();
+  const details = p.element.querySelector<HTMLElement>(
+    ".j0n4t-pg-details-container",
+  );
+  const editor = p.element.querySelector<HTMLElement>(
+    ".j0n4t-pg-edit-container",
+  );
+  assert.equal(details?.style.display, "block", "the drawer starts open");
+  assert.equal(editor?.style.display, "block", "the editor starts open");
+
+  const toggle = p.element.querySelector<HTMLElement>(
+    "#j0n4t-pg-picker-toggle-collapse",
+  );
+  assert.ok(toggle);
+  toggle.click();
+  toggle.click();
+
+  // Expanding brings the rows and folders back, but a preset's own contents
+  // were opened by hand and stay closed.
+  assert.equal(
+    details?.style.display,
+    "none",
+    "the details drawer collapsed with the rest",
+  );
+  assert.equal(
+    editor?.style.display,
+    "none",
+    "the inline editor collapsed with the rest",
+  );
+  assert.equal(
+    p.element.querySelector<HTMLElement>(".j0n4t-pg-tree-group-items")?.style
+      .display,
+    "",
+    "the folder group expanded again",
+  );
+  assert.equal(
+    p.element.querySelector<HTMLElement>(".j0n4t-pg-collapse-btn")
+      ?.textContent,
+    "▼",
+  );
+
+  p.element.remove();
+});
+
 test("export mode keeps the pencil but drops the consequence line", () => {
   const exp = picker({ mode: "export" });
   assert.ok(
