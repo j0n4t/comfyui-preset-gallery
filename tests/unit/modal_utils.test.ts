@@ -167,3 +167,37 @@ test("injectStyles dedups the modal stylesheet across multiple shows", async () 
     1,
   );
 });
+
+test("the modal stylesheet is the one that styles the modal's own classes", () => {
+  ModalUtils.injectStyles();
+  const sheet = document.querySelector("style#j0n4t-pg-modal-styles");
+  assert.ok(sheet, "the modal stylesheet is injected");
+  assert.equal(
+    sheet.textContent,
+    ModalUtils.MODAL_STYLES,
+    "the injected sheet is ModalUtils's own",
+  );
+
+  // The app used to inject a second sheet under this same id, and
+  // `injectStyles` keeps the first one it finds - so the modal carried a
+  // class its own stylesheet never styled, and the Settings dialog had no
+  // width at all, resizing itself to whatever each tab happened to hold.
+  assert.match(
+    ModalUtils.MODAL_STYLES,
+    /\.j0n4t-pg-modal\.j0n4t-pg-modal-expand\s*\{/,
+    "the expanded modal's class has a rule",
+  );
+
+  // A modal taller than the viewport has to scroll its body, not push its
+  // buttons off screen.
+  assert.match(
+    ModalUtils.MODAL_STYLES,
+    /\.j0n4t-pg-modal\s*\{[^}]*max-height:\s*90vh[^}]*\}/,
+    "the modal is capped",
+  );
+  assert.match(
+    ModalUtils.MODAL_STYLES,
+    /\.j0n4t-pg-modal-content\s*\{[^}]*overflow-y:\s*auto[^}]*\}/,
+    "the modal body scrolls",
+  );
+});

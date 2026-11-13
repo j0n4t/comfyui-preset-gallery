@@ -1641,11 +1641,14 @@ const ExportUtils = {
     const caches = await PresetGalleryAPI.fetchLibraryCaches(
       availableLibraries.map((library) => library.id),
     );
+    // This dialog builds its own overlay rather than going through
+    // ModalUtils.show, so it has to inject the modal stylesheet itself.
+    ModalUtils.injectStyles();
     const overlay = document.createElement("div");
     overlay.className = "j0n4t-pg-modal-overlay";
 
     const modal = document.createElement("div");
-    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
+    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-expand";
 
     modal.innerHTML = `
       <h3>📥 Import Presets</h3>
@@ -2038,10 +2041,13 @@ const ExportUtils = {
       served.map((library) => library.id),
     );
 
+    // This dialog builds its own overlay rather than going through
+    // ModalUtils.show, so it has to inject the modal stylesheet itself.
+    ModalUtils.injectStyles();
     const overlay = document.createElement("div");
     overlay.className = "j0n4t-pg-modal-overlay";
     const modal = document.createElement("div");
-    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-large";
+    modal.className = "j0n4t-pg-modal j0n4t-pg-modal-expand";
     modal.innerHTML = `
       <h3>📥 Import Libraries</h3>
       <div class="j0n4t-pg-modal-field">

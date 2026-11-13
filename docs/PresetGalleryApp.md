@@ -40,7 +40,7 @@ The `PresetGalleryApp` serves as an interactive graphical interface attached to 
 ### 2.5. Import & Export
 
 - **Bulk Import:** Users can upload `.zip`, `.json`, `.yaml`, or `.yml` files to import external preset collections.
-- **Bulk Export:** Supports exporting the current preset library via an export modal, which packages the configurations into the user's preferred format.
+- **Bulk Export:** Supports exporting one library, or every library as one bundle, from **Settings → Import / Export**, which packages the configurations into the user's preferred format.
 
 ## 3. Technical Integration & Data Management
 

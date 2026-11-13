@@ -113,19 +113,6 @@ export default class PresetGalleryApp {
     .j0n4t-pg-popup-section { display: flex; gap: 2px; justify-content: center; background: #222; padding: 2px; border-radius: 3px; }
   `;
 
-  static MODAL_STYLES = /*css*/ `
-    .j0n4t-pg-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(3px); z-index: 20000; display: flex; align-items: center; justify-content: center; }
-    .j0n4t-pg-modal { background: #1f1f1f; border: 1px solid #007acc; border-radius: 8px; min-width: 200px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); font-family: sans-serif; display: flex; flex-direction: column; gap: 12px; color: #eee; }
-    .j0n4t-pg-modal.j0n4t-pg-modal-large { width: 420px; max-width: 90vw; }
-    .j0n4t-pg-modal h3 { margin: 0; font-size: 13px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 6px; }
-    .j0n4t-pg-modal-row { display: flex; gap: 10px; width: 100%; }
-    .j0n4t-pg-modal-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
-    .j0n4t-pg-modal-field label { color: #aaa; font-weight: bold; }
-    .j0n4t-pg-modal-field select { background: #111; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; }
-    .j0n4t-pg-modal-field select:focus { border-color: #007acc; }
-    .j0n4t-pg-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-  `;
-
   static PRESET_TREE_SELECTOR_STYLES = /*css*/ `
     .j0n4t-pg-selector-container { border: 1px solid #333; background: #141414; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
     .j0n4t-pg-selector-controls { border-bottom: 1px solid #222; padding-bottom: 4px; }
@@ -190,10 +177,6 @@ export default class PresetGalleryApp {
     PresetDOM.injectStyles(
       "j0n4t-pg-gallery-styles",
       PresetGalleryApp.GALLERY_STYLES,
-    );
-    PresetDOM.injectStyles(
-      "j0n4t-pg-modal-styles",
-      PresetGalleryApp.MODAL_STYLES,
     );
     PresetDOM.injectStyles(
       "j0n4t-pg-preset-tree-selector-styles",

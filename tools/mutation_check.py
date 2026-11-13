@@ -174,6 +174,19 @@ MUTATIONS = [
      "        );",
      "        const rows = picker?.getRows() || [];",
      "tests/unit/preset_gallery_settings.test.ts"),
+    # The modal is capped and its body scrolls, so a tall picker cannot push
+    # the buttons off screen.
+    ("web/ModalUtils.js",
+     "max-height: 90vh; box-sizing: border-box; }",
+     "box-sizing: border-box; }",
+     "tests/unit/modal_utils.test.ts"),
+    # An expanded modal's class has to be the one the stylesheet styles: the
+    # app once injected a second sheet under the same id, which silently won
+    # and left the Settings dialog with no width rule at all.
+    ("web/ModalUtils.js",
+     ".j0n4t-pg-modal.j0n4t-pg-modal-expand { width: 420px; max-width: 90vw; }",
+     ".j0n4t-pg-modal.j0n4t-pg-modal-large { width: 420px; max-width: 90vw; }",
+     "tests/unit/modal_utils.test.ts"),
     # The master checkbox drives every row.
     ("web/ExportUtils.js",
      "        itemBoxes(itemsOf(pr)).forEach((cb) => {\n"
