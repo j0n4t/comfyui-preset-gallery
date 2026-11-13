@@ -79,12 +79,18 @@ function toIdList(value) {
 
 export default class PresetGallerySettings {
   static STYLES = /*css*/ `
-    .j0n4t-pg-tab-nav { display: flex ; gap: 4px ; border-bottom: 1px solid #444 ; margin-bottom: 12px; }
-    .j0n4t-pg-tab-btn { padding: 6px 14px ; background: transparent ; border: none ; border-bottom: 2px solid transparent ; color: #888 ; cursor: pointer ; font-weight: 600 ; font-size: 12px ; transition: all 0.2s ease; }
+    .j0n4t-pg-tab-nav { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #444; margin-bottom: 12px; }
+    .j0n4t-pg-tab-btn { padding: 6px 14px; background: transparent; border: none; border-bottom: 2px solid transparent; color: #888; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s ease; white-space: nowrap; }
     .j0n4t-pg-tab-btn:hover { color: #ddd; }
     .j0n4t-pg-tab-btn.active { border-bottom-color: #007acc ; color: #fff; }
     .j0n4t-pg-tab-panel { display: none; }
-    .j0n4t-pg-tab-panel.active { display: flex ; flex-direction: column ; gap: 10px; }
+    .j0n4t-pg-tab-panel.active { display: flex ; flex-direction: column ; gap: 10px ; height: 55vh ; min-height: 360px ; max-height: 560px ; overflow-y: auto ; }
+    /* The list areas are the flexible part of their tab: they take whatever the
+       tab height leaves after the controls and scroll, so a tab never grows
+       with the library count and the dialog stays one size. */
+    .j0n4t-pg-io-tree-field { flex: 1 ; min-height: 0 ; }
+    .j0n4t-pg-io-tree-field > div { flex: 1 ; min-height: 0 ; overflow-y: auto ; }
+    #j0n4t-pg-tab-display > .j0n4t-pg-modal-field:first-child { flex: 1 ; min-height: 0 ; }
     .j0n4t-pg-shortcuts-grid { display: grid ; grid-template-columns: 1fr 1fr; gap: 12px ; font-size: 11px; }
     .j0n4t-pg-shortcut-group { background: #1a1a1a ; border: 1px solid #333 ; border-radius: 4px ; padding: 8px 10px; }
     .j0n4t-pg-shortcut-group h4 { margin: 0 0 6px 0 ; color: #007acc ; font-size: 11px ; text-transform: uppercase ; letter-spacing: 0.5px; }
@@ -93,7 +99,7 @@ export default class PresetGallerySettings {
     .j0n4t-pg-kbd { background: #2d2d2d ; border: 1px solid #4f4f4f ; border-radius: 3px ; padding: 1px 5px ; color: #eee ; font-family: monospace ; font-size: 10px ; box-shadow: 0 1px 1px rgba(0,0,0,0.4); }
 
     /* Preset library list */
-    .j0n4t-pg-library-list { display: flex ; flex-direction: column ; gap: 2px ; max-height: 180px ; overflow-y: auto ; }
+    .j0n4t-pg-library-list { display: flex ; flex-direction: column ; gap: 2px ; flex: 1 ; min-height: 72px ; overflow-y: auto ; }
     .j0n4t-pg-library-row { display: flex ; align-items: center ; gap: 6px ; padding: 3px 4px ; background: #161616 ; border: 1px solid #333 ; border-radius: 3px ; font-size: 11px ; }
     .j0n4t-pg-library-row input { width: auto ; margin: 0 ; cursor: pointer ; }
     .j0n4t-pg-library-row input:disabled { cursor: not-allowed ; opacity: 0.5 ; }
@@ -600,22 +606,23 @@ export default class PresetGallerySettings {
       </div>
 
       <div id="j0n4t-pg-tab-io" class="j0n4t-pg-tab-panel">
-        <div class="j0n4t-pg-modal-field">
-          <label>Export Scope</label>
-          <select id="j0n4t-pg-io-scope">
-            <option value="single">Single library</option>
-            <option value="bundle">All libraries (bundle)</option>
-          </select>
+        <div class="j0n4t-pg-modal-row">
+          <div class="j0n4t-pg-modal-field" style="flex: 1;">
+            <label>Export Scope</label>
+            <select id="j0n4t-pg-io-scope">
+              <option value="single">Single library</option>
+              <option value="bundle">All libraries (bundle)</option>
+            </select>
+          </div>
+          <div class="j0n4t-pg-modal-field" id="j0n4t-pg-io-single-field" style="flex: 1;">
+            <label for="j0n4t-pg-io-library">Library</label>
+            <select id="j0n4t-pg-io-library"></select>
+          </div>
         </div>
 
-        <div class="j0n4t-pg-modal-field" id="j0n4t-pg-io-single-field">
-          <label for="j0n4t-pg-io-library">Library</label>
-          <select id="j0n4t-pg-io-library"></select>
-        </div>
-
-        <div class="j0n4t-pg-modal-field" id="j0n4t-pg-io-bundle-field" style="display: none;">
+        <div class="j0n4t-pg-modal-field j0n4t-pg-io-tree-field" id="j0n4t-pg-io-bundle-field" style="display: none;">
           <label>Select Libraries & Presets to Export</label>
-          <div id="j0n4t-pg-io-bundle-tree" style="max-height: 320px; overflow-y: auto;"></div>
+          <div id="j0n4t-pg-io-bundle-tree"></div>
         </div>
 
         <div class="j0n4t-pg-modal-row">
@@ -643,23 +650,26 @@ export default class PresetGallerySettings {
           </label>
         </div>
 
-        <div class="j0n4t-pg-modal-field" id="j0n4t-pg-io-tree-field">
+        <div class="j0n4t-pg-modal-field j0n4t-pg-io-tree-field" id="j0n4t-pg-io-tree-field">
           <label>Select Presets & Groups to Export</label>
           <div id="j0n4t-pg-io-tree"></div>
         </div>
 
-        <div class="j0n4t-pg-modal-actions">
-          <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-io-export" style="background:#007acc;">Export</button>
-        </div>
-
-        <div class="j0n4t-pg-modal-field" style="border-top: 1px solid #333; padding-top: 10px;">
-          <label>Import from a file</label>
-          <div style="font-size: 10px; color: #888; line-height: 1.4;">
-            Accepts a library bundle (.zip) or a single-library export
-            (.zip, .json, .yaml).
+        <div class="j0n4t-pg-modal-row" style="align-items: flex-end;">
+          <div class="j0n4t-pg-modal-actions" style="margin-top: 0;">
+            <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-io-export" style="background:#007acc;">Export</button>
           </div>
-          <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-io-import" style="background:#454545;">Import File...</button>
-          <input type="file" id="j0n4t-pg-io-file" accept=".zip,.json,.yaml,.yml" style="display: none;" />
+          <div class="j0n4t-pg-modal-field" style="flex: 1;">
+            <div class="j0n4t-pg-modal-row" style="align-items: center; gap: 8px;">
+              <label style="flex: 1;">Import from a file</label>
+              <button type="button" class="j0n4t-pg-btn" id="j0n4t-pg-io-import" style="background:#454545;">Import File...</button>
+              <input type="file" id="j0n4t-pg-io-file" accept=".zip,.json,.yaml,.yml" style="display: none;" />
+            </div>
+            <div style="font-size: 10px; color: #888; line-height: 1.4;">
+              Accepts a library bundle (.zip) or a single-library export
+              (.zip, .json, .yaml).
+            </div>
+          </div>
         </div>
       </div>
     `;

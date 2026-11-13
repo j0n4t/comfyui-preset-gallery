@@ -14,14 +14,14 @@ export default class ModalUtils {
     .j0n4t-pg-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(3px); z-index: 20000; display: flex; align-items: center; justify-content: center; }
     .j0n4t-pg-modal { background: #1f1f1f; border: 1px solid #007acc; border-radius: 8px; min-width: 200px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); font-family: sans-serif; display: flex; flex-direction: column; gap: 12px; color: #eee; max-height: 90vh; box-sizing: border-box; }
     .j0n4t-pg-modal-content { min-height: 0; overflow-y: auto; }
-    .j0n4t-pg-modal.j0n4t-pg-modal-expand { width: 420px; max-width: 90vw; }
+    .j0n4t-pg-modal.j0n4t-pg-modal-expand { width: 520px; max-width: 90vw; }
     .j0n4t-pg-modal h3 { margin: 0; font-size: 13px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 6px; }
     .j0n4t-pg-modal-row { display: flex; gap: 10px; width: 100%; }
     .j0n4t-pg-modal-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
     .j0n4t-pg-modal-field label { color: #aaa; font-weight: bold; }
     .j0n4t-pg-modal-field select { background: #111; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; }
     .j0n4t-pg-modal-field select:focus { border-color: #007acc; }
-    .j0n4t-pg-modal-field input { background: #111; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; width: 100%; box-sizing: border-box; }
+    .j0n4t-pg-modal-field input:not([type="checkbox"]) { background: #111; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; width: 100%; box-sizing: border-box; }
     .j0n4t-pg-modal-field input:focus { border-color: #007acc; }
     .j0n4t-pg-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
   `;

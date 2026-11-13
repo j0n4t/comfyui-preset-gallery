@@ -180,12 +180,37 @@ MUTATIONS = [
      "max-height: 90vh; box-sizing: border-box; }",
      "box-sizing: border-box; }",
      "tests/unit/modal_utils.test.ts"),
+    # The modal's text-input rule must not reach checkboxes: `width: 100%` on a
+    # checkbox stretches it across the field, which is how the settings
+    # checkboxes ended up 289px wide.
+    ("web/ModalUtils.js",
+     ".j0n4t-pg-modal-field input:not([type=\"checkbox\"]) {",
+     ".j0n4t-pg-modal-field input {",
+     "tests/unit/modal_utils.test.ts"),
+    # The tab labels need 456px; at the old 420px modal they wrapped onto two
+    # lines.
+    ("web/ModalUtils.js",
+     ".j0n4t-pg-modal.j0n4t-pg-modal-expand { width: 520px; max-width: 90vw; }",
+     ".j0n4t-pg-modal.j0n4t-pg-modal-expand { width: 420px; max-width: 90vw; }",
+     "tests/unit/modal_utils.test.ts"),
+    # The dialog height is responsive: a fixed pixel height would be cramped on
+    # a short viewport and wasted on a tall one.
+    ("web/PresetGallerySettings.js",
+     "height: 55vh ; min-height: 360px ; max-height: 560px ; overflow-y: auto ; }",
+     "min-height: 360px ; overflow-y: auto ; }",
+     "tests/unit/preset_gallery_settings.test.ts"),
+    # The preset area scrolls; without it the whole tab grows with the library
+    # count and the dialog stops being one size.
+    ("web/PresetGallerySettings.js",
+     ".j0n4t-pg-io-tree-field > div { flex: 1 ; min-height: 0 ; overflow-y: auto ; }",
+     ".j0n4t-pg-io-tree-field > div { flex: 1 ; min-height: 0 ; }",
+     "tests/unit/preset_gallery_settings.test.ts"),
     # An expanded modal's class has to be the one the stylesheet styles: the
     # app once injected a second sheet under the same id, which silently won
     # and left the Settings dialog with no width rule at all.
     ("web/ModalUtils.js",
-     ".j0n4t-pg-modal.j0n4t-pg-modal-expand { width: 420px; max-width: 90vw; }",
-     ".j0n4t-pg-modal.j0n4t-pg-modal-large { width: 420px; max-width: 90vw; }",
+     ".j0n4t-pg-modal.j0n4t-pg-modal-expand { width: 520px; max-width: 90vw; }",
+     ".j0n4t-pg-modal.j0n4t-pg-modal-large { width: 520px; max-width: 90vw; }",
      "tests/unit/modal_utils.test.ts"),
     # The master checkbox drives every row.
     ("web/ExportUtils.js",

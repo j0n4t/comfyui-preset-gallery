@@ -188,6 +188,18 @@ test("the modal stylesheet is the one that styles the modal's own classes", () =
     "the expanded modal's class has a rule",
   );
 
+  assert.match(
+    ModalUtils.MODAL_STYLES,
+    /\.j0n4t-pg-modal\.j0n4t-pg-modal-expand\s*\{\s*width:\s*520px/,
+    "an expanded modal is wide enough to hold the settings tabs on one line",
+  );
+
+  assert.match(
+    ModalUtils.MODAL_STYLES,
+    /\.j0n4t-pg-modal-field input:not\(\[type="checkbox"\]\)\s*\{/,
+    "the modal's text-input rule leaves checkboxes at their own size",
+  );
+
   // A modal taller than the viewport has to scroll its body, not push its
   // buttons off screen.
   assert.match(

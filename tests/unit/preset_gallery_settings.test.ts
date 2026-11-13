@@ -1111,3 +1111,41 @@ test("the Import / Export tab exports the selected presets of one library", asyn
     restoreLibraries();
   }
 });
+
+test("the settings tabs share one width and a moderate height", () => {
+  // At 420px the four tab labels wrapped onto two lines: the labels need 456px
+  // and the modal only offered 386. The tab bar is now wide enough, and a label
+  // wraps as a whole rather than breaking mid-word.
+  assert.match(
+    PresetGallerySettings.STYLES,
+    /\.j0n4t-pg-tab-btn\s*\{[^}]*white-space:\s*nowrap/,
+    "tab labels never wrap mid-label",
+  );
+  assert.match(
+    PresetGallerySettings.STYLES,
+    /\.j0n4t-pg-tab-nav\s*\{[^}]*flex-wrap:\s*wrap/,
+    "the tab bar wraps as a group when the viewport is too narrow",
+  );
+
+  // Rolling, Display and Keyboard Shortcuts measured 360 / 506 / 378 before
+  // this, so the dialog jumped around as the tabs were switched.
+  assert.match(
+    PresetGallerySettings.STYLES,
+    /\.j0n4t-pg-tab-panel\.active\s*\{[^}]*height:\s*55vh[^}]*min-height:\s*360px/,
+    "every tab panel is one responsive height with a reasonable floor",
+  );
+
+  // The preset area is the flexible part of the Import / Export tab: it takes
+  // what the tab height leaves and scrolls, so the tab never grows with the
+  // library count.
+  assert.match(
+    PresetGallerySettings.STYLES,
+    /\.j0n4t-pg-io-tree-field\s*\{[^}]*flex:\s*1[^}]*min-height:\s*0/,
+    "the preset field yields to the tab height",
+  );
+  assert.match(
+    PresetGallerySettings.STYLES,
+    /\.j0n4t-pg-io-tree-field > div\s*\{[^}]*overflow-y:\s*auto/,
+    "the preset view scrolls instead of the whole tab",
+  );
+});
