@@ -563,13 +563,19 @@ const ExportUtils = {
               }
               if (checked) selectedKeys.push(newKey);
             }
-            if (gKey !== "root_presets" && presets[gKey]?.__color__) {
+            const carriedColorKey =
+              gKey === "root_presets"
+                ? null
+                : PresetDisplay.getFolderColorKey(presets, gKey);
+            if (carriedColorKey) {
               moved[cleanNewFolder] = {
                 ...(moved[cleanNewFolder] || {}),
-                __color__: presets[gKey].__color__,
+                __color__: presets[carriedColorKey].__color__,
               };
-              delete presets[gKey].__color__;
-              if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
+              delete presets[carriedColorKey].__color__;
+              if (Object.keys(presets[carriedColorKey]).length === 0) {
+                delete presets[carriedColorKey];
+              }
             }
             options.onMove({
               libraryId: namedLibrary,
@@ -601,15 +607,21 @@ const ExportUtils = {
             cb.dataset.group = cleanNewFolder || "root_presets";
           }
 
-          if (gKey !== "root_presets" && presets[gKey]?.__color__) {
+          const carriedColorKey =
+            gKey === "root_presets"
+              ? null
+              : PresetDisplay.getFolderColorKey(presets, gKey);
+          if (carriedColorKey) {
             if (cleanNewFolder) {
               presets[cleanNewFolder] = {
                 ...(presets[cleanNewFolder] || {}),
-                __color__: presets[gKey].__color__,
+                __color__: presets[carriedColorKey].__color__,
               };
             }
-            delete presets[gKey].__color__;
-            if (Object.keys(presets[gKey]).length === 0) delete presets[gKey];
+            delete presets[carriedColorKey].__color__;
+            if (Object.keys(presets[carriedColorKey]).length === 0) {
+              delete presets[carriedColorKey];
+            }
           }
 
           const groupCb = /** @type {HTMLInputElement | null} */ (
@@ -1305,10 +1317,11 @@ const ExportUtils = {
       if (includeColors) {
         const activeFolders = getActiveFolders(presets, selectedKeys);
         for (const folder of activeFolders) {
-          if (presets?.[folder] && presets[folder].__color__) {
+          const colorKey = PresetDisplay.getFolderColorKey(presets, folder);
+          if (colorKey) {
             filtered[folder] = {
               ...(filtered[folder] || {}),
-              __color__: presets[folder].__color__,
+              __color__: presets[colorKey].__color__,
             };
           }
         }

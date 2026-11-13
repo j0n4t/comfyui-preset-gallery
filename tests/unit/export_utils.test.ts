@@ -627,6 +627,21 @@ test("filterExportPresets drops folder colours when includeColors is false", () 
   assert.deepEqual(filtered, { "Faces/Portrait": { preset: "portrait" } });
 });
 
+test("filterExportPresets keeps a folder colour whose key case differs", () => {
+  const filtered = ExportUtils.filterExportPresets(
+    {
+      "Faces/Portrait": { preset: "portrait" },
+      faces: { __color__: "#ff0000" },
+    },
+    ["Faces/Portrait"],
+  );
+
+  assert.deepEqual(filtered, {
+    "Faces/Portrait": { preset: "portrait" },
+    Faces: { __color__: "#ff0000" },
+  });
+});
+
 test("filterExportPresets drops content-less entries and sorts keys", () => {
   const filtered = ExportUtils.filterExportPresets({
     "B/Two": { preset: "two" },

@@ -372,6 +372,36 @@ test("a folder renamed to another library moves into that row", async () => {
   assert.equal(p.getShape().styles["urban"]?.__color__, "#ff0000");
 });
 
+test("a folder colour follows a move even when its key spells the folder differently", async () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: {
+          "Faces/portrait": { preset: "portrait" },
+          faces: { __color__: "#ff0000" },
+        },
+      },
+      { sourceId: "styles", name: "styles", presets: {} },
+    ],
+    existingCachesById: { main: {}, styles: {} },
+  });
+
+  await renameFolder(p, "Faces", "styles#Urban");
+
+  assert.equal(
+    p.getShape().styles["urban"]?.__color__,
+    "#ff0000",
+    "the colour was carried to the new folder",
+  );
+  assert.equal(
+    p.getShape().main["faces"],
+    undefined,
+    "the old colour entry was removed rather than left behind",
+  );
+});
+
 test("a move to a library that is not a row creates one", async () => {
   const p = picker({
     rows: [
@@ -456,6 +486,31 @@ test("a plain folder rename stays in its row", async () => {
     "portrait",
   );
   assert.deepEqual(Object.keys(p.getShape()), ["main"]);
+});
+
+test("a plain rename carries a folder colour whose key spells the folder differently", async () => {
+  const p = picker({
+    rows: [
+      {
+        sourceId: "main",
+        name: "main",
+        presets: {
+          "faces/portrait": { preset: "portrait" },
+          Faces: { __color__: "#ff0000" },
+        },
+      },
+    ],
+  });
+
+  await renameFolder(p, "faces", "Faces/Editorial");
+
+  const shape = p.getShape().main;
+  assert.equal(
+    shape["faces/editorial"]?.__color__,
+    "#ff0000",
+    "the colour followed the rename into its new folder",
+  );
+  assert.equal(shape["Faces"], undefined, "the old entry was removed");
 });
 
 test("a row created by a move goes away when it empties", async () => {

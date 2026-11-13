@@ -46,6 +46,11 @@ the name is `sock`, and a colour hashes `wear` rather than `socks#wear`.
   `__color__` on a folder, and falls back to the hash of the top-level folder.
   The exact spelling is tried first at each level, then a lowercased index, so a
   folder colour follows the folder whatever case the key spells it in.
+- `getFolderColorKey(cache, folderPath)` — the key a folder's *own* colour is
+  stored under, exact spelling first then a lowercased scan. It never walks up
+  the path and never invents a hash: its callers carry an entry around (a folder
+  move, the export filter), where resolving through `getPresetColor` would
+  write a colour the library never had.
 
 ### Search
 

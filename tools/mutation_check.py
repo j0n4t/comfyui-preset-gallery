@@ -254,6 +254,42 @@ MUTATIONS = [
      "        );\n"
      "      });",
      "tests/unit/library_picker.perf.test.ts"),
+    # A folder move carries its own stored colour, found whatever case either
+    # side spells it in - the old exact-key read lost it.
+    ("web/ExportUtils.js",
+     "            const carriedColorKey =\n"
+     "              gKey === \"root_presets\"\n"
+     "                ? null\n"
+     "                : PresetDisplay.getFolderColorKey(presets, gKey);",
+     "            const carriedColorKey =\n"
+     "              gKey === \"root_presets\"\n"
+     "                ? null\n"
+     "                : presets[gKey] ? gKey : null;",
+     "tests/unit/library_picker.test.ts"),
+    ("web/ExportUtils.js",
+     "          const carriedColorKey =\n"
+     "            gKey === \"root_presets\"\n"
+     "              ? null\n"
+     "              : PresetDisplay.getFolderColorKey(presets, gKey);",
+     "          const carriedColorKey =\n"
+     "            gKey === \"root_presets\"\n"
+     "              ? null\n"
+     "              : presets[gKey] ? gKey : null;",
+     "tests/unit/library_picker.test.ts"),
+    # The export filter copies the folders a selection reaches, same lookup.
+    ("web/ExportUtils.js",
+     "          const colorKey = PresetDisplay.getFolderColorKey(presets, folder);",
+     "          const colorKey = presets[folder] ? folder : null;",
+     "tests/unit/export_utils.test.ts"),
+    # The entry lookup falls back to a case-insensitive scan.
+    ("web/PresetDisplay.js",
+     "    Object.keys(cache).find(\n"
+     "      (k) =>\n"
+     "        k.toLowerCase() === folderPath.toLowerCase() &&\n"
+     "        typeof cache[k]?.__color__ === \"string\",\n"
+     "    ) ?? null",
+     "    null",
+     "tests/unit/library_picker.test.ts"),
     # A folder's colour comes from the same path walk the grid uses. The old
     # exact-key read missed a colour stored on a parent folder, or one spelled
     # in another case, and showed the default blue instead.

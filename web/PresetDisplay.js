@@ -103,6 +103,30 @@ function presetColorIndex(cache) {
 }
 
 /**
+ * Finds the key a folder's own colour is stored under, whatever case either
+ * side spells it in. Returns null when the folder stores no colour of its own -
+ * unlike getPresetColor this never walks up the path and never invents a hash,
+ * because the callers carry an entry around (a folder rename, the export
+ * filter) and writing a colour that was never stored would change the library.
+ * @param {PresetCache|null} cache
+ * @param {string} folderPath
+ * @returns {string | null}
+ */
+function getFolderColorKey(cache, folderPath) {
+  if (!cache || !folderPath) return null;
+  if (cache[folderPath] && typeof cache[folderPath].__color__ === "string") {
+    return folderPath;
+  }
+  return (
+    Object.keys(cache).find(
+      (k) =>
+        k.toLowerCase() === folderPath.toLowerCase() &&
+        typeof cache[k]?.__color__ === "string",
+    ) ?? null
+  );
+}
+
+/**
  * Computes the assigned or computed HSL color for a given preset key.
  * @param {string} [presetKey=""] - Preset identifier path key.
  * @param {PresetCache|null} [cache=null] - Optional lookup cache.
@@ -338,6 +362,7 @@ const PresetDisplay = {
   getAllPresetFolders,
   getVisibleKeys,
   getPresetColor,
+  getFolderColorKey,
   getPresetBaseFolder,
   getPresetName,
   getPresetTitle,
@@ -356,6 +381,7 @@ export {
   getAllPresetFolders,
   getVisibleKeys,
   getPresetColor,
+  getFolderColorKey,
   getPresetBaseFolder,
   getPresetName,
   getPresetTitle,
