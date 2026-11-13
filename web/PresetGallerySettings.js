@@ -620,11 +620,6 @@ export default class PresetGallerySettings {
           </div>
         </div>
 
-        <div class="j0n4t-pg-modal-field j0n4t-pg-io-tree-field" id="j0n4t-pg-io-bundle-field" style="display: none;">
-          <label>Select Libraries & Presets to Export</label>
-          <div id="j0n4t-pg-io-bundle-tree"></div>
-        </div>
-
         <div class="j0n4t-pg-modal-row">
           <div class="j0n4t-pg-modal-field" style="flex: 1;">
             <label>File Layout</label>
@@ -648,6 +643,11 @@ export default class PresetGallerySettings {
             <input type="checkbox" id="j0n4t-pg-io-colors" checked />
             <span><strong>Include Custom Group Colors (__color__)</strong></span>
           </label>
+        </div>
+
+        <div class="j0n4t-pg-modal-field j0n4t-pg-io-tree-field" id="j0n4t-pg-io-bundle-field" style="display: none;">
+          <label>Select Libraries & Presets to Export</label>
+          <div id="j0n4t-pg-io-bundle-tree"></div>
         </div>
 
         <div class="j0n4t-pg-modal-field j0n4t-pg-io-tree-field" id="j0n4t-pg-io-tree-field">
