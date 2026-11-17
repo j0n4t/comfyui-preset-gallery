@@ -141,6 +141,11 @@ item is itself counted, a drop after its own slot discounts that slot.
 `dragend` removes the line and swallows the trailing click (cleared on the next
 `pointerdown`), and the rebuild restores focus to the moved tab.
 
+The keyboard reaches the same `move()`: a focused tab moves one slot with
+Alt+Up/Alt+Down, and a plain arrow leaves it alone. A move that would leave the
+list is refused rather than passed to `move()`, which clamps - the tab would not
+move either way, but the wasted persist and re-render are the point.
+
 ## CSS Architecture
 
 The class natively handles its own styling injection via `PresetDOM.injectStyles`.

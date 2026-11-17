@@ -1018,6 +1018,96 @@ test("a drag ends with a swallowed click, and focus follows the move", () => {
   );
 });
 
+test("Alt+Arrow moves the focused tab and keeps focus on it", () => {
+  const basket = makeTabbedBasket(["One", "Two", "Three"]);
+  const items = tabItems(basket);
+  const moved: [string, number][] = [];
+  const realMove = basket.tabState.move.bind(basket.tabState);
+  basket.tabState.move = (id: string, to: number) => {
+    moved.push([id, to]);
+    return realMove(id, to);
+  };
+
+  items[0].focus();
+  items[0].dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+
+  assert.deepEqual(tabIds(basket), ["t2", "t1", "t3"]);
+  assert.deepEqual(moved, [["t1", 1]]);
+  assert.equal(
+    document.activeElement,
+    tabItems(basket)[1],
+    "focus follows the rebuilt button",
+  );
+
+  // The same tab again: it sits at index 1 now, so down moves it to the end.
+  const button = tabItems(basket)[1];
+  button.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+  assert.deepEqual(tabIds(basket), ["t2", "t3", "t1"]);
+  assert.deepEqual(moved, [
+    ["t1", 1],
+    ["t1", 2],
+  ]);
+
+  // At the end there is nowhere to go: refused without a wasted move().
+  const last = tabItems(basket)[2];
+  last.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+  assert.deepEqual(tabIds(basket), ["t2", "t3", "t1"]);
+  assert.deepEqual(
+    moved,
+    [
+      ["t1", 1],
+      ["t1", 2],
+    ],
+    "the boundary refused rather than calling move()",
+  );
+
+  last.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "ArrowUp",
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+  assert.deepEqual(tabIds(basket), ["t2", "t1", "t3"], "up goes back");
+});
+
+test("an arrow without Alt does not move a tab", () => {
+  const basket = makeTabbedBasket(["One", "Two", "Three"]);
+  const items = tabItems(basket);
+
+  items[0].dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+
+  assert.deepEqual(tabIds(basket), ["t1", "t2", "t3"]);
+});
+
 // --- clipboard payload ---
 
 test("copySelectedChips round-trips through readBasketClipboard via a clipboard stub", async () => {

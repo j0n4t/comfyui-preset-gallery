@@ -882,6 +882,23 @@ MUTATIONS = [
      "      if (rect.top + rect.height / 2 < clientY) slot++;",
      "      if (rect.top + rect.height / 2 > clientY) slot++;",
      "tests/unit/preset_basket.test.ts"),
+    # Alt is what makes an arrow a reorder; without it every arrow key would
+    # move the tab while the user is only trying to navigate.
+    ("web/PresetBasket.js",
+     "          if (e.altKey && (e.key === \"ArrowUp\" || e.key === \"ArrowDown\")) {",
+     "          if (e.key === \"ArrowUp\" || e.key === \"ArrowDown\") {",
+     "tests/unit/preset_basket.test.ts"),
+    # Up means towards the start, down towards the end.
+    ("web/PresetBasket.js",
+     "            const to = e.key === \"ArrowUp\" ? index - 1 : index + 1;",
+     "            const to = e.key === \"ArrowUp\" ? index + 1 : index - 1;",
+     "tests/unit/preset_basket.test.ts"),
+    # A move that would leave the list is refused: move() clamps, so the tab
+    # would not move anyway, but the wasted persist and re-render are the point.
+    ("web/PresetBasket.js",
+     "            if (to < 0 || to >= this.tabState.tabs.length) return;",
+     "",
+     "tests/unit/preset_basket.test.ts"),
 ]
 
 

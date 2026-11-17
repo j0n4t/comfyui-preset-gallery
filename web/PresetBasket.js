@@ -739,6 +739,27 @@ export default class PresetBasket {
         });
         // @ts-expect-error blah ts boring
         item.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
+          // Alt+Arrow reorders; a plain arrow leaves the tab alone. Same move()
+          // path as the drag, so the same persist and the same active tab.
+          if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+            e.preventDefault();
+            const tabId = item.getAttribute("data-tab-id");
+            if (!tabId) return;
+
+            const index = this.tabState.tabs.findIndex(
+              (tab) => tab.id === tabId,
+            );
+            if (index === -1) return;
+
+            const to = e.key === "ArrowUp" ? index - 1 : index + 1;
+            if (to < 0 || to >= this.tabState.tabs.length) return;
+
+            this.tabState.move(tabId, to);
+            this.renderTabsList();
+            this._focusTab(tabId);
+            return;
+          }
+
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             openOptions();
