@@ -115,6 +115,32 @@ Two exceptions, both deliberate:
 - Pin and re-roll actions do not change the selection, so they call `syncUI`
   directly to refresh the views.
 
+### The tab sidebar
+
+Every tab button is drawn twice: `renderTabsList()` rebuilds the list on a
+structural change (add, delete, duplicate, reorder), and
+`_updateTabSidebarActiveState()` rewrites the existing nodes in place on a
+switch or a rename. Both read `_tabLabel()`, which returns the title and its
+initials - one character per whitespace-separated word from
+`PresetDisplay.getInitials`, so `Basket 2` reads `B2` - and both set
+`aria-label` to the full title, because the visible text is only initials.
+
+The order is the array order in `PresetBasketTabs`, edited by
+`PresetBasketTabs.move(tabId, toIndex)`: splice out, clamp, splice back in,
+persist once. Tabs are identified by id, so moving the active tab leaves it
+active, and the widget is never written - a move is not a selection
+transition.
+
+A tab drag carries `application/x-pg-tab-reorder`, never `text/plain`. Every
+preset-drop handler on the sidebar gates on `text/plain`, so the two drags
+never cross over; a tab drag that set `text/plain` would be read as a preset
+drop and append the dragged preset's chips to the tab under the cursor. The
+insertion line is a sibling div moved between the items: the slot is the count
+of items whose vertical midpoint is above the cursor, and because the dragged
+item is itself counted, a drop after its own slot discounts that slot.
+`dragend` removes the line and swallows the trailing click (cleared on the next
+`pointerdown`), and the rebuild restores focus to the moved tab.
+
 ## CSS Architecture
 
 The class natively handles its own styling injection via `PresetDOM.injectStyles`.

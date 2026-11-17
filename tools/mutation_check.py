@@ -825,6 +825,63 @@ MUTATIONS = [
      "  ) {\n"
      "    const presets = await PresetGalleryAPI.getPresets();",
      "tests/unit/preset_gallery_api.test.ts"),
+    # An initial is one character: reading it as a UTF-16 unit splits an emoji
+    # pair, and at the cap a lone surrogate eats both slots.
+    ("web/PresetDisplay.js",
+     "    .map((/** @type {string} */ w) => [...w][0])",
+     "    .map((/** @type {string} */ w) => w[0])",
+     "tests/unit/preset_display.test.ts"),
+    # The initials are uppercased: a lowercase title would read "ps".
+    ("web/PresetDisplay.js",
+     '    .join("")\n    .toUpperCase();',
+     '    .join("");',
+     "tests/unit/preset_display.test.ts"),
+    # The destination is clamped to the list; an unclamped index inserts
+    # outside it (or throws) on a drag past either end.
+    ("web/PresetBasketTabs.js",
+     "    const target = Math.max(0, Math.min(toIndex, this.tabs.length - 1));",
+     "    const target = toIndex;",
+     "tests/unit/preset_basket_tabs.test.ts"),
+    # A move persists once, or the reordered sidebar comes back in the old
+    # order after a reload.
+    ("web/PresetBasketTabs.js",
+     "      this.tabs.splice(target, 0, moved);\n    }\n    this.persist();",
+     "      this.tabs.splice(target, 0, moved);\n    }",
+     "tests/unit/preset_basket_tabs.test.ts"),
+    # The dragged tab is itself counted in the slot, so a drop after its own
+    # slot has to discount it or the tab lands one place too far right.
+    ("web/PresetBasket.js",
+     "          this.tabState.move(tabId, slot > from ? slot - 1 : slot);",
+     "          this.tabState.move(tabId, slot);",
+     "tests/unit/preset_basket.test.ts"),
+    # A tab drag carries its own type; text/plain would make every preset-drop
+    # handler read it as a preset drop.
+    ("web/PresetBasket.js",
+     "        e.dataTransfer.setData(TAB_REORDER_MIME, tabId);",
+     '        e.dataTransfer.setData("text/plain", tabId);',
+     "tests/unit/preset_basket.test.ts"),
+    # The drag's trailing click is swallowed, or it opens the tab menu.
+    ("web/PresetBasket.js",
+     "        this._suppressTabClick = true;",
+     "        this._suppressTabClick = false;",
+     "tests/unit/preset_basket.test.ts"),
+    # Focus follows the rebuilt button, or the next keyboard gesture has
+    # nothing focused.
+    ("web/PresetBasket.js",
+     "          this._focusTab(tabId);",
+     "",
+     "tests/unit/preset_basket.test.ts"),
+    # The insertion line goes before the item at the slot; appending it always
+    # would draw it at the end whatever the cursor says.
+    ("web/PresetBasket.js",
+     "    if (target) list.insertBefore(this._tabDropIndicator, target);\n    else list.appendChild(this._tabDropIndicator);",
+     "    list.appendChild(this._tabDropIndicator);",
+     "tests/unit/preset_basket.test.ts"),
+    # The slot counts the items whose midpoint is above the cursor.
+    ("web/PresetBasket.js",
+     "      if (rect.top + rect.height / 2 < clientY) slot++;",
+     "      if (rect.top + rect.height / 2 > clientY) slot++;",
+     "tests/unit/preset_basket.test.ts"),
 ]
 
 

@@ -17,6 +17,16 @@ import {
 } from "./GalleryStorage.js";
 import PresetDisplay from "./PresetDisplay.js";
 
+/**
+ * The drag type a Basket tab carries when it is being reordered.
+ *
+ * Never `text/plain`: every preset-drop handler on the sidebar gates on that
+ * type, so a tab drag that set it would be read as a preset drop and append the
+ * dragged preset's chips to the tab under the cursor - destructive, not merely
+ * wrong. A preset drag never starts on a tab item, so the two never cross over.
+ */
+const TAB_REORDER_MIME = "application/x-pg-tab-reorder";
+
 export default class PresetBasket {
   static BASKET_CONTAINER_STYLES = /*css*/ `
     .j0n4t-pg-basket-pool.drag-over { border-color: #007acc; background: #1a242db0; }
@@ -51,6 +61,8 @@ export default class PresetBasket {
     .j0n4t-pg-basket-tabs-sidebar.drag-over .j0n4t-pg-basket-tabs-list,
     .j0n4t-pg-basket-tabs-sidebar.drag-over .j0n4t-pg-basket-tab-add-btn { border-color: #007acc; background: #1a242db0; }
     .j0n4t-pg-basket-tab-item.drop-target { border-color: #007acc; background: #007acc40; box-shadow: 0 0 6px #007acc; }
+    .j0n4t-pg-basket-tab-item.dragging { opacity: 0.4; }
+    .j0n4t-pg-basket-tab-drop-indicator { width: 2px; height: 20px; background-color: #007acc; border-radius: 1px; box-shadow: 0 0 4px #007acc; }
   `;
 
   static BASKET_CHIP_ETC_STYLES = /*css*/ `
@@ -183,7 +195,12 @@ export default class PresetBasket {
 
     // Track what is being dragged over the tab sidebar
     this._sidebarDragState = null;
+    /** @type {HTMLElement | null} */
+    this._tabDropIndicator = null;
+    /** Swallow the stray click that ends a tab drag, so it never opens the menu. */
+    this._suppressTabClick = false;
     document.addEventListener("pointerdown", (e) => {
+      this._suppressTabClick = false;
       if (
         this.tabMenu &&
         !this.tabMenu.contains(/** @type {Node} */ (e.target))
@@ -418,6 +435,148 @@ export default class PresetBasket {
     this.tabsSidebarList?.addEventListener("dragleave", () => {
       this._clearTabDropTargets();
     });
+
+    // ------------------------- Tabs: reorder a tab by dragging -------------------------
+
+    this.tabsSidebarList?.addEventListener(
+      "dragstart",
+      (/** @type {DragEvent} */ e) => {
+        const tabItem = /** @type {HTMLElement | null} */ (
+          e.target
+        )?.closest?.(".j0n4t-pg-basket-tab-item");
+        if (!tabItem || !e.dataTransfer) return;
+
+        const tabId = tabItem.getAttribute("data-tab-id");
+        if (!tabId) return;
+
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData(TAB_REORDER_MIME, tabId);
+        tabItem.classList.add("dragging");
+      },
+    );
+
+    this.tabsSidebarList?.addEventListener(
+      "dragover",
+      (/** @type {DragEvent} */ e) => {
+        if (!e.dataTransfer) return;
+        if (!Array.from(e.dataTransfer.types || []).includes(TAB_REORDER_MIME))
+          return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        this._placeTabDropIndicator(this._tabDropSlot(e.clientY));
+      },
+    );
+
+    this.tabsSidebarList?.addEventListener(
+      "drop",
+      (/** @type {DragEvent} */ e) => {
+        if (!e.dataTransfer) return;
+        if (!Array.from(e.dataTransfer.types || []).includes(TAB_REORDER_MIME))
+          return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const tabId = e.dataTransfer.getData(TAB_REORDER_MIME);
+        this._clearTabDragMarker();
+
+        const from = this.tabState.tabs.findIndex((tab) => tab.id === tabId);
+        if (from !== -1) {
+          // The dragged item is itself counted in the slot, so a drop after it
+          // has to discount that slot.
+          const slot = this._tabDropSlot(e.clientY);
+          this.tabState.move(tabId, slot > from ? slot - 1 : slot);
+          this.renderTabsList();
+          this._focusTab(tabId);
+        }
+      },
+    );
+
+    this.tabsSidebarList?.addEventListener(
+      "dragend",
+      (/** @type {DragEvent} */ e) => {
+        const tabItem = /** @type {HTMLElement | null} */ (
+          e.target
+        )?.closest?.(".j0n4t-pg-basket-tab-item");
+        tabItem?.classList.remove("dragging");
+        this._clearTabDragMarker();
+        // A drag ends with a click on the item under the pointer; swallow it so
+        // the gesture never opens the tab menu. Cleared on the next pointerdown.
+        this._suppressTabClick = true;
+      },
+    );
+  }
+
+  /**
+   * Which slot a tab drag would land in: the number of items whose vertical
+   * midpoint is above `clientY`. The insertion line goes before that item, or
+   * after the last one when the count equals the length.
+   * @param {number} clientY
+   * @returns {number}
+   */
+  _tabDropSlot(clientY) {
+    const items = Array.from(
+      this.tabsSidebarList?.querySelectorAll(".j0n4t-pg-basket-tab-item") ||
+        [],
+    );
+    let slot = 0;
+    for (const item of items) {
+      const rect = /** @type {HTMLElement} */ (item).getBoundingClientRect();
+      if (rect.top + rect.height / 2 < clientY) slot++;
+    }
+    return slot;
+  }
+
+  /**
+   * Move the reorder insertion line to a slot, creating it on first use.
+   * @param {number} slot
+   */
+  _placeTabDropIndicator(slot) {
+    const list = this.tabsSidebarList;
+    if (!list) return;
+
+    if (!this._tabDropIndicator) {
+      const indicator = document.createElement("div");
+      indicator.className = "j0n4t-pg-basket-tab-drop-indicator";
+      this._tabDropIndicator = indicator;
+    }
+
+    const items = Array.from(
+      list.querySelectorAll(".j0n4t-pg-basket-tab-item"),
+    );
+    const target = items[slot];
+    if (target) list.insertBefore(this._tabDropIndicator, target);
+    else list.appendChild(this._tabDropIndicator);
+  }
+
+  /** Remove the reorder insertion line and every dragging marker. */
+  _clearTabDragMarker() {
+    this._tabDropIndicator?.remove();
+    this._tabDropIndicator = null;
+    this.tabsSidebarList
+      ?.querySelectorAll(".j0n4t-pg-basket-tab-item.dragging")
+      .forEach((el) => {
+        el.classList.remove("dragging");
+      });
+  }
+
+  /**
+   * Restore keyboard focus to a tab after the sidebar rebuild, or the gesture
+   * that follows has nothing focused.
+   * @param {string} tabId
+   */
+  _focusTab(tabId) {
+    const items = this.tabsSidebarList?.querySelectorAll(
+      ".j0n4t-pg-basket-tab-item",
+    );
+    if (!items) return;
+    for (const item of items) {
+      if (item.getAttribute("data-tab-id") === tabId) {
+        /** @type {HTMLElement} */ (item).focus();
+        return;
+      }
+    }
   }
 
   _clearTabDropTargets() {
@@ -551,6 +710,7 @@ export default class PresetBasket {
              data-tab-id="${tab.id}"
              title="${PresetDOM.escapeHTML(title)}${isActive ? " (Click for tab options)" : ""}"
              aria-label="${PresetDOM.escapeHTML(title)}"
+             draggable="true"
              tabindex="0" role="tab" aria-selected="${isActive}">${initials}</div>`;
     });
     this.tabsSidebarList.innerHTML = html;
@@ -569,7 +729,14 @@ export default class PresetBasket {
             }
           }
         };
-        item.addEventListener("click", openOptions);
+        item.addEventListener("click", (/** @type {Event} */ e) => {
+          if (this._suppressTabClick) {
+            this._suppressTabClick = false;
+            e.stopPropagation();
+            return;
+          }
+          openOptions();
+        });
         // @ts-expect-error blah ts boring
         item.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
           if (e.key === "Enter" || e.key === " ") {

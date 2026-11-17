@@ -819,6 +819,205 @@ test("renameActiveTab commits the new title on Enter", () => {
   assert.equal(basketTitle.style.display, "", "the title is restored");
 });
 
+// --- tab drag reorder ---
+
+type FakeDataTransfer = {
+  types: string[];
+  effectAllowed: string;
+  setData: (type: string, value: string) => void;
+  getData: (type: string) => string;
+};
+
+function fakeDataTransfer(): FakeDataTransfer {
+  const map = new Map<string, string>();
+  const types: string[] = [];
+  return {
+    types,
+    effectAllowed: "",
+    setData(type, value) {
+      if (!map.has(type)) types.push(type);
+      map.set(type, value);
+    },
+    getData(type) {
+      return map.get(type) ?? "";
+    },
+  };
+}
+
+/** jsdom has no DragEvent: a plain event with the two fields the handlers read. */
+function dragEvent(
+  type: string,
+  target: Element,
+  data: FakeDataTransfer,
+  clientY = 0,
+): void {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "dataTransfer", { value: data });
+  Object.defineProperty(event, "clientY", { value: clientY });
+  target.dispatchEvent(event);
+}
+
+/** jsdom reports every rect as zero; give the tab buttons a real column. */
+function stubTabRects(items: HTMLElement[]): void {
+  const height = 20;
+  const gap = 4;
+  items.forEach((item, index) => {
+    const top = index * (height + gap);
+    item.getBoundingClientRect = () =>
+      ({
+        top,
+        bottom: top + height,
+        left: 0,
+        right: 20,
+        width: 20,
+        height,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      }) as DOMRect;
+  });
+}
+
+function tabIds(basket: PresetBasket): string[] {
+  return tabItems(basket).map((item) => item.getAttribute("data-tab-id")!);
+}
+
+function tabList(basket: PresetBasket): Element {
+  return basket.container.querySelector(".j0n4t-pg-basket-tabs-list")!;
+}
+
+function makeTabbedBasket(titles: string[]): PresetBasket {
+  fakeStorage({
+    comfy_preset_gallery_basket_tabs: JSON.stringify({
+      tabs: titles.map((title, index) => ({
+        id: `t${index + 1}`,
+        title,
+        basket: [],
+        pins: [],
+        rolls: {},
+      })),
+      activeTabId: "t1",
+    }),
+  });
+  const env = makeBasketEnv();
+  return new PresetBasket(env.container, env.basket, env.textarea, env.context);
+}
+
+test("a tab drag carries one custom type, never text/plain", () => {
+  const basket = makeTabbedBasket(["One", "Two", "Three"]);
+  const items = tabItems(basket);
+  const data = fakeDataTransfer();
+
+  dragEvent("dragstart", items[0], data);
+
+  assert.equal(data.types.length, 1, "exactly one type is set");
+  assert.notEqual(data.types[0], "text/plain", "or the preset drops fire");
+  assert.equal(data.getData(data.types[0]), "t1", "it names the dragged tab");
+  assert.ok(items[0].classList.contains("dragging"));
+});
+
+test("dropping a tab past every midpoint moves it to the end", () => {
+  const basket = makeTabbedBasket(["One", "Two", "Three"]);
+  const items = tabItems(basket);
+  stubTabRects(items);
+  const data = fakeDataTransfer();
+
+  dragEvent("dragstart", items[0], data);
+  dragEvent("dragover", items[2], data, 60);
+  dragEvent("drop", items[2], data, 60);
+
+  assert.deepEqual(tabIds(basket), ["t2", "t3", "t1"]);
+  assert.equal(basket.tabState.activeTabId, "t1", "the active tab stays active");
+});
+
+test("a tab dropped after its own slot discounts that slot", () => {
+  const basket = makeTabbedBasket(["One", "Two", "Three"]);
+  const items = tabItems(basket);
+  stubTabRects(items);
+  const data = fakeDataTransfer();
+
+  dragEvent("dragstart", items[0], data);
+  // Above the second midpoint and below the third: slot 2, with the dragged tab
+  // still counted in it. Without the discount the tab would land at the end.
+  dragEvent("dragover", items[2], data, 40);
+  dragEvent("drop", items[2], data, 40);
+
+  assert.deepEqual(tabIds(basket), ["t2", "t1", "t3"]);
+});
+
+test("the insertion line goes before the item at the slot", () => {
+  const basket = makeTabbedBasket(["One", "Two", "Three"]);
+  const items = tabItems(basket);
+  stubTabRects(items);
+  const data = fakeDataTransfer();
+
+  dragEvent("dragstart", items[0], data);
+  dragEvent("dragover", items[2], data, 40);
+
+  const indicator = tabList(basket).querySelector(
+    ".j0n4t-pg-basket-tab-drop-indicator",
+  );
+  assert.ok(indicator, "an insertion line is shown");
+  assert.equal(indicator!.nextElementSibling, items[2]);
+
+  dragEvent("dragend", items[0], data);
+  assert.equal(
+    tabList(basket).querySelector(".j0n4t-pg-basket-tab-drop-indicator"),
+    null,
+    "the line is gone after the drag",
+  );
+});
+
+test("a preset drag does not place the tab insertion line", () => {
+  const basket = makeTabbedBasket(["One", "Two", "Three"]);
+  const items = tabItems(basket);
+  stubTabRects(items);
+  const data = fakeDataTransfer();
+  data.setData("text/plain", "faces/portrait");
+
+  dragEvent("dragover", items[1], data, 40);
+
+  assert.equal(
+    tabList(basket).querySelector(".j0n4t-pg-basket-tab-drop-indicator"),
+    null,
+  );
+});
+
+test("a drag ends with a swallowed click, and focus follows the move", () => {
+  const basket = makeTabbedBasket(["One", "Two", "Three"]);
+  const items = tabItems(basket);
+  stubTabRects(items);
+  const data = fakeDataTransfer();
+
+  dragEvent("dragstart", items[0], data);
+  dragEvent("drop", items[2], data, 60);
+  const reordered = tabItems(basket);
+  const movedButton = reordered[2];
+  assert.equal(
+    document.activeElement,
+    movedButton,
+    "focus follows the rebuilt button",
+  );
+
+  dragEvent("dragend", movedButton, data);
+  click(movedButton);
+  assert.equal(
+    basket.tabMenu,
+    null,
+    "the stray click did not open the tab menu",
+  );
+
+  // The suppression clears on the next pointerdown, not on a timer: a later
+  // genuine click still works.
+  document.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+  click(reordered[0]);
+  assert.equal(
+    basket.tabState.activeTabId,
+    "t2",
+    "a genuine click switches tabs",
+  );
+});
+
 // --- clipboard payload ---
 
 test("copySelectedChips round-trips through readBasketClipboard via a clipboard stub", async () => {

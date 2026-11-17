@@ -42,7 +42,9 @@ the prompt sent through `final_preset`.
   remembers its selection, pins, and rolled choices and - when **Remember
   rolling options per Basket tab** is on - its dice behavior, preset count
   range and auto-roll toggles. Click the Basket title to rename the active tab;
-  its tab menu can duplicate, close, export, or import tabs.
+  its tab menu can duplicate, close, export, or import tabs. Each button shows
+  the tab's initials, and a tab can be dragged to reorder them; drop a preset on
+  the sidebar to file it under a new or existing tab.
 - Select multiple chips using the **Select** button, Ctrl/Cmd-click, or
   Shift-click. Copy, paste, pin/unpin, or delete the selected chips. Clipboard
   text works as plain text; where rich clipboard data is supported, pin and

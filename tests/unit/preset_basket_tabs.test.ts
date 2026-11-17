@@ -391,6 +391,101 @@ test("removing an inactive tab leaves the active one alone", () => {
   );
 });
 
+// --- move ---
+
+test("move reorders the list, persists once and writes no widget value", () => {
+  const env = makeEnv({
+    storage: fakeStorage({
+      comfy_preset_gallery_basket_tabs: savedPayload(
+        [
+          tab("t1", ["faces/portrait"]),
+          tab("t2", ["faces/macro"]),
+          tab("t3"),
+        ],
+        "t2",
+      ),
+    }),
+  });
+  env.tabs.load();
+  let writes = 0;
+  const setItem = env.storage.setItem;
+  env.storage.setItem = (k: string, v: string) => {
+    writes++;
+    setItem(k, v);
+  };
+
+  assert.equal(env.tabs.move("t2", 2), true);
+
+  assert.deepEqual(
+    env.tabs.tabs.map((t) => t.id),
+    ["t1", "t3", "t2"],
+  );
+  assert.equal(
+    env.tabs.activeTabId,
+    "t2",
+    "tabs are identified by id, not index",
+  );
+  assert.equal(writes, 1, "one persist for the whole move");
+  assert.equal(env.widgetValue(), "faces/macro", "the selection is untouched");
+  assert.equal(env.calls.updateWidgetValue.length, 0);
+});
+
+test("moving the active tab keeps it active and its basket installed", () => {
+  const env = makeEnv({
+    storage: fakeStorage({
+      comfy_preset_gallery_basket_tabs: savedPayload(
+        [tab("t1", ["faces/portrait"]), tab("t2", ["faces/macro"])],
+        "t1",
+      ),
+    }),
+  });
+  env.tabs.load();
+
+  assert.equal(env.tabs.move("t1", 1), true);
+
+  assert.equal(env.tabs.activeTabId, "t1");
+  assert.equal(env.widgetValue(), "faces/portrait");
+  assert.deepEqual(
+    env.calls.restoreTabSelection.map((t) => t.id),
+    ["t1"],
+    "a move is a list edit, not a selection transition",
+  );
+});
+
+test("move clamps at both ends", () => {
+  const env = makeEnv({
+    storage: fakeStorage({
+      comfy_preset_gallery_basket_tabs: savedPayload(
+        [tab("t1"), tab("t2"), tab("t3")],
+        "t1",
+      ),
+    }),
+  });
+  env.tabs.load();
+
+  assert.equal(env.tabs.move("t1", 99), true);
+  assert.deepEqual(
+    env.tabs.tabs.map((t) => t.id),
+    ["t2", "t3", "t1"],
+  );
+
+  // -1, not -5: splice() would read a negative index from the end of the
+  // shortened list and land on slot 1, while the clamp puts it at the start.
+  assert.equal(env.tabs.move("t1", -1), true);
+  assert.deepEqual(
+    env.tabs.tabs.map((t) => t.id),
+    ["t1", "t2", "t3"],
+  );
+});
+
+test("move refuses an unknown tab", () => {
+  const env = makeEnv();
+  env.tabs.load();
+
+  assert.equal(env.tabs.move("nope", 0), false);
+  assert.equal(env.tabs.tabs.length, 1);
+});
+
 // --- append / rename / import ---
 
 test("appendChips writes the active tab's selection through the app", () => {

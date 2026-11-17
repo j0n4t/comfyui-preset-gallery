@@ -280,6 +280,27 @@ export default class PresetBasketTabs {
   }
 
   /**
+   * Move a tab to another slot in the list. Tabs are identified by id, not
+   * index, so the active tab stays active, and the widget is never written:
+   * this is a list edit, not a selection transition.
+   * @param {string} tabId
+   * @param {number} toIndex - destination slot, clamped to the list
+   * @returns {boolean} false when the tab is unknown
+   */
+  move(tabId, toIndex) {
+    const from = this.tabs.findIndex((tab) => tab.id === tabId);
+    if (from === -1) return false;
+
+    const target = Math.max(0, Math.min(toIndex, this.tabs.length - 1));
+    if (target !== from) {
+      const [moved] = this.tabs.splice(from, 1);
+      this.tabs.splice(target, 0, moved);
+    }
+    this.persist();
+    return true;
+  }
+
+  /**
    * Append chips to an existing tab. The active tab's selection is written
    * through the app, so the render follows the same path as an edit.
    * @param {string} tabId
