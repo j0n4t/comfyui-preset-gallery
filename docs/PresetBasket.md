@@ -134,10 +134,13 @@ transition.
 A tab drag carries `application/x-pg-tab-reorder`, never `text/plain`. Every
 preset-drop handler on the sidebar gates on `text/plain`, so the two drags
 never cross over; a tab drag that set `text/plain` would be read as a preset
-drop and append the dragged preset's chips to the tab under the cursor. The
-insertion line is a sibling div moved between the items: the slot is the count
-of items whose vertical midpoint is above the cursor, and because the dragged
-item is itself counted, a drop after its own slot discounts that slot.
+drop and append the dragged preset's chips to the tab under the cursor.
+The insertion line is a sibling div moved between the items: it runs across a
+tab (`width: 20px; height: 2px`) because the list is a column, and carries
+`flex: none` so a sidebar shorter than its children cannot shrink it away. The
+slot is the count of items whose vertical midpoint is above the cursor, and
+because the dragged item is itself counted, a drop after its own slot discounts
+that slot.
 `dragend` removes the line and swallows the trailing click (cleared on the next
 `pointerdown`), and the rebuild restores focus to the moved tab.
 

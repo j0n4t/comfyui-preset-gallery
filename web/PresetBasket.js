@@ -62,7 +62,7 @@ export default class PresetBasket {
     .j0n4t-pg-basket-tabs-sidebar.drag-over .j0n4t-pg-basket-tab-add-btn { border-color: #007acc; background: #1a242db0; }
     .j0n4t-pg-basket-tab-item.drop-target { border-color: #007acc; background: #007acc40; box-shadow: 0 0 6px #007acc; }
     .j0n4t-pg-basket-tab-item.dragging { opacity: 0.4; }
-    .j0n4t-pg-basket-tab-drop-indicator { width: 2px; height: 20px; background-color: #007acc; border-radius: 1px; box-shadow: 0 0 4px #007acc; }
+    .j0n4t-pg-basket-tab-drop-indicator { width: 20px; height: 2px; background-color: #007acc; border-radius: 1px; box-shadow: 0 0 4px #007acc; flex: none; }
   `;
 
   static BASKET_CHIP_ETC_STYLES = /*css*/ `

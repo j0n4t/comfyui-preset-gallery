@@ -899,6 +899,18 @@ MUTATIONS = [
      "            if (to < 0 || to >= this.tabState.tabs.length) return;",
      "",
      "tests/unit/preset_basket.test.ts"),
+    # The tab list is a column, so its insertion line runs across a tab. A tall
+    # thin box reads as a vertical bar between rows that are stacked.
+    ("web/PresetBasket.js",
+     ".j0n4t-pg-basket-tab-drop-indicator { width: 20px; height: 2px;",
+     ".j0n4t-pg-basket-tab-drop-indicator { width: 2px; height: 20px;",
+     "tests/unit/preset_basket.test.ts"),
+    # The sidebar can be shorter than its children; without flex:none the line
+    # shrinks to nothing exactly when there is least room to spare.
+    ("web/PresetBasket.js",
+     "box-shadow: 0 0 4px #007acc; flex: none; }",
+     "box-shadow: 0 0 4px #007acc; }",
+     "tests/unit/preset_basket.test.ts"),
 ]
 
 

@@ -968,6 +968,32 @@ test("the insertion line goes before the item at the slot", () => {
   );
 });
 
+test("the tab insertion line is a horizontal divider, not a vertical bar", () => {
+  const sheet = document.querySelector(
+    "style#j0n4t-pg-basket-container-styles",
+  );
+  assert.ok(sheet, "the basket container sheet is injected");
+  const rule = sheet!.textContent!.match(
+    /\.j0n4t-pg-basket-tab-drop-indicator\s*\{([^}]*)\}/,
+  );
+  assert.ok(rule, "the indicator has a rule");
+
+  // The list is a column, so the line between two tabs runs across it; a tall
+  // thin box reads as a vertical bar.
+  const width = /width:\s*([\d.]+)px/.exec(rule![1]);
+  const height = /height:\s*([\d.]+)px/.exec(rule![1]);
+  assert.ok(width && height, "both dimensions are declared");
+  assert.ok(
+    Number.parseFloat(width![1]) > Number.parseFloat(height![1]),
+    `wider than tall (${width![1]}x${height![1]})`,
+  );
+  assert.match(
+    rule![1],
+    /flex:\s*none/,
+    "a cramped sidebar must not shrink the line away",
+  );
+});
+
 test("a preset drag does not place the tab insertion line", () => {
   const basket = makeTabbedBasket(["One", "Two", "Three"]);
   const items = tabItems(basket);
