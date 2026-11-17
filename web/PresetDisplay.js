@@ -210,6 +210,28 @@ function getPresetInitials(key) {
 }
 
 /**
+ * Initials for a free-text label (a Basket tab title): first character of each
+ * whitespace-separated word, digits kept as-is, uppercased, capped by code point.
+ *
+ * Deliberately not `getPresetInitials`: that one reads a cache key with folder
+ * logic, takes two characters per word and caps at six, so it cannot produce
+ * "B2" for "Basket 2".
+ * @param {string} text - Label to abbreviate.
+ * @param {number} [max=2] - Maximum initials to keep.
+ * @returns {string}
+ */
+function getInitials(text, max = 2) {
+  const initials = String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((/** @type {string} */ w) => [...w][0])
+    .join("")
+    .toUpperCase();
+  return [...initials].slice(0, max).join("");
+}
+
+/**
  * Extracts parent folder path string of key.
  * @param {string} key - Preset key path.
  * @returns {string} Folder path string.
@@ -367,6 +389,7 @@ const PresetDisplay = {
   getPresetName,
   getPresetTitle,
   getPresetInitials,
+  getInitials,
   getPresetFolder,
   getUiFolder,
   getSearchBlob,
@@ -386,6 +409,7 @@ export {
   getPresetName,
   getPresetTitle,
   getPresetInitials,
+  getInitials,
   getPresetFolder,
   getUiFolder,
   getSearchBlob,

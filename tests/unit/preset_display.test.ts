@@ -68,6 +68,23 @@ test("getPresetInitials caps at six characters", () => {
   assert.equal(PresetDisplay.getPresetInitials("Faces/Portrait"), "Po");
 });
 
+test("getInitials takes one character per word, capped by code point", () => {
+  assert.equal(PresetDisplay.getInitials("Basket"), "B");
+  assert.equal(PresetDisplay.getInitials("Basket 2"), "B2");
+  assert.equal(PresetDisplay.getInitials("Portrait Set"), "PS");
+  assert.equal(PresetDisplay.getInitials("Moodboard"), "M");
+  assert.equal(PresetDisplay.getInitials("  spaced   out  "), "SO");
+  assert.equal(PresetDisplay.getInitials(""), "");
+  // A second argument raises the cap; the default stays at two.
+  assert.equal(PresetDisplay.getInitials("One Two Three"), "OT");
+  assert.equal(PresetDisplay.getInitials("One Two Three", 3), "OTT");
+  // An emoji initial is one character: it must not eat both slots nor be split
+  // into a lone surrogate.
+  const emoji = PresetDisplay.getInitials("🎨 Art");
+  assert.equal(emoji, "🎨A");
+  assert.deepEqual([...PresetDisplay.getInitials("🎨", 2)], ["🎨"]);
+});
+
 test("getAllPresetFolders lists each folder once", () => {
   const cache: PresetCache = {
     "Faces/Portrait": { preset: "p" },

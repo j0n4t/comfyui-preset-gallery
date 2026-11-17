@@ -278,9 +278,11 @@ export default class PresetBasket {
         item.setAttribute("aria-selected", String(isActive));
 
         const targetTab = this.tabState.find(id);
-        const baseTitle = targetTab?.title || `Tab ${index + 1}`;
+        const { title, initials } = this._tabLabel(targetTab, index);
+        item.textContent = initials;
+        item.setAttribute("aria-label", title);
         /** @type {HTMLElement} */ (item).title =
-          `${PresetDOM.escapeHTML(baseTitle)}${isActive ? " (Click for tab options)" : ""}`;
+          `${PresetDOM.escapeHTML(title)}${isActive ? " (Click for tab options)" : ""}`;
       });
   }
 
@@ -524,21 +526,32 @@ export default class PresetBasket {
     this.updateBasketTitle();
   }
 
+  /**
+   * The tab button's tooltip/accessible title and its visible initials, shared by
+   * the rebuild and the in-place update so a rename or a switch cannot leave one
+   * path showing the old label.
+   * @param {BasketTab | null} tab
+   * @param {number} index
+   * @returns {{ title: string, initials: string }}
+   */
+  _tabLabel(tab, index) {
+    const title = tab?.title || `Tab ${index + 1}`;
+    return { title, initials: PresetDisplay.getInitials(title) };
+  }
+
   renderTabsList() {
     if (!this.tabsSidebarList) return;
     this.closeTabMenu();
     let html = "";
     this.tabState.tabs.forEach((tab, index) => {
       const isActive = this.tabState.isActive(tab.id);
-      const displayName = `${index + 1}`;
+      const { title, initials } = this._tabLabel(tab, index);
       html += `
         <div class="j0n4t-pg-basket-tab-item ${isActive ? "active" : ""}"
              data-tab-id="${tab.id}"
-             title="${PresetDOM.escapeHTML(tab.title || "Tab " + (index + 1))}${isActive ? " (Click for tab options)" : ""}"
-             tabindex="0" role="tab" aria-selected="${isActive}">
-          ${displayName}
-        </div>
-      `;
+             title="${PresetDOM.escapeHTML(title)}${isActive ? " (Click for tab options)" : ""}"
+             aria-label="${PresetDOM.escapeHTML(title)}"
+             tabindex="0" role="tab" aria-selected="${isActive}">${initials}</div>`;
     });
     this.tabsSidebarList.innerHTML = html;
 

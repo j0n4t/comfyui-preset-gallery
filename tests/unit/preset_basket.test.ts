@@ -279,6 +279,37 @@ test("the constructor builds the sidebar and a default tab", () => {
   assert.equal(tabItems(basket).length, 1);
 });
 
+test("tab items show the title's initials and carry the full title as their name", () => {
+  fakeStorage({
+    comfy_preset_gallery_basket_tabs: JSON.stringify({
+      tabs: [
+        { id: "t1", title: "Basket 2", basket: [], pins: [], rolls: {} },
+        { id: "t2", title: "Portrait Set", basket: [], pins: [], rolls: {} },
+        { id: "t3", title: "", basket: [], pins: [], rolls: {} },
+      ],
+      activeTabId: "t1",
+    }),
+  });
+  const env = makeBasketEnv();
+  const basket = new PresetBasket(
+    env.container,
+    env.basket,
+    env.textarea,
+    env.context,
+  );
+  const items = tabItems(basket);
+
+  // No template whitespace around the initials: textContent reads back exactly.
+  assert.deepEqual(
+    items.map((item) => item.textContent),
+    ["B2", "PS", "T3"],
+  );
+  assert.deepEqual(
+    items.map((item) => item.getAttribute("aria-label")),
+    ["Basket 2", "Portrait Set", "Tab 3"],
+  );
+});
+
 test("initTabs restores saved tabs and their widget/pin state", () => {
   fakeStorage({
     comfy_preset_gallery_basket_tabs: JSON.stringify({
@@ -780,6 +811,11 @@ test("renameActiveTab commits the new title on Enter", () => {
   );
 
   assert.equal(basket.tabState.tabs[0].title, "My Presets");
+  // The in-place update rewrites the button too, or a rename leaves stale
+  // initials until the next rebuild.
+  const [tabButton] = tabItems(basket);
+  assert.equal(tabButton.textContent, "MP");
+  assert.equal(tabButton.getAttribute("aria-label"), "My Presets");
   assert.equal(basketTitle.style.display, "", "the title is restored");
 });
 

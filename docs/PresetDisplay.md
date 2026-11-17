@@ -31,6 +31,11 @@ the name is `sock`, and a colour hashes `wear` rather than `socks#wear`.
 ### Labels and tooltips
 
 - `toTitleCase(str)` — `portrait_solo-shot` → `Portrait Solo Shot`.
+- `getInitials(text, max=2)` — one character per whitespace-separated word,
+  uppercased, capped by code point: `Basket 2` → `B2`, `Portrait Set` → `PS`,
+  `Moodboard` → `M`. For a free-text label (a Basket tab title), not a cache key;
+  `getPresetInitials` reads a key with folder logic, takes two characters per
+  word and caps at six, so it cannot produce `B2`.
 - `getPresetTitle(key, cache, rollManager)` — the tooltip body. Names the preset
   and its own body, and prepends the evaluated value when expansion produces
   something else (`look/combo` → `simple look, extra` over
