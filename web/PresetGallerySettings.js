@@ -429,6 +429,14 @@ export default class PresetGallerySettings {
     }
   }
 
+  /** Flip the dice between re-rolling variants and replacing the selection. */
+  toggleDiceBehavior() {
+    this.diceBehavior =
+      this.diceBehavior === "overwrite" ? "variants" : "overwrite";
+    this.save();
+    this.updateDiceVisuals();
+  }
+
   async openModal() {
     /** @type {HTMLInputElement | null} */
     let minInput;

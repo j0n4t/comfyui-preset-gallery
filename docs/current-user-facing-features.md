@@ -53,9 +53,10 @@ the prompt sent through `final_preset`.
 - The dice button can reroll variants in the current Basket or replace its
   selection with randomly chosen presets. Settings choose the main behavior,
   the preset-count range, and whether rolling happens on generation or seed
-  changes. Holding Shift while clicking the dice button uses the other behavior.
-  With **Remember rolling options per Basket tab** on, each tab keeps its own
-  copy of these options and switching tabs restores them.
+  changes. Shift-clicking the dice button toggles between the two behaviors;
+  only a plain click rolls. With **Remember rolling options per Basket tab**
+  on, each tab keeps its own copy of these options and switching tabs
+  restores them.
 
 ### Text entered as chips
 
@@ -211,8 +212,8 @@ tabs or reloading, without state leaking between tabs.
   roll.
 - Repeat for seed-change rolling by changing a seed widget and verifying a
   roll occurs only when that option is enabled.
-- Verify the manual dice action still works and that Shift invokes the
-  alternate roll behavior.
+- Verify the manual dice action still works and that Shift toggles the roll
+  behavior without rolling.
 - Keep deterministic selection and seed detection cases in
   `preset_session.test.ts`; use `gallery.spec.ts` to verify the user-visible
   result.

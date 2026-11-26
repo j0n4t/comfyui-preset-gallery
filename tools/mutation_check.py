@@ -174,6 +174,13 @@ MUTATIONS = [
      "        );",
      "        const rows = picker?.getRows() || [];",
      "tests/unit/preset_gallery_settings.test.ts"),
+    # A shift-click toggles the dice mode; a flip that lands back on the same
+    # value makes the toggle a no-op and a plain click would roll the old mode.
+    ("web/PresetGallerySettings.js",
+     "    this.diceBehavior =\n"
+     "      this.diceBehavior === \"overwrite\" ? \"variants\" : \"overwrite\";\n",
+     "    this.diceBehavior = \"variants\";\n",
+     "tests/unit/preset_gallery_settings.test.ts"),
     # The modal is capped and its body scrolls, so a tall picker cannot push
     # the buttons off screen.
     ("web/ModalUtils.js",

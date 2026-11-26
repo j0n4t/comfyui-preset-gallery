@@ -737,24 +737,14 @@ export default class PresetGalleryApp {
         this.settings.updateDiceVisuals();
         return;
       }
-      const isOverwrite = this.settings?.diceBehavior === "overwrite";
-      const overwriteMode = e.shiftKey ? !isOverwrite : isOverwrite;
-      this.triggerRoll(overwriteMode);
+      // Shift changes the mode; only a plain click rolls with that mode.
+      if (e.shiftKey) {
+        this.settings.toggleDiceBehavior();
+        this.syncUI(this.widget.value);
+        return;
+      }
+      this.triggerRoll(this.settings?.diceBehavior === "overwrite");
     });
-    this.dom.basketHeader.addEventListener("mousemove", (e) => {
-      this.dom.basketHeader.classList.toggle("shift-held", e.shiftKey);
-    });
-    this.dom.basketHeader.addEventListener("mouseleave", () => {
-      this.dom.basketHeader.classList.remove("shift-held");
-    });
-    this.dom.basketHeader.addEventListener("keydown", (e) => {
-      if (e.key === "Shift") this.dom.basketHeader.classList.add("shift-held");
-    });
-    this.dom.basketHeader.addEventListener("keyup", (e) => {
-      if (e.key === "Shift")
-        this.dom.basketHeader.classList.remove("shift-held");
-    });
-
     this.dom.basketTitle.addEventListener("click", () => {
       this.basket.renameActiveTab();
     });

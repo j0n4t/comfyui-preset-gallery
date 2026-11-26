@@ -41,7 +41,6 @@ export default class PresetBasket {
     .j0n4t-pg-checkbox-wrap {height: auto; padding: 0; margin-right: 4px;}
     .j0n4t-pg-basket-reroll-btn:hover, .j0n4t-pg-basket-reroll-btn:focus { transform: scale(1.1); }
     .j0n4t-pg-basket-reroll-btn { display: flex; font-size: 14px; background: transparent; border: none; cursor: pointer; padding: 0; outline: none; transition: transform 0.2s ease; }
-    .j0n4t-pg-basket-header.shift-held .j0n4t-pg-basket-reroll-btn { filter: invert(1); transform: rotate(180deg); }
     .j0n4t-pg-basket-pool { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; height: 100%; align-items: center; align-content: flex-start; padding: 4px; }
     .j0n4t-pg-basket-container .j0n4t-pg-raw-wrapper { display: none; width: auto; }
     .j0n4t-pg-basket-container.raw-mode .j0n4t-pg-raw-wrapper { display: block; margin: 4px; }

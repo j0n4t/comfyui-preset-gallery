@@ -240,6 +240,33 @@ test("updateDiceVisuals reflects the dice behavior and auto-roll flags", async (
   assert.ok(btn.classList.contains("auto-roll-seed"));
 });
 
+// --- toggleDiceBehavior ---
+
+test("toggling the dice flips the saved behavior and the button class", async () => {
+  const map = fakeStorage();
+  makeDiceButton();
+  const { settings } = makeSettings();
+  await tick();
+
+  const btn = document.querySelector<HTMLButtonElement>(
+    ".j0n4t-pg-basket-reroll-btn",
+  )!;
+  settings.toggleDiceBehavior();
+  assert.equal(settings.diceBehavior, "overwrite");
+  assert.ok(btn.classList.contains("roll-overwrite"));
+  assert.ok(!btn.classList.contains("roll-variants"));
+  assert.equal(
+    (JSON.parse(map.get("pg_settings")!) as { diceBehavior: string })
+      .diceBehavior,
+    "overwrite",
+  );
+
+  settings.toggleDiceBehavior();
+  assert.equal(settings.diceBehavior, "variants");
+  assert.ok(btn.classList.contains("roll-variants"));
+  assert.ok(!btn.classList.contains("roll-overwrite"));
+});
+
 // --- per-tab rolling options ---
 
 test("loads a saved rememberDicePerTab flag", () => {

@@ -1007,9 +1007,46 @@ test.describe("the engine", () => {
   test("a roll replaces the selection with several presets", async ({
     page,
   }) => {
-    await page
-      .locator(".j0n4t-pg-basket-reroll-btn")
-      .dispatchEvent("click", { shiftKey: true });
+    const modal = await openRollingSettings(page);
+    await modal.locator("#j0n4t-pg-dice-behavior").selectOption("overwrite");
+    await modal.locator('button[data-index="1"]').click();
+    await page.locator(".j0n4t-pg-basket-reroll-btn").click();
+    const count = (await widgetValue(page))
+      .split(",")
+      .filter((s) => s.trim()).length;
+    expect(count).toBeGreaterThan(1);
+  });
+
+  test("shift-clicking the dice toggles the mode without rolling", async ({
+    page,
+  }) => {
+    const button = page.locator(".j0n4t-pg-basket-reroll-btn");
+    const before = await widgetValue(page);
+    await expect(button).toHaveClass(/roll-variants/);
+
+    await button.dispatchEvent("click", { shiftKey: true });
+    await expect(button).toHaveClass(/roll-overwrite/);
+    await expect(button).toHaveAttribute("title", "Overwrite with new presets");
+    expect(await widgetValue(page)).toBe(before);
+
+    await button.dispatchEvent("click", { shiftKey: true });
+    await expect(button).toHaveClass(/roll-variants/);
+    expect(await widgetValue(page)).toBe(before);
+
+    const saved = await page.evaluate(
+      () =>
+        JSON.parse(
+          localStorage.getItem("pg_settings") ?? "{}",
+        ) as { diceBehavior?: string },
+    );
+    expect(saved.diceBehavior).toBe("variants");
+  });
+
+  test("a plain click rolls with the mode the dice shows", async ({ page }) => {
+    const button = page.locator(".j0n4t-pg-basket-reroll-btn");
+    await button.dispatchEvent("click", { shiftKey: true });
+    await expect(button).toHaveClass(/roll-overwrite/);
+    await button.click();
     const count = (await widgetValue(page))
       .split(",")
       .filter((s) => s.trim()).length;
